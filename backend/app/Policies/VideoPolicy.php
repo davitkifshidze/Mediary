@@ -3,7 +3,7 @@
 namespace App\Policies;
 
 /**
- * Video-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ * Video-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია.
  *
  * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
  * აღმოჩენისთვის არსებობს (`App\Models\Video` → `App\Policies\VideoPolicy`)

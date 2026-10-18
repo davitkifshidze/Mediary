@@ -70,7 +70,7 @@ class BookmarkCategoryController extends Controller
             DictionaryRecords::messages(),
         );
 
-        // ეტაპი 8 — ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**, მოდელის გავლით
+        // ჩანაწერებიც „იშლება“ — **მფლობელის ურნაში**, მოდელის გავლით
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::trash(Bookmark::where('category_id', $bookmarkCategory->id));
             DictionaryTrash::trash($bookmarkCategory, 'bookmark_category');
@@ -80,7 +80,7 @@ class BookmarkCategoryController extends Controller
 
         $moveTo = DictionaryRecords::moveTarget($data);
 
-        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+        /* ⚠️ **ურნა** — რიგი ურნაში გადადის და იმახსოვრებს,
            რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
            შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
         $records = Bookmark::where('category_id', $bookmarkCategory->id);

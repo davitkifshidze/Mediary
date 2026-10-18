@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * **ჩატის წერილი ურნაში (Tasks §29, ეტაპი 5).**
+ * **ჩატის წერილი ურნაში.**
  *
  * წერილი ისედაც არ იშლება — „ორივესთან" `messages.removed_at`-ია, „მხოლოდ
  * ჩემთან" `message_hides`-ის რიგი. ეს რიგი ერთადერთ ახალ ფაქტს ამბობს:

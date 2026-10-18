@@ -3,7 +3,7 @@ import type { SyncOutcome } from '@/api/types'
 import type { MediaType } from '@/lib/media'
 
 /* ============================================================
-   თარგმანები (Tasks 7).
+   თარგმანები.
 
    იმავე per-item მოდელით, რაც სინქრონსა და გალერეაზეა: `plan` აბრუნებს რიგს,
    შემდეგ თითო ჩანაწერზე ერთი მოკლე რექვესთი მიდის (ციკლს queue ატარებს).
@@ -24,7 +24,7 @@ export interface TranslationSummary {
    * სამუდამოდ აანთებდა.
    */
   reviewable: number
-  /** შენი Gemini-ის გასაღები („მონაცემები", Tasks §30) არის თუ არა — უამისოდ მხოლოდ TMDB-ის ტექსტი მოვა */
+  /** შენი Gemini-ის გასაღები („მონაცემები") არის თუ არა — უამისოდ მხოლოდ TMDB-ის ტექსტი მოვა */
   translator_configured: boolean
   tmdb_configured: boolean
 }
@@ -49,7 +49,7 @@ export interface TranslationPlanFilters {
   include_genres?: boolean
   /** TMDB-ის ქართული აღწერის გადამოწმება Gemini-თ (2026-09-14) */
   review?: boolean
-  /** Tasks §31.2 — ბოლო გაშვებაზე ნათარგმნი აღარ ჩანს; ცარიელი და ჩავარდნილი რჩება */
+  /** ბოლო გაშვებაზე ნათარგმნი აღარ ჩანს; ცარიელი და ჩავარდნილი რჩება */
   hide_processed?: boolean
 }
 
@@ -69,7 +69,7 @@ export interface TranslateResult {
   changed?: string[]
   /** ველი → წყარო — „რა რითი ითარგმნა" */
   providers?: Record<string, TranslationProvider>
-  /** Tasks §31.4 — `updated` · `empty` · `failed`; გამოტოვებაზე `null` */
+  /** `updated` · `empty` · `failed`; გამოტოვებაზე `null` */
   result?: SyncOutcome | null
   error: string | null
   title?: string
@@ -117,7 +117,7 @@ export interface TranslationUsage {
     fields: Record<string, TranslationProvider>
     at: string | null
   }[]
-  /** Tasks §31.4 — ბოლო გაშვებებზე ვერაფერი შეივსო: ცარიელი ან ჩავარდნილი */
+  /** ბოლო გაშვებებზე ვერაფერი შეივსო: ცარიელი ან ჩავარდნილი */
   unfilled: {
     type: string
     record_id: number

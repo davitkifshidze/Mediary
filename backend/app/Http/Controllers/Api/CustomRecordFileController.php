@@ -13,14 +13,14 @@ use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 
 /**
- * **პირადი მოდულის ჩანაწერის ფაილები (Tasks §37.5)** — `image` = ჩემი ფოტო,
+ * **პირადი მოდულის ჩანაწერის ფაილები** — `image` = ჩემი ფოტო,
  * `doc` = თანმხლები დოკუმენტი. ადგილის/თამაშის ფაილების ზუსტი ფორმა.
  *
  * ⚠️ **ჩანაწერი მოდულითაც მოწმდება** — ერთი ცხრილი ყველა პირად მოდულს
  * ემსახურება, ე.ი. `/custom/c5-a/7/files` სხვა მოდულის ჩანაწერს ვერ შეეხება
  * (404). სხვისი ჩანაწერი ისედაც 404-ია (`owner` scope + `EnsureRecordOwnership`).
  *
- * ⚠️ **MIME სერვერის მხრიდან იკითხება** (`SafeMime::ofUpload()`) — SEC-04.
+ * ⚠️ **MIME სერვერის მხრიდან იკითხება** (`SafeMime::ofUpload()`).
  */
 class CustomRecordFileController extends Controller
 {
@@ -51,7 +51,7 @@ class CustomRecordFileController extends Controller
             'files.*' => UploadLimits::rule($kind === 'doc' ? 'doc' : 'image', $request->user()),
         ]);
 
-        // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე: ნახევრად გასული ატვირთვა
+        // კვოტა **მთელ პაკეტზე** ჩაწერამდე: ნახევრად გასული ატვირთვა
         // ყველაზე მტკივნეული შედეგია
         $files = $request->file('files');
         $this->meter->guard($request->user(), array_sum(array_map(
@@ -59,7 +59,7 @@ class CustomRecordFileController extends Controller
             $files,
         )));
 
-        // ⚠️ საქაღალდე მოდულისაა (`custom/{key}/files/…`) — §17.2-ის ლიმიტი მას კითხულობს
+        // ⚠️ საქაღალდე მოდულისაა (`custom/{key}/files/…`) — მოდულის ლიმიტი მას კითხულობს
         $folder = StorageFolder::customFiles($type, $data['kind']);
 
         $created = [];
@@ -85,7 +85,7 @@ class CustomRecordFileController extends Controller
     {
         abort_unless($file->module === $type, 404);
 
-        /* ⚠️ **ურნა (Tasks §29)** — `moveToTrash()`: ფაილი დისკზე და კვოტაში
+        /* ⚠️ **ურნა** — `moveToTrash()`: ფაილი დისკზე და კვოტაში
            რჩება და ურნიდან ბრუნდება; ადგილი საბოლოო წაშლისას თავისუფლდება. */
         $file->moveToTrash();
 

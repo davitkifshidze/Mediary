@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **როლების API** (Tasks 1.6 → 2026-09-15).
+ * **როლების API**.
  *
  * ⚠️ **ეს ფაილი იმიტომ დაიბადა, რომ არსებული ტესტები `permissions`-ს
  * მოდელზე პირდაპირ წერდნენ** (`Role::create([...])`), ე.ი. `PUT
@@ -114,7 +114,7 @@ class RoleApiTest extends TestCase
     }
 
     /**
-     * SEC-02 — `admin:users`-ის (ნახვა · რედაქტირება · წაშლა) მქონე, ოღონდ
+     * `admin:users`-ის (ნახვა · რედაქტირება · წაშლა) მქონე, ოღონდ
      * `super_admin` არა. ⚠️ მოდულების უფლება მას განზრახ **არ** აქვს:
      * ტესტები ისიც ამოწმებენ, რომ ჩვეულებრივ მომხმარებლებს (ყველა მოდულზე
      * CRUD-ით) მაინც მართავს.
@@ -140,7 +140,7 @@ class RoleApiTest extends TestCase
     }
 
     /**
-     * ⚠️ **SEC-02 (Critical, 2026-09-17).** `PATCH /admin/users/{self}`
+     * ⚠️ `PATCH /admin/users/{self}`
      * `role_id = super_admin`-ით ერთ მოთხოვნაში `/admin/purge`-ს და
      * `/admin/backups`-ს აძლევდა. ⚠️ პასუხი **403 `role_escalation`**-ია და
      * **არა** 422 `cannot_change_own_role` — ესკალაცია ჯერ მოწმდება.
@@ -157,7 +157,7 @@ class RoleApiTest extends TestCase
         $this->assertFalse($actor->refresh()->isSuperAdmin());
     }
 
-    /** SEC-02 — სხვის დაწინაურება `super_admin`-ად: მხოლოდ `super_admin`-ს შეუძლია */
+    /** სხვის დაწინაურება `super_admin`-ად: მხოლოდ `super_admin`-ს შეუძლია */
     public function test_only_a_super_admin_can_promote_someone_to_super_admin(): void
     {
         $target = User::factory()->create();
@@ -177,7 +177,7 @@ class RoleApiTest extends TestCase
     }
 
     /**
-     * SEC-02 — ⚠️ ესკალაცია `super_admin`-ით არ ამოიწურება: `admin:audit`-ის
+     * ⚠️ ესკალაცია `super_admin`-ით არ ამოიწურება: `admin:audit`-ის
      * მიცემა `admin:users`-ის მქონეს ისეთ ძალაუფლებას მისცემდა, რაც
      * თვითონ **არ** აქვს. ⚠️ მოდულების CRUD-ი კი ითვლება **არ** — `user`
      * როლს ყველა მოდულზე CRUD აქვს და მისი მინიჭება ჩვეულებრივ საქმეა.
@@ -216,7 +216,7 @@ class RoleApiTest extends TestCase
     }
 
     /**
-     * SEC-02 — **საკუთარ როლს არავინ ცვლის, `super_admin`-ც** (422
+     * **საკუთარ როლს არავინ ცვლის, `super_admin`-ც** (422
      * `cannot_change_own_role`), მაშინაც, როცა მეორე სუპერ-ადმინი არსებობს და
      * `last_super_admin` არ შეაჩერებდა. იგივე მნიშვნელობის გამოგზავნა ცვლილება არაა.
      */
@@ -240,7 +240,7 @@ class RoleApiTest extends TestCase
     }
 
     /**
-     * SEC-02 — ⚠️ **მაღლა მდგომ ანგარიშს არ ეხება**: `admin:users.delete`-ით
+     * ⚠️ **მაღლა მდგომ ანგარიშს არ ეხება**: `admin:users.delete`-ით
      * სუპერ-ადმინის მთელი ბიბლიოთეკის წაშლა, მისი გათიშვა ან მოდულების
      * შეცვლა ისეთივე ესკალაციაა, როგორც დაწინაურება.
      */
@@ -267,7 +267,7 @@ class RoleApiTest extends TestCase
         $this->assertTrue($target->isSuperAdmin());
     }
 
-    /** SEC-02 — ⚠️ დაცვა ჩვეულებრივ მართვას **არ** ხურავს */
+    /** ⚠️ დაცვა ჩვეულებრივ მართვას **არ** ხურავს */
     public function test_a_users_admin_still_manages_ordinary_users(): void
     {
         $actor = $this->usersAdmin();
@@ -284,7 +284,7 @@ class RoleApiTest extends TestCase
             ->assertNoContent();
     }
 
-    /** SEC-03 — `admin:roles`-ის (ყველა მოქმედება) მქონე, ოღონდ `super_admin` არა */
+    /** `admin:roles`-ის (ყველა მოქმედება) მქონე, ოღონდ `super_admin` არა */
     private function rolesAdmin(): User
     {
         $role = Role::create([
@@ -301,8 +301,8 @@ class RoleApiTest extends TestCase
     }
 
     /**
-     * ⚠️ **SEC-03 (High, 2026-09-17).** `PUT /admin/roles/{საკუთარი}`-ით
-     * `admin:users`-ის დამატება SEC-02-ის ჯაჭვის პირველი რგოლი იყო. ⚠️ პასუხი
+     * ⚠️ `PUT /admin/roles/{საკუთარი}`-ით `admin:users`-ის დამატება
+     * საკუთარი თავის სუპერ-ადმინად აყვანის ჯაჭვის პირველი რგოლი იყო. ⚠️ პასუხი
      * **403 `role_escalation`**-ია, და **არა** 422 — ესკალაცია ჯერ მოწმდება.
      */
     public function test_a_roles_admin_cannot_add_admin_sections_to_their_own_role(): void
@@ -324,7 +324,7 @@ class RoleApiTest extends TestCase
     }
 
     /**
-     * SEC-03 — საკუთარი როლის **უფლებებს** არ ცვლის (422
+     * საკუთარი როლის **უფლებებს** არ ცვლის (422
      * `cannot_edit_own_role`), მოდულის უფლებაზეც; სახელის გადარქმევა და
      * უცვლელი მატრიცის ხელახლა გამოგზავნა კი ჩვეულებრივ გადის.
      */
@@ -355,7 +355,7 @@ class RoleApiTest extends TestCase
         $this->assertSame('Renamed', $role->refresh()->name_en);
     }
 
-    /** SEC-03 — `admin:*` გასაღებიანი ახალი როლი: მხოლოდ `super_admin`-ს */
+    /** `admin:*` გასაღებიანი ახალი როლი: მხოლოდ `super_admin`-ს */
     public function test_only_a_super_admin_creates_a_role_with_admin_sections(): void
     {
         $payload = [
@@ -385,7 +385,7 @@ class RoleApiTest extends TestCase
     }
 
     /**
-     * SEC-03 — ⚠️ ადმინ-ზონის შემადგენლობა `super_admin`-ისაა **ორივე
+     * ⚠️ ადმინ-ზონის შემადგენლობა `super_admin`-ისაა **ორივე
      * მიმართულებით**: სხვის როლიდან `admin:*`-ის მოხსნაც 403-ია; ამ
      * როლის **მოდულების** რედაქტირება კი (უცვლელი `admin:*` ნაწილით) გადის.
      */
@@ -432,7 +432,7 @@ class RoleApiTest extends TestCase
         $this->assertFalse($user->hasPermission('series', 'view'));
     }
 
-    /* ---------- მისანიჭებელი როლების სია (Tasks GAP-10) ---------- */
+    /* ---------- მისანიჭებელი როლების სია ---------- */
 
     /**
      * **`admin:users`-ის მქონე ადმინი როლების სახელებს ხედავს.**
@@ -467,11 +467,10 @@ class RoleApiTest extends TestCase
             ->assertJson(['message' => 'forbidden_permission', 'permission' => 'admin:users.view']);
     }
 
-    /* ================= SEC-10: `permissions = null` ================= */
+    /* ================= `permissions = null` ================= */
 
     /**
-     * **ცარიელი `permissions` „უფლების არქონას" ნიშნავს და არა „ყველაფერს"**
-     * (Tasks SEC-10).
+     * **ცარიელი `permissions` „უფლების არქონას" ნიშნავს და არა „ყველაფერს"**.
      *
      * ⚠️ ასეთი რიგი API-დან არ იბადება (`cleanPermissions()` ყოველთვის
      * მასივს აბრუნებს), მაგრამ სვეტი `nullable` იყო და

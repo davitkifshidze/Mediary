@@ -11,7 +11,7 @@ import type { MovieListItem } from '@/api/types'
 import type { RecordLayout } from '@/lib/recordLayout'
 
 /* ============================================================
-   ბადე — ბარათის ზომითა და სექციებად დაჯგუფებით (Tasks 18).
+   ბადე — ბარათის ზომითა და სექციებად დაჯგუფებით.
 
    ⚠️ **დაჯგუფება ფრანჩაიზისა არაა.** ფრანჩაიზა backend-ის `group=`-ია
    (კოლექცია ერთ ბარათად იკვრება); აქ ბადე ვიზუალურ სექციებად იშლება.
@@ -19,7 +19,7 @@ import type { RecordLayout } from '@/lib/recordLayout'
    ============================================================ */
 
 /** ბარათის ზომა = სვეტების რაოდენობა; `medium` ისტორიული ნაგულისხმევია */
-/* Tasks §20.4 — ⚠️ **კონტეინერის** ზღვრები და არა ეკრანისა: `<main>` `@container`-ია
+/* ⚠️ **კონტეინერის** ზღვრები და არა ეკრანისა: `<main>` `@container`-ია
    და დამკვრელის პანელით მიწოლილ გვერდზე სვეტები თავისით იკლებს. `@2xl`=42rem ≈ `sm`,
    `@3xl`=48rem ≈ `md`, `@5xl`=64rem ≈ `lg`, `@7xl`=80rem = `xl` (1280px). */
 const COLUMNS: Record<CardSize, string> = {
@@ -45,7 +45,7 @@ export function MovieGrid({
   movies: MovieListItem[]
   type?: MediaType
   groupBy?: GroupBy
-  /** Tasks §45 — ბარათები (პარამეტრების ზომით) · ბადე (კომპაქტური) · სტრიქონები */
+  /** ბარათები (პარამეტრების ზომით) · ბადე (კომპაქტური) · სტრიქონები */
   layout?: RecordLayout
 }) {
   const { t, i18n } = useTranslation()
@@ -84,7 +84,7 @@ export function MovieGrid({
         // ⚠️ წელი **კლებადობით** ეწყობა (ახალი ზემოთ), დანარჩენი ანბანურად
         push(String(movie.year ?? 'none'), movie.year ? String(movie.year) : t('sort.groupNone'), movie.year ?? -1, movie)
       } else if (groupBy === 'status') {
-        /* §6.4 — სტატუსი ლექსიკონის რიგია: დაჯგუფება `key`-ზე, სათაური
+        /* სტატუსი ლექსიკონის რიგია: დაჯგუფება `key`-ზე, სათაური
            ლექსიკონის სახელიდან, რიგი კი `sort_order`-იდან (ე.ი. სექციები
            იმავე თანმიმდევრობით დგება, რაც საიდბარშია). */
         const st = movie.status
@@ -97,7 +97,7 @@ export function MovieGrid({
       } else {
         // ⚠️ **პირველი ჟანრი და არა ყველა** — თორემ სამჟანრიანი ფილმი
         // ბადეზე სამჯერ გამოჩნდებოდა და მრიცხველიც აღარ დაემთხვეოდა სიის სიგრძეს.
-        // §35.5 — ბოქლომიან ბარათს ჟანრი არ მოსდევს
+        // ბოქლომიან ბარათს ჟანრი არ მოსდევს
         const first = movie.genres?.[0]
         push(first ? `g${first.id}` : 'none', first ? genreName(first, lang) : t('sort.groupNone'), first ? genreName(first, lang) : '￿', movie)
       }

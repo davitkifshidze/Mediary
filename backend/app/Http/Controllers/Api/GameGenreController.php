@@ -53,7 +53,7 @@ class GameGenreController extends Controller
             'name_ka' => $data['name_ka'],
             'name_en' => $data['name_en'],
             'icon' => $data['icon'] ?? $gameGenre->icon,
-            // Tasks §24.3 — ⚠️ `array_key_exists`: ფერის მოხსნა (`null`) ცხადი არჩევანია
+            // ⚠️ `array_key_exists`: ფერის მოხსნა (`null`) ცხადი არჩევანია
             'color' => array_key_exists('color', $data) ? $data['color'] : $gameGenre->color,
         ])->save();
 
@@ -78,7 +78,7 @@ class GameGenreController extends Controller
             DictionaryRecords::messages(),
         );
 
-        // ეტაპი 8 — ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**, მოდელის გავლით.
+        // ჩანაწერებიც „იშლება“ — **მფლობელის ურნაში**, მოდელის გავლით.
         // ⚠️ pivot-ზე ეს ის ჩანაწერიცაა, რომელსაც სხვა ჟანრიც აქვს — UI ამას ცხადად ამბობს
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::trash(Game::whereKey($gameGenre->games()->pluck('games.id')->all()));
@@ -97,7 +97,7 @@ class GameGenreController extends Controller
             $moved = count($gameIds);
         }
 
-        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+        /* ⚠️ **ურნა** — რიგი ურნაში გადადის და იმახსოვრებს,
            რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
            შემოგთავაზებს (`DictionaryTrash`). pivot-ს `trash()` ცხადად ხსნის — FK-ის კასკადი აღარ ეშვება. */
         DictionaryTrash::trash($gameGenre, 'game_genre', $gameIds, $moveTo);

@@ -8,7 +8,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Throwable;
 
 /**
- * **დუბლიკატის ძებნა დამატებისას — ურნიანად (Tasks §40.1ა).**
+ * **დუბლიკატის ძებნა დამატებისას — ურნიანად.**
  *
  * ⚠️ **`trash` scope აქ განზრახ გამორთულია.** უნიკალურობის ინდექსი
  * (`unique(user_id, imdb_id)`) ურნაში მყოფ რიგს ხედავს, ამიტომ „უკვე გაქვს?"

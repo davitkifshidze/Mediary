@@ -16,7 +16,7 @@ class LookupController extends Controller
     /**
      * `type=movie|series|anime` → შესაბამისი enricher.
      *
-     * ⚠️ **რუკა `MediaDomain`-შია** და აქ აღარაა `if`: მესამე დომენის (§7.1)
+     * ⚠️ **რუკა `MediaDomain`-შია** და აქ აღარაა `if`: მესამე დომენის
      * დამატებისას ეს მეთოდი ჩუმად ფილმს დააბრუნებდა და ანიმეს ძებნა
      * ფილმებში წავიდოდა.
      */
@@ -28,7 +28,7 @@ class LookupController extends Controller
     /**
      * ლინკი/IMDb/სახელი → კანდიდატების სია (ასარჩევად).
      *
-     * Tasks §50 — `suggest`: ნაპოვნი სხვა ტიპისაა (სერიალი ფილმის ფორმაში,
+     * `suggest`: ნაპოვნი სხვა ტიპისაა (სერიალი ფილმის ფორმაში,
      * ფილმი სერიალისაში, იაპონური ანიმაცია — ანიმე) → ფორმა გადასვლას
      * შესთავაზებს და იქ შევსებული დახვდება (`?tmdb=`).
      */
@@ -54,7 +54,7 @@ class LookupController extends Controller
         try {
             $list = $enricher->candidates($data);
         } catch (Throwable $e) {
-            // SEC-14 — გამონაკლისის ტექსტი კლიენტს არასდრობ პასუხში: Guzzle მას სრულ URL-ს
+            // გამონაკლისის ტექსტი კლიენტს არასდრობ პასუხში: Guzzle მას სრულ URL-ს
             // (`?api_key=…`) უწერს. მიზეზი `sources.log`-ში რ჉ება, პასუხში — მანქანური კოდი.
             SourceLog::threw('tmdb', $e);
 
@@ -100,7 +100,7 @@ class LookupController extends Controller
                 ? $enricher->draftFromId((int) $data['tmdb_id'])
                 : $enricher->lookupDraft($data);
         } catch (Throwable $e) {
-            // SEC-14 — გამონაკლისის ტექსტი კლიენტს არასდრობ პასუხში: Guzzle მას სრულ URL-ს
+            // გამონაკლისის ტექსტი კლიენტს არასდრობ პასუხში: Guzzle მას სრულ URL-ს
             // (`?api_key=…`) უწერს. მიზეზი `sources.log`-ში რ჉ება, პასუხში — მანქანური კოდი.
             SourceLog::threw('tmdb', $e);
 

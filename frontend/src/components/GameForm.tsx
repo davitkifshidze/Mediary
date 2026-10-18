@@ -61,18 +61,18 @@ import { useRecordExtras } from '@/lib/customFieldDraft'
 import { LinkField } from '@/components/ui/link-field'
 
 /* ============================================================
-   თამაშის ფორმა (Tasks §11; ველების სია დამტკიცდა 19.1-ში).
+   თამაშის ფორმა.
 
-   ⚠️ **§5.1 (2026-09-10) — ველების სია შემოკლდა.** ფორმიდან მოიხსნა:
+   ⚠️ **ველების სია შემოკლდა.** ფორმიდან მოიხსნა:
    ქართული სახელი · დეველოპერი · „სად ვთამაშობ" · ასაკობრივი რეიტინგი ·
    ზომა · ქართული აღწერა · **ქულების ბლოკი** (OpenCritic, მოთამაშეების
-   ქულა, ჩემი ქულა). ⚠️ **Tasks §13 (2026-09-27)** — Metacritic, HLTB, ენები
+   ქულა, ჩემი ქულა). ⚠️ Metacritic, HLTB, ენები
    და DLC-ის ბლოკი **მთლიანად** ამოვიდა (სვეტიც), ე.ი. ქვემოთი „state-ში
-   განზრახ რჩება" მათ აღარ ეხება. **Tasks §25.4 (Q17)** — „ჩემი ქულა"
+   განზრახ რჩება" მათ აღარ ეხება. „ჩემი ქულა" კი
    ფორმაზე ბრუნდება (`RatingSelect`, ხუთივე ფორმის ერთი ამრჩევი).
 
    ⚠️ **მონაცემი არსად წაშლილა**: ამოღებული ველები `state`-ში და payload-ში
-   **განზრახ** რჩება (წიგნების §5.7-ის ზუსტი პრეცედენტი) — თორემ ძველი
+   **განზრახ** რჩება (წიგნების ფორმის ზუსტი პრეცედენტი) — თორემ ძველი
    ჩანაწერის რედაქტირება ჩუმად წაშლიდა RAWG-ის შევსებულ დეველოპერს,
    ასაკობრივ რეიტინგსა და ქულებს. RAWG მათ ისევ ავსებს და ჩანაწერის
    გვერდზე ისინი ისევ ჩანს.
@@ -81,7 +81,7 @@ import { LinkField } from '@/components/ui/link-field'
    არჩეულის დრაფტი. ავტომატურად არაფერი ემთხვევა და დრაფტი
    **მხოლოდ ცარიელ ველებს** ავსებს.
 
-   ⚠️ RAWG (ან IGDB) **შენს** გასაღებს ითხოვს („მონაცემები", Tasks §30).
+   ⚠️ RAWG (ან IGDB) **შენს** გასაღებს ითხოვს („მონაცემები").
    მისი გარეშე endpoint 409 `credential_missing`-ს აბრუნებს და ფორმა
    „მონაცემების" ბმულს აჩვენებს; წყარო რომ არ პასუხობს, 503-ია და ფორმა
    ცხადად წერს „წყარო მიუწვდომელია" — ორივე სხვაა, ვიდრე „ვერაფერი
@@ -89,7 +89,7 @@ import { LinkField } from '@/components/ui/link-field'
    ============================================================ */
 
 /** მრავალარჩევანიანი ჩიპები — პლატფორმებსა და რეჟიმებს ერთი და იგივე სჭირდება */
-/* Tasks §24.4 — ⚠️ საერთო `Chip`-ით და არა ხელნაწერი პილულით: აიქონი და ფერი იმავე
+/* ⚠️ საერთო `Chip`-ით და არა ხელნაწერი პილულით: აიქონი და ფერი იმავე
    რუკიდან მოდის, რაც დეტალის ბარათებს (`lib/gameMeta.ts`), არჩეული — სავსე ფონით. */
 function ChipGroup<T extends string>({
   values,
@@ -142,7 +142,7 @@ export function GameForm({
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { toast } = useToast()
-  // §6 — რომელი არჩევითი ველი ჩანს ამ ფორმაზე
+  // რომელი არჩევითი ველი ჩანს ამ ფორმაზე
   const fields = useModuleFields('game')
 
   const [form, setForm] = useState({
@@ -157,7 +157,7 @@ export function GameForm({
     my_platform: game?.my_platform ?? '',
     opencritic: game?.opencritic != null ? String(game.opencritic) : '',
     users_score: game?.users_score != null ? String(game.users_score) : '',
-    // Tasks §25.4 — რიცხვი ან `null` (`RatingSelect`)
+    // რიცხვი ან `null` (`RatingSelect`)
     rating: game?.rating ?? null,
     age_rating: game?.age_rating ?? '',
     size_gb: game?.size_gb != null ? String(game.size_gb) : '',
@@ -172,7 +172,7 @@ export function GameForm({
   const [platforms, setPlatforms] = useState<GamePlatform[]>(game?.platforms ?? [])
   const [modes, setModes] = useState<GameMode[]>(game?.modes ?? [])
   const [genreIds, setGenreIds] = useState<number[]>(game?.genre_ids ?? [])
-  /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი (Tasks BUG-11):
+  /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი:
      შუა სტრიქონის წაშლაზე React ძველი რიგის DOM-ს მომდევნოსთვის იყენებდა,
      ე.ი. ფოკუსი, კარეტი და Radix `Select`-ის ღია მდგომარეობა სხვა ჩანაწერზე
      გადადიოდა. გასაღები მონაცემი არ არის — payload-ში `unkeyRows()` ჭრის. */
@@ -186,7 +186,7 @@ export function GameForm({
   const [newGenre, setNewGenre] = useState(false)
   const [franchiseOpen, setFranchiseOpen] = useState(false)
   const qc = useQueryClient()
-  // §26.5 — დამატებითი ველები ახალ თამაშზე; ჩავარდნისას შექმნილი რჩება
+  // დამატებითი ველები ახალ თამაშზე; ჩავარდნისას შექმნილი რჩება
   const extras = useRecordExtras('game', game)
 
   /* ---------- სწრაფი შევსება RAWG-იდან ---------- */
@@ -194,7 +194,7 @@ export function GameForm({
   const [lookupQuery, setLookupQuery] = useState('')
   const [candidates, setCandidates] = useState<RawgCandidate[] | null>(null)
   const [unavailable, setUnavailable] = useState(false)
-  // Tasks §30.6 — ჩემი RAWG/IGDB-ის გასაღები არ მაქვს (≠ წყარო ჩავარდა)
+  // ჩემი RAWG/IGDB-ის გასაღები არ მაქვს (≠ წყარო ჩავარდა)
   const [noKey, setNoKey] = useState(false)
 
   const lookup = useMutation({
@@ -205,7 +205,7 @@ export function GameForm({
       setCandidates(results)
     },
     onError: (e) => {
-      /* 503 = წყარო ჩავარდა · 409 `credential_missing` = გასაღები არ მაქვს (§30.6) —
+      /* 503 = წყარო ჩავარდა · 409 `credential_missing` = გასაღები არ მაქვს —
          ⚠️ ორი სხვადასხვა ქმედება: „სცადე მოგვიანებით" და „ჩაწერე „მონაცემებში"" */
       const missing = isApiCode(e, 'credential_missing')
       const blocked = isApiCode(e, 'rawg_unavailable')
@@ -255,7 +255,7 @@ export function GameForm({
       users_score: f.users_score || (draft.users_score != null ? String(draft.users_score) : ''),
       age_rating: f.age_rating || (draft.age_rating ?? ''),
       // ⚠️ IGDB-ის დრაფტს `rawg_id` **არ აქვს** — ცარიელი რჩება და მისი
-      // იდენტიფიკატორი ცალკე ველში ჯდება (`DECISIONS.md` §7)
+      // იდენტიფიკატორი ცალკე ველში ჯდება
       rawgId: f.rawgId || (draft.rawg_id != null ? String(draft.rawg_id) : ''),
       rawgSlug: f.rawgSlug || (draft.rawg_slug ?? ''),
       igdbId: f.igdbId || (draft.igdb_id != null ? String(draft.igdb_id) : ''),
@@ -280,7 +280,7 @@ export function GameForm({
       if (matched.length) setGenreIds(matched)
     }
 
-    // ყდა შენახვისას ჩამოიტვირთება; **კვოტაში არ ითვლება** (19.4/B)
+    // ყდა შენახვისას ჩამოიტვირთება; **კვოტაში არ ითვლება**
     if (draft.cover_url && !coverPreview) {
       setRawgCoverUrl(draft.cover_url)
       setCoverPreview(draft.cover_url)
@@ -312,7 +312,7 @@ export function GameForm({
   const num = (value: string) => (value === '' ? null : Number(value))
 
 
-  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს**: ბლოკი
      `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
      ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
   const warnHidden = (missing: string[]) => {
@@ -383,7 +383,7 @@ export function GameForm({
   return (
     <ModalShell title={t(game ? 'games.edit' : 'games.add')} onClose={onClose} wide>
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
-        {/* ---------- §26.2 — სწრაფი შევსება (ყველა ფორმის ერთი ბლოკი) ---------- */}
+        {/* ---------- სწრაფი შევსება (ყველა ფორმის ერთი ბლოკი) ---------- */}
         <QuickFill title={t('games.lookup')} hint={t('games.lookupHint')} htmlFor="g-lookup">
           <QuickFillSearch
             id="g-lookup"
@@ -427,7 +427,7 @@ export function GameForm({
           )}
         </QuickFill>
 
-        {/* ---------- §26 — ყდა ზემოთაა, სათაურთან და აღწერასთან ერთად ---------- */}
+        {/* ---------- ყდა ზემოთაა, სათაურთან და აღწერასთან ერთად ---------- */}
         <FormSection
           title={t('form.sections.basic')}
           mediaVariant="wide"
@@ -459,9 +459,9 @@ export function GameForm({
             )
           }
         >
-          {/* ⚠️ §5.1 — მხოლოდ ინგლისური; `title_ka` state-ში რჩება და ძველ
+          {/* ⚠️ მხოლოდ ინგლისური; `title_ka` state-ში რჩება და ძველ
               ჩანაწერს არ ეშლება (იხ. ფაილის თავში). ⚠️ სათაური `locked`-ია
-              (§6.5) — ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` ისმის. */}
+             — ჩაკეტვის მოხსნა ცხადი ქმედებაა, ამიტომ `shows()` ისმის. */}
           <FormField
             {...fields.field('title')}
             required
@@ -475,7 +475,7 @@ export function GameForm({
             />
           </FormField>
 
-          {/* §2.8 — საერთო პიქერი (`YYYY-MM-DD`, იგივე ფორმატი) */}
+          {/* საერთო პიქერი (`YYYY-MM-DD`, იგივე ფორმატი) */}
           <FormField size="third" {...fields.field('release_date')} htmlFor="g-release">
             <DatePicker
               id="g-release"
@@ -492,7 +492,7 @@ export function GameForm({
             />
           </FormField>
 
-          {/* ფრენჩაიზი — ტექსტი აღარაა, მოდალია (§5.1) */}
+          {/* ფრენჩაიზი — ტექსტი აღარაა, მოდალია */}
           <FormField size="third" {...fields.field('franchise')}>
             <div className="flex items-center gap-1">
               <Button
@@ -519,7 +519,7 @@ export function GameForm({
             </div>
           </FormField>
 
-          {/* ⚠️ §5.1 — მხოლოდ ინგლისური აღწერა; `description_ka` state-ში
+          {/* ⚠️ მხოლოდ ინგლისური აღწერა; `description_ka` state-ში
               რჩება და ძველ ჩანაწერს არ ეშლება */}
           <FormField
             {...fields.field('description')}
@@ -553,8 +553,8 @@ export function GameForm({
             </Select>
           </FormField>
 
-          {/* ⚠️ §5.1 — OpenCritic და მოთამაშეების ქულა ფორმის გარეთ რჩება (payload-ში
-              ისევ მიდის); „ჩემი ქულა" Tasks §25.4-ით ბრუნდება — სტატუსის გვერდით */}
+          {/* ⚠️ OpenCritic და მოთამაშეების ქულა ფორმის გარეთ რჩება (payload-ში
+              ისევ მიდის); „ჩემი ქულა" ბრუნდება — სტატუსის გვერდით */}
           <FormField size="third" {...fields.field('rating')} htmlFor="g-rating" error={errors.rating}>
             <RatingSelect
               id="g-rating"
@@ -574,8 +574,8 @@ export function GameForm({
             />
           </FormField>
 
-          {/* ჟანრები — per-user ლექსიკონი, ⚠️ **მრავალი** (11.1) */}
-          {/* Tasks §24.4 — „ჟანრის დამატება" ღილაკია ველის **ქვეშ**, ჩიპების გვერდით; ჩიპები ფერით და აიქონით */}
+          {/* ჟანრები — per-user ლექსიკონი, ⚠️ **მრავალი** */}
+          {/* „ჟანრის დამატება" ღილაკია ველის **ქვეშ**, ჩიპების გვერდით; ჩიპები ფერით და აიქონით */}
           <FormField {...fields.field('genres')} error={errors.genre_ids}>
             <div
               className={cn(
@@ -614,7 +614,7 @@ export function GameForm({
               onToggle={(p) => setPlatforms((cur) => toggleIn(cur, p))}
               look={(p) => PLATFORM_META[p]}
             />
-            {/* ⚠️ §5.1 — „სად ვთამაშობ" (`my_platform`) ფორმიდან მოიხსნა;
+            {/* ⚠️ „სად ვთამაშობ" (`my_platform`) ფორმიდან მოიხსნა;
                 სვეტი და ძველი მნიშვნელობა რჩება (payload-ში ისევ მიდის) */}
           </FormField>
 
@@ -629,11 +629,11 @@ export function GameForm({
           </FormField>
         </FormSection>
 
-        {/* ---------- დეტალები: ბმულები — ოფიციალური საიტი და მაღაზიები (§11.1) ---------- */}
+        {/* ---------- დეტალები: ბმულები — ოფიციალური საიტი და მაღაზიები ---------- */}
         <FormSection title={t('form.sections.details')} className={fields.shows('links') ? undefined : 'hidden'}>
           <FormField {...fields.field('links')}>
             <div className="space-y-1.5">
-              {/* Tasks §22.3 — ორი ღერძი: „რა არის" (ტიპი) და „სად" (მხოლოდ მაღაზიას —
+              {/* ორი ღერძი: „რა არის" (ტიპი) და „სად" (მხოლოდ მაღაზიას —
                   ჰოსტიდან ამოიცნობა), + არჩევითი წარწერა */}
               {links.map((link, i) => {
                 const kind = link.kind ?? 'other'
@@ -696,7 +696,7 @@ export function GameForm({
                         <X className="size-4" />
                       </Button>
                     </div>
-                    {/* Tasks §15.3 — ბმულის მეტა-მონაცემი: ცარიელი წარწერა სათაურით ივსება, ვიდეო-ბმული „ტრეილერად" იწერება */}
+                    {/* ბმულის მეტა-მონაცემი: ცარიელი წარწერა სათაურით ივსება, ვიდეო-ბმული „ტრეილერად" იწერება */}
                     <LinkField
                       value={link.url}
                       onChange={(url) => setLinks((all) => all.map((x, j) => (j === i ? withUrl(x, url) : x)))}
@@ -715,7 +715,7 @@ export function GameForm({
                       }
                       onApply={(p) => set({ label: p.title ?? link.label })}
                     />
-                    {/* §22.4 — ⚠️ ასეთი ბმული ბმულად არ ინახება: სერვერი თამაშის ვიდეოდ აქცევს */}
+                    {/* ⚠️ ასეთი ბმული ბმულად არ ინახება: სერვერი თამაშის ვიდეოდ აქცევს */}
                     {becomesVideo(link) && (
                       <p className="text-xs text-muted-foreground">{t('games.linkBecomesVideo')}</p>
                     )}
@@ -736,7 +736,7 @@ export function GameForm({
         </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ თამაშზე მონახაზი */}
+      {/* დამატებითი ველები; ახალ თამაშზე მონახაზი */}
       <CustomFieldsCard
         module="game"
         recordId={extras.current?.id ?? null}
@@ -746,7 +746,7 @@ export function GameForm({
 
       <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
-      {/* ფრენჩაიზის მოდალი (§5.1) — ნაწილების სია + ბიბლიოთეკაში დამატება */}
+      {/* ფრენჩაიზის მოდალი — ნაწილების სია + ბიბლიოთეკაში დამატება */}
       {franchiseOpen && (
         <GameFranchiseDialog
           value={form.franchise}

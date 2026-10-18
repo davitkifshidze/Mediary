@@ -15,9 +15,9 @@ use App\Models\Video;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * **კლასიფიკატორის რიგი ურნაში (Tasks §29, ეტაპი 3)** — სტატუსი, ჟანრი, ტიპი, კატეგორია.
+ * **კლასიფიკატორის რიგი ურნაში** — სტატუსი, ჟანრი, ტიპი, კატეგორია.
  *
- * შენი გადაწყვეტილება (Q21 — „დ"): კლასიფიკატორის რიგიც ურნაში მიდის, და
+ * შენი გადაწყვეტილება: კლასიფიკატორის რიგიც ურნაში მიდის, და
  * ⚠️ **მისი აღდგენა გადატანილ ჩანაწერებს თავისით უკან ვერ აბრუნებს** — ეს
  * მიღებულია: `move_to`/`clear_records` ჩანაწერებს წაშლისთანავე ცვლის.
  * არჩევითი გაუმჯობესება აქაა: რიგი იმახსოვრებს, რომელი ჩანაწერები
@@ -28,13 +28,13 @@ use Illuminate\Database\Eloquent\Model;
  * ⚠️ **ჟანრის pivot ცხადად იხსნება** — რიგი აღარ იშლება, ე.ი. FK-ის
  * კასკადი, რომელიც `song_genre_song`/`game_genre_game`-ს წმენდდა, აღარ
  * ეშვება. სხვაგვარად ჩანაწერი ურნაში მყოფ ჟანრზე დარჩებოდა მიბმული.
- * ⚠️ **მაგრამ მხოლოდ ცოცხალი ჩანაწერისა** (Tasks §29.8): ურნაში მყოფი
+ * ⚠️ **მაგრამ მხოლოდ ცოცხალი ჩანაწერისა**: ურნაში მყოფი
  * (და „ჩანაწერებიც წაიშალოს"-ით ახლა გადატანილი) ბმულს ინარჩუნებს —
  * ორივე ერთად ბრუნდება, ხოლო ჟანრის საბოლოო წაშლისას FK-ის კასკადი მას
  * თვითონ მოაშორებს. დამალულ ჟანრს relation ისედაც ვერ ხედავს (`trash` scope).
  *
  * ⚠️ **ჩანაწერები მოდელით ბრუნდება** (`DictionaryRecords::move()`), და
- * სტატუსზე `applyStatus()`-ით — BUG-05-ის წესი: `watched_at`-ს მხოლოდ ის
+ * სტატუსზე `applyStatus()`-ით — `watched_at`-ს მხოლოდ ის
  * წერს და აუდიტიც მხოლოდ მოდელის გზაზე ჩანს.
  */
 final class DictionaryTrash
@@ -55,9 +55,9 @@ final class DictionaryTrash
         'bookmark_category' => ['records' => Bookmark::class, 'column' => 'category_id'],
         'course_category' => ['records' => Course::class, 'column' => 'category_id'],
         'place_category' => ['records' => Place::class, 'column' => 'category_id'],
-        // Tasks §37 — პირადი მოდულის კლასიფიკატორი (ერთი სვეტი, ბუკმარკის ფორმა)
+        // პირადი მოდულის კლასიფიკატორი (ერთი სვეტი, ბუკმარკის ფორმა)
         'custom_category' => ['records' => CustomRecord::class, 'column' => 'category_id'],
-        // Tasks §34 — მორიგეობის სამსახური და ტიპი (`duty_shifts.workplace_id`/`type_id`)
+        // მორიგეობის სამსახური და ტიპი (`duty_shifts.workplace_id`/`type_id`)
         'duty_workplace' => ['records' => DutyShift::class, 'column' => 'workplace_id'],
         'duty_type' => ['records' => DutyShift::class, 'column' => 'type_id'],
     ];

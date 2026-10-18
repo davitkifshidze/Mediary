@@ -30,7 +30,7 @@ use Illuminate\Validation\Rule;
  * (სათაური, ხანგრძლივობა, ფოტო) იმავე `VideoMetadata`-დან მოდის.
  *
  * ⚠️ **ჟანრი აქ pivot-ია** (`genre_ids[]`) და არა ერთი `genre_id`, როგორც
- * წიგნზე/ბორდგეიმზე — `DECISIONS.md` §5-ის პასუხი 2026-09-06-ს.
+ * წიგნზე/ბორდგეიმზე.
  */
 class SongController extends Controller
 {
@@ -40,7 +40,7 @@ class SongController extends Controller
     {
         $query = Song::query()
             ->with(['genres', 'playlists:id,name']);
-        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'song', $request);
 
         if ($platform = $request->string('platform')->toString()) {
@@ -49,7 +49,7 @@ class SongController extends Controller
         if ($request->boolean('favorite')) {
             $query->where('is_favorite', true);
         }
-        // ჟანრები/ტეგები — მძიმით გამოყოფილი სია, თითოეული ცალკე პირობაა (5.2-ის წესი)
+        // ჟანრები/ტეგები — მძიმით გამოყოფილი სია, თითოეული ცალკე პირობაა
         // ⚠️ ჟანრი pivot-ია, ე.ი. `whereHas` და არა `whereIn` სვეტზე (თამაშის წესი)
         foreach ($this->slugList($request->string('genre_id')->toString()) as $genreId) {
             $query->whereHas('genres', fn ($q) => $q->where('song_genres.id', (int) $genreId));
@@ -93,7 +93,7 @@ class SongController extends Controller
     /**
      * ბმულის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის.
      *
-     * ⚠️ **`existing` აქვე მოდის და ცალკე endpoint არაა** (FEAT-17): ეს
+     * ⚠️ **`existing` აქვე მოდის და ცალკე endpoint არაა**: ეს
      * ერთი კითხვის ორი ნახევარია („რა არის ამ ბმულის უკან და ხომ არ მაქვს
      * უკვე"), და ორი მოთხოვნა ფორმას ორ ცალკე მდგომარეობას შეაძენინებდა.
      * გაფრთხილებაა და არა აკრძალვა — შენახვა მაინც შესაძლებელია.
@@ -102,7 +102,7 @@ class SongController extends Controller
      * საკუთარ მისამართს ხელახლა ამოწმებს და უამისოდ ყოველთვის იტყოდა
      * „ეს უკვე გაქვს".
      *
-     * Tasks §44.1 — პასუხი `LinkResolver`-ისაა (ვიდეოს `metadata()`-ის იგივე).
+     * პასუხი `LinkResolver`-ისაა (ვიდეოს `metadata()`-ის იგივე).
      */
     public function metadata(Request $request, LinkResolver $links, VideoMetadata $meta)
     {
@@ -142,7 +142,7 @@ class SongController extends Controller
 
     public function destroy(Song $song)
     {
-        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+        /* ⚠️ **კალათა** — `delete()` კი არა, `moveToTrash()`.
            ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
            გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
            ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
@@ -201,7 +201,7 @@ class SongController extends Controller
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'thumbnail' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_thumbnail' => ['nullable', 'boolean'],
-            // Tasks §44.2 — ფორმის ჩარჩოში ნაჩვენები ფოტო (ბმულიდან; ატვირთულზე იგნორირდება)
+            // ფორმის ჩარჩოში ნაჩვენები ფოტო (ბმულიდან; ატვირთულზე იგნორირდება)
             'thumbnail_url' => ['nullable', 'string', 'max:1000', 'url'],
         ]);
     }
@@ -240,20 +240,20 @@ class SongController extends Controller
             }
         }
 
-        // Tasks §44.2 — ჩარჩოში ნაჩვენები ფოტო (ატვირთული უპირატესია)
+        // ჩარჩოში ნაჩვენები ფოტო (ატვირთული უპირატესია)
         if (! empty($data['thumbnail_url']) && ! $song->thumbnail_path) {
             $song->thumbnail_url = $data['thumbnail_url'];
         }
 
         if ($request->boolean('remove_thumbnail')) {
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($song, 'thumbnail_path');
             $song->thumbnail_path = null;
         }
 
         if ($request->hasFile('thumbnail')) {
-            // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($song, 'thumbnail_path');
             $song->thumbnail_path = $this->meter
                 ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::SONG_THUMBNAILS);
@@ -284,7 +284,7 @@ class SongController extends Controller
             return;
         }
 
-        // Tasks §44.3 — პლატფორმის `hqdefault` ცარიელად ითვლება (საუკეთესო ესკიზი სხვაგანაა)
+        // პლატფორმის `hqdefault` ცარიელად ითვლება (საუკეთესო ესკიზი სხვაგანაა)
         $defaultThumb = ! $song->thumbnail_path
             && (! $song->thumbnail_url || $song->thumbnail_url === VideoUrl::parse($song->url)['thumbnail_url']);
         $needs = ! $song->title || ! $song->duration || ! $song->tags || $defaultThumb;
@@ -292,7 +292,7 @@ class SongController extends Controller
             return;
         }
 
-        // §44.1 — ფორმის probe-ის იგივე წყარო და ქეში
+        // ფორმის probe-ის იგივე წყარო და ქეში
         $meta = app(LinkResolver::class)->resolve($song->url);
 
         if (! $song->title) {

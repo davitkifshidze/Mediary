@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **„როდის დაიწყო ჩამოწერა" (აუდიტი 2026-09-14, §B1).**
+ * **„როდის დაიწყო ჩამოწერა".**
  *
  * `download_status = 'running'` სამუდამო მახე იყო: ფონური პროცესი თუ მოკვდა
  * (სერვერის ტერმინალის დახურვა, მანქანის გადატვირთვა, PHP-ის ფატალური),

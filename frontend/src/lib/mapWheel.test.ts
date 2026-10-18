@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { WHEEL_STEP, createWheelZoom } from '@/lib/mapWheel'
 
 /* ============================================================
-   **Ctrl + ბორბალი → რუკის ზუმი** (Tasks §56.2).
+   **Ctrl + ბორბალი → რუკის ზუმი**.
 
    ⚠️ მოწმდება: Ctrl-ით მოვლენა იჭრება (`preventDefault` — ბრაუზერი გვერდს აღარ
    ადიდებს) და რუკა კურსორის წერტილზე იზრდება/პატარავდება; pinch-ის პატარა

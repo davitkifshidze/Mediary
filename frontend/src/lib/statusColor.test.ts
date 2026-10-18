@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { resolveStatusColor, STATUS_PALETTE, statusFillColor, statusStyle } from '@/lib/statusColor'
 
 /* ============================================================
-   **სტატუსის საკუთარი ფერი** (Tasks §16.1).
+   **სტატუსის საკუთარი ფერი**.
    ============================================================ */
 
 describe('resolveStatusColor', () => {

@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query'
 import { Globe } from 'lucide-react'
 import { webSearchStatus } from '@/api/web'
 import { useDateFormat } from '@/lib/dates'
-import { InfoHint } from '@/components/ui/info-hint'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
-   ვებძებნის კვოტა (Tasks §7.6.1 / §7.6.6).
+   ვებძებნის კვოტა.
 
    ⚠️ **SerpApi მოდული არ არის, წყაროა** — ამიტომ არც გვერდი აქვს და არც
    საიდბარის სექცია: ერთადერთი, რაც ინტერფეისში სჭირდება, **კვოტის ჩვენებაა**.

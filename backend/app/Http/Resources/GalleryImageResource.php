@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * გალერეის ფოტო (`gallery_images`, Tasks 10).
+ * გალერეის ფოტო (`gallery_images`).
  *
  * `collection` აღარ ბრუნდება — ცხრილი თვითონ არის კოლექცია; `kind`-იც
  * ზედმეტია, აქ ყოველთვის სურათია.
@@ -56,25 +56,25 @@ class GalleryImageResource extends JsonResource
             'mime' => $this->mime,
             'size' => $this->size,
             'source' => $this->source,
-            /* §4.3 — „რაც კიდევ ვიცით": ორიგინალის გვერდი და ის, რომ
+            /* „რაც კიდევ ვიცით": ორიგინალის გვერდი და ის, რომ
                ჩამოწერილი ესკიზია (ორიგინალი ხშირად hotlink-ს კრძალავს). */
             'source_url' => $this->source_url,
             'is_thumbnail' => (bool) $this->is_thumbnail,
             // ⚠️ TMDB-ის **ტექნიკური** ტიპი — წყაროდან მოდის და ხელით არ იცვლება
             'category' => $this->category,
-            /* ⚠️ **„მთავარად დაყენებას" backend წყვეტს და არა ფრონტი** (Tasks
-               BUG-20). SPA `category !== 'actor'`-ს უყურებდა, ე.ი. ღილაკს
+            /* ⚠️ **„მთავარად დაყენებას" backend წყვეტს და არა ფრონტი**.
+               SPA `category !== 'actor'`-ს უყურებდა, ე.ი. ღილაკს
                სიმღერაზე/წიგნზე/თამაშზეც ხატავდა, სადაც `poster_path` სვეტი
                საერთოდ არ არსებობს და დაჭერა **500-ს** აბრუნებდა. მშობლების
                რუკა `GalleryParent`-შია — მისი ასლი ფრონტზე ისევე დაშორდებოდა,
                როგორც `PRIVATE_ROOTS`-ის ასლი დაშორდებოდა დისკებს. */
             'supports_primary' => GalleryParent::supportsPrimary((string) $this->imageable_type),
-            /* §26 — ალბომი (user-ის თავისი დახარისხება). `null` = ალბომის
+            /* ალბომი (user-ის თავისი დახარისხება). `null` = ალბომის
                გარეშე; მშობლისგან დამოუკიდებელია, ე.ი. ორივე შეიძლება იყოს. */
             'album_id' => $this->album_id,
-            /* ⚠️ **დისკს backend ამბობს და არა ფრონტი** (§17.5-ის წესი):
-               ჩაკეტილი ალბომის ფოტო `gallery/locked`-შია, პირად დისკზე
-               (§7.9), ე.ი. `/storage/*` მას ვერ კითხულობს. `PRIVATE_ROOTS`-ის
+            /* ⚠️ **დისკს backend ამბობს და არა ფრონტი**:
+               ჩაკეტილი ალბომის ფოტო `gallery/locked`-შია, პირად დისკზე,
+               ე.ი. `/storage/*` მას ვერ კითხულობს. `PRIVATE_ROOTS`-ის
                ასლი SPA-ში ერთ დღეს დაშორდებოდა და პირად ფაილს საჯარო
                URL-ქვეშ გამოაჩენდა. */
             'private' => $this->isPrivate(),

@@ -4,7 +4,7 @@ import type { Status } from '@/api/types'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
-   ბუკმარკების მოდული (`bookmark`, Tasks §18 — `DECISIONS.md` §10).
+   ბუკმარკების მოდული (`bookmark`).
 
    ⚠️ გამამდიდრებელი წყარო არ არსებობს (TMDB/RAWG/BGG-ის ანალოგი
    ბმულებზე არ არის). ერთადერთი probe `POST /bookmarks/metadata`-ა,
@@ -15,13 +15,13 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
    ============================================================ */
 
 /**
- * ⚠️ **სტატუსი per-user ლექსიკონია (Tasks §6.4)** — სია აღარ წერია კოდში.
+ * ⚠️ **სტატუსი per-user ლექსიკონია** — სია აღარ წერია კოდში.
  * ჩანაწერზე ის ობიექტია (`Status`), შესანახად კი **გასაღები** მიდის.
  */
 export type BookmarkStatus = string
 
 /**
- * **დამატებითი ბმულის „რა არის"** (Tasks §36.3) — `Bookmark::LINK_KINDS`-ის სარკე
+ * **დამატებითი ბმულის „რა არის"** — `Bookmark::LINK_KINDS`-ის სარკე
  * (`RegistryConsistencyTest`). აიქონი და ფერი — `lib/bookmarkLinks.ts`.
  */
 export const BOOKMARK_LINK_KINDS = ['shop', 'price', 'review', 'video', 'docs', 'other'] as const
@@ -36,7 +36,7 @@ export interface BookmarkLink {
   kind: BookmarkLinkKind
   /** ხელით ჩაწერილი ფასი („49 ₾") — მხოლოდ მაღაზიისა და ფასის ბმულზე */
   price?: string | null
-  /** §15-ის მეტა-მონაცემიდან — ბმულის ჩასმისას ივსება */
+  /** ბმულის მეტა-მონაცემიდან — ჩასმისას ივსება */
   favicon_url?: string | null
 }
 
@@ -50,19 +50,19 @@ export interface Bookmark {
   category_id: number | null
   category?: BookmarkCategory | null
   tags: string[]
-  /** Tasks §36.3 — დამატებითი ბმულები (მაღაზია, ფასი, მიმოხილვა…) */
+  /** დამატებითი ბმულები (მაღაზია, ფასი, მიმოხილვა…) */
   links: BookmarkLink[]
   /** ატვირთული ფოტოს გზა, გალერეიდან არჩეული ფოტოს გზა ან გვერდის og:image */
   image: string | null
   favicon_url: string | null
-  /** Tasks §36.4 — ჩემი ფოტოები (`bookmark_files`) და ვებიდან მოტანილი (გალერეა) — სიაში */
+  /** ჩემი ფოტოები (`bookmark_files`) და ვებიდან მოტანილი (გალერეა) — სიაში */
   files_count?: number
   photos_count?: number
   status: Status | null
   is_favorite: boolean
   visit_count: number
   visited_at: string | null
-  /** 16.5 — საჯარო პროფილის წინაპირობა */
+  /** საჯარო პროფილის წინაპირობა */
   visibility: 'private' | 'public'
   created_at: string | null
 }
@@ -185,7 +185,7 @@ export async function markBookmarkVisited(id: number): Promise<Bookmark> {
 }
 
 /**
- * Tasks §36.5 — ბმულების სიის შეცვლა ფორმის გარეშე („ბმულის დამატება" მენიუდან).
+ * ბმულების სიის შეცვლა ფორმის გარეშე („ბმულის დამატება" მენიუდან).
  * ⚠️ JSON `PATCH` და არა multipart: მხოლოდ `links` იგზავნება, დანარჩენ ველებს
  * სერვერი არ ეხება (`BookmarkController::apply()` გასაღების არსებობას ამოწმებს).
  */
@@ -194,7 +194,7 @@ export async function setBookmarkLinks(id: number, links: BookmarkLink[]): Promi
   return data.data
 }
 
-/* ---------- ფოტოები — Tasks §36.4 ---------- */
+/* ---------- ფოტოები ---------- */
 
 /** ბუკმარკზე მიმაგრებული ჩემი ფოტო („შოპინგის" სკრინშოტი); ვებიდან მოტანილი გალერეაშია */
 export interface BookmarkFile {

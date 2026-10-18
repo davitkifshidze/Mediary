@@ -38,7 +38,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { cn, formatBytes } from '@/lib/utils'
 
 /* ============================================================
-   მოდულების სექცია (Tasks 1.4) — **ერთი** გვერდი ორის ნაცვლად.
+   მოდულების სექცია — **ერთი** გვერდი ორის ნაცვლად.
 
    ადრე ორი იყო: `/modules` (მომხმარებლის სია) და ადმინის „მოდულები" ტაბი
    (ქარდები + მოდალი). ახლა ერთია, ქარდებით, და ქარდზე დაჭერით იხსნება
@@ -59,7 +59,7 @@ import { cn, formatBytes } from '@/lib/utils'
    **შეზღუდულია**: 40ms × 11 ბარათი თითქმის ნახევარი წამია, ე.ი. ბოლო
    ბარათი დაგვიანებულად „ჩამორჩებოდა"; ჭერი 240ms-ია.
 
-   **რიგი — drag & drop-ით, თითო მომხმარებელზე (Tasks §36, Q27).**
+   **რიგი — drag & drop-ით, თითო მომხმარებელზე.**
 
    ⚠️ **ბარათი თვითონ ითრევა და ბმული `draggable={false}`-ია** — ბმული
    თავისით გადაითრევა და ბრაუზერი ბარათის ნაცვლად URL-ს „წაიღებდა"
@@ -77,8 +77,8 @@ import { cn, formatBytes } from '@/lib/utils'
    ჩამოგდებული ბარათი პასუხამდე უკან არ ხტებოდეს და საიდბარიც იმავე წამს
    შეიცვალოს.
 
-   **Tasks §58 — ნელი, რბილი გადანაცვლება და პირადი მოდულები ცალკე.**
-   ⚠️ ბადეში **მხოლოდ ჩაშენებული** მოდულებია (Q15); პირადები — „ჩემი მოდულები
+   **ნელი, რბილი გადანაცვლება და პირადი მოდულები ცალკე.**
+   ⚠️ ბადეში **მხოლოდ ჩაშენებული** მოდულებია; პირადები — „ჩემი მოდულები
    (N)"-ის ფანჯარაში (`MyModulesDialog`), თავისი რიგით. რიგი მაინც ერთი სიაა:
    გვერდი აგზავნის `[...ჩაშენებულები, ...პირადები]`-ს.
    ⚠️ **`fb-card` მხოლოდ პირველ ჩვენებაზე**: გადალაგებისას React ბარათის DOM-
@@ -105,12 +105,12 @@ export function ModulesPage() {
   const confirm = useConfirm()
 
   const { data: requests = [] } = useQuery({ queryKey: ['my-requests'], queryFn: fetchMyRequests })
-  // Tasks §37.2 — ახალი მოდულის ოსტატი
+  // ახალი მოდულის ოსტატი
   const [creating, setCreating] = useState(false)
-  // Tasks §58.3 — „ჩემი მოდულები" და პირადი მოდულის რედაქტირება
+  // „ჩემი მოდულები" და პირადი მოდულის რედაქტირება
   const [mineOpen, setMineOpen] = useState(false)
   const [editing, setEditing] = useState<ModuleInfo | null>(null)
-  // §58.1 — `fb-card` მხოლოდ პირველ ჩვენებაზე (იხ. ზემოთ)
+  // `fb-card` მხოლოდ პირველ ჩვენებაზე (იხ. ზემოთ)
   const [entered, setEntered] = useState(false)
   useEffect(() => {
     const timer = window.setTimeout(() => setEntered(true), ENTER_DONE_MS)
@@ -122,7 +122,7 @@ export function ModulesPage() {
    * ადმინს ორივე სჭირდება, ამიტომ ადმინის სია ბაზისია და ჩემი მდგომარეობა
    * (`enabled`/`granted`) მასზე ედება.
    *
-   * ⚠️ ადმინის სიაც **მისი პირადი რიგითაა** (§36) — ე.ი. გამორთული მოდულიც
+   * ⚠️ ადმინის სიაც **მისი პირადი რიგითაა** — ე.ი. გამორთული მოდულიც
    * თავის ადგილას დგას და გადაითრევა.
    */
   const { data: adminModules } = useQuery({
@@ -137,7 +137,7 @@ export function ModulesPage() {
     return adminModules.map((m) => ({ ...m, ...(mine.get(m.key) ?? {}), ...{ users_count: m.users_count } }))
   }, [isAdmin, adminModules, all])
 
-  // §58.3 — ბადეში ჩაშენებულები, პირადები — ფანჯარაში; რიგი ერთია
+  // ბადეში ჩაშენებულები, პირადები — ფანჯარაში; რიგი ერთია
   const builtIns = useMemo(() => list.filter((m) => !isCustomModule(m)), [list])
   const mine = useMemo(() => list.filter((m) => isCustomModule(m)), [list])
   const keys = useMemo(() => builtIns.map((m) => m.key), [builtIns])
@@ -189,9 +189,9 @@ export function ModulesPage() {
 
   const navigate = useNavigate()
 
-  /* Tasks §32.1 — **წაშლა იქ, სადაც მოდულს ხედავ**: ბარათის მენიუში, იმავე დადასტურებით,
+  /* **წაშლა იქ, სადაც მოდულს ხედავ**: ბარათის მენიუში, იმავე დადასტურებით,
      რაც მოდულის გვერდზე (`ModulePage::askDelete`) — ჩანაწერების რიცხვი, ზომა, ურნის ვადა.
-     ⚠️ რიცხვი წაშლის წინ იკითხება (`/details`) და ჩანაწერი ურნაში მიდის (§37.7, Q31). */
+     ⚠️ რიცხვი წაშლის წინ იკითხება (`/details`) და ჩანაწერი ურნაში მიდის. */
   const remove = useMutation({
     mutationFn: (key: string) => deleteCustomModule(key),
     onSuccess: (res) => {
@@ -241,8 +241,8 @@ export function ModulesPage() {
       description: t('modules.setDefaultOrderHint'),
       confirmText: t('modules.setDefaultOrder'),
     })
-    /* ⚠️ §37 — საერთო რიგი **საბაზისო** მოდულებისაა: პირადი მოდული სხვას არ
-       უჩანს, და backend მის გასაღებს უცნობად (422) წაიკითხავდა (`keys` ბადისაა — §58) */
+    /* ⚠️ საერთო რიგი **საბაზისო** მოდულებისაა: პირადი მოდული სხვას არ
+       უჩანს, და backend მის გასაღებს უცნობად (422) წაიკითხავდა (`keys` ბადისაა) */
     if (ok) makeDefault.mutate(keys)
   }
 
@@ -251,7 +251,7 @@ export function ModulesPage() {
 
   /** ჩემი მდგომარეობა ამ მოდულზე — ქარდის მთავარი ინფორმაცია */
   const state = (m: ModuleInfo) => {
-    // §37.8 — ადმინმა გამორთო: მფლობელი თვითონ ვეღარ ჩართავს, მონაცემები რჩება
+    // ადმინმა გამორთო: მფლობელი თვითონ ვეღარ ჩართავს, მონაცემები რჩება
     if (m.disabled_by_admin) return { label: t('customModules.disabledByAdmin'), icon: Ban, tone: 'text-destructive' }
     if (m.enabled) return { label: t('modules.enabled'), icon: Check, tone: 'text-gold' }
     if (m.granted) return { label: t('modules.disabledByMe'), icon: Lock, tone: 'text-muted-foreground' }
@@ -286,12 +286,12 @@ export function ModulesPage() {
                 )}
               </>
             )}
-            {/* Tasks §58.3 — პირადი მოდულები ცალკე ფანჯარაში (Q15) */}
+            {/* პირადი მოდულები ცალკე ფანჯარაში */}
             <Button variant="outline" onClick={() => setMineOpen(true)}>
               <UserRound className="size-4" />
               {t('customModules.mine', { count: mine.length })}
             </Button>
-            {/* Tasks §37 — ყოველი მომხმარებელი თავისთვის ქმნის (Q28) */}
+            {/* ყოველი მომხმარებელი თავისთვის ქმნის */}
             <Button onClick={() => setCreating(true)}>
               <Plus className="size-4" />
               {t('customModules.new')}
@@ -303,14 +303,14 @@ export function ModulesPage() {
       {loading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {/* Tasks §11 — ბადის drag & drop ერთი კომპონენტით; კლავიატურა სახელურზეა */}
-        {/* §58.1 — ნელი, რბილი გადანაცვლება; პირადები რიგის ბოლოში რჩებიან */}
+        {/* ბადის drag & drop ერთი კომპონენტით; კლავიატურა სახელურზეა */}
+        {/* ნელი, რბილი გადანაცვლება; პირადები რიგის ბოლოში რჩებიან */}
         <Sortable ids={keys} layout="grid" motion="slow" onReorder={(next) => order.mutate([...next, ...mineKeys])}>
         {builtIns.map((m, i) => {
           const s = state(m)
           const name = moduleName(m, i18n.language)
-          /* Tasks §7 — მარჯვენა ღილაკი: გახსნა; ჩაშენებულს წაშლა არ აქვს (მიზეზს ბარათის `i` ამბობს),
-             პირადი მოდულის წაშლა „ჩემი მოდულების" ფანჯარაშია (§58.3); „წინ/უკან" §12-ით წავიდა */
+          /* მარჯვენა ღილაკი: გახსნა; ჩაშენებულს წაშლა არ აქვს (მიზეზს ბარათის `i` ამბობს),
+             პირადი მოდულის წაშლა „ჩემი მოდულების" ფანჯარაშია; „წინ/უკან" აღარ არის */
           const actions: MenuAction[] = [
             { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => navigate(`/modules/${m.key}`) },
           ]
@@ -351,7 +351,7 @@ export function ModulesPage() {
                   <s.icon className="size-3.5" />
                   {s.label}
                 </span>
-                {/* Tasks §32.1 — ჩაშენებულს წაშლა არ აქვს: მხოლოდ გამორთვა */}
+                {/* ჩაშენებულს წაშლა არ აქვს: მხოლოდ გამორთვა */}
                 <InfoHint info={t('modules.builtInDeleteHint')} />
 
                 {/* ადმინის ინფო — გლობალური მდგომარეობა */}
@@ -376,7 +376,7 @@ export function ModulesPage() {
                 )}
 
                 {/* ⚠️ ფიქსირებული ელემენტი — ყოველთვის მარჯვნივ, რომ ზოლები სიმეტრიული იყოს */}
-                {/* Tasks §12 — ისრები წავიდა: რიგი სახელურითაა (მაუსი და კლავიატურა, §11) */}
+                {/* ისრები წავიდა: რიგი სახელურითაა (მაუსი და კლავიატურა) */}
                 <span className="ml-auto flex shrink-0 items-center">
                   <SortableHandle />
                 </span>
@@ -388,7 +388,7 @@ export function ModulesPage() {
         </Sortable>
       </div>
 
-      {/* §37.8 — სხვების პირადი მოდულები: აგრეგატები და გამორთვა, შიგთავსი არა (Q41) */}
+      {/* სხვების პირადი მოდულები: აგრეგატები და გამორთვა, შიგთავსი არა */}
       {isAdmin && <CustomModulesOversight />}
 
       {mineOpen && (

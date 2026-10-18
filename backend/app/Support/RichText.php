@@ -5,7 +5,7 @@ namespace App\Support;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 
 /**
- * **ფორმატიანი ტექსტი — Markdown ტექსტად (Tasks §47, Q12).**
+ * **ფორმატიანი ტექსტი — Markdown ტექსტად.**
  *
  * აღწერები (ყველა მოდულის, ორივე ენაზე), ჩანაწერის ტექსტი და ჩანიშვნები
  * SPA-ში TipTap-ის რედაქტორით იწერება და **Markdown-ის სტრიქონად** ინახება

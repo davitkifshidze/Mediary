@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { GameLink } from '@/api/games'
 import { becomesVideo, storeFromUrl, withUrl } from './gameLinks'
 
-/* `lib/gameLinks.ts` — თამაშის ბმულის მაღაზია ჰოსტიდან (Tasks §22.3) */
+/* `lib/gameLinks.ts` — თამაშის ბმულის მაღაზია ჰოსტიდან */
 
 describe('storeFromUrl', () => {
   it('ცნობს მაღაზიას ქვედომენითაც', () => {

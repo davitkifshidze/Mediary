@@ -37,7 +37,7 @@ class AuthController extends Controller
      * პირველი რეგისტრირებული ავტომატურად super_admin-ია (bootstrap).
      *
      * ⚠️ **„პირველია?" და ანგარიშის შექმნა ერთ ტრანზაქციაშია და წაკითხვა
-     * ჩაკეტილია** (Tasks SEC-15): ამის გარეშე ორი ერთდროული რეგისტრაცია
+     * ჩაკეტილია**: ამის გარეშე ორი ერთდროული რეგისტრაცია
      * ცარიელ ბაზაზე **ორ** სუპერ-ადმინს ქმნიდა. ერთადერთ „ვინ წყვეტს"
      * განსაზღვრებას `User::accountsLocked()` ინახავს.
      *
@@ -72,7 +72,7 @@ class AuthController extends Controller
             $user->is_active = true;
             $user->save();
 
-            // ⚠️ §37.6 — მხოლოდ საბაზისო: სხვისი პირადი მოდული ახალ ანგარიშს არასდროს ებმება
+            // ⚠️ მხოლოდ საბაზისო: სხვისი პირადი მოდული ახალ ანგარიშს არასდროს ებმება
             $defaults = Module::base()
                 ->where('is_active', true)
                 ->when(! $isFirst, fn ($q) => $q->where('enabled_by_default', true))
@@ -87,7 +87,7 @@ class AuthController extends Controller
         Auth::login($user, remember: true);
         $this->regenerateSession($request);
 
-        // §4.1 — შესვლა/გასვლა მოდელის მოვლენა არ არის, ე.ი. ცხადად იწერება
+        // შესვლა/გასვლა მოდელის მოვლენა არ არის, ე.ი. ცხადად იწერება
         $this->audit->log(AuditLog::ACTION_REGISTER, [
             'module' => 'account',
             'subject_type' => 'user',
@@ -99,7 +99,7 @@ class AuthController extends Controller
     }
 
     /**
-     * login — email ან username, არჩევით მეორე ფაქტორით (FEAT-16).
+     * login — email ან username, არჩევით მეორე ფაქტორით.
      *
      * ⚠️ **`Auth::validate()` და არა `Auth::attempt()`**: `attempt()`
      * წარმატებისთანავე სესიას ქმნის, ე.ი. მეორე ფაქტორამდე ანგარიში უკვე
@@ -136,7 +136,7 @@ class AuthController extends Controller
         $guard = Auth::guard('web');
 
         if (! $guard->validate([$field => $data['login'], 'password' => $data['password']])) {
-            // Tasks §43.3 — არსებული სახელი მცდარი პაროლით: ანგარიში `subject`-ად ჩანს
+            // არსებული სახელი მცდარი პაროლით: ანგარიში `subject`-ად ჩანს
             $this->failedLogin($data['login'], 'credentials', $guard->getLastAttempted());
 
             throw ValidationException::withMessages(['login' => __('auth.failed')]);
@@ -184,7 +184,7 @@ class AuthController extends Controller
     }
 
     /**
-     * **წარუმატებელი შესვლა** (Tasks §43.3) — ცდილი სახელი, მიზეზი, IP (`AuditLogger`
+     * **წარუმატებელი შესვლა** — ცდილი სახელი, მიზეზი, IP (`AuditLogger`
      * თვითონ წერს). ⚠️ პაროლი არასოდეს; „კოდი მჭირდება" (409) ჩავარდნა არაა — ნაბიჯია.
      */
     private function failedLogin(string $login, string $reason, mixed $user): void
@@ -226,7 +226,7 @@ class AuthController extends Controller
     /**
      * სესიის ID-ის განახლება შესვლისას — **session fixation**-ის დაცვა.
      *
-     * ⚠️ **`hasSession()` აუცილებელია** (აუდიტი 2026-09-14): `/api/*`-ს სესია
+     * ⚠️ **`hasSession()` აუცილებელია**: `/api/*`-ს სესია
      * მხოლოდ მაშინ აქვს, როცა რექვესთი **stateful** დომენიდან მოვიდა
      * (`EnsureFrontendRequestsAreStateful` + `SANCTUM_STATEFUL_DOMAINS`).
      * სხვა შემთხვევაში `$request->session()` **`RuntimeException`-ს** აგდებდა,
@@ -265,7 +265,7 @@ class AuthController extends Controller
             'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'avatar' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_avatar' => ['nullable', 'boolean'],
-            // Tasks 16.1 — საჯარო პროფილი. `bio` და გადამრთველი აქვეა, რადგან
+            // საჯარო პროფილი. `bio` და გადამრთველი აქვეა, რადგან
             // ორივე „ჩემი პროფილია" და ერთსა და იმავე ფორმაში ივსება.
             'bio' => ['nullable', 'string', 'max:1000'],
             'profile_visibility' => ['nullable', Rule::in(PublicDomain::VALUES)],
@@ -283,8 +283,8 @@ class AuthController extends Controller
             $user->profile_visibility = $data['profile_visibility'];
         }
 
-        // 17.1 — ავატარიც კვოტაზე გადის (`deleteUpload`/`storeUpload` მრიცხველს თვითონ ცვლის)
-        // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ავატარი ურნაში; ადგილი საბოლოო წაშლისას თავისუფლდება
+        // ავატარიც კვოტაზე გადის (`deleteUpload`/`storeUpload` მრიცხველს თვითონ ცვლის)
+        // ⚠️ ურნა — ძველი ავატარი ურნაში; ადგილი საბოლოო წაშლისას თავისუფლდება
         if ($request->boolean('remove_avatar')) {
             ColumnTrash::capture($user, 'avatar_path');
             $user->avatar_path = null;
@@ -313,12 +313,12 @@ class AuthController extends Controller
 
         $request->user()->forceFill(['password' => Hash::make($data['password'])])->save();
 
-        /* ⚠️ **გაცემული აღდგენის ბმული აქვე კვდება** (FEAT-16): ის 24 საათს
+        /* ⚠️ **გაცემული აღდგენის ბმული აქვე კვდება**: ის 24 საათს
            ცოცხლობს, ე.ი. პაროლის შეცვლის შემდეგაც მოქმედი დარჩებოდა — და
            სწორედ ის ადამიანი, ვისგანაც პაროლი იცვლება, ბმულს უკვე ფლობს. */
         ResetLink::forget($request->user());
 
-        /* ⚠️ **სხვა სესიებიც უქმდება** (აუდიტი 2026-09-14). პაროლი სწორედ
+        /* ⚠️ **სხვა სესიებიც უქმდება**. პაროლი სწორედ
            იმიტომ იცვლება, რომ ძველი კომპრომეტირებულია — ძველი სესია კი
            `SESSION_LIFETIME`-ის ბოლომდე ცოცხალი რჩებოდა.
            ⚠️ მხოლოდ სესიის არსებობისას: `/api/*`-ს ის მხოლოდ stateful
@@ -330,17 +330,17 @@ class AuthController extends Controller
         return response()->noContent();
     }
 
-    /** per-user პარამეტრები (E1 — localStorage-ის ნაცვლად ბაზაში) */
+    /** per-user პარამეტრები (localStorage-ის ნაცვლად ბაზაში) */
     public function updateSettings(Request $request)
     {
-        /* ⚠️ **ზომას ჭერი სჭირდება** (აუდიტი 2026-09-14): `settings` JSON
+        /* ⚠️ **ზომას ჭერი სჭირდება**: `settings` JSON
            სვეტია, ყოველ `/auth/me`-ზე იკითხება და `AuditObserver`-ის გავლით
            **მთლიანად** ეწერება `audit_logs.new_values`-შიც — ე.ი. ერთი დიდი
            მოთხოვნა ორივეს აბერებდა. `UserSettings`-ს ცნობილი გასაღებების
            სია ისედაც აქვს, ე.ი. ასეულზე მეტი აქ ვერ იქნება. */
         $data = $request->validate(['settings' => ['required', 'array', 'max:200']]);
 
-        /* ⚠️ Tasks §36 — **მოდულების რიგს საკუთარი ჩამწერი აქვს** (`PUT
+        /* ⚠️ **მოდულების რიგს საკუთარი ჩამწერი აქვს** (`PUT
            /modules/order`). SPA ამ ბლობს შესვლისას იღებს და მთლიანად უკან
            აგზავნის, ე.ი. მასში შესვლის მომენტის რიგი ზის — აქ ჩაწერილი
            `/settings`-ის ნებისმიერ შენახვაზე მერე გადალაგებულ რიგს ჩუმად

@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * თამაში (`game` მოდული, Tasks §11).
+ * თამაში (`game` მოდული).
  *
  * ორენოვანი ტექსტი **ბრტყელი სვეტებია** (წიგნის წესი) — RAWG ერთენოვანია,
  * მაგრამ API-ს ფორმა იგივე რჩება, რაც `MovieResource`-ზე: ორივე ენა მოდის,
@@ -35,7 +35,7 @@ class GameResource extends JsonResource
             'my_platform' => $this->my_platform,
             'modes' => $this->modes ?? [],
 
-            // ჟანრები **მრავალია** (11.1) — pivot `game_genre_game`
+            // ჟანრები **მრავალია** — pivot `game_genre_game`
             'genres' => GameGenreResource::collection($this->whenLoaded('genres')),
             'genre_ids' => $this->whenLoaded('genres', fn () => $this->genres->pluck('id')->all()),
 
@@ -56,11 +56,11 @@ class GameResource extends JsonResource
 
             'rawg_id' => $this->rawg_id,
             'rawg_slug' => $this->rawg_slug,
-            // IGDB — სათადარიგო წყარო (`DECISIONS.md` §7)
+            // IGDB — სათადარიგო წყარო
             'igdb_id' => $this->igdb_id,
             'igdb_slug' => $this->igdb_slug,
 
-            // 16.5 — საჯარო პროფილის წინაპირობა; default `private`
+            // საჯარო პროფილის წინაპირობა; default `private`
             'visibility' => $this->visibility,
 
             'videos' => GameVideoResource::collection($this->whenLoaded('videos')),

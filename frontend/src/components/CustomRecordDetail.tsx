@@ -45,9 +45,9 @@ import { cn, formatBytes } from '@/lib/utils'
 import { StatusBadge } from '@/components/StatusBadge'
 
 /* ============================================================
-   **პირადი მოდულის ჩანაწერის ფანჯარა (Tasks §37.3).**
+   **პირადი მოდულის ჩანაწერის ფანჯარა.**
 
-   §26.4-ის რიგი: თავში მთავარი ფოტო, სტატუსი და მოკლე ცნობები, მერე
+   დეტალის ფანჯრების საერთო რიგი: თავში მთავარი ფოტო, სტატუსი და მოკლე ცნობები, მერე
    აღწერა, ბმული და — ⚠️ **დამატებითი ველები**. საბაზისო მოდულის ფანჯარა
    მათ არ აჩვენებს (ისინი იქ მეორეხარისხოვანია), პირად მოდულში კი ისინია
    მოდულის **შიგთავსი** (რეცეპტის ინგრედიენტები, ნივთის ფასი) — ამიტომ
@@ -65,11 +65,11 @@ export function CustomRecordDetail({
   record: CustomRecord
   onClose: () => void
   onEdit: () => void
-  /** §37.5 — ბმული დასაკრავია: ფლეერს გადაეცემა და ფანჯარა იკეტება */
+  /** ბმული დასაკრავია: ფლეერს გადაეცემა და ფანჯარა იკეტება */
   onPlay?: () => void
 }) {
   const { t, i18n } = useTranslation()
-  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  // გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen('custom_record', record.id)
   const lang = useContentLang(i18n.language)
   const fields = useModuleFields(module.key)
@@ -99,7 +99,7 @@ export function CustomRecordDetail({
           fallback={<ModuleIcon name={module.icon} className="size-8 text-muted-foreground" />}
           badges={
             <>
-              {/* Tasks §16.3 — აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
+              {/* აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
               <StatusBadge status={record.status} size="row" />
               {record.is_favorite && (
                 <Badge size="row" className="bg-secondary">
@@ -142,7 +142,7 @@ export function CustomRecordDetail({
           )}
         </DetailHero>
 
-        {/* §37.5 — ჩემი ფოტოები (ვიტრინა); ვებიდან მოტანილი გალერეის გვერდზეა */}
+        {/* ჩემი ფოტოები (ვიტრინა); ვებიდან მოტანილი გალერეის გვერდზეა */}
         <Photos module={module} record={record} />
 
         {record.description && (
@@ -211,7 +211,7 @@ export function CustomRecordDetail({
         <Button type="button" variant="ghost" onClick={onClose}>
           {t('actions.close')}
         </Button>
-        {/* §37.4 — ჩანაწერი გალერეის მშობელია: ვებიდან ფოტო/ვიდეო და გადატანილი
+        {/* ჩანაწერი გალერეის მშობელია: ვებიდან ფოტო/ვიდეო და გადატანილი
             ფოტოები მის გალერეის გვერდზეა (წიგნის/ადგილის იგივე გვერდი) */}
         {has('gallery') && (
           <Link
@@ -302,7 +302,7 @@ function FieldValue({ def, value }: { def: CustomFieldDefinition; value: unknown
   }
 }
 
-/* ---------- §37.5 — ჩანაწერის საკუთარი ფაილები ---------- */
+/* ---------- ჩანაწერის საკუთარი ფაილები ---------- */
 
 /** ატვირთვის საერთო ქცევა — ფოტოსაც და დოკუმენტსაც ერთი და იგივე სჭირდება (თამაშის ფორმა) */
 function useRecordFiles(module: ModuleInfo, record: CustomRecord, kind: CustomRecordFile['kind']) {
@@ -316,7 +316,7 @@ function useRecordFiles(module: ModuleInfo, record: CustomRecord, kind: CustomRe
 
   const done = () => {
     qc.invalidateQueries({ queryKey: customRecordFilesKey(module.key, record.id) })
-    // 17.1 — ატვირთვა/წაშლა კვოტას ცვლის, ჰედერის ინდიკატორიც უნდა განახლდეს
+    // ატვირთვა/წაშლა კვოტას ცვლის, ჰედერის ინდიკატორიც უნდა განახლდეს
     qc.invalidateQueries({ queryKey: ['storage'] })
     qc.invalidateQueries({ queryKey: ['me'] })
   }
@@ -337,7 +337,7 @@ function useRecordFiles(module: ModuleInfo, record: CustomRecord, kind: CustomRe
   return { query, upload, remove }
 }
 
-/** ჩემი ფოტოები — ვიტრინა (§22.2/§26.4-ის ფორმა): ატვირთვა და წაშლა აქვეა */
+/** ჩემი ფოტოები — ვიტრინა (დეტალის ფანჯრების საერთო ფორმა): ატვირთვა და წაშლა აქვეა */
 function Photos({ module, record }: { module: ModuleInfo; record: CustomRecord }) {
   const { t } = useTranslation()
   const { query, upload, remove } = useRecordFiles(module, record, 'image')
@@ -366,7 +366,7 @@ function Docs({ module, record }: { module: ModuleInfo; record: CustomRecord }) 
   const { query, upload, remove } = useRecordFiles(module, record, 'doc')
   const files = query.data ?? []
   /* ⚠️ `resolve: storageUrl` — ეს ფაილები **საჯარო დისკზეა** (`custom/{key}/files`);
-     დისკს backend წყვეტს და არა ფრონტი (§17.5). */
+     დისკს backend წყვეტს და არა ფრონტი. */
   const viewer = useFileViewer({ resolve: storageUrl, onDelete: (id) => remove.mutate(id) })
 
   return (

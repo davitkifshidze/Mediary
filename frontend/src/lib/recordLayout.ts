@@ -4,10 +4,10 @@ import { updateModuleSettings, type ModuleInfo } from '@/api/account'
 import { useModules } from '@/lib/modules'
 
 /* ============================================================
-   **სიის ხედი — ბარათები · ბადე · სტრიქონები** (Tasks §45).
+   **სიის ხედი — ბარათები · ბადე · სტრიქონები**.
 
-   ⚠️ **არჩევანი მოდულზე ინახება** (`module_user.settings.view`, §45.2) და არა
-   ბრაუზერში — ყველა მოწყობილობაზე ერთნაირია. შენახვა **ჩუმია**, §17-ის
+   ⚠️ **არჩევანი მოდულზე ინახება** (`module_user.settings.view`) და არა
+   ბრაუზერში — ყველა მოწყობილობაზე ერთნაირია. შენახვა **ჩუმია**, იმავე
    `pick`-ის წესით: ჯერ `['modules']`-ის ქეში (შემდეგი გახსნაც უმალ ხედავს),
    მერე სერვერი; ჩავარდნა ხედს არ აჩერებს. სერვერი ბლობს **ერწყმის**
    (`ModuleSettings::merge`), ე.ი. იმავე მოდულის სხვა ფენებს (`pick`, `fields`,
@@ -23,7 +23,7 @@ import { useModules } from '@/lib/modules'
 const RECORD_LAYOUTS = ['cards', 'grid', 'rows'] as const
 export type RecordLayout = (typeof RECORD_LAYOUTS)[number]
 
-/** `module_user.settings`-ის გასაღები (§45.2); ფლეილისტებს სიმღერის მოდულში თავისი აქვს */
+/** `module_user.settings`-ის გასაღები; ფლეილისტებს სიმღერის მოდულში თავისი აქვს */
 const VIEW_SETTING = 'view'
 
 /** ⚠️ ბლობი ნებისმიერი იყოს — უცნობი/დაზიანებული მნიშვნელობა ნაგულისხმევს ნიშნავს */

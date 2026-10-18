@@ -17,7 +17,7 @@ import { PasswordInput } from '@/components/ui/secret-input'
 import { AlbumPasswordFields } from '@/components/gallery/AlbumPasswordFields'
 
 /* ============================================================
-   **ჩანაწერის ჩაკეტვა პაროლით — ერთი ფორმა ყველგან (Tasks §33.7 → §35.5).**
+   **ჩანაწერის ჩაკეტვა პაროლით — ერთი ფორმა ყველგან.**
 
    ოთხი ნაწილი: გახსნა (`RecordUnlockDialog`), დადება/შეცვლა/მოხსნა
    (`RecordLockDialog`), გვერდის ღილაკები (`RecordLockActions`) და ბოქლომიანი
@@ -275,7 +275,7 @@ export function RecordLockActions({ base, record, onChanged, hint, size }: LockT
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  // §40.1 — `sm` ღილაკს აიქონი `size-3.5` აქვს, როგორც მოქმედებების ყველა რიგში
+  // `sm` ღილაკს აიქონი `size-3.5` აქვს, როგორც მოქმედებების ყველა რიგში
   const icon = size === 'sm' ? 'size-3.5' : 'size-4'
 
   return (

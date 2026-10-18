@@ -6,12 +6,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * I7 / ეტაპი 2 — მფლობელობა (ვარიანტი A: per-user რიგები).
+ * მფლობელობა (per-user რიგები).
  *
  * `imdb_id`-ის გლობალური unique იშლება: ორმა მომხმარებელმა ერთი და იგივე ფილმი
  * რომ დაამატოს, უნიკალურობა user-ის ფარგლებში უნდა იყოს.
  *
- * არსებული ჩანაწერები პირველ super_admin-ს მიება (Tasks I1).
+ * არსებული ჩანაწერები პირველ super_admin-ს მიება.
  */
 return new class extends Migration
 {

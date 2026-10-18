@@ -11,15 +11,15 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **აუდიტ-ლოგი (Tasks §4)**.
+ * **აუდიტ-ლოგი**.
  *
  * აქ ის მოთხოვნებია მიმაგრებული, რომელთა დარღვევაც **ჩუმია** — კოდი
  * იმუშავებს, ლოგი კი ან არ ჩაიწერება, ან არასწორს ჩაწერს:
  *  · ჩაწერა observer-იდან მოდის, ე.ი. ერთი კონტროლერიც არ უნდა იცოდეს მასზე;
  *  · `update` **ძველსაც და ახალსაც** ინახავს, ერთი და იმავე გასაღებებით;
- *  · წაშლილის ლოგი ჩანაწერს გადაარჩენს (§4.2);
+ *  · წაშლილის ლოგი ჩანაწერს გადაარჩენს;
  *  · პაროლი ლოგში არასდროს ხვდება;
- *  · გასუფთავება `confirm`-ს ითხოვს და დაცულ რიგებს ვერ ეხება (§4.7).
+ *  · გასუფთავება `confirm`-ს ითხოვს და დაცულ რიგებს ვერ ეხება.
  */
 class AuditLogTest extends TestCase
 {
@@ -86,7 +86,7 @@ class AuditLogTest extends TestCase
         $updated = AuditLog::where('action', AuditLog::ACTION_UPDATE)
             ->where('subject_type', 'movie')->where('subject_id', $movie->id)->latest('id')->first();
 
-        // ⚠️ ორივე მხარე ერთი და იმავე გასაღებით — სწორედ ეს არის §4.1-ის
+        // ⚠️ ორივე მხარე ერთი და იმავე გასაღებით — სწორედ ეს არის
         // „ძველი და ახალი გვერდიგვერდ"
         $this->assertSame('to_watch', $updated->old_values['status']);
         $this->assertSame('watched', $updated->new_values['status']);
@@ -99,7 +99,7 @@ class AuditLogTest extends TestCase
         $deleted = AuditLog::where('action', AuditLog::ACTION_DELETE)
             ->where('subject_type', 'movie')->where('subject_id', $id)->first();
 
-        // §4.2 — ლოგმა ჩანაწერს უნდა გადაარჩინოს, ე.ი. შიგთავსიც უნდა ჰქონდეს
+        // ლოგმა ჩანაწერს უნდა გადაარჩინოს, ე.ი. შიგთავსიც უნდა ჰქონდეს
         $this->assertNull(Movie::find($id));
         $this->assertSame('watched', $deleted->old_values['status']);
         $this->assertSame('დიუნა', $deleted->subject_label);
@@ -152,7 +152,7 @@ class AuditLogTest extends TestCase
         $this->assertSame($this->user->id, $logout->user_id);
     }
 
-    /** სექციაში შესვლა (§4.1) — გამეორება ერთი წუთის ფანჯარაში იკარგება */
+    /** სექციაში შესვლა — გამეორება ერთი წუთის ფანჯარაში იკარგება */
     public function test_visits_are_logged_once_per_minute(): void
     {
         $this->actingAs($this->user);
@@ -175,7 +175,7 @@ class AuditLogTest extends TestCase
         $this->actingAs($this->admin)->getJson('/api/admin/audit')->assertOk();
     }
 
-    /** ფილტრები (§4.4) — მომხმარებელი × მოდული × მოქმედება, ერთდროულად */
+    /** ფილტრები — მომხმარებელი × მოდული × მოქმედება, ერთდროულად */
     public function test_filters_narrow_the_list(): void
     {
         $this->actingAs($this->user);
@@ -193,14 +193,14 @@ class AuditLogTest extends TestCase
     }
 
     /**
-     * გასუფთავება (§4.7) — `confirm` სავალდებულოა და დაცული რიგები რჩება.
+     * გასუფთავება — `confirm` სავალდებულოა და დაცული რიგები რჩება.
      */
     public function test_cleanup_requires_confirmation_and_spares_protected_rows(): void
     {
         $this->actingAs($this->user);
         Movie::create(['title_ka' => 'ფილმი']);
 
-        // §4.6-ის რიგი — გასუფთავებას არ უნდა დაემორჩილოს
+        // ჩატის წაშლის რიგი — გასუფთავებას არ უნდა დაემორჩილოს
         AuditLog::create([
             'user_id' => $this->user->id,
             'action' => AuditLog::ACTION_CHAT_DELETE,
@@ -222,7 +222,7 @@ class AuditLogTest extends TestCase
         $this->assertSame(1, AuditLog::where('action', AuditLog::ACTION_CHAT_DELETE)->count());
     }
 
-    /** მონიშნული რიგები (§4.7) — წაშლა ყოველთვის გაფილტრულის შიგნითაა */
+    /** მონიშნული რიგები — წაშლა ყოველთვის გაფილტრულის შიგნითაა */
     public function test_cleanup_can_target_selected_rows(): void
     {
         $this->actingAs($this->user);
@@ -242,7 +242,7 @@ class AuditLogTest extends TestCase
     }
 
     /**
-     * **ჭრილების მთვლელები (ეტაპი 10)** — ბარათი/ტაბი იმ რიცხვს უნდა
+     * **ჭრილების მთვლელები** — ბარათი/ტაბი იმ რიცხვს უნდა
      * აჩვენებდეს, რასაც მასზე დაჭერით მიიღებ.
      *
      * ⚠️ **მთავარი წესი: ჭრილი საკუთარ თავს არ ითვლის.** არჩეული მოდულით

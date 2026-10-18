@@ -14,14 +14,14 @@ import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   **ურნის ვადა** (Tasks §29, ეტაპი 6 — 29.6) — `/settings`-ის ერთი სექცია.
+   **ურნის ვადა** — `/settings`-ის ერთი სექცია.
 
    ⚠️ **ვადა ჩვეულებრივი პარამეტრია** (`users.settings.trashDays`) და
    `SettingsSaveBar`-ით ინახება — ცალკე ღილაკი ერთ გვერდზე ორ შენახვას
    გააჩენდა. ზედა ზღვარს კი სერვერი ამბობს (`max_days`, ინსტალაციისაა),
    რადგან კლიენტში მისი ასლი პირველივე შეცვლაზე დაშორდებოდა.
 
-   ⚠️ **ზედა ზღვარს სუპერადმინი აქვე ცვლის** (§29.6 → §34.1) — ოღონდ **მოდალში
+   ⚠️ **ზედა ზღვარს სუპერადმინი აქვე ცვლის** — ოღონდ **მოდალში
    და თავისი შენახვით**: ის ყველა ანგარიშს ეხება (`app_settings`) და
    ანგარიშის პარამეტრების ზოლთან ერთად შენახვა ორ სხვადასხვა ბუნების
    ცვლილებას აურევდა.
@@ -82,7 +82,7 @@ export function TrashRetentionSetting() {
         </p>
       )}
 
-      {/* ---------- ზედა ზღვარი ყველასთვის — მხოლოდ სუპერადმინი (§34.1) ---------- */}
+      {/* ---------- ზედა ზღვარი ყველასთვის — მხოლოდ სუპერადმინი ---------- */}
       {me?.is_super_admin && retention.data && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 text-sm">
           <span className="text-muted-foreground">{t('settings.trashCeiling', { max })}</span>

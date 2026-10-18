@@ -6,7 +6,7 @@ use App\Support\GoogleMapsLink;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Tasks §57.3 — **Google Maps-ის ბმულის ამოკითხვა** (ქსელის გარეშე).
+ * **Google Maps-ის ბმულის ამოკითხვა** (ქსელის გარეშე).
  */
 class GoogleMapsLinkTest extends TestCase
 {

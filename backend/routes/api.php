@@ -133,7 +133,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | ბაზისო პრეფიქსი: /api  (იხ. bootstrap/app.php)
 |
-| I7-ის შემდეგ ყველა route ავტორიზებულია (`auth:sanctum`, SPA cookie რეჟიმი),
+| ყველა route ავტორიზებულია (`auth:sanctum`, SPA cookie რეჟიმი),
 | ხოლო დომენების route-ები დამატებით მოდულის ჩართვას მოითხოვს (`module:*`).
 | გამონაკლისი მხოლოდ /health და /auth/{register,login}-ია.
 */
@@ -148,14 +148,14 @@ Route::get('/health', function () {
 });
 
 /* ---------- ავტორიზაცია (საჯარო) ----------
-   ⚠️ **`throttle:login` აუცილებელია და არა სიფრთხილე** (აუდიტი 2026-09-14, §A1):
+   ⚠️ **`throttle:login` აუცილებელია და არა სიფრთხილე**:
    რეგისტრაცია ღიაა, ე.ი. ამ ჭერის გარეშე პაროლის ბრუტფორსს არაფერი აჩერებდა.
    ჭერი **IP + შეყვანილი login-ი ერთად** არის — იხ. `AppServiceProvider::rateLimiters()`. */
 Route::middleware('throttle:login')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
 
-    /* FEAT-16 — ადმინის ერთჯერადი აღდგენის ბმული. ⚠️ **ღიაა განზრახ**:
+    /* ადმინის ერთჯერადი აღდგენის ბმული. ⚠️ **ღიაა განზრახ**:
        ბმულით შემოსული ადამიანი სწორედ იმიტომ მოვიდა, რომ ვერ შედის.
        ვადაგასული/გამოყენებული ბმული **410**-ია და არა 404 — „ასეთი
        არასდროს ყოფილა" და „ვადა გაუშვა" სხვადასხვა ქმედებას ითხოვს. */
@@ -163,42 +163,42 @@ Route::middleware('throttle:login')->group(function () {
     Route::post('/auth/reset/{token}', [PasswordResetController::class, 'store']);
 });
 
-/* ---------- საჯარო პროფილი (Tasks §16.1) — ავტორიზაციის გარეშე ----------
+/* ---------- საჯარო პროფილი — ავტორიზაციის გარეშე ----------
    ⚠️ **ეს თერთმეტი endpoint-ია `auth:sanctum`-ის გარეთ არსებული დომენური
    ზედაპირი**; მის გარეთ ღიაა კიდევ ხუთი — `/health`, `register`, `login`
-   და FEAT-16-ის აღდგენის წყვილი (`GET|POST /auth/reset/{token}`, ორივე
+   და პაროლის აღდგენის წყვილი (`GET|POST /auth/reset/{token}`, ორივე
    `throttle:login`-ის უკან). ეს ყველაზე სენსიტიური სიაა პროექტში —
    შემდეგმა reviewer-მა ზუსტად უნდა იცოდეს, რამდენია:
 
      1. `GET  /public/profiles/{username}`                           — პროფილის თავი
-     2. `GET  /public/profiles/{username}/gallery-summary`           — გალერეის ჭრილების მთვლელები (§32)
-     3. `GET  /public/profiles/{username}/gallery-groups`            — ჯგუფები: ჩანაწერი · მსახიობი · ალბომი (§32)
+     2. `GET  /public/profiles/{username}/gallery-summary`           — გალერეის ჭრილების მთვლელები
+     3. `GET  /public/profiles/{username}/gallery-groups`            — ჯგუფები: ჩანაწერი · მსახიობი · ალბომი
      4. `GET  /public/profiles/{username}/gallery-photos`            — ფოტოების გვერდი, ჭრილის ფილტრებით
      5. `GET  /public/profiles/{username}/gallery-photos/{image}/file` — ერთი ფაილი
-     6. `GET  /public/profiles/{username}/gallery-videos`            — ვიდეო-ბმულები (§32)
-     7. `GET  /public/profiles/{username}/playlists/{playlist}`      — ფლეილისტის შიგთავსი (§33)
-     8. `GET  /public/profiles/{username}/personal-albums/{album}`   — პირადი გალერეის ალბომი (Tasks §33, Q7)
+     6. `GET  /public/profiles/{username}/gallery-videos`            — ვიდეო-ბმულები
+     7. `GET  /public/profiles/{username}/playlists/{playlist}`      — ფლეილისტის შიგთავსი
+     8. `GET  /public/profiles/{username}/personal-albums/{album}`   — პირადი გალერეის ალბომი
      9. `GET  /public/profiles/{username}/personal-media/{media}/{file|thumb}` — მისი ფაილი/ესკიზი
     10. `POST /public/profiles/{username}/albums/{album}/unlock`     — **ერთადერთი write**
     11. `GET  /public/profiles/{username}/{domain}`                  — დომენის ბარათები
 
-   ⚠️ **ათი read-only-ია, მეთერთმეტე — არა** (Tasks GAP-06; კომენტარი ადრე „ორივე
+   ⚠️ **ათი read-only-ია, მეთერთმეტე — არა** (კომენტარი ადრე „ორივე
    read-only-ია"-ს ამბობდა, რაც ორმაგად მცდარი იყო). `unlockAlbum` პაროლს
    ამოწმებს და **სერვერის სესიას ცვლის**; მისი ორი დამცავია
    `throttle:album-unlock` (ანონიმზე გასაღები IP + ალბომი) და ცხადი შემოწმება,
    რომ ალბომი **ამ პროფილისაა და საჯაროა** — უამისოდ ეს endpoint სხვისი
    პირადი ალბომის პაროლის გამოცნობის კარი იქნებოდა. სესიის გარეშე პაროლი
-   საერთოდ არ იცდება (BUG-02, 409 `session_required`).
+   საერთოდ არ იცდება (409 `session_required`).
 
    თერთმეტივე სამ ფენას ერთდროულად ითხოვს (პროფილი → მოდული → ჩანაწერი), ყველა
    default-ით `private`, და თერთმეტივე `PublicProfileService::resolve()`-ზე გადის —
    ე.ი. მთელი მექანიზმი ერთი ცვლადით ითიშება: `PUBLIC_PROFILES=false`.
-   ⚠️ §32-ის სამი ახალი endpoint ხილვადობას **ერთ სერვისში** ითვლის
+   ⚠️ გალერეის სამი endpoint ხილვადობას **ერთ სერვისში** ითვლის
    (`PublicGallery`) — ოთხი გალერეის მარშრუტი ერთსა და იმავე სამ წესს კითხულობს.
    დეტალები `PublicProfileController`-ში. */
 Route::get('/public/profiles/{username}', [PublicProfileController::class, 'show']);
 
-/* ⚠️ **ყველა `{domain}`-ზე ზემოთ დგას** (Tasks §7.4/§7.12/§32), თორემ
+/* ⚠️ **ყველა `{domain}`-ზე ზემოთ დგას**, თორემ
    „gallery-photos", „gallery-groups", „albums"… დომენებად წაიკითხება —
    იგივე წესი, რაც `/gallery/{type}/{id}`-ს აქვს. */
 Route::get('/public/profiles/{username}/gallery-summary', [PublicProfileController::class, 'gallerySummary']);
@@ -209,11 +209,11 @@ Route::get('/public/profiles/{username}/gallery-photos', [PublicProfileControlle
    გამოდის: შიდა `/gallery/images/{id}/file` უცხოსთვის `auth:sanctum`-ის უკანაა. */
 Route::get('/public/profiles/{username}/gallery-photos/{image}/file', [PublicProfileController::class, 'photoFile'])
     ->whereNumber('image');
-/* Tasks §33 — საჯარო ფლეილისტის შიგთავსი. ⚠️ მოდელი არ იბმება (ანონიმი
+/* საჯარო ფლეილისტის შიგთავსი. ⚠️ მოდელი არ იბმება (ანონიმი
    ვერაფრის მფლობელია) — `{playlist}` უბრალო რიცხვია და ხილვადობას სერვისი წყვეტს. */
 Route::get('/public/profiles/{username}/playlists/{playlist}', [PublicProfileController::class, 'playlist'])
     ->whereNumber('playlist');
-/* Tasks §33 (Q7) — პირადი გალერეის საჯარო ალბომი და მისი ფაილი. ⚠️ ფაილი
+/* პირადი გალერეის საჯარო ალბომი და მისი ფაილი. ⚠️ ფაილი
    პირად დისკზეა და უცხოსთვის მხოლოდ აქედან გამოდის; ჩაკეტილი ალბომი ან
    ჩაკეტილი ადამიანის ფოტო — 404, სესიის მიუხედავად. მოდელი არ იბმება. */
 Route::get('/public/profiles/{username}/personal-albums/{album}', [PublicProfileController::class, 'personalAlbum'])
@@ -223,18 +223,18 @@ Route::get('/public/profiles/{username}/personal-media/{media}/{variant}', [Publ
     ->whereIn('variant', ['file', 'thumb']);
 Route::post('/public/profiles/{username}/albums/{album}/unlock', [PublicProfileController::class, 'unlockAlbum'])
     ->whereNumber('album')
-    // §7.13 — ანონიმზე გასაღები IP + ალბომია; უამისოდ ოთხსიმბოლოიანი პაროლი წუთებში ცვივა
+    // ანონიმზე გასაღები IP + ალბომია; უამისოდ ოთხსიმბოლოიანი პაროლი წუთებში ცვივა
     ->middleware('throttle:album-unlock');
 
 Route::get('/public/profiles/{username}/{domain}', [PublicProfileController::class, 'items']);
 
-/* ---------- გაზიარების ბმული (Tasks §40.6) — ავტორიზაციის გარეშე ----------
+/* ---------- გაზიარების ბმული — ავტორიზაციის გარეშე ----------
    ⚠️ **კიდევ სამი read-only endpoint `auth:sanctum`-ის გარეთ** (ზედა სიას
    ემატება — სულ თოთხმეტი დომენური მარშრუტი):
 
     12. `GET  /public/shares/{token}`                      — ვინ გაგიზიარა, სექციები რაოდენობებით
     13. `GET  /public/shares/{token}/{domain}`             — სექციის ბარათები (ძებნა, ჟანრი, გვერდები)
-    14. `GET  /public/shares/{token}/playlists/{playlist}` — პლეილისტის სიმღერები რიგით (§40.13)
+    14. `GET  /public/shares/{token}/playlists/{playlist}` — პლეილისტის სიმღერები რიგით
 
    ⚠️ **სამ ფენას არ ეკითხება** — ბმული თვითონაა მფლობელის თანხმობა, ე.ი. ფარგალში
    მოხვედრილი პირადი ჩანაწერიც ჩანს. დაცვა: 48-სიმბოლოიანი შემთხვევითი ტოკენი
@@ -261,7 +261,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/auth/password', [AuthController::class, 'updatePassword']);
     Route::put('/auth/settings', [AuthController::class, 'updateSettings']);
 
-    /* FEAT-16 — არჩევითი TOTP. ⚠️ **ოთხივე ანგარიშის პაროლს ითხოვს**
+    /* არჩევითი TOTP. ⚠️ **ოთხივე ანგარიშის პაროლს ითხოვს**
        (გარდა `confirm`-ისა, სადაც დასადასტურებელი თვითონ კოდია) — გახსნილ
        ტაბთან მისული ადამიანისთვის მეორე ფაქტორის ჩუმად გამორთვა სწორედ
        ის ხვრელია, რომლის დახურვასაც ეს მექანიზმი ცდილობს.
@@ -272,7 +272,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/2fa/recovery-codes', [TwoFactorController::class, 'recoveryCodes']);
     Route::delete('/auth/2fa', [TwoFactorController::class, 'destroy']);
 
-    /* ---------- შეტყობინებები (FEAT-19) ----------
+    /* ---------- შეტყობინებები ----------
        ⚠️ **მოდულის ჯგუფის გარეთ**: შეტყობინება ანგარიშის ფაქტია და არა
        მოდულის შიგთავსი (საცავისა და კვოტის იგივე რიგი).
        ⚠️ **`/read` და `/unread` `{notification}`-ზე ზემოთ დგას**, თორემ
@@ -284,16 +284,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read']);
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
 
-    /* ---------- საცავი (Tasks 17.1/17.3) — მოდულებად დაშლა და გადათვლა ----------
+    /* ---------- საცავი — მოდულებად დაშლა და გადათვლა ----------
        მსუბუქი ჯამი `GET /auth/me`-ზეც მოდის (`UserResource.storage`). */
     Route::get('/storage', [StorageController::class, 'show']);
     Route::post('/storage/recalculate', [StorageController::class, 'recalculate']);
-    // 17.2 — ლიმიტების გადანაწილება მოდულებზე (`null` = ლიმიტის მოხსნა)
+    // ლიმიტების გადანაწილება მოდულებზე (`null` = ლიმიტის მოხსნა)
     Route::put('/storage/allocations', [StorageController::class, 'setAllocations']);
-    // 17.5 — „ყველაზე დიდი ფაილები" + ერთეულოვანი წაშლა (`path` სხეულში)
+    // „ყველაზე დიდი ფაილები" + ერთეულოვანი წაშლა (`path` სხეულში)
     Route::get('/storage/files', [StorageController::class, 'files']);
     Route::delete('/storage/files', [StorageController::class, 'destroyFile']);
-    /* §6.2 — მონიშნულების/ყველას ჩამოტვირთვა zip-ად. `POST`, რადგან
+    /* მონიშნულების/ყველას ჩამოტვირთვა zip-ად. `POST`, რადგან
        მონიშვნა ასეულ გზას შეიძლება შეიცავდეს. */
     Route::post('/storage/files/download', [StorageController::class, 'downloadFiles']);
     // ობოლი ფაილები **გლობალურია** (მფლობელი აღარ აქვს) → მხოლოდ super_admin
@@ -302,7 +302,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/storage/orphans/clean', [StorageController::class, 'cleanOrphans']);
     });
 
-    /* ---------- ძებნა ვებში (Tasks §7.5/§7.6) ----------
+    /* ---------- ძებნა ვებში ----------
        ⚠️ **`/serp/*` განზრახ არ ჰქვია:** წყარო ერთი არ არის — უფასო
        კატალოგი (Wikimedia) და SerpApi-ის engine-ები ერთ სიაშია, ერთი
        ინტერფეისით; SerpApi მხოლოდ **ერთ-ერთი** მათგანია.
@@ -313,7 +313,7 @@ Route::middleware('auth:sanctum')->group(function () {
        (`GET /board-games/shops`-ის იგივე მიზეზი).
        ⚠️ `status` **უფასოა** — `GET /account` კვოტას არ ხარჯავს, ამიტომ ის
        ჭერის გარეთაა: ღილაკის მდგომარეობა ლიმიტს არ უნდა ხარჯავდეს.
-       ⚠️ **დანარჩენ სამზე `throttle:web-search`** (აუდიტი §A1): თითოეული
+       ⚠️ **დანარჩენ სამზე `throttle:web-search`**: თითოეული
        გამოძახება ან SerpApi-ს კრედიტს ხარჯავს, ან Serper-ის გვერდს, და ეს
        კვოტა **ინსტალაციისაა** — ერთი ანგარიში ყველა დანარჩენს ტოვებდა უკვოტოდ. */
     Route::get('/web/status', [WebSearchController::class, 'status']);
@@ -326,7 +326,7 @@ Route::middleware('auth:sanctum')->group(function () {
        (`gallery_images`-ის რიგი + ფაილი დისკზე), ძებნა კი კითხვა იყო. */
     Route::post('/web/import', [WebSearchController::class, 'import']);
 
-    /* ---------- ფონური პარტია (აუდიტი §D1) ----------
+    /* ---------- ფონური პარტია ----------
        ⚠️ **მოდულის ჯგუფის გარეთ**: ერთი პარტია სამ დომენს ერთდროულად
        შეიძლება შეიცავდეს („ფილმები და სერიალები ერთად"), ე.ი. `module:@type`
        ერთ კონკრეტულს მოითხოვდა. უფლებას კონტროლერი თითო ტიპზე ცხადად
@@ -335,23 +335,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/batches/{batch}', [BatchController::class, 'show']);
     Route::delete('/batches/{batch}', [BatchController::class, 'destroy']);
 
-    /* ---------- ჯვარედინი ძებნა (აუდიტი §D6) ----------
+    /* ---------- ჯვარედინი ძებნა ----------
        ⚠️ **მოდულის ჯგუფის გარეთ**: კითხვა ყველა ჩართულ მოდულს ეხება და არა
        ერთს — რომელია ჩართული, ამას `GlobalSearch` წყვეტს. */
     Route::get('/search', [SearchController::class, 'index']);
 
-    /* ---------- ბმულის მეტა-მონაცემი (Tasks §15.1) ----------
+    /* ---------- ბმულის მეტა-მონაცემი ----------
        ერთი კარი ყველა ფორმისთვის: oEmbed ვიდეო-პლატფორმაზე, Open Graph სხვაგან.
        მოდულის middleware-ის გარეთ — ბმული ყველა მოდულს ეხება და POST არაფერს ქმნის. */
     Route::post('/links/metadata', [LinkResolverController::class, 'resolve']);
 
-    /* ---------- აუდიტ-ლოგი: სექციაში შესვლა (Tasks §4.1) ----------
+    /* ---------- აუდიტ-ლოგი: სექციაში შესვლა ----------
        SPA-ს მარშრუტის შეცვლა HTTP რექვესთი არ არის, ე.ი. სიგნალი ცხადად
        მოდის. მოდულის middleware-ის გარეთ — იხ. `AuditController`. */
     Route::post('/audit/visit', [AuditController::class, 'visit']);
 
-    /* ---------- ჟურნალი: ჩანაწერის გახსნა და SPA-ს მოვლენები (Tasks §43) ----------
-       §10-ის ხილული მთვლელი (`/visits/{type}/{id}`) წაიშალა — გახსნა მხოლოდ
+    /* ---------- ჟურნალი: ჩანაწერის გახსნა და SPA-ს მოვლენები ----------
+       ხილული მთვლელი (`/visits/{type}/{id}`) წაიშალა — გახსნა მხოლოდ
        ჟურნალში იწერება. ⚠️ მოდულის middleware-ის გარეთ: `{type}` მოდულის გასაღები
        ყოველთვის არაა (`playlist` → `song`, `custom_record` → ჩანაწერის `module`)
        და POST „შექმნად" წაიკითხებოდა — მოდულს `AuditController` თვითონ ამოწმებს.
@@ -360,11 +360,11 @@ Route::middleware('auth:sanctum')->group(function () {
         ->whereIn('type', Openable::keys())->whereNumber('id');
     Route::post('/audit/events', [AuditController::class, 'events'])->middleware('throttle:120,1');
 
-    /* ---------- დეშბორდი (Tasks 2) — მთავარი გვერდის ქარდები ----------
+    /* ---------- დეშბორდი — მთავარი გვერდის ქარდები ----------
        მოდულის middleware-ის გარეშე: თვითონ წყვეტს, რომელი მოდული ჩანს. */
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
-    /* ---------- „მონაცემები": გასაღებები და ლიმიტები (Tasks §21) ---------- */
+    /* ---------- „მონაცემები": გასაღებები და ლიმიტები ---------- */
     /* ⚠️ **`module:` ჯგუფს მიღმაა და განზრახ.** გასაღები კონტენტის მოდული
        არაა (`modules` ცხრილში რიგი არ აქვს, იხ. `CredentialProviders`), და —
        რაც მთავარია — მოდულის გამორთვა *ყველა* ანგარიშზე მოქმედებს, ე.ი.
@@ -378,7 +378,7 @@ Route::middleware('auth:sanctum')->group(function () {
        ჯდება: SerpApi/Serper-ის შემოწმება ბიუჯეტს ეხება. */
     Route::post('/credentials/{provider}/test', [CredentialController::class, 'test'])
         ->middleware('throttle:web-search');
-    /* §21.8 — გასაღების ნახვა/კოპირება. ⚠️ **`GET` და არა სიის ველი**:
+    /* გასაღების ნახვა/კოპირება. ⚠️ **`GET` და არა სიის ველი**:
        სრული გასაღები მხოლოდ ცხადი დაჭერისას გადის, და არა ყოველ გვერდის
        გახსნაზე (სადაც ის ქეშსა და ქსელის ჩანართში დარჩებოდა). */
     Route::get('/credentials/{provider}/reveal', [CredentialController::class, 'reveal']);
@@ -388,11 +388,11 @@ Route::middleware('auth:sanctum')->group(function () {
        რასაც სერვერი მიიღებს. ⚠️ მოდულზე დამოკიდებული არაა: ლიმიტი აპისა და
        PHP-ის წესია და არა ბიბლიოთეკის შიგთავსისა, ე.ი. `module:` ჯგუფს
        მიღმა დგას (პარამეტრების გვერდსაც სჭირდება, ჩართული მოდულის გარეშეც). */
-    /* ⚠️ Tasks §34.6 — **შესულის ეფექტური** ლიმიტი (ინსტალაციის ∪ პირადი გამონაკლისი) */
+    /* ⚠️ **შესულის ეფექტური** ლიმიტი (ინსტალაციის ∪ პირადი გამონაკლისი) */
     Route::get('/uploads/limits', [UploadLimitController::class, 'index']);
 
     Route::get('/modules', [ModuleController::class, 'index']);
-    /* Tasks §37 — **ახალი მოდული ინტერფეისიდან** (Q28: ყოველი მომხმარებელი —
+    /* **ახალი მოდული ინტერფეისიდან** (ყოველი მომხმარებელი —
        თავისთვის; სხვას არ უჩანს). ⚠️ `module:`/`permission:` middleware აქ არ
        დგას: მოდული ჯერ არ არსებობს, ხოლო რედაქტირებისას მფლობელობას
        კონტროლერი ამოწმებს (სხვისი — 404). */
@@ -400,24 +400,24 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/modules/{key}/details', [CustomModuleController::class, 'details'])
         ->where('key', CustomModules::PATTERN);
     Route::put('/modules/{key}/details', [CustomModuleController::class, 'update']);
-    /* §37.7 — პირადი მოდულის წაშლა (ურნაში, ჩანაწერებით). ⚠️ `where()` მხოლოდ
+    /* პირადი მოდულის წაშლა (ურნაში, ჩანაწერებით). ⚠️ `where()` მხოლოდ
        პირადის ფორმას უშვებს: „order" (`DELETE /modules/order`) და ნებისმიერი
        საბაზისო გასაღები აქ ვერასდროს მოხვდება — საბაზისო მოდული არ იშლება. */
     Route::delete('/modules/{key}', [CustomModuleController::class, 'destroy'])
         ->where('key', CustomModules::PATTERN);
-    /* Tasks §36 — **პირადი** რიგი (მთელი სია ერთი `PUT`-ით; `DELETE` = საერთოზე
+    /* **პირადი** რიგი (მთელი სია ერთი `PUT`-ით; `DELETE` = საერთოზე
        დაბრუნება). ⚠️ `{key}`-იან მარშრუტებზე ზემოთ დგას, რომ „order" მოდულის
        გასაღებად არასდროს წაიკითხოს — `PATCH /modules/{key}` სხვა მეთოდია,
        მაგრამ ეს რიგი მომავალ `PUT|DELETE /modules/{key}`-საც დაიცავს. */
     Route::put('/modules/order', [ModuleController::class, 'saveOrder']);
     Route::delete('/modules/order', [ModuleController::class, 'resetOrder']);
     Route::put('/modules/{key}/settings', [ModuleController::class, 'updateSettings']);
-    // §6 (ფაზა 1) — რომელი არჩევითი ველი ჩანს მოდულის ფორმაზე.
+    // რომელი არჩევითი ველი ჩანს მოდულის ფორმაზე.
     // `PUT`: POST-ს `permission:` middleware `create`-ად წაიკითხავდა.
     Route::get('/modules/{key}/fields', [ModuleController::class, 'fields']);
     Route::put('/modules/{key}/fields', [ModuleController::class, 'updateFields']);
     Route::delete('/modules/{key}/fields', [ModuleController::class, 'resetFields']);
-    /* §6 (ფაზა 3) — **მორგებული** ველები: განსაზღვრებები მოდულზე,
+    /* **მორგებული** ველები: განსაზღვრებები მოდულზე,
        მნიშვნელობები ჩანაწერზე. ერთი endpoint რვავე მოდულზე —
        `/visibility/{domain}/{id}`-ის იგივე ნიმუში. */
     Route::get('/modules/{key}/custom-fields', [CustomFieldController::class, 'index']);
@@ -426,33 +426,33 @@ Route::middleware('auth:sanctum')->group(function () {
         ->where('module', CustomFields::routePattern())->whereNumber('id');
     Route::put('/custom-fields/{module}/{id}', [CustomFieldController::class, 'setValues'])
         ->where('module', CustomFields::routePattern())->whereNumber('id');
-    /* §6 (ფაზა 4b) — `ფაილი` ტიპის ველი. ⚠️ **ატვირთვა ცალკე endpoint-ია**:
+    /* `ფაილი` ტიპის ველი. ⚠️ **ატვირთვა ცალკე endpoint-ია**:
        მნიშვნელობების `PUT` მთელ მონახაზს იღებს და ფაილს ცარიელ მნიშვნელობად
        წაშლიდა. გაცემა **მხოლოდ აქედან** ხდება — `notes/fields` პრივატულ
-       დისკზეა (§17.5) და `/storage/*` მას ვერ ხედავს. */
+       დისკზეა და `/storage/*` მას ვერ ხედავს. */
     Route::post('/custom-fields/{module}/{id}/file', [CustomFieldController::class, 'storeFile'])
         ->where('module', CustomFields::routePattern())->whereNumber('id');
-    /* §7.3 — ⚠️ **`{file}` არჩევითია**: ერთ ველზე ახლა რამდენიმე ფაილი ჯდება,
+    /* ⚠️ **`{file}` არჩევითია**: ერთ ველზე ახლა რამდენიმე ფაილი ჯდება,
        მისი გარეშე მისამართი კი ძველებურად მუშაობს (გაცემაზე — პირველი,
        წაშლაზე — ველის ყველა ფაილი). */
     Route::get('/custom-fields/{module}/{id}/file/{key}/{file?}', [CustomFieldController::class, 'showFile'])
         ->where('module', CustomFields::routePattern())->whereNumber('id')->whereNumber('file');
     Route::delete('/custom-fields/{module}/{id}/file/{key}/{file?}', [CustomFieldController::class, 'destroyFile'])
         ->where('module', CustomFields::routePattern())->whereNumber('id')->whereNumber('file');
-    // 16.1 — ჩანს თუ არა მოდული ჩემს საჯარო პროფილზე (`PUT`: POST-ს
+    // ჩანს თუ არა მოდული ჩემს საჯარო პროფილზე (`PUT`: POST-ს
     // `permission:` middleware `create`-ად წაიკითხავდა)
     Route::put('/modules/{key}/public', [ModuleController::class, 'setPublic']);
-    // საკუთარი თავისთვის ჩართვა/გამორთვა (K13) — ჩართვა მხოლოდ უკვე მინიჭებულზე
+    // საკუთარი თავისთვის ჩართვა/გამორთვა — ჩართვა მხოლოდ უკვე მინიჭებულზე
     Route::patch('/modules/{key}', [ModuleController::class, 'setEnabled']);
     Route::get('/requests', [ApprovalRequestController::class, 'index']);
     Route::post('/requests/module', [ApprovalRequestController::class, 'storeModuleRequest']);
-    // 17.4 — ლიმიტის გაზრდის მოთხოვნა (იმავე ცხრილში, ახალი ტიპით)
+    // ლიმიტის გაზრდის მოთხოვნა (იმავე ცხრილში, ახალი ტიპით)
     Route::post('/requests/storage', [ApprovalRequestController::class, 'storeStorageRequest']);
-    // Tasks §34.5 — ატვირთვის ლიმიტის მოთხოვნა (ფორმატი ან ზომა); ფორმატი სიიდან
+    // ატვირთვის ლიმიტის მოთხოვნა (ფორმატი ან ზომა); ფორმატი სიიდან
     Route::post('/requests/upload', [ApprovalRequestController::class, 'storeUploadRequest']);
     Route::delete('/requests/{approvalRequest}', [ApprovalRequestController::class, 'destroy']);
 
-    /* ---------- ჩემი მონაცემების ექსპორტი (FEAT-06) ----------
+    /* ---------- ჩემი მონაცემების ექსპორტი ----------
        ⚠️ **ჯგუფის `module:`/`permission:` middleware განზრახ არ ადევს** —
        პარამეტრი `module`-ია და არა `type`, ე.ი. `@type` მას ვერ წაიკითხავდა
        და ჩუმად `movie`-ის უფლებას შეამოწმებდა ყველა მოდულზე. ორივე
@@ -460,7 +460,7 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ ორივე **`GET`-ია**: ექსპორტი კითხვაა და არა ჩანაწერი; POST-ს
        `EnsureModulePermission` `create`-ად წაიკითხავდა და view-only როლი
        საკუთარ მონაცემებს ვერ წაიღებდა. */
-    /* Tasks §40.4–40.5, §40.10 — **გაზიარების ბმულები** (მფლობელის მხარე).
+    /* **გაზიარების ბმულები** (მფლობელის მხარე).
        ⚠️ `preview`/`records` `{shareLink}`-ზე ზემოთ დგას, თორემ id-ად
        წაიკითხებოდა; ⚠️ `module:`/`permission:` აქ არ დგას — ბმული რამდენიმე
        დომენს ფარავს და უფლებას `ShareDomain::availableFor()` ამოწმებს. */
@@ -472,7 +472,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/share-links/{shareLink}', [ShareLinkController::class, 'destroy'])->whereNumber('shareLink');
     Route::post('/share-links/{shareLink}/regenerate', [ShareLinkController::class, 'regenerate'])
         ->whereNumber('shareLink');
-    /* Tasks §40.8 — **ბმულიდან საკუთარ ბიბლიოთეკაში დამატება** (მხოლოდ შესულს — Q46).
+    /* **ბმულიდან საკუთარ ბიბლიოთეკაში დამატება** (მხოლოდ შესულს).
        ⚠️ `throttle:share` აქ განზრახ არ დგას: რიგი `syncDelayMs`-ის ტემპით
        (ნაგულისხმევად 200 მწ — წუთში ~300) აგზავნის, და 120/წთ ჭერი ჩვეულებრივ
        დამატებას შუაზე გაწყვეტდა (`api`-ის 600/წთ-ის გაკვეთილი). */
@@ -482,11 +482,11 @@ Route::middleware('auth:sanctum')->group(function () {
         ->where('token', '[A-Za-z0-9]{20,100}');
 
     Route::get('/export', [ExportController::class, 'index']);
-    // Tasks §59.5 — „ჩემი სრული ექსპორტი": ყველა მოდული ერთ ZIP-ში (JSON + ფაილები)
+    // „ჩემი სრული ექსპორტი": ყველა მოდული ერთ ZIP-ში (JSON + ფაილები)
     Route::post('/export/archive', [ExportController::class, 'archive']);
     Route::get('/export/{module}', [ExportController::class, 'show']);
 
-    /* ---------- სტატისტიკა (FEAT-08) ----------
+    /* ---------- სტატისტიკა ----------
        ⚠️ **დეშბორდს არ ცვლის**: ის „რა მაქვს"-ს პასუხობს, ეს — „რა გავაკეთე".
        ⚠️ ერთი რექვესთი ყველა ჩართულ მოდულზე; ჩაურთველი სიიდან თვითონ ცვივა. */
     /* ⚠️ `/stats/summary` **`/stats`-ის ზემოთ არ უნდა იყოს საჭირო**, რადგან
@@ -495,12 +495,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/stats', [StatsController::class, 'index']);
     Route::get('/stats/summary', [StatsController::class, 'summary']);
 
-    /* ---------- „მალე" (FEAT-10) ----------
+    /* ---------- „მალე" ----------
        მომდევნო 30 დღის მოვლენები ყველა ჩართულ მოდულზე: შემდეგი ეპიზოდი,
        თამაშის გამოსვლა, ჩანიშვნის ვადა. ⚠️ წიგნსა და ბორდგეიმს მხოლოდ
        `year` აქვთ, ე.ი. კონკრეტულ დღეს ვერ დადგებიან. */
 
-    /* ---------- ურნა (FEAT-11 → Tasks §29) ----------
+    /* ---------- ურნა ----------
        ⚠️ **`module:`/`permission:` middleware განზრახ არ ადევს**: პარამეტრს
        `domain` ჰქვია და არა `type`, ე.ი. `@type` ყოველთვის `movie`-ს
        შეამოწმებდა. ორივე შემოწმება (წვდომა + `delete` უფლება) `TrashBin`-შია.
@@ -508,16 +508,16 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ **`DELETE /trash` `/trash/{domain}/{id}`-ზე მაღლა დგას** — თორემ
        დაცლის მისამართს როუტერი ვერ გაარჩევდა ერთი ჩანაწერის წაშლისგან. */
     Route::get('/trash', [TrashController::class, 'index']);
-    // Tasks §29.6 — ვადის შეცვლის გადახედვა („მომდევნო ღამით წაიშლება N")
+    // ვადის შეცვლის გადახედვა („მომდევნო ღამით წაიშლება N")
     Route::get('/trash/retention', [TrashController::class, 'retention']);
-    // Tasks §46 — ჯგუფის გვერდები (ჯამური სია მხოლოდ პირველს აბრუნებს)
+    // ჯგუფის გვერდები (ჯამური სია მხოლოდ პირველს აბრუნებს)
     Route::get('/trash/{kind}/items', [TrashController::class, 'items']);
     Route::delete('/trash', [TrashController::class, 'empty']);
     Route::post('/trash/{domain}/{id}/restore', [TrashController::class, 'restore'])->whereNumber('id');
     Route::get('/trash/{domain}/{id}/file', [TrashController::class, 'file'])->whereNumber('id');
     Route::delete('/trash/{domain}/{id}', [TrashController::class, 'destroy'])->whereNumber('id');
 
-    /* ---------- იმპორტი — მხოლოდ Mediary-ის საკუთარი ექსპორტიდან (Tasks §59.6) ----------
+    /* ---------- იმპორტი — მხოლოდ Mediary-ის საკუთარი ექსპორტიდან ----------
        ⚠️ **ჯგუფის middleware არ ადევს**: მოდული ფაილის შიგთავსიდან ირკვევა და
        არა მისამართიდან — წვდომა და უფლება იმპორტერშია (`MediaryTargets`).
        ⚠️ ჩანაცვლება აქ არ არის — მხოლოდ სუპერადმინს (`/admin/database/import`). */
@@ -557,7 +557,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/series/{series}/resync', [SeriesSyncController::class, 'resync']);
     });
 
-    /* ---------- ანიმეები (module: anime, Tasks §7.1) ----------
+    /* ---------- ანიმეები (module: anime) ----------
        ⚠️ **სერიალის ზუსტი სარკე**: მესამე მედია-დომენს „ზუსტად იგივე
        ფუნქციონალი" აქვს, რაც ფილმებსა და სერიალებს. გაზიარებული endpoint-ები
        (`/lookup`, `/discover`, `/media/sync/{type}/{id}`, `/gallery/{type}/{id}`,
@@ -580,7 +580,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /* ---------- ვიდეოები (module: video) ---------- */
     Route::middleware(['module:video', 'permission:video'])->group(function () {
-        /* ვიდეოს ტიპები — მართვადი ლექსიკონი (Tasks 5.1).
+        /* ვიდეოს ტიპები — მართვადი ლექსიკონი.
            `/reorder` ცალკე POST-ია, ე.ი. `store`-ს არ ეჯახება. */
         Route::get('/video-types', [VideoTypeController::class, 'index']);
         Route::post('/video-types', [VideoTypeController::class, 'store']);
@@ -589,39 +589,39 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/video-types/{videoType}', [VideoTypeController::class, 'destroy']);
 
         Route::get('/videos', [VideoController::class, 'index']);
-        /* ბმულის მეტამონაცემი ფორმის შესავსებად (K2) — ჩანაწერს არ ქმნის.
-           ⚠️ უფლება **`view`**-ია (`VIEW_ENDPOINTS`, Tasks GAP-04) და არა
+        /* ბმულის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის.
+           ⚠️ უფლება **`view`**-ია (`VIEW_ENDPOINTS`) და არა
            POST-იდან გამოყვანილი `create`: probe რედაქტირებიდანაც იძახება
            (URL-ის შეცვლაზე), ე.ი. update-only როლი ცრუ 403-ს იღებდა. */
         Route::post('/videos/metadata', [VideoController::class, 'metadata']);
-        /* §7.1 — „ჩამოწერა შესაძლებელია?" (yt-dlp არის თუ არა ამ მანქანაზე).
+        /* „ჩამოწერა შესაძლებელია?" (yt-dlp არის თუ არა ამ მანქანაზე).
            ⚠️ `{video}`-ზე **ზემოთ** უნდა იდგეს, თორემ „download-status" id-ად
            წაიკითხება — იგივე წესი, რაც `videos/bulk`-ს და `gallery/groups`-ს. */
         Route::get('/videos/download-status', [VideoDownloadController::class, 'status']);
         Route::post('/videos', [VideoController::class, 'store']);
-        // მასობრივი ოპერაცია (Tasks 4 / 19.9): ტიპი · ტეგის დამატება/მოხსნა.
+        // მასობრივი ოპერაცია: ტიპი · ტეგის დამატება/მოხსნა.
         // `{video}`-ზე ზემოთ უნდა იყოს, თორემ „bulk" id-ად წაიკითხება.
         Route::post('/videos/bulk', [VideoBulkController::class, 'update']);
-        /* §9.2 — „რამდენს შეეხება". ⚠️ **`GET` და არა `POST`**: `preview`
+        /* „რამდენს შეეხება". ⚠️ **`GET` და არა `POST`**: `preview`
            `UPDATE_ENDPOINTS`-ში არ არის, ე.ი. POST-ს შუამავალი `create`-ად
            წაიკითხავდა და view+update როლი უსაფუძვლო 403-ს მიიღებდა. */
         Route::get('/videos/bulk-preview', [VideoBulkController::class, 'preview']);
-        /* §6.4 — ვიდეოს სტატუსი. **ახალი ველი**: ამ მოდულს სტატუსი აქამდე
+        /* ვიდეოს სტატუსი. **ახალი ველი**: ამ მოდულს სტატუსი აქამდე
            არ ჰქონდა. ⚠️ `{video}`-ზე ზემოთ, თორემ „bulk-status" id-ად წაიკითხება. */
         Route::post('/videos/bulk-status', [VideoStatusController::class, 'bulkUpdate']);
         Route::get('/videos/{video}', [VideoController::class, 'show']);
         Route::match(['put', 'patch'], '/videos/{video}', [VideoController::class, 'update']);
         Route::delete('/videos/{video}', [VideoController::class, 'destroy']);
-        // „მსგავსი ვიდეოები" — ჩემი ბიბლიოთეკიდან (K4)
+        // „მსგავსი ვიდეოები" — ჩემი ბიბლიოთეკიდან
         Route::get('/videos/{video}/similar', [VideoController::class, 'similar']);
         Route::patch('/videos/{video}/favorite', [VideoController::class, 'toggleFavorite']);
         Route::post('/videos/{video}/watched', [VideoController::class, 'markWatched']);
         Route::patch('/videos/{video}/status', [VideoStatusController::class, 'update']);
 
-        /* §7.1 — ლოკალური ასლი: ერთი მისამართი, სამი ზმნა (დაწყება · მიწოდება ·
+        /* ლოკალური ასლი: ერთი მისამართი, სამი ზმნა (დაწყება · მიწოდება ·
            წაშლა). ⚠️ ფაილი **პრივატულ დისკზეა**, ე.ი. `/storage/*`-ით არ
            იხსნება — მხოლოდ ეს `GET` გამოიტანს მას, მფლობელობის შემოწმებით. */
-        /* ⚠️ **მხოლოდ დაწყებას აქვს ჭერი** (აუდიტი §A1): ერთი გაშვება წუთებია
+        /* ⚠️ **მხოლოდ დაწყებას აქვს ჭერი**: ერთი გაშვება წუთებია
            და გიგაბაიტები. `GET` (ფაილის მიწოდება) და `DELETE` იაფია და
            ჭერის ქვეშ მოხვედრა მათ გამართულ მუშაობას გატეხდა. */
         Route::post('/videos/{video}/download', [VideoDownloadController::class, 'store'])
@@ -629,7 +629,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/videos/{video}/download', [VideoDownloadController::class, 'show']);
         Route::delete('/videos/{video}/download', [VideoDownloadController::class, 'destroy']);
 
-        /* მიმაგრებული ფაილები და ჩანიშვნები (K3) — ცხრილიც და მისამართიც
+        /* მიმაგრებული ფაილები და ჩანიშვნები — ცხრილიც და მისამართიც
            **სექციისაა** (`video_files` / `video_notes`, გადაწყვეტილება 2026-09-03) */
         Route::get('/videos/{video}/files', [VideoFileController::class, 'index']);
         Route::post('/videos/{video}/files', [VideoFileController::class, 'store']);
@@ -641,7 +641,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/video-notes/{videoNote}', [VideoNoteController::class, 'destroy']);
     });
 
-    /* ---------- ბორდგეიმები (module: board_game) — Tasks §14 ----------
+    /* ---------- ბორდგეიმები (module: board_game) ----------
        წყარო BoardGameGeek-ია (XML API 2, კლავიშის გარეშე). გალერეა
        `board_game_files.kind = 'image'`-შია — იხ. `BoardGameFileController`. */
     Route::middleware(['module:board_game', 'permission:board_game'])->group(function () {
@@ -655,7 +655,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // ⚠️ `{boardGame}`-ზე ზემოთ, თორემ „lookup" id-ად წაიკითხება
         Route::post('/board-games/lookup/candidates', [BoardGameController::class, 'candidates']);
         Route::post('/board-games/lookup', [BoardGameController::class, 'lookup']);
-        // ქართული მაღაზიები (§7.2) — GET, რადგან ძებნაა: POST-ზე უფლება `create`-ად
+        // ქართული მაღაზიები — GET, რადგან ძებნაა: POST-ზე უფლება `create`-ად
         // წაიკითხებოდა და რედაქტირებისას (update) 403 დაბრუნდებოდა
         Route::get('/board-games/shops', [BoardGameController::class, 'shops']);
         Route::post('/board-games', [BoardGameController::class, 'store']);
@@ -675,9 +675,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/board-game-notes/{boardGameNote}', [BoardGameNoteController::class, 'destroy']);
     });
 
-    /* ---------- თამაშები (module: game) — Tasks §11 ----------
-       წყარო RAWG-ია (§11.4, ერთი უფასო კლავიში). ჟანრი **pivot-ია** და არა
-       სვეტი — 11.1 „ჟანრებს" მრავლობითში წერს. RAWG-ის სქრინშოტები
+    /* ---------- თამაშები (module: game) ----------
+       წყარო RAWG-ია (ერთი უფასო კლავიში). ჟანრი **pivot-ია** და არა
+       სვეტი — თამაშს რამდენიმე ჟანრი აქვს. RAWG-ის სქრინშოტები
        `gallery_images`-ში ხვდება, user-ის ატვირთული კი `game_files`-ში. */
     Route::middleware(['module:game', 'permission:game'])->group(function () {
         Route::get('/game-genres', [GameGenreController::class, 'index']);
@@ -698,7 +698,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/games/{game}/favorite', [GameController::class, 'toggleFavorite']);
         Route::patch('/games/{game}/status', [GameController::class, 'setStatus']);
 
-        /* §11.2 — walkthrough და სხვა ვიდეოები (საკუთარი ცხრილი `game_videos`) */
+        /* walkthrough და სხვა ვიდეოები (საკუთარი ცხრილი `game_videos`) */
         Route::get('/games/{game}/videos', [GameVideoController::class, 'index']);
         Route::post('/games/{game}/videos', [GameVideoController::class, 'store']);
         Route::post('/games/{game}/videos/reorder', [GameVideoController::class, 'reorder']);
@@ -716,7 +716,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/game-notes/{gameNote}', [GameNoteController::class, 'destroy']);
     });
 
-    /* ---------- ჩანაწერები (module: note) — Tasks §13 ----------
+    /* ---------- ჩანაწერები (module: note) ----------
        გარე წყარო არ არსებობს: ეს user-ის საკუთარი ინფორმაციაა. ცხრილები
        `note_entries`/`note_entry_files`/`note_reminders`-ია — უნივერსალური
        `notes` 2026-09-03-ის წესით აღარ არსებობს. */
@@ -731,7 +731,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /* ⚠️ `{noteReminder}`-ის მარშრუტი არ არსებობს GET-ზე, ე.ი. „due"
            კონფლიქტს არ ქმნის; მაინც ზემოთ წერია, რომ წესი თვალსაჩინო იყოს */
         Route::get('/note-reminders/due', [NoteReminderController::class, 'due']);
-        /* ეტაპი 11.2 — შეხსენებებს თავისი გვერდი აქვს (`/notes/reminders`),
+        /* შეხსენებებს თავისი გვერდი აქვს (`/notes/reminders`),
            ე.ი. სჭირდება „რა მელის საერთოდ" და არა მხოლოდ „ამ ჩანაწერს რა აქვს".
            ⚠️ `due`-ს **შემდეგ** წერია, თორემ „due" `{noteReminder}`-ად წაიკითხებოდა
            (იგივე წესი, რაც `/gallery/{type}/{id}`-ს აქვს). */
@@ -739,7 +739,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::match(['put', 'patch'], '/note-reminders/{noteReminder}', [NoteReminderController::class, 'update']);
         Route::delete('/note-reminders/{noteReminder}', [NoteReminderController::class, 'destroy']);
         // „ვნახე" — PATCH განზრახ: POST-ს `permission:` middleware `create`-ად წაიკითხავდა
-        /* §8.2 — შეხსენებების **ჟურნალი**. ელფოსტის არხი ამოღებულია, ე.ი.
+        /* შეხსენებების **ჟურნალი**. ელფოსტის არხი ამოღებულია, ე.ი.
            „აპი დახურული მქონდა" აღარ ნიშნავს დაკარგულ შეხსენებას: ყოველი
            გასროლა აქ წერია. ⚠️ `due` ამის ნაცვლად რიგს აბრუნებს (რაც უნდა
            ამოხტეს), აქ კი ისტორიაა. */
@@ -757,17 +757,17 @@ Route::middleware('auth:sanctum')->group(function () {
         /* ატვირთვები (სქრინშოტი/ვიდეო/დოკუმენტი) — კვოტაზე გადის */
         Route::get('/notes/{note}/files', [NoteEntryFileController::class, 'index']);
         Route::post('/notes/{note}/files', [NoteEntryFileController::class, 'store']);
-        /* ⚠️ §17.5 — ფაილი **პრივატულ დისკზეა** და მხოლოდ აქედან გაიცემა:
+        /* ⚠️ ფაილი **პრივატულ დისკზეა** და მხოლოდ აქედან გაიცემა:
            `/storage/*` მას აღარ ხედავს, ე.ი. URL-ის გამოცნობა არაფერს იძლევა */
         Route::get('/note-files/{noteEntryFile}', [NoteEntryFileController::class, 'show']);
         Route::delete('/note-files/{noteEntryFile}', [NoteEntryFileController::class, 'destroy']);
 
-        /* შეხსენებები (§13.2) */
+        /* შეხსენებები */
         Route::get('/notes/{note}/reminders', [NoteReminderController::class, 'index']);
         Route::post('/notes/{note}/reminders', [NoteReminderController::class, 'store']);
     });
 
-    /* ---------- წიგნები (module: book) — Tasks §12 ----------
+    /* ---------- წიგნები (module: book) ----------
        გამამდიდრებელი წყარო Open Library-ია: გასაღებს არ ითხოვს — არც `.env`-ში,
        არც „მონაცემებში". ნაკადი TMDB-ის იდენტურია — ჯერ კანდიდატები, მერე დრაფტი. */
     Route::middleware(['module:book', 'permission:book'])->group(function () {
@@ -814,7 +814,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/songs', [SongController::class, 'index']);
         // ბმულის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის.
-        // ⚠️ უფლება `view`-ია (`VIEW_ENDPOINTS`, Tasks GAP-04) — იხ. `/videos/metadata`.
+        // ⚠️ უფლება `view`-ია (`VIEW_ENDPOINTS`) — იხ. `/videos/metadata`.
         Route::post('/songs/metadata', [SongController::class, 'metadata']);
         Route::post('/songs', [SongController::class, 'store']);
         Route::get('/songs/{song}', [SongController::class, 'show']);
@@ -836,7 +836,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/songs/{song}/playlists', [PlaylistController::class, 'setForSong']);
     });
 
-    /* ---------- ბუკმარკები (module: bookmark) — Tasks §18 ----------
+    /* ---------- ბუკმარკები (module: bookmark) ----------
        გამამდიდრებელი წყარო არ არსებობს: ერთადერთი probe `POST /bookmarks/metadata`-ა,
        რომელიც თვითონ გვერდის `<head>`-ს კითხულობს (`LinkMetadata`). */
     Route::middleware(['module:bookmark', 'permission:bookmark'])->group(function () {
@@ -849,7 +849,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/bookmarks', [BookmarkController::class, 'index']);
         // ⚠️ `{bookmark}`-ზე ზემოთ, თორემ „metadata" id-ად წაიკითხება.
-        // ⚠️ უფლება `view`-ია (`VIEW_ENDPOINTS`, Tasks GAP-04) — იხ. `/videos/metadata`.
+        // ⚠️ უფლება `view`-ია (`VIEW_ENDPOINTS`) — იხ. `/videos/metadata`.
         Route::post('/bookmarks/metadata', [BookmarkController::class, 'metadata']);
         Route::post('/bookmarks', [BookmarkController::class, 'store']);
         Route::get('/bookmarks/{bookmark}', [BookmarkController::class, 'show']);
@@ -861,13 +861,13 @@ Route::middleware('auth:sanctum')->group(function () {
         // თორემ POST-იდან `create` გამოვიდოდა და view+update უფლება 403-ს მიიღებდა
         Route::post('/bookmarks/{bookmark}/visited', [BookmarkController::class, 'markVisited']);
 
-        /* Tasks §36.4 — ჩემი ფოტოები („შოპინგის" სკრინშოტი); ვებიდან მოტანილი გალერეაშია */
+        /* ჩემი ფოტოები („შოპინგის" სკრინშოტი); ვებიდან მოტანილი გალერეაშია */
         Route::get('/bookmarks/{bookmark}/files', [BookmarkFileController::class, 'index']);
         Route::post('/bookmarks/{bookmark}/files', [BookmarkFileController::class, 'store']);
         Route::delete('/bookmark-files/{bookmarkFile}', [BookmarkFileController::class, 'destroy']);
     });
 
-    /* ---------- კურსები (module: course, FEAT-25) ----------
+    /* ---------- კურსები (module: course) ----------
        ბუკმარკის ზუსტი რეცეპტი: გარე გამამდიდრებელი წყარო არ არსებობს,
        ერთადერთი დახმარება გვერდის probe-ია. */
     Route::middleware(['module:course', 'permission:course'])->group(function () {
@@ -888,24 +888,24 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/courses/{course}', [CourseController::class, 'destroy']);
         Route::patch('/courses/{course}/favorite', [CourseController::class, 'toggleFavorite']);
         Route::patch('/courses/{course}/status', [CourseController::class, 'setStatus']);
-        // Tasks §55.3 — YouTube-ის ფლეილისტის ვიდეოები (ჩვენება; `?refresh=1` — ქეშის გარეშე)
+        // YouTube-ის ფლეილისტის ვიდეოები (ჩვენება; `?refresh=1` — ქეშის გარეშე)
         Route::get('/courses/{course}/playlist', [CourseController::class, 'playlist']);
 
-        /* ფაილები — ეკრანის ასლი, კონსპექტი (სერტიფიკატი §55.5-მა მოხსნა) */
+        /* ფაილები — ეკრანის ასლი, კონსპექტი (სერტიფიკატი მოიხსნა) */
         Route::get('/courses/{course}/files', [CourseFileController::class, 'index']);
         Route::post('/courses/{course}/files', [CourseFileController::class, 'store']);
         Route::delete('/course-files/{courseFile}', [CourseFileController::class, 'destroy']);
     });
 
-    /* ---------- ადგილები (module: place, FEAT-26) ----------
-       წყარო OSM Nominatim-ია: უფასო და გასაღების გარეშე, ე.ი. §12-ის
+    /* ---------- ადგილები (module: place) ----------
+       წყარო OSM Nominatim-ია: უფასო და გასაღების გარეშე, ე.ი. წიგნის
        `candidates → lookup` ნაკადი აქ ნამდვილად მუშაობს.
 
        ⚠️ **`lookup`/`candidates` `create`-ის უფლებას ითხოვს** — ზუსტად
        ისევე, როგორც წიგნის, თამაშისა და სამაგიდო თამაშის ანალოგიური
        endpoint-ები (`EnsureModulePermission` POST-იდან `create`-ს გამოიყვანს).
        `VIEW_ENDPOINTS`-ში მათი გადატანა სამ არსებულ მოდულს ჩუმად
-       შეუცვლიდა უფლებას, ე.ი. ცალკე გადაწყვეტილებაა და არა ამ ტასქის. */
+       შეუცვლიდა უფლებას, ე.ი. ეს ცალკე გადაწყვეტილებაა. */
     Route::middleware(['module:place', 'permission:place'])->group(function () {
         /* კატეგორიები — per-user ლექსიკონი */
         Route::get('/place-categories', [PlaceCategoryController::class, 'index']);
@@ -918,7 +918,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // ⚠️ `{place}`-ზე ზემოთ, თორემ „countries" id-ად წაიკითხება
         Route::get('/places/countries', [PlaceController::class, 'countries']);
         Route::post('/places/lookup/candidates', [PlaceController::class, 'candidates']);
-        // Tasks §57.3/§57.4 — Google Maps-ის ბმული და უკუ-გეოკოდირება (`candidates`-ის წესი — `create`)
+        // Google Maps-ის ბმული და უკუ-გეოკოდირება (`candidates`-ის წესი — `create`)
         Route::post('/places/lookup/link', [PlaceController::class, 'link']);
         Route::post('/places/lookup/reverse', [PlaceController::class, 'reverse']);
         Route::post('/places/lookup', [PlaceController::class, 'lookup']);
@@ -934,7 +934,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/places/{place}/files', [PlaceFileController::class, 'store']);
         Route::delete('/place-files/{placeFile}', [PlaceFileController::class, 'destroy']);
 
-        /* Tasks §30 — რუკა და მარშრუტები. `route` (მხოლობითი) **გამოთვლაა** ჩემი
+        /* რუკა და მარშრუტები. `route` (მხოლობითი) **გამოთვლაა** ჩემი
            მიმდინარე მდებარეობიდან და ჩანაწერს არ ქმნის (`candidates`-ის იგივე წესი —
            POST-იდან `create` უფლება); `routes` — შენახული, ურნიანი ქვეჩანაწერები. */
         Route::post('/places/{place}/route', [PlaceRouteController::class, 'compute']);
@@ -944,7 +944,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/place-routes/{placeRoute}', [PlaceRouteController::class, 'destroy']);
     });
 
-    /* ---------- პირადი გალერეა (module: personal, Tasks §33) ----------
+    /* ---------- პირადი გალერეა (module: personal) ----------
        ადამიანები · ალბომები · ფოტო და ვიდეო მოწყობილობიდან — **პირად დისკზე**.
 
        ⚠️ სიტყვიერი სეგმენტები (`summary`, `groups`, `reorder`, `move`) `{id}`-ზე
@@ -953,7 +953,7 @@ Route::middleware('auth:sanctum')->group(function () {
        მონიშნულების წაშლა `DELETE /personal/media`-ა (`delete` უფლება) და არა
        `POST …/bulk-delete` — ის `create`-ად წაიკითხებოდა.
        ⚠️ ფაილი (`file`) და ესკიზი (`thumb`) მხოლოდ აქედან გადის — სხვისი 404.
-       ⚠️ §33.7 — ჩაკეტვა: `PUT …/lock` (დადება/შეცვლა/მოხსნა), `POST …/unlock`
+       ⚠️ ჩაკეტვა: `PUT …/lock` (დადება/შეცვლა/მოხსნა), `POST …/unlock`
        (`throttle:record-unlock` — ოთხნიშნა პაროლს სკრიპტი წუთებში გატეხდა) და
        `POST …/lock` (ისევ ჩაკეტვა). სამივე `update`-ია: `PUT` თავისით, `unlock`/
        `lock` კი `UPDATE_ENDPOINTS`-შია. */
@@ -997,7 +997,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/personal/media/{personalMedia}/thumb', [PersonalMediaController::class, 'thumb'])->whereNumber('personalMedia');
     });
 
-    /* ---------- მორიგეობა (module: duty, Tasks §34) ----------
+    /* ---------- მორიგეობა (module: duty) ----------
        სამსახურები (ტარიფებით) · ტიპები (კლასიფიკატორი, `/dictionaries`) ·
        მორიგეობები · პერიოდი, პარამეტრები და ჯამები.
 
@@ -1012,7 +1012,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/duty/settings', [DutyController::class, 'updateSettings']);
         Route::get('/duty/summary', [DutyController::class, 'summary']);
         Route::get('/duty/summary/periods', [DutyController::class, 'periods']);
-        // §34.7 — ღია აპის polling: შეხსენების გაშვება + ხვალინდელები (cron-ის გარეშეც)
+        // ღია აპის polling: შეხსენების გაშვება + ხვალინდელები (cron-ის გარეშეც)
         Route::get('/duty/reminders/due', [DutyController::class, 'due']);
 
         Route::get('/duty/workplaces', [DutyWorkplaceController::class, 'index']);
@@ -1038,7 +1038,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/duty/shifts/{dutyShift}', [DutyShiftController::class, 'destroy'])->whereNumber('dutyShift');
     });
 
-    /* ---------- ინტერფეისიდან შექმნილი მოდულები (Tasks §37) ----------
+    /* ---------- ინტერფეისიდან შექმნილი მოდულები ----------
        **ერთი ჯგუფი ყველა პირად მოდულზე** — `{type}` მოდულის გასაღებია
        (`c{owner}-{slug}`), ე.ი. `module:@type`/`permission:@type` ჩვეულებრივად
        მუშაობს: სხვისი მოდული 404-ია (`EnsureModuleEnabled`), უფლება კი
@@ -1060,7 +1060,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [CustomRecordController::class, 'index']);
             // ⚠️ უფლება `view`-ია (`VIEW_ENDPOINTS`) — ეს ბმულის probe-ია და არა შექმნა
             Route::post('/metadata', [CustomRecordController::class, 'metadata']);
-            // §37.5 — უფლება `update`-ია (`bulk-status` `UPDATE_ENDPOINTS`-შია)
+            // უფლება `update`-ია (`bulk-status` `UPDATE_ENDPOINTS`-შია)
             Route::post('/bulk-status', [CustomRecordController::class, 'bulkStatus']);
             Route::post('/', [CustomRecordController::class, 'store']);
             Route::get('/{record}', [CustomRecordController::class, 'show'])->whereNumber('record');
@@ -1069,7 +1069,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::patch('/{record}/favorite', [CustomRecordController::class, 'toggleFavorite'])->whereNumber('record');
             Route::patch('/{record}/status', [CustomRecordController::class, 'setStatus'])->whereNumber('record');
 
-            /* §37.5 — ჩანაწერის საკუთარი ფაილები და ჩანიშვნები. ⚠️ `files/{file}` და
+            /* ჩანაწერის საკუთარი ფაილები და ჩანიშვნები. ⚠️ `files/{file}` და
                `notes/{note}` `whereNumber`-ით — „files"/„notes" `{record}`-ად არ
                წაიკითხება (ის ისედაც რიცხვითია). */
             Route::get('/{record}/files', [CustomRecordFileController::class, 'index'])->whereNumber('record');
@@ -1081,40 +1081,40 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/notes/{note}', [CustomRecordNoteController::class, 'destroy'])->whereNumber('note');
         });
 
-    /* ---------- გალერეა (module: gallery, Tasks 10) ----------
+    /* ---------- გალერეა (module: gallery) ----------
        ფოტოები ფილმებსა და სერიალებს ჰკიდია, ამიტომ კონტროლერი დამატებით
        `hasModule($type)`-საც ამოწმებს — გალერეა ჩართული, ფილმები კი არა,
        სავსებით შესაძლებელი მდგომარეობაა. */
     Route::middleware(['module:gallery', 'permission:gallery'])->group(function () {
-        /* §8.3 — მოდულის ფესვი **შეჯამებაა** და აღარ არის „ჩანაწერების სია
+        /* მოდულის ფესვი **შეჯამებაა** და აღარ არის „ჩანაწერების სია
            ჩამოსატვირთად": ხაზით გაყოფილი „მასობრივი ჩამოტვირთვის" ბლოკი
            მოიხსნა (user-ის მითითება), ე.ი. იმ სიას გამომძახებელი აღარ ჰყავს. */
         Route::get('/gallery', [GalleryController::class, 'summary']);
-        // Tasks §3.2/§3.3 — გალერეა ნამდვილი გვერდია: ჯგუფები და ფოტოები.
+        // გალერეა ნამდვილი გვერდია: ჯგუფები და ფოტოები.
         // ⚠️ ყველა `{type}/{id}`-ზე **ზემოთაა**, თორემ „groups"/„photos" ტიპად წაიკითხება.
         Route::get('/gallery/groups', [GalleryController::class, 'groups']);
         Route::get('/gallery/photos', [GalleryController::class, 'photos']);
-        // §8.3 — სხვა მოდულების საკუთარი ფოტოები (ყდები, თამბნეილები, ატვირთულები)
+        // სხვა მოდულების საკუთარი ფოტოები (ყდები, თამბნეილები, ატვირთულები)
         Route::get('/gallery/module-photos', [GalleryController::class, 'modulePhotos']);
-        /* §8.2 — **გეგმა მხოლოდ ითვლის** („რამდენ ფოტოს ჩამოტვირთავს ეს
+        /* **გეგმა მხოლოდ ითვლის** („რამდენ ფოტოს ჩამოტვირთავს ეს
            მასშტაბი") და არაფერს ინახავს, ზუსტად როგორც `GET /videos/bulk-preview`.
-           ⚠️ უფლება **`view`**-ია (`VIEW_ENDPOINTS`, Tasks GAP-04): POST-იდან
+           ⚠️ უფლება **`view`**-ია (`VIEW_ENDPOINTS`): POST-იდან
            გამოყვანილი `create` view-only როლს გეგმას საერთოდ ართმევდა, ხოლო
            update-only როლს — იმის თვლას, რისი ჩამოტვირთვის უფლებაც ჰქონდა. */
         Route::post('/gallery/plan', [GalleryController::class, 'plan']);
 
-        /* §8.1 — ვიდეო-ბმულები იმავე მშობლებზე. ⚠️ `{type}/{id}`-ზე **ზემოთ**
+        /* ვიდეო-ბმულები იმავე მშობლებზე. ⚠️ `{type}/{id}`-ზე **ზემოთ**
            უნდა იდგეს, თორემ „videos" ტიპად წაიკითხება (იგივე წესი, რაც
            „groups"/„photos"-ს აქვს). */
         Route::get('/gallery/videos', [GalleryVideoController::class, 'index']);
         Route::post('/gallery/videos', [GalleryVideoController::class, 'store']);
         Route::delete('/gallery/videos/{galleryVideo}', [GalleryVideoController::class, 'destroy']);
-        /* **ალბომები და ფოტოს გადატანა (Tasks §26).**
+        /* **ალბომები და ფოტოს გადატანა.**
            ⚠️ `albums`/`images/move` `{type}/{id}`-ზე **ზემოთ** — იგივე წესი,
            რაც „groups"/„photos"/„videos"-ს აქვს.
            ⚠️ გადატანა `POST`-ია, ე.ი. `EnsureModulePermission` მას ნაგულისხმევად
            `create`-ად კითხულობს — და 2026-09-17-მდე **ზუსტად ასე კითხულობდა**
-           (Tasks SEC-07: ძველი კომენტარი „უფლება ცხადად `gallery`-ზეა"-ს
+           (ძველი კომენტარი „უფლება ცხადად `gallery`-ზეა"-ს
            ამტკიცებდა, რაც მოქმედებას არ ეხებოდა). ⚠️ ბოლო სეგმენტი სიტყვაა
            (`move`), და ის `UPDATE_ENDPOINTS`-შია → `update`. */
         Route::get('/gallery/albums', [GalleryAlbumController::class, 'index']);
@@ -1139,10 +1139,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // `images/...` `{type}/{id}`-ზე ზემოთ უნდა იყოს, თორემ „images" ტიპად წაიკითხება
         Route::post('/gallery/images/move', [GalleryController::class, 'moveImages']);
-        /* Tasks §35.4–35.5 — ფოტოს ჩაკეტვა: სისტემურ ჩაკეტილ ალბომში გადატანა (პირველად —
+        /* ფოტოს ჩაკეტვა: სისტემურ ჩაკეტილ ალბომში გადატანა (პირველად —
            პაროლით). ⚠️ ბოლო სეგმენტი `lock` `UPDATE_ENDPOINTS`-შია — POST `create` არ არის. */
         Route::post('/gallery/images/lock', [GalleryController::class, 'lockImages']);
-        /* §7.9 — ჩაკეტილი ალბომის ფოტო **პირად დისკზეა**, ე.ი. `/storage/*`
+        /* ჩაკეტილი ალბომის ფოტო **პირად დისკზეა**, ე.ი. `/storage/*`
            მას ვერ კითხულობს; ერთადერთი კარი ეს მარშრუტია და ის ლოკსაც
            ამოწმებს (404, არასდროს 403). */
         Route::get('/gallery/images/{galleryImage}/file', [GalleryController::class, 'imageFile']);
@@ -1159,7 +1159,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /* ---------- გაზიარებული: დომენი `type` პარამეტრიდან (`module:@type`) ----------
 
-       ⚠️ **სამივე ჯგუფს უფლება ცხადად უწერია** (აუდიტი 2026-09-14, §A4).
+       ⚠️ **სამივე ჯგუფს უფლება ცხადად უწერია**.
        აქამდე ოთხივე მარშრუტი ერთ `permission:@type`-ში იდგა მოქმედების
        გარეშე, ე.ი. `EnsureModulePermission::actionFor()` მას HTTP მეთოდიდან
        იყვანდა — POST-ზე **`create`**. `/media/sync/{type}/{id}`-ის ბოლო
@@ -1181,12 +1181,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/media/sync/{type}/{id}', [MediaSyncController::class, 'item'])
         ->middleware(['module:@type', 'permission:@type,update'])
         ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
-    // Tasks §31.3 — „აღარ განაახლო" გადამრთველი; `PATCH` → `update`
+    // „აღარ განაახლო" გადამრთველი; `PATCH` → `update`
     Route::patch('/media/sync/{type}/{id}/pause', [MediaSyncController::class, 'pause'])
         ->middleware(['module:@type', 'permission:@type,update'])
         ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
 
-    /* ---------- სეზონები და ეპიზოდები (FEAT-09) ----------
+    /* ---------- სეზონები და ეპიზოდები ----------
        ⚠️ **მხოლოდ TV-დომენები** (`MediaDomain::TV_TYPES`): ფილმს სეზონი
        არ აქვს და TMDB-საც `/tv/*`-ზე არაფერი აქვს მასზე.
        ⚠️ **ჩამოტანა `POST`-ია და მონიშვნა `PATCH`.** პირველი მართლა
@@ -1203,8 +1203,8 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware(['module:@type', 'permission:@type,update'])
         ->whereIn('type', MediaDomain::TV_TYPES)->whereNumber('id');
 
-    /* ---------- ხელახლა ნახვის ჟურნალი (FEAT-14) ----------
-       ⚠️ **უფლება ცხადად წერია** (audit §A4-ის წესი): ბოლო სეგმენტი
+    /* ---------- ხელახლა ნახვის ჟურნალი ----------
+       ⚠️ **უფლება ცხადად წერია**: ბოლო სეგმენტი
        ჩანაწერის **id**-ია და არაფერს ამბობს იმაზე, რა ხდება — ე.ი.
        `EnsureModulePermission` POST-ს `create`-ად წაიკითხავდა, მაშინ
        როცა ნახვის ჩაწერა **არსებულ ჩანაწერს** ეხება.
@@ -1219,7 +1219,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/media-watches/{mediaWatch}', [MediaWatchController::class, 'destroy'])
         ->whereNumber('mediaWatch');
 
-    /* ---------- ჩანაწერის მსახიობები ხელით (ეტაპი 1) ----------
+    /* ---------- ჩანაწერის მსახიობები ხელით ----------
        ⚠️ **უფლება სამივეწე `update`-ია და არა მეთოდიდან გამოყვანილი.**
        `EnsureModulePermission` POST-იდან `create`-ს და DELETE-იდან `delete`-ს
        გამოიყვანდა, მაშინ როცა მსახიობის მიბმა/მოხსნა **ჩანაწერის
@@ -1232,7 +1232,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware(['module:@type', 'permission:@type,update'])->group(function () {
         Route::post('/media/cast/{type}/{id}', [RecordCastController::class, 'store'])
             ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
-        /* Tasks §16 — მთელი დალაგებული სია ერთად. ⚠️ **`{castMember}`-ზე ზემოთ
+        /* მთელი დალაგებული სია ერთად. ⚠️ **`{castMember}`-ზე ზემოთ
            და `whereNumber`-ით**: `PUT` ქვემოთა `match(['put', 'patch'])`-საც
            ემთხვევა, ე.ი. სხვაგვარად „order" მსახიობის id-ად წაიკითხებოდა
            (`/cast/search`-ის იგივე წესი). */
@@ -1243,7 +1243,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/media/cast/{type}/{id}/{castMember}', [RecordCastController::class, 'destroy'])
             ->whereIn('type', MediaDomain::TYPES)->whereNumber('id')->whereNumber('castMember');
 
-        /* Tasks §35.4–35.5 — ფილმის/სერიალის/ანიმეს ჩაკეტვა: დადება/შეცვლა/მოხსნა
+        /* ფილმის/სერიალის/ანიმეს ჩაკეტვა: დადება/შეცვლა/მოხსნა
            (`PUT …/lock`), გახსნა ამ სესიაში (`POST …/unlock`) და ისევ ჩაკეტვა
            (`POST …/lock`). სამივე `update`-ია (`unlock`/`lock` `UPDATE_ENDPOINTS`-შია);
            ⚠️ `throttle:record-unlock` — ოთხნიშნა პაროლს სკრიპტი წუთებში გატეხდა. */
@@ -1259,7 +1259,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // sync-ის გეგმა ორივე დომენს ერთდროულად ეხება — ფილტრი თავად ითვალისწინებს
     Route::post('/media/sync/plan', [MediaSyncController::class, 'plan']);
 
-    /* ---------- თარგმანები (Tasks 7) ----------
+    /* ---------- თარგმანები ----------
        გეგმა და ჰედერის მრიცხველი ორივე დომენს ერთდროულად ეხება, ჟანრები კი
        გლობალური ლექსიკონია — ამიტომ სამივე `module:` ჯგუფის გარეთ დგას და
        ჩართული მოდულების ფილტრს კონტროლერი თვითონ აკეთებს. */
@@ -1272,7 +1272,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ერთი ჩანაწერის თარგმნა — ჯგუფის გარეთ, რადგან POST-ია, მაგრამ **არსებულს ცვლის**:
     // მოქმედება ცხადად `update`-ია (მისამართის ბოლო სეგმენტი id-ია, ე.ი.
     // `UPDATE_ENDPOINTS`-ის ავტომატური ცნობა აქ არ მუშაობს და `create` გამოვიდოდა).
-    /* ⚠️ **`throttle:translate` ორივეზე** (აუდიტი §A1): Gemini-ის უფასო დონე
+    /* ⚠️ **`throttle:translate` ორივეზე**: Gemini-ის უფასო დონე
        ~15 მოთხოვნას უშვებს წუთში და ეს ლიმიტი **მთელი ინსტალაციისაა**.
        ნამდვილ მრიცხველს `TranslationUsage` იცავს; ეს ჭერი იმას აკეთებს,
        რომ ერთმა გაქცეულმა ციკლმა დღიური კვოტა წუთებში არ შეჭამოს. */
@@ -1282,7 +1282,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/translations/genres', [TranslationController::class, 'genres'])
         ->middleware('throttle:translate');
 
-    /* ---------- დამთხვევები (Tasks 16.2) ----------
+    /* ---------- დამთხვევები ----------
        ⚠️ საჯარო პროფილისგან განსხვავებით **ავტორიზებულია**: შედარებას მეორე
        მხარე სჭირდება და ის მიმდინარე user-ია. ორივე პროფილი საჯარო უნდა იყოს
        (არასაჯარო ჩემი მხარე → 409 `profile_not_public`). */
@@ -1294,30 +1294,30 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/matches/{username}/{domain}', [MatchController::class, 'items'])
         ->whereIn('domain', PublicDomain::matchable());
 
-    /* ---------- ჩატი (Tasks §16.3) ----------
+    /* ---------- ჩატი ----------
        ⚠️ `module:` middleware განზრახ არ ეწერება — ჩატი მოდული არაა და
        ბიბლიოთეკის შიგთავს არ ეკითხება. წვდომას **მონაწილეობა** წჿვეტს
        (კონტროლერში, ცხადად), მიწერის უფლებას კი `ChatService`:
        ორივე პროფილი საჯარო + არავინ არავინ დაუბლოკავს. */
     Route::get('/chat', [ChatController::class, 'index']);
     Route::get('/chat/unread', [ChatController::class, 'unread']);
-    /* Tasks §34.5 — „მიწერე ადმინს“: ვის შეიძლება მიწერა ყოველთვის (სუპერადმინები).
+    /* „მიწერე ადმინს“: ვის შეიძლება მიწერა ყოველთვის (სუპერადმინები).
        ⚠️ `{conversation}`-ზე ზემოთ — „admins“ id-ად არ უნდა წაიკითხებოდეს. */
     Route::get('/chat/admins', [ChatController::class, 'admins']);
     // `{conversation}`-ზე ზემოთ, თორემ „unread"/„with" id-ად წაიკითხება
     Route::post('/chat/with/{username}', [ChatController::class, 'open']);
     Route::put('/chat/block/{username}', [ChatController::class, 'block']);
-    /* მედია (§16.3) — ფაილი **პრივატულ დისკზეა** და მხოლოდ ამ გზით გადის
+    /* მედია — ფაილი **პრივატულ დისკზეა** და მხოლოდ ამ გზით გადის
        გარეთ; მონაწილეობას კონტროლერი ამოწმებს, სხვისი ფაილი 404-ია. */
     Route::get('/chat/files/{message}', [ChatController::class, 'file']);
     Route::delete('/chat/files/{message}', [ChatController::class, 'deleteFile']);
-    /* წერილის წაშლა (§4.6) — `scope=self|both`. ⚠️ **რიგი ბაზაში რჩება**
+    /* წერილის წაშლა — `scope=self|both`. ⚠️ **რიგი ბაზაში რჩება**
        (აღდგენისთვის), ე.ი. ეს „დამალვაა" და არა `delete`. */
     Route::delete('/chat/messages/{message}', [ChatController::class, 'deleteMessage']);
-    /* §10.7/§10.10 — ⚠️ **`PATCH`/`PUT` და არა `POST`**: `EnsureModulePermission`
+    /* ⚠️ **`PATCH`/`PUT` და არა `POST`**: `EnsureModulePermission`
        POST-ს `create`-ად კითხულობს. ⚠️ ორივე `{conversation}`-ზე
        ზემოთაა, თორემ „messages" საუბრის id-ად წაიკითხება. */
-    /* FEAT-13 — „დაამატე ჩემთანაც": გაზიარებული ჩანაწერი მიმღების ბიბლიოთეკაში.
+    /* „დაამატე ჩემთანაც": გაზიარებული ჩანაწერი მიმღების ბიბლიოთეკაში.
        ⚠️ **ბოლო სეგმენტი `save`-ია და არა `create`**: ჩატის მარშრუტებზე
        `permission:` middleware არ დგას, მაგრამ უფლება კონტროლერში ცხადად
        მოწმდება — შედეგი **ჩანაწერის შექმნაა** და არა წერილის წაკითხვა. */
@@ -1328,25 +1328,25 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/chat/{conversation}', [ChatController::class, 'send']);
     // ⚠️ `PATCH` — POST-ს `permission:` middleware `create`-ად წაიკითხავდა
     Route::patch('/chat/{conversation}/read', [ChatController::class, 'read']);
-    // §10.9 — ძებნა ერთ საუბარში (დამალული წერილი არ იძებნება)
+    // ძებნა ერთ საუბარში (დამალული წერილი არ იძებნება)
     Route::get('/chat/{conversation}/search', [ChatController::class, 'search']);
-    // §10.7 — პინების სია; წაშლილი თავისით ცვივა
+    // პინების სია; წაშლილი თავისით ცვივა
     Route::get('/chat/{conversation}/pins', [ChatController::class, 'pins']);
     Route::put('/chat/{conversation}/mute', [ChatController::class, 'mute']);
     Route::put('/chat/{conversation}/theme', [ChatController::class, 'theme']);
     Route::put('/chat/{conversation}/nickname', [ChatController::class, 'nickname']);
 
-    /* ---------- ერთი ჩანაწერის ხილვადობა (Tasks 16.1) ----------
+    /* ---------- ერთი ჩანაწერის ხილვადობა ----------
        ერთი endpoint რვავე დომენზე. `module:@type`/`permission:@type` აქ
        განზრახ არ ეწერება — `playlist` მოდული არაა (ის `song`-ის შიგნითაა),
        ამიტომ ორივე შემოწმებას კონტროლერი თვითონ აკეთებს `PublicDomain`-ის
        რუკით. `PATCH`: POST-ს `permission:` middleware `create`-ად წაიკითხავდა. */
-    /* §37.4 — `pattern()` და არა `whereIn(keys())`: პირადი მოდულის დომენი
+    /* `pattern()` და არა `whereIn(keys())`: პირადი მოდულის დომენი
        მისი გასაღებია და მარშრუტის დარეგისტრირებისას ჯერ არ ვიცით. */
     Route::patch('/visibility/{domain}/{id}', [VisibilityController::class, 'update'])
         ->where('domain', PublicDomain::pattern())->whereNumber('id');
 
-    /* §6.1 — ხილვადობა **პროფილიდან** იმართება და აღარ ჩანაწერიდან, ე.ი.
+    /* ხილვადობა **პროფილიდან** იმართება და აღარ ჩანაწერიდან, ე.ი.
        სია და მასობრივი გადართვა სჭირდება. ⚠️ `PATCH /{domain}` (მასობრივი) და
        `PATCH /{domain}/{id}` (ერთი) სხვადასხვა სიგრძის გზებია, ე.ი. არ ერევა
        ერთმანეთში — მაგრამ **ორივე `PATCH`-ია** იმავე მიზეზით: `POST`-იდან
@@ -1356,7 +1356,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/visibility/{domain}', [VisibilityController::class, 'bulk'])
         ->where('domain', PublicDomain::pattern());
 
-    /* ---------- სტატუსების ლექსიკონი (Tasks §6.2/§6.4) ----------
+    /* ---------- სტატუსების ლექსიკონი ----------
        ერთი endpoint ექვსივე დომენზე — `/visibility/{domain}`-ის ნიმუში.
        ⚠️ `module:@type`/`permission:@type` აქ არ ეწერება: პარამეტრი
        `{domain}`-ია და შემოწმებას (მოდული ჩართულია + უფლება) კონტროლერი
@@ -1366,10 +1366,10 @@ Route::middleware('auth:sanctum')->group(function () {
         ->where('domain', StatusDomain::pattern());
     Route::post('/statuses/{domain}/reorder', [StatusController::class, 'reorder'])
         ->where('domain', StatusDomain::pattern());
-    // 2026-10-02 §1 — „ნაგულისხმევი სტატუსების აღდგენა": მხოლოდ ის, რაც აკლია; არაფერს შლის
+    // „ნაგულისხმევი სტატუსების აღდგენა": მხოლოდ ის, რაც აკლია; არაფერს შლის
     Route::post('/statuses/{domain}/restore-defaults', [StatusController::class, 'restoreDefaults'])
         ->where('domain', StatusDomain::pattern());
-    // ეტაპი 8 — საიდბარის განლაგება (დამალვა + „ყველა"/„რჩეული"-ს ადგილი)
+    // საიდბარის განლაგება (დამალვა + „ყველა"/„რჩეული"-ს ადგილი)
     Route::put('/statuses/{domain}/sections', [StatusController::class, 'sections'])
         ->where('domain', StatusDomain::pattern());
     Route::post('/statuses/{domain}', [StatusController::class, 'store'])
@@ -1388,44 +1388,44 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/genres/{genre}/items', [GenreItemController::class, 'index']);
     Route::post('/genres/{genre}/items', [GenreItemController::class, 'update']);
 
-    /* ეტაპი 1 — მსახიობის ძებნა (ლექსიკონი + TMDB).
+    /* მსახიობის ძებნა (ლექსიკონი + TMDB).
        ⚠️ **აუცილებლივ `/cast/{castMember}`-ზე ზემოთ**, თორემ „search"
        იდენტიფიკატორად წაიკითხება (იგივე წესი, რაც `/gallery/{type}/{id}`-ს აცვავს). */
     Route::get('/cast/search', [RecordCastController::class, 'search']);
-    /* Tasks §35.2 — მსახიობების გვერდი: ყველა ჩემი მსახიობი (ჩანაწერებიდან და
+    /* მსახიობების გვერდი: ყველა ჩემი მსახიობი (ჩანაწერებიდან და
        ფოტოებიდან) და „წაშლა ჩემი ჩანაწერებიდან". ⚠️ `module:`/`permission:` აქაც
        არ დგას (მსახიობს მოდული არ აქვს) — დომენებს და უფლებას კონტროლერი ირჩევს. */
     Route::get('/actors', [ActorController::class, 'index']);
     Route::delete('/actors/{castMember}/records', [ActorController::class, 'detachEverywhere'])->whereNumber('castMember');
-    /* Tasks §39 — მსახიობების მასობრივი სინქრონიზაცია: გეგმა + თითო მსახიობი.
+    /* მსახიობების მასობრივი სინქრონიზაცია: გეგმა + თითო მსახიობი.
        ⚠️ **`module:`/`permission:` middleware განზრახ არ დგას** — მსახიობს
        მოდული არ აქვს; ჩართულ მედია-მოდულს კონტროლერი თვითონ ამოწმებს
        (`CastPool::typesFor()`). ⚠️ ნაბიჯი `throttle:tmdb-person`-ზეა — TMDB-ის
-       ბიუჯეტი საერთოა (§39.5); გეგმა კი მხოლოდ ჩვენს ბაზას კითხულობს. */
+       ბიუჯეტი საერთოა; გეგმა კი მხოლოდ ჩვენს ბაზას კითხულობს. */
     Route::post('/cast/sync/plan', [CastSyncController::class, 'plan']);
     Route::post('/cast/sync/{castMember}', [CastSyncController::class, 'item'])
         ->whereNumber('castMember')
         ->middleware('throttle:tmdb-person');
-    // Tasks §31.3 — მსახიობზე „აღარ განაახლო" **ჩემი** პარამეტრია (`cast_member_sync_prefs`)
+    // მსახიობზე „აღარ განაახლო" **ჩემი** პარამეტრია (`cast_member_sync_prefs`)
     Route::patch('/cast/sync/{castMember}/pause', [CastSyncController::class, 'pause'])->whereNumber('castMember');
     Route::get('/cast/{castMember}', [CastController::class, 'show'])->whereNumber('castMember');
-    /* Tasks §35.3 — ახალი მსახიობი (TMDB-დან ან ხელით, ფოტო შენი კვოტით) და
+    /* ახალი მსახიობი (TMDB-დან ან ხელით, ფოტო შენი კვოტით) და
        ხელით შექმნილის რედაქტირება. ⚠️ ფოტოს გამო multipart-ია: რედაქტირება
        `POST` + `_method=PUT`. ⚠️ ხელით შექმნილი მხოლოდ შემქმნელს უჩანს
        (`CastMember`-ის `creator` scope) — სხვისი 404-ია. */
     Route::post('/cast', [CastController::class, 'store']);
     Route::match(['put', 'patch'], '/cast/{castMember}', [CastController::class, 'update'])->whereNumber('castMember');
-    // Tasks §35.9 (Q17) — ხელით შექმნილის წაშლა ურნაში (ბმულებთან და ფოტოებთან ერთად)
+    // ხელით შექმნილის წაშლა ურნაში (ბმულებთან და ფოტოებთან ერთად)
     Route::delete('/cast/{castMember}', [CastController::class, 'destroy'])->whereNumber('castMember');
-    /* §7.5 — მსახიობის საძიებო ტეგები. ⚠️ `cast_members` გლობალური
+    /* მსახიობის საძიებო ტეგები. ⚠️ `cast_members` გლობალური
        ლექსიკონია, ტეგები კი **ჩემია** (`cast_member_tags`, user-ზე).
        ⚠️ `PUT`-ია: მთელი ნაკრების ჩანაცვლებაა და POST `create`-ად იკითხებოდა. */
     Route::put('/cast/{castMember}/tags', [CastController::class, 'updateTags']);
-    /* §8.1 — პიროვნების მონაცემები TMDB-დან (ბიოგრაფია, IMDb, ბმულები).
+    /* პიროვნების მონაცემები TMDB-დან (ბიოგრაფია, IMDb, ბმულები).
        ⚠️ **`resync` და არა `sync`**: `EnsureModulePermission::UPDATE_ENDPOINTS`
        სწორედ ამ სიტყვას იცნობს, ე.ი. მარშრუტის მოდულის ჯგუფში გადატანა
        მომავალში update-ის უფლებით მოსულს 403-ს არ დაუბრუნებს. */
-    /* Tasks §35.4–35.5 — მსახიობის ჩაკეტვა (ლოკი მნახველისაა). ⚠️ `{id}` და არა
+    /* მსახიობის ჩაკეტვა (ლოკი მნახველისაა). ⚠️ `{id}` და არა
        `{castMember}`: მიბმული დამალული `EnsureRecordOwnership`-ში 423 იქნებოდა,
        გახსნა კი სწორედ დამალულზე ხდება. `module:` აქაც არ დგას (მსახიობს მოდული არ აქვს). */
     Route::put('/cast/{id}/lock', [ActorLockController::class, 'setLock'])->whereNumber('id');
@@ -1435,11 +1435,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/cast/{id}/lock', [ActorLockController::class, 'relock'])->whereNumber('id');
     Route::post('/cast/{castMember}/resync', [CastController::class, 'resync'])
         ->whereNumber('castMember')
-        // §39.5 (ყოფილი 20.4) — ერთი მსახიობი ორ TMDB-მოთხოვნამდე ხარჯავს
+        // ერთი მსახიობი ორ TMDB-მოთხოვნამდე ხარჯავს
         ->middleware('throttle:tmdb-person');
 
     /* ---------- ადმინის ზონა ----------
-       Tasks 1.6 — სამი სექცია (`users`/`roles`/`requests`) **როლის უფლებაზეა**
+       სამი სექცია (`users`/`roles`/`requests`) **როლის უფლებაზეა**
        და აღარ არის მყარად `super_admin`-ზე მიბმული; `super_admin` ისედაც
        ყველგან გადის.
 
@@ -1449,7 +1449,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('admin')->group(function () {
         Route::middleware('admin_access:users')->group(function () {
             Route::get('/users', [AdminUserController::class, 'index']);
-            /* **მისანიჭებელი როლების ვიწრო სია (Tasks GAP-10).**
+            /* **მისანიჭებელი როლების ვიწრო სია.**
                ⚠️ `GET /admin/roles` `admin_access:roles`-ის უკანაა, ე.ი.
                `admin:users`-ის მქონე ადმინს როლის სელექტი ჩუმად ცარიელი
                რჩებოდა (403). სია აქ მხოლოდ id-სა და სახელს აბრუნებს —
@@ -1457,42 +1457,42 @@ Route::middleware('auth:sanctum')->group(function () {
                ⚠️ `/users/{user}`-ზე **ზემოთ** არ სჭირდება: მისამართი
                `/admin/assignable-roles`-ია და მას ვერ დაემთხვევა. */
             Route::get('/assignable-roles', [AdminUserController::class, 'roles']);
-            // მომხმარებლის შიდა გვერდი — უფლებები, შიგთავსი, დაკავებული ადგილი (K14)
+            // მომხმარებლის შიდა გვერდი — უფლებები, შიგთავსი, დაკავებული ადგილი
             Route::get('/users/{user}', [AdminUserController::class, 'show']);
             Route::patch('/users/{user}', [AdminUserController::class, 'update']);
             Route::put('/users/{user}/modules', [AdminUserController::class, 'syncModules']);
-            /* Tasks §34.6 — ატვირთვის პირადი გამონაკლისები. ⚠️ `PUT` მთელი რუკით:
+            /* ატვირთვის პირადი გამონაკლისები. ⚠️ `PUT` მთელი რუკით:
                `DELETE`-ს `EnsureAdminAccess` `delete`-ად წაიკითხავდა, არადა ეს
                ანგარიშის რედაქტირებაა. */
             Route::put('/users/{user}/upload-overrides', [AdminUserController::class, 'updateUploadOverrides']);
             Route::delete('/users/{user}', [AdminUserController::class, 'destroy']);
-            /* FEAT-16 — ერთჯერადი აღდგენის ბმული. ⚠️ `POST`, რადგან ყოველი
+            /* ერთჯერადი აღდგენის ბმული. ⚠️ `POST`, რადგან ყოველი
                გამოძახება ახალ ტოკენს ქმნის და ძველს კლავს. */
             Route::post('/users/{user}/reset-link', [AdminUserController::class, 'resetLink']);
         });
 
         Route::middleware('admin_access:roles')->group(function () {
-            /* როლები და უფლებები (Tasks 1.6) */
+            /* როლები და უფლებები */
             Route::get('/roles', [AdminRoleController::class, 'index']);
             Route::post('/roles', [AdminRoleController::class, 'store']);
             Route::match(['put', 'patch'], '/roles/{role}', [AdminRoleController::class, 'update']);
             Route::delete('/roles/{role}', [AdminRoleController::class, 'destroy']);
         });
 
-        /* **აუდიტ-ლოგი (Tasks §4.4/§4.7)** — ნახვა და **ხელით** გასუფთავება.
+        /* **აუდიტ-ლოგი** — ნახვა და **ხელით** გასუფთავება.
            ⚠️ წაშლა `DELETE`-ია, ე.ი. `EnsureAdminAccess` მას `delete`
            მოქმედებად კითხულობს: როლს შეიძლება ნახვა ჰქონდეს და წაშლა — არა. */
         Route::middleware('admin_access:audit')->group(function () {
             Route::get('/audit', [AdminAuditController::class, 'index']);
             Route::get('/audit/meta', [AdminAuditController::class, 'meta']);
-            // ჭრილების მთვლელები (ეტაპი 10) — ტაბებსა და ბარათებზე რიცხვები.
+            // ჭრილების მთვლელები — ტაბებსა და ბარათებზე რიცხვები.
             // ⚠️ ისიც `GET`-ია, `plan`-ის იმავე მიზეზით.
             Route::get('/audit/summary', [AdminAuditController::class, 'summary']);
             // ⚠️ **`GET` და არა `POST`**: გეგმა კითხვაა, POST-ს კი
             // `EnsureAdminAccess` `create`-ად წაიკითხავდა და მხოლოდ-ნახვის
             // როლი ცრუ 403-ს მიიღებდა (იგივე ხაფანგი, რაც `permission:`-ს აქვს)
             Route::get('/audit/plan', [AdminAuditController::class, 'plan']);
-            // Tasks §43.6 — „ვინ რა გახსნა და რამდენჯერ"
+            // „ვინ რა გახსნა და რამდენჯერ"
             Route::get('/audit/opens', [AdminAuditController::class, 'opens']);
             Route::delete('/audit', [AdminAuditController::class, 'destroy']);
         });
@@ -1508,49 +1508,49 @@ Route::middleware('auth:sanctum')->group(function () {
     /* ---------- სუპერ-ადმინი (გლობალური და დესტრუქციული) ---------- */
     Route::middleware('super_admin')->prefix('admin')->group(function () {
         Route::get('/modules', [AdminModuleController::class, 'index']);
-        /* Tasks §36.3 — საერთო რიგი („ყველასთვის ნაგულისხმევად"). ⚠️ `{module}`-ზე
+        /* საერთო რიგი („ყველასთვის ნაგულისხმევად"). ⚠️ `{module}`-ზე
            ზემოთ: მომავალი `PUT /modules/{module}` „order"-ს id-ად წაიკითხავდა. */
         Route::put('/modules/order', [AdminModuleController::class, 'saveDefaultOrder']);
-        /* Tasks §37.8 — „მომხმარებლების მოდულები" (Q41): აგრეგატები და გამორთვა,
+        /* „მომხმარებლების მოდულები": აგრეგატები და გამორთვა,
            შიგთავსი და წაშლა არა. ⚠️ `{module}`-ზე ზემოთ, რომ „custom" id-ად არ
            წაიკითხოს (`GET`-ზე დღეს არაფერი ეჯახება — მომავალი ცვლილების დაცვაა). */
         Route::get('/modules/custom', [AdminModuleController::class, 'customIndex']);
         Route::patch('/modules/custom/{module}', [AdminModuleController::class, 'setCustomActive'])->whereNumber('module');
         Route::patch('/modules/{module}', [AdminModuleController::class, 'update']);
 
-        /* **ინსტალაციის პარამეტრები (Tasks §34.1)** — ყველა ანგარიშს ეხება,
+        /* **ინსტალაციის პარამეტრები** — ყველა ანგარიშს ეხება,
            ე.ი. `super_admin` და არა ერთი სექციის უფლება: ატვირთვის ლიმიტები
-           (§34.2) და ურნის ზედა ზღვარი (§29.6). */
+          და ურნის ზედა ზღვარი. */
         Route::put('/uploads/limits', [AdminInstallationController::class, 'updateUploads']);
         Route::put('/settings/trash', [AdminInstallationController::class, 'updateTrash']);
-        /* Tasks §43.5 — „ჟურნალის პარამეტრები": რომელი ტიპი იწერება (ყველა ანგარიშზე) */
+        /* „ჟურნალის პარამეტრები": რომელი ტიპი იწერება (ყველა ანგარიშზე) */
         Route::get('/audit/settings', [AdminAuditSettingsController::class, 'show']);
         Route::put('/audit/settings', [AdminAuditSettingsController::class, 'update']);
 
-        /* მასობრივი წაშლა (Tasks 20) — ორნაბიჯიანი: გეგმა, მერე `confirm=DELETE` */
+        /* მასობრივი წაშლა — ორნაბიჯიანი: გეგმა, მერე `confirm=DELETE` */
         Route::post('/purge/plan', [AdminPurgeController::class, 'plan']);
         Route::post('/purge', [AdminPurgeController::class, 'run']);
-        /* რიგის ერთი ნაბიჯი (20.2) — ფრონტი ციკლს queue-თი ატარებს */
+        /* რიგის ერთი ნაბიჯი — ფრონტი ციკლს queue-თი ატარებს */
         Route::post('/purge/item', [AdminPurgeController::class, 'item']);
-        /* `ids` სკოუპის ამრჩევი (§25.2) — **სამიზნე ანგარიშის** ჩანაწერები;
+        /* `ids` სკოუპის ამრჩევი — **სამიზნე ანგარიშის** ჩანაწერები;
            მოდულის თავისი `index()` ყოველთვის მოვალის სიას აბრუნებს. */
         Route::get('/purge/records', [AdminPurgeController::class, 'records']);
-        /* §37.5 — სამიზნე ანგარიშის **პირადი მოდულები** (სახელი და სკოუპები);
+        /* სამიზნე ანგარიშის **პირადი მოდულები** (სახელი და სკოუპები);
            სხვისი პირადი მოდული `/modules`-ში არ ჩანს, ე.ი. სხვაგან ვერ მოიძებნება. */
         Route::get('/purge/targets', [AdminPurgeController::class, 'targets']);
 
-        /* **ბაზის დამპი და აღდგენა (Tasks §22)**.
+        /* **ბაზის დამპი და აღდგენა**.
            ⚠️ `super_admin` და არა `admin_access:` — დამპი მთელი ბაზაა
            (ყველა ანგარიში, ჰეშირებული პაროლები, პირადი ჩატები), ე.ი. ერთი
            სექციის უფლება ვერ იქნება; იგივე მსჯელობა, რაც `admin/purge`-ს აქვს.
            ⚠️ `download`/`restore` **`{backup}`-ის ქვემოთაა** — რიგს მნიშვნელობა
            აქვს მხოლოდ იმიტომ, რომ `import` ციფრი არაა და `{backup}`-ად
            წაიკითხებოდა; ამიტომ ის სიაშივე, პარამეტრიან მისამართებამდე დგას. */
-        /* Tasks §59.4 — „ბაზა": ცხრილების რუკა (`ModuleTables`) და მთლიანი ბაზის ან
+        /* „ბაზა": ცხრილების რუკა (`ModuleTables`) და მთლიანი ბაზის ან
            არჩეული ცხრილების ექსპორტი (JSON-ის ZIP · SQL) — იგივე `super_admin` */
         Route::get('/database/tables', [DatabaseExportController::class, 'tables']);
         Route::post('/database/export', [DatabaseExportController::class, 'export']);
-        /* Tasks §59.6ბ — იმავე JSON-ის ZIP-ის უკან შემოტანა: ატვირთვა → არჩეული ცხრილების
+        /* იმავე JSON-ის ZIP-ის უკან შემოტანა: ატვირთვა → არჩეული ცხრილების
            **ჩანაცვლება** (აკრეფილი `REPLACE`, უსაფრთხოების ასლით) */
         Route::post('/database/import', [DatabaseImportController::class, 'inspect']);
         Route::post('/database/import/{token}', [DatabaseImportController::class, 'replace'])->where('token', '[A-Za-z0-9]{40}');
@@ -1563,7 +1563,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/backups/{backup}/download', [DatabaseBackupController::class, 'download'])->whereNumber('backup');
         Route::post('/backups/{backup}/restore', [DatabaseBackupController::class, 'restore'])->whereNumber('backup');
 
-        /* §11 — ასლის ვიუერი და ნაწილობრივი აღდგენა.
+        /* ასლის ვიუერი და ნაწილობრივი აღდგენა.
            ⚠️ ყველა `super_admin`-ზეა (ჯგუფის შიგნით), რადგან ვიუერიც
            მთელ ბაზას ახედებს — ეს ერთი სექციის უფლება ვერ იქნება. */
         Route::post('/backups/{backup}/inspect', [DatabaseBackupController::class, 'inspect'])->whereNumber('backup');

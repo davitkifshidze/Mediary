@@ -7,8 +7,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import '@/i18n'
 
 /* ============================================================
-   რეგრესია: **`admin:roles`-ის მქონე ადმინი ცარიელ გვერდს ხედავდა**
-   (Tasks GAP-10).
+   რეგრესია: **`admin:roles`-ის მქონე ადმინი ცარიელ გვერდს ხედავდა**.
 
    ⚠️ `/roles`-ის ბმულიც და მარშრუტიც `canAdmin('roles')`-ზეა, ხოლო
    `RolePage`-ს `if (!isAdmin) return null` ედო — `isAdmin` კი
@@ -18,7 +17,7 @@ import '@/i18n'
    ⚠️ ამას მხოლოდ ნამდვილი მიმაგრება იჭერს: `tsc`-ისთვის `isAdmin` და
    `canAdmin('roles')` ერთნაირად `boolean`-ია.
 
-   ⚠️ ორი read-only საკეტიც აქვე მოწმდება, რადგან ისინი SEC-03-ის სარკეა:
+   ⚠️ ორი read-only საკეტიც აქვე მოწმდება, რადგან ისინი სერვერის შემოწმებების სარკეა:
    ადმინ-სექციებს **მხოლოდ სუპერ-ადმინი** ცვლის (403 `role_escalation`),
    საკუთარი როლის უფლებებს კი — სხვა ადმინი (422 `cannot_edit_own_role`).
    ============================================================ */
@@ -184,14 +183,14 @@ describe('RolePage', () => {
     const node = await mountPage(actor())
 
     expect(node.textContent).toContain('აუდიტ-ლოგი')
-    // SEC-03 — ადმინ-ზონას მხოლოდ სუპერ-ადმინი ცვლის (403 `role_escalation`)
+    // ადმინ-ზონას მხოლოდ სუპერ-ადმინი ცვლის (403 `role_escalation`)
     expect(adminToggle(node)?.disabled, 'ადმინის სექცია გამორთული უნდა იყოს').toBe(true)
   })
 
   it('საკუთარ როლზე მთელი მატრიცა read-only-ია, სახელი კი — არა', async () => {
     const node = await mountPage(actor({ ownRole: true }))
 
-    // SEC-03 — 422 `cannot_edit_own_role`
+    // 422 `cannot_edit_own_role`
     expect(moduleToggle(node)?.disabled, 'საკუთარი როლის მოდული გამორთული უნდა იყოს').toBe(true)
     expect(adminToggle(node)?.disabled).toBe(true)
 

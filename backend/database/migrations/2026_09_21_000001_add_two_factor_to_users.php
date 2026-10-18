@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **არჩევითი TOTP (FEAT-16).**
+ * **არჩევითი TOTP.**
  *
  * ⚠️ **სვეტების სახელები უკვე არსებობდა `AuditRegistry::HIDDEN`-ში** — იქ
  * ისინი წინასწარ ეწერა, თვითონ სვეტები კი არა. ეს ის შემთხვევაა, როცა

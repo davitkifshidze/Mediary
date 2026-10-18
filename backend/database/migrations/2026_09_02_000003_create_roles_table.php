@@ -6,9 +6,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Tasks 1.6 — როლები ცხრილად, `users.role` enum-ის ნაცვლად.
+ * როლები ცხრილად, `users.role` enum-ის ნაცვლად.
  *
- * უფლება = **მოდულის შიდა** CRUD (გადაწყდა 19.8): `permissions` JSON-ია სახით
+ * უფლება = **მოდულის შიდა** CRUD: `permissions` JSON-ია სახით
  * `{"movie": ["view","create","update","delete"], "*": ["view"]}`.
  * ⚠️ **`"*"` („ყველა მოდული") 2026-09-15-ს მოიხსნა** — იხ.
  * `expand_wildcard_role_permissions`. ფასი ცნობილია და მიღებული: ხვალ

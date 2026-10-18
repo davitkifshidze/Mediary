@@ -3,7 +3,7 @@
 namespace App\Policies;
 
 /**
- * Playlist-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ * Playlist-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია.
  *
  * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
  * აღმოჩენისთვის არსებობს (`App\Models\Playlist` → `App\Policies\PlaylistPolicy`)

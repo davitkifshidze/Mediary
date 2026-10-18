@@ -25,7 +25,7 @@ use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * **ფოტო და ვიდეო პირად გალერეაში (Tasks §33.3/§33.6).**
+ * **ფოტო და ვიდეო პირად გალერეაში.**
  *
  * ⚠️ **ატვირთვა სათითაოა** — ერთი ფაილი ერთ მოთხოვნაში: SPA თითოს თავის
  * პროგრესს და ჩავარდნის მიზეზს აჩვენებს (`lib/pendingUploads.ts`-ის წესი),
@@ -33,11 +33,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  *
  * ⚠️ **ფაილი სერვერიდან მხოლოდ აქედან გადის** (`file` · `thumb`) — პირადი
  * დისკი, მფლობელობა (`owner` scope + `EnsureRecordOwnership`, სხვისი 404),
- * `SafeMime` და Range (ვიდეოს გადახვევა, §6.4).
+ * `SafeMime` და Range (ვიდეოს გადახვევა).
  */
 class PersonalMediaController extends Controller
 {
-    /** სორტირება: გადაღების თარიღი · დამატება · ჩემი რიგი (§11) */
+    /** სორტირება: გადაღების თარიღი · დამატება · ჩემი რიგი */
     public const SORTS = ['taken', 'added', 'manual'];
 
     /** ვიდეოს ოჯახის გაფართოებები — `UploadLimits::CATALOG['video']` */
@@ -193,7 +193,7 @@ class PersonalMediaController extends Controller
     }
 
     /**
-     * **დამალულ ადამიანში/ალბომში ჩაგდება 423-ია** (§33.7) — ფოტო მომხმარებლის
+     * **დამალულ ადამიანში/ალბომში ჩაგდება 423-ია** — ფოტო მომხმარებლის
      * თვალწინ უკვალოდ „გაქრებოდა"; ჯერ გახსნა. ⚠️ ალბომი `personal_lock`-ის
      * გარეშე იკითხება: დამალული ადამიანის ალბომი scope-ით უბრალოდ „არ
      * არსებობდა", ფოტო კი მის `album_id`-ს უადამიანოდ მიიღებდა.

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * **„ვნახე ეს ეპიზოდი" (FEAT-09) — ჩემი ფაქტი.**
+ * **„ვნახე ეს ეპიზოდი" — ჩემი ფაქტი.**
  *
  * ⚠️ **რიგის არსებობა თვითონ არის პასუხი.** „ნანახია თუ არა" ლოგიკური
  * ფაქტია, ამიტომ `is_watched` სვეტი არ არსებობს — ორი წყარო ერთი ფაქტისა
@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * ⚠️ **`AuditRegistry`-ში განზრახ არ არის**: ერთი მონიშვნა ერთი დაჭერაა და
  * სეზონის მონიშვნა ოცი — ლოგს ისინი ისევე დამარხავდნენ, როგორც ჩატის
- * რეაქციები (იგივე გადაწყვეტილება, §10.9).
+ * რეაქციები (იგივე გადაწყვეტილება).
  */
 class EpisodeWatch extends Model
 {

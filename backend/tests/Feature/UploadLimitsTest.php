@@ -15,13 +15,13 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **ატვირთვის ლიმიტები** (2026-09-14 → Tasks §34).
+ * **ატვირთვის ლიმიტები**.
  *
- * ⚠️ 2026-09-14-ის ორი ფაქტი ისევ აქაა: რუკა ერთია და **ნამდვილი ჭერი PHP-ს
- * ითვალისწინებს**. §34-მა მესამე დაამატა — **ვინ ცვლის**: სუპერადმინი
+ * ⚠️ ორი ძველი ფაქტი ისევ აქაა: რუკა ერთია და **ნამდვილი ჭერი PHP-ს
+ * ითვალისწინებს**. მესამე მოგვიანებით დაემატა — **ვინ ცვლის**: სუპერადმინი
  * (ინსტალაციის მნიშვნელობა), დამტკიცებული მოთხოვნა (პირადი გამონაკლისი ან
  * „ყველასთვის"), და **არავინ** — აქტიური შიგთავსი (იხ. `CustomFieldTest`-ის
- * SEC-05 ტესტი, რომელიც სამივე წყაროს ამოწმებს).
+ * აქტიური შიგთავსის ტესტი, რომელიც სამივე წყაროს ამოწმებს).
  */
 class UploadLimitsTest extends TestCase
 {
@@ -105,7 +105,7 @@ class UploadLimitsTest extends TestCase
     }
 
     /* ================================================================
-       §34.4 — ნამდვილი სია
+       ნამდვილი სია
        ================================================================ */
 
     /**
@@ -145,7 +145,7 @@ class UploadLimitsTest extends TestCase
     }
 
     /* ================================================================
-       §34.2 — სუპერადმინის რედაქტორი
+       სუპერადმინის რედაქტორი
        ================================================================ */
 
     public function test_a_super_admin_changes_a_limit_for_everyone(): void
@@ -223,7 +223,7 @@ class UploadLimitsTest extends TestCase
         $this->assertSame(0, AppSetting::count());
     }
 
-    /** ⚠️ იმპორტის ფორმატი ფიქსირებულია — ზომა იცვლება, ფორმატი კი ისევ txt/csv/json (Tasks §59.6) */
+    /** ⚠️ იმპორტის ფორმატი ფიქსირებულია — ზომა იცვლება, ფორმატი კი ისევ txt/csv/json */
     public function test_a_locked_kind_keeps_its_formats(): void
     {
         $this->actingAs($this->root)->putJson('/api/admin/uploads/limits', [
@@ -243,7 +243,7 @@ class UploadLimitsTest extends TestCase
     }
 
     /* ================================================================
-       §34.6 — პირადი გამონაკლისი
+       პირადი გამონაკლისი
        ================================================================ */
 
     public function test_a_personal_exception_widens_only_that_account(): void
@@ -302,7 +302,7 @@ class UploadLimitsTest extends TestCase
         ])->assertStatus(422)->assertJsonPath('message', 'upload_format_not_allowed');
     }
 
-    /** ⚠️ SEC-02-ის კარი: `admin:users`-ის მქონე ადმინი სუპერადმინის გამონაკლისს ვერ ეხება */
+    /** ⚠️ იერარქიის კარი: `admin:users`-ის მქონე ადმინი სუპერადმინის გამონაკლისს ვერ ეხება */
     public function test_a_section_admin_cannot_edit_an_account_above_them(): void
     {
         $role = Role::create([
@@ -324,7 +324,7 @@ class UploadLimitsTest extends TestCase
     }
 
     /* ================================================================
-       §34.5 — მოთხოვნის გზა
+       მოთხოვნის გზა
        ================================================================ */
 
     private function askFor(User $user, array $body)
@@ -416,7 +416,7 @@ class UploadLimitsTest extends TestCase
 
     /**
      * ⚠️ **„ყველასთვის" ინსტალაციის ლიმიტის შეცვლაა** — `admin:requests` ერთი
-     * სექციის უფლებაა და SEC-02-ის წესით ძალაუფლების ლიცენზია ვერ იქნება.
+     * სექციის უფლებაა და იერარქიის წესით ძალაუფლების ლიცენზია ვერ იქნება.
      */
     public function test_a_section_admin_cannot_approve_for_everyone(): void
     {

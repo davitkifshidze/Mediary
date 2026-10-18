@@ -10,7 +10,7 @@ use App\Support\RichText;
 use Illuminate\Http\Request;
 
 /**
- * **პირადი მოდულის ჩანაწერის ჩანიშვნები (Tasks §37.5)** — თამაშის ჩანიშვნის
+ * **პირადი მოდულის ჩანაწერის ჩანიშვნები** — თამაშის ჩანიშვნის
  * ფორმა; SPA-ის `RecordNotes` ერთი კომპონენტია ყველა მოდულზე.
  *
  * ⚠️ ჩანაწერიც და ჩანიშვნაც **მოდულით** მოწმდება — ერთი ცხრილი ყველა პირად
@@ -55,7 +55,7 @@ class CustomRecordNoteController extends Controller
     {
         abort_unless($note->module === $type, 404);
 
-        // ⚠️ ურნა (Tasks §29, ეტაპი 2) — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
+        // ⚠️ ურნა — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
         $note->moveToTrash();
 
         return response()->noContent();

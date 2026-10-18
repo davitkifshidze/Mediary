@@ -17,9 +17,9 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * **ბმულიდან საკუთარ ბიბლიოთეკაში დამატება — შესულისთვის (Tasks §40.8).**
+ * **ბმულიდან საკუთარ ბიბლიოთეკაში დამატება — შესულისთვის.**
  *
- * ორი ბიჯი, ზუსტად CSV-იმპორტის (FEAT-07) ფორმით:
+ * ორი ბიჯი, ზუსტად CSV-იმპორტის ფორმით:
  *  · `POST /shares/{token}/plan` — რა შედის არჩევანში და რომელი უკვე გაქვს.
  *    ⚠️ **გარე წყაროს არ ეკითხება**: 300 ფილმი 300 TMDB-მოთხოვნა იქნებოდა
  *    მხოლოდ რიცხვის საჩვენებლად. მდგომარეობა: ახალი · გაქვს · ურნაშია.
@@ -91,7 +91,7 @@ class ShareImportController extends Controller
                 'have' => $items->where('state', 'have')->count(),
                 'trash' => $items->where('state', 'trash')->count(),
             ],
-            /* ⚠️ „როგორც გამზიარებელს აქვს" მხოლოდ მაშინ, როცა ბმული სტატუსს აზიარებს (Q48);
+            /* ⚠️ „როგორც გამზიარებელს აქვს" მხოლოდ მაშინ, როცა ბმული სტატუსს აზიარებს;
                სტატუსის უქონელ დომენზე (სიმღერა, სამაგიდო) რეჟიმი საერთოდ არ არსებობს */
             'status_modes' => ShareDomain::statusKind($domain) === null
                 ? []
@@ -126,7 +126,7 @@ class ShareImportController extends Controller
         }
 
         $query = ShareScope::query($owner, $domain, $spec);
-        // ⚠️ კლასიფიკატორი `owner` scope-ის გარეშე — სახელით გადატანას (Q51) გამზიარებლის ჟანრები სჭირდება
+        // ⚠️ კლასიფიკატორი `owner` scope-ის გარეშე — სახელით გადატანას გამზიარებლის ჟანრები სჭირდება
         $record = ShareDomain::withClassifier($query, $domain)->whereKey((int) $data['id'])->first();
 
         if (! $record) {
@@ -136,7 +136,7 @@ class ShareImportController extends Controller
         $result = $this->importer->add($link, $owner, $viewer, $domain, $record, $statusMode);
 
         if ($result['result'] === 'added') {
-            /* ⚠️ ცალკე `ACTION_*` არ იბადება (FEAT-07-ის წესი): ჩანაწერის შექმნას
+            /* ⚠️ ცალკე `ACTION_*` არ იბადება: ჩანაწერის შექმნას
                `AuditObserver` ისედაც წერს. აქ მხოლოდ **წყარო** ემატება — „ეს ფილმი
                ნინოს ბმულიდან შემოვიდა" ის ფაქტია, რომელსაც მოდელის ივენთი ვერ იცის. */
             $this->audit->log(AuditLog::ACTION_IMPORT, [
@@ -148,7 +148,7 @@ class ShareImportController extends Controller
                     'source' => 'share',
                     'share_link' => $link->id,
                     'owner' => $owner->username,
-                    // §40.13 — პლეილისტის ასლს რამდენი ახალი სიმღერა მოჰყვა
+                    // პლეილისტის ასლს რამდენი ახალი სიმღერა მოჰყვა
                     ...(isset($result['songs_added']) ? ['songs_added' => $result['songs_added']] : []),
                 ],
             ]);

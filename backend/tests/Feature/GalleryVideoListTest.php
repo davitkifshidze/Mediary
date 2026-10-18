@@ -13,7 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **გალერეის ვიდეოების გვერდი — ძებნა, მფლობელის სახე, დალაგება** (Tasks §25.5).
+ * **გალერეის ვიდეოების გვერდი — ძებნა, მფლობელის სახე, დალაგება**.
  */
 class GalleryVideoListTest extends TestCase
 {

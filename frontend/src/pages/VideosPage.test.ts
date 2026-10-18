@@ -11,7 +11,7 @@ import type { Video, VideoMetadata } from '@/api/videos'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **ვიდეოს ფორმა — ბმულიდან სრული ინფო** (Tasks §44).
+   **ვიდეოს ფორმა — ბმულიდან სრული ინფო**.
 
    ⚠️ მოწმდება: YouTube-ის ბმულის ჩასმის შემდეგ **მთავარი ფოტოს ჩარჩო**
    ბმულის ფოტოთია შევსებული (შენახვამდე, URL-ით), ცარიელი აღწერა და
@@ -51,7 +51,7 @@ const mocks = vi.hoisted(() => ({
   fetchVideoMetadata: vi.fn(),
   createVideo: vi.fn(),
   statuses: { data: [] as unknown[] },
-  // §45 — მოდულის შენახული ხედი და მისი ჩუმი შენახვა
+  // მოდულის შენახული ხედი და მისი ჩუმი შენახვა
   modules: [] as { key: string; user_settings?: Record<string, unknown> }[],
   updateModuleSettings: vi.fn(),
 }))
@@ -104,7 +104,7 @@ if (!('ResizeObserver' in globalThis)) {
 // Radix `Select` არჩეულ რიგს ხედში აბრუნებს; jsdom-ს ეს მეთოდი არ აქვს
 if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = () => {}
 
-/* მძიმე მოდულის გათბობა ტესტის ბიუჯეტის გარეთ (DEBT-12-ის წესი) */
+/* მძიმე მოდულის გათბობა ტესტის ბიუჯეტის გარეთ */
 beforeAll(async () => {
   await import('@/pages/VideosPage')
 }, 60_000)
@@ -220,7 +220,7 @@ async function choose(triggerId: string, label: string) {
 
 const frameImage = () => document.querySelector<HTMLImageElement>('[data-testid="poster-preview"] img')
 
-describe('VideoForm link info (Tasks §44)', () => {
+describe('VideoForm link info', () => {
   it('pasting a YouTube link puts its photo into the main photo frame and fills description and date', async () => {
     const input = await openAdd()
     // შენახვამდე ჩარჩო ცარიელია
@@ -231,7 +231,7 @@ describe('VideoForm link info (Tasks §44)', () => {
     expect(mocks.fetchVideoMetadata).toHaveBeenCalledWith(META.url, undefined)
     expect(frameImage()?.getAttribute('src')).toBe(META.image_url)
     expect((document.getElementById('v-title') as HTMLInputElement).value).toBe(META.title)
-    // Tasks §47 — აღწერა ფორმატიანი რედაქტორია (contenteditable), არა textarea
+    // აღწერა ფორმატიანი რედაქტორია (contenteditable), არა textarea
     expect(document.getElementById('v-desc')?.textContent).toBe(META.description)
     expect((document.getElementById('v-channel') as HTMLInputElement).value).toBe(META.author)
     // ბარათში აღწერაც ჩანს; yt-dlp არის — „წამოღება ვებიდან" აღარ სჭირდება
@@ -275,9 +275,9 @@ describe('VideoForm link info (Tasks §44)', () => {
   })
 })
 
-/* Tasks §45 — ვიდეოს ნაგულისხმევი ხედი ახლანდელი ბარათებია (`VideoCard`); შენახული ხედი აღდგება,
+/* ვიდეოს ნაგულისხმევი ხედი ახლანდელი ბარათებია (`VideoCard`); შენახული ხედი აღდგება,
    გადართვა მოდულზე ინახება */
-describe('VideosPage view toggle (§45)', () => {
+describe('VideosPage view toggle', () => {
   const layoutOf = (el: HTMLElement) => el.querySelector('[data-testid="record-list"]')?.getAttribute('data-layout')
 
   it('keeps the current cards by default', async () => {

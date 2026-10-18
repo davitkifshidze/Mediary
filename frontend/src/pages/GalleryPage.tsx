@@ -27,7 +27,7 @@ import { AlbumsCut } from '@/components/gallery/AlbumsCut'
 import { CutTabs } from '@/components/ui/cut-tabs'
 
 /* ============================================================
-   გალერეა — `/gallery` და მისი ქვე-გვერდები (Tasks 10 → **§8**).
+   გალერეა — `/gallery` და მისი ქვე-გვერდები.
 
    ⚠️ **ხაზით გაყოფილი „მასობრივი ჩამოტვირთვა" წაშლილია** (შენი პირდაპირი
    მითითება). ის ორი სხვადასხვა საქმეს — დათვალიერებასა და ჩამოტვირთვას —
@@ -35,7 +35,7 @@ import { CutTabs } from '@/components/ui/cut-tabs'
    ჩამოტვირთვა ან სათაურის ღილაკია (სკოუპის არჩევით), ან ჯგუფის ბარათზეა
    (სკოუპი უკვე ცნობილია).
 
-   ⚠️ **ქვე-მენიუ საიდბარშიცაა და გვერდზეც** (§8.5): საიდბარი განყოფილებებს
+   ⚠️ **ქვე-მენიუ საიდბარშიცაა და გვერდზეც**: საიდბარი განყოფილებებს
    ასახელებს, გვერდი კი იმავეს სეგმენტებად იმეორებს — მობილურზე საიდბარი
    უჯრაშია და ჭრილებს სხვაგვარად ვერ გადართავ.
 
@@ -54,7 +54,7 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
     [mediaModules],
   )
 
-  /* ⚠️ სახელი ერთი გასაღებიდან (§27) — იგივე, რასაც საიდბარი ხატავს.
+  /* ⚠️ სახელი ერთი გასაღებიდან — იგივე, რასაც საიდბარი ხატავს.
      ადრე „ჩანაწერები" ჩართული მოდულების სახელებისგან იგებოდა, რაც
      ტაბისთვის გრძელი იყო და მაინც არასრული. */
   const cutLabel = (key: GalleryCut) => t(`gallery.cut.${key}`)
@@ -112,7 +112,7 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
             <Stat label={t('gallery.statPhotos')} value={summary.photos} />
             <Stat label={t('gallery.statRecords')} value={summary.records} />
             <Stat label={t('gallery.statActors')} value={summary.actors} />
-            {/* §26 — „უკატეგორიო" მთვლელი აქვე, რომ ჭრილის არსებობა ჩანდეს */}
+            {/* „უკატეგორიო" მთვლელი აქვე, რომ ჭრილის არსებობა ჩანდეს */}
             <Stat label={t('gallery.statUncategorized')} value={summary.uncategorized} />
             <Stat label={t('gallery.statVideos')} value={summary.videos} />
             <Stat label={t('gallery.statSize')} value={formatBytes(summary.bytes)} />
@@ -161,7 +161,7 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
       {cut === 'sources' && (
         <div>
           {/* ⚠️ **ორი სხვადასხვა კითხვა და ორივეს პასუხი სჭირდება**: „რომელმა
-              წყარომ მოიტანა" და „რომელი დომენიდან მოვიდა". §24.3-ის შემდეგ
+              წყარომ მოიტანა" და „რომელი დომენიდან მოვიდა". ახლა
               ისინი ბარათებია და არა ჩიპები — იგივე ვიზუალი, რაც აუდიტ-ლოგს. */}
           <div className="mb-4">
             <CutTabs

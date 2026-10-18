@@ -12,7 +12,7 @@ class MovieResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        // Tasks §35.5 — დამალული ჩანაწერი ბოქლომიანი ბარათია: სათაური და ლოკი, შიგთავსი არა
+        // დამალული ჩანაწერი ბოქლომიანი ბარათია: სათაური და ლოკი, შიგთავსი არა
         if (RecordLocks::hiddenRecord($this->resource)) {
             return $this->resource->lockedCard();
         }
@@ -26,7 +26,7 @@ class MovieResource extends JsonResource
             'imdb_url' => $this->imdb_url,
             'tmdb_id' => $this->tmdb_id,
             'ge_url' => $this->ge_url,
-            // ტრეილერი (Tasks 9): ბმული + allowlist-ით აწყობილი embed
+            // ტრეილერი: ბმული + allowlist-ით აწყობილი embed
             'trailer_url' => $this->trailer_url,
             'trailer_embed_url' => $this->trailer_url ? VideoUrl::parse($this->trailer_url)['embed_url'] : null,
             'description_ka' => $this->description_ka,
@@ -38,17 +38,17 @@ class MovieResource extends JsonResource
             'runtime' => $this->runtime,
             'poster' => $this->poster_path ? asset('storage/'.$this->poster_path) : null,
             'poster_source' => $this->poster_source,
-            /* §6.4 — სტატუსი per-user ლექსიკონის რიგია, ე.ი. **ობიექტი** და არა
+            /* სტატუსი per-user ლექსიკონის რიგია, ე.ი. **ობიექტი** და არა
                სტრიქონი: მხოლოდ გასაღები უცხო პროფილზე წასაკითხი არ იქნებოდა
                (სახელი მფლობელის ლექსიკონშია), ორივეს ცალკე ველად დაბრუნება კი
                ერთსა და იმავე ფაქტს ორ ადგილას გაიმეორებდა. */
             'status' => StatusResource::brief($this->status),
             'is_favorite' => $this->is_favorite,
-            // Tasks 16.1 — ხილვადობა საჯარო პროფილზე (`private` default)
+            // ხილვადობა საჯარო პროფილზე (`private` default)
             'visibility' => $this->visibility,
             'watched_at' => $this->watched_at,
             'sync_status' => $this->sync_status,
-            // Tasks §31 — „აღარ განაახლო" და ბოლო სინქრონის/თარგმანის კვალი
+            // „აღარ განაახლო" და ბოლო სინქრონის/თარგმანის კვალი
             'sync_paused' => (bool) $this->sync_paused,
             'last_synced_at' => $this->last_synced_at?->toIso8601String(),
             'last_sync_result' => $this->last_sync_result,

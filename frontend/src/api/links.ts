@@ -1,9 +1,9 @@
 import { api } from '@/lib/api'
 
 /* ============================================================
-   **ბმულის მეტა-მონაცემი — ერთი კარი ყველა ფორმისთვის** (Tasks §15 → §44).
+   **ბმულის მეტა-მონაცემი — ერთი კარი ყველა ფორმისთვის**.
 
-   ⚠️ Tasks §44.1 — მოდულების `/…/metadata`-ც (ვიდეო, სიმღერა, ბუკმარკი, კურსი,
+   ⚠️ მოდულების `/…/metadata`-ც (ვიდეო, სიმღერა, ბუკმარკი, კურსი,
    პირადი მოდული) ახლა ზუსტად ამ ფორმას აბრუნებს (+ საკუთარი ველები).
 
    `POST /links/metadata` ჯერ ვიდეო-პლატფორმას ცნობს (YouTube/Vimeo/
@@ -26,9 +26,9 @@ export interface LinkPreview {
   domain: string | null
   author: string | null
   duration: number | null
-  /** Tasks §44.3 — `Y-m-d` (YouTube: Data API ან yt-dlp); სხვაგან `null` */
+  /** `Y-m-d` (YouTube: Data API ან yt-dlp); სხვაგან `null` */
   published_at: string | null
-  /** Tasks §44.1 — ვიდეოს ტეგები (YouTube/yt-dlp); გვერდზე — ცარიელი */
+  /** ვიდეოს ტეგები (YouTube/yt-dlp); გვერდზე — ცარიელი */
   tags: string[]
 }
 

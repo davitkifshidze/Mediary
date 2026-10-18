@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * **მსახიობზე გაწერილი საძიებო ტეგები (Tasks §7.5)**.
+ * **მსახიობზე გაწერილი საძიებო ტეგები**.
  *
  * ⚠️ **ეს `cast_members`-ის სვეტი ვერ იქნებოდა** — ის გლობალური ლექსიკონია
  * (ერთი მსახიობი ყველა ანგარიშზე ერთი რიგია, `genres`-ის წესით), ე.ი. იქ

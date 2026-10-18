@@ -18,7 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
- * თარგმანები (Tasks 7).
+ * თარგმანები.
  *
  * იმავე per-item მოდელით მუშაობს, რაც სინქრონსა და გალერეაზეა: `plan` აბრუნებს
  * რიგს, შემდეგ თითო ჩანაწერზე ერთი მოკლე რექვესთი მიდის — `php artisan serve`
@@ -50,7 +50,7 @@ class TranslationController extends Controller
         $data = $request->validate([
             'types' => ['nullable', 'array'],
             'types.*' => ['in:'.implode(',', TranslationScanner::TYPES)],
-            /* §6.4 — სტატუსი per-user ლექსიკონია, ე.ი. მისი სია კოდში აღარ დგას.
+            /* სტატუსი per-user ლექსიკონია, ე.ი. მისი სია კოდში აღარ დგას.
                ფილტრი **გასაღებით** მოდის; უცნობი გასაღები უბრალოდ ცარიელ
                შედეგს იძლევა (ეს ფილტრია და არა წაშლის სკოუპი). */
             'status' => ['nullable', 'string', 'max:60'],
@@ -61,7 +61,7 @@ class TranslationController extends Controller
             'include_genres' => ['nullable', 'boolean'],
             // `review` — TMDB-ის ქართული აღწერის გადამოწმება (2026-09-14)
             'review' => ['nullable', 'boolean'],
-            // Tasks §31.2 — ბოლო გაშვებაზე ნათარგმნის დამალვა
+            // ბოლო გაშვებაზე ნათარგმნის დამალვა
             'hide_processed' => ['nullable', 'boolean'],
         ]);
 
@@ -145,7 +145,7 @@ class TranslationController extends Controller
             'skipped' => $result['skipped'],
             'changed' => $result['changed'],
             'providers' => $result['providers'],
-            // Tasks §31.4 — `updated` · `empty` · `failed` (`SyncOutcome`); გამოტოვებაზე `null`
+            // `updated` · `empty` · `failed` (`SyncOutcome`); გამოტოვებაზე `null`
             'result' => $result['result'] ?? null,
             'error' => $result['error'],
             'title' => $item->title_ka ?: ($item->title_en ?: '#'.$item->id),
@@ -197,7 +197,7 @@ class TranslationController extends Controller
             return response()->json(['ok' => false, 'skipped' => false, 'translated' => 0, 'error' => Redact::secrets($e->getMessage())]);
         }
 
-        /* Tasks §30.6 — ⚠️ არჩეული წყაროებიდან არცერთის გასაღები არ მაქვს →
+        /* ⚠️ არჩეული წყაროებიდან არცერთის გასაღები არ მაქვს →
            ეს შეცდომაა და არა „გამოტოვება" (`ItemTranslator::translate()`-ის წესი) */
         if ($result['translated'] === 0 && ! $translator->anyConfigured($sources)) {
             return response()->json(['ok' => false, 'skipped' => false, 'translated' => 0, 'error' => MissingCredential::CODE]);
@@ -240,7 +240,7 @@ class TranslationController extends Controller
                 'at' => $row->created_at?->toIso8601String(),
             ]);
 
-        /* Tasks §31.4 — **ცარიელი და ჩავარდნილი გაშვებებიც ჩანს**: ლოგი მხოლოდ შეცვლილს
+        /* **ცარიელი და ჩავარდნილი გაშვებებიც ჩანს**: ლოგი მხოლოდ შეცვლილს
            წერს (300 „გამოვტოვე" რიგი არავის სჭირდება), ეს სია კი ჩანაწერის კვალიდან
            მოდის (`last_translated_at`/`last_translate_result`) — ის, რაც ვერ შეივსო. */
         $unfilled = collect(TranslationScanner::TYPES)

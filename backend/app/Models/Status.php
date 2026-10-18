@@ -15,7 +15,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
 
 /**
- * **სტატუსი — per-user ლექსიკონი (Tasks §6.2/§6.4).**
+ * **სტატუსი — per-user ლექსიკონი.**
  *
  * ერთი ცხრილი ექვსივე დომენზე (`module` სვეტი ჭრის), და არა
  * `movie_statuses`/`video_statuses`/… — ექვსი იდენტური ცხრილი ექვს
@@ -33,7 +33,7 @@ use Illuminate\Validation\Rules\Exists;
 class Status extends Model
 {
     /**
-     * ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — წაშლა რიგს ურნაში აგზავნის
+     * ⚠️ **ურნა** — წაშლა რიგს ურნაში აგზავნის
      * (`DictionaryTrash::trash()`); `trash_meta` იმახსოვრებს გადატანილ
      * ჩანაწერებს, რომ აღდგენამ მათი დაბრუნება შემოგთავაზოს.
      */
@@ -87,7 +87,7 @@ class Status extends Model
             return;
         }
 
-        /* ⚠️ ურნაში მყოფიც ითვლება (Tasks §29) — ყველა სტატუსის ურნაში გადატანის
+        /* ⚠️ ურნაში მყოფიც ითვლება — ყველა სტატუსის ურნაში გადატანის
            შემდეგ ნაგულისხმევები იმავე გასაღებებით თავიდან ჩაიწერებოდა და
            `unique(user_id, module, key)` 500-ს დააბრუნებდა. */
         $query = static::withoutGlobalScopes(['owner', 'trash'])->where('user_id', $userId)->where('module', $domain);
@@ -119,7 +119,7 @@ class Status extends Model
     }
 
     /**
-     * **„ნაგულისხმევი სტატუსების აღდგენა" (Tasks 2026-10-02 §1)** — მხოლოდ ღილაკით.
+     * **„ნაგულისხმევი სტატუსების აღდგენა"** — მხოლოდ ღილაკით.
      *
      * ამატებს მხოლოდ იმას, რაც აკლია, და **არაფერს შლის**: ცოცხალი სტატუსი
      * (გადარქმეულიც — გასაღებით იცნობა) ხელუხლებელია; ურნაში მყოფი ნაგულისხმევი
@@ -159,7 +159,7 @@ class Status extends Model
 
         $back = [];
 
-        /* Tasks §16.2 — არსებულ ნაგულისხმევს ფერი თუ არ აქვს, ნაკრებიდან ივსება: `color`
+        /* არსებულ ნაგულისხმევს ფერი თუ არ აქვს, ნაკრებიდან ივსება: `color`
            2026-10-03-მდე არავის ეწერა. ⚠️ query builder-ით — ფერის შევსება ადამიანის ქმედება
            არაა და ჟურნალში „განახლდა“-დ არ უნდა ჩაიწეროს. */
         foreach ($live as $status) {
@@ -295,7 +295,7 @@ class Status extends Model
         $userId ??= (int) Auth::id();
         static::ensureDefaults($userId, $domain);
 
-        // ⚠️ ურნაში მყოფი სტატუსი ჩანაწერს ვერ მიენიჭება (Tasks §29)
+        // ⚠️ ურნაში მყოფი სტატუსი ჩანაწერს ვერ მიენიჭება
         return Rule::exists('statuses', 'key')
             ->where('user_id', $userId)
             ->where('module', $domain)
@@ -318,14 +318,14 @@ class Status extends Model
     /**
      * სახელიდან უნიკალური key — ლათინური slug, ქართულ სახელზეც მუშაობს.
      *
-     * ⚠️ **`all`/`favorite`/`downloaded` დაკავებულია** (ეტაპი 8): ისინი
+     * ⚠️ **`all`/`favorite`/`downloaded` დაკავებულია**: ისინი
      * `?view=`-ის ფსევდო-განყოფილებებია. „Favorite" სახელის სტატუსი
      * `favorite` გასაღებს რომ მიეღო, მისი სექცია რჩეულებს გაიხსნიდა, და
      * საიდბარის განლაგებაში ორი რიგი ერთ id-ს იკავებდა.
      */
     public static function makeKey(int $userId, string $domain, string $name): string
     {
-        /* ⚠️ **ალგორითმი საერთოა** (`DictionaryKey`, აუდიტი §B3): აქ იდო
+        /* ⚠️ **ალგორითმი საერთოა** (`DictionaryKey`): აქ იდო
            ცხრა ასლიდან ერთ-ერთი, რომელიც უნიკალურობას სრულ სტრიქონზე
            ამოწმებდა და მხოლოდ შემდეგ ჭრიდა 60-მდე — ე.ი. გრძელ ქართულ
            სახელზე ჩაწერილი გასაღები შემოწმებულს **არ** ემთხვეოდა.
@@ -334,7 +334,7 @@ class Status extends Model
         return DictionaryKey::make(
             $name,
             fn (string $key) => in_array($key, StatusDomain::RESERVED_KEYS, true)
-                // ⚠️ ურნაში მყოფი რიგი გასაღებს ინარჩუნებს (Tasks §29)
+                // ⚠️ ურნაში მყოფი რიგი გასაღებს ინარჩუნებს
                 || static::withoutGlobalScopes(['owner', 'trash'])
                     ->where('user_id', $userId)
                     ->where('module', $domain)

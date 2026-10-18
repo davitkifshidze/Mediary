@@ -1,7 +1,7 @@
 import type { ModuleInfo } from '@/api/account'
 
 /* ============================================================
-   **მოდულების რიგი** (Tasks §36).
+   **მოდულების რიგი**.
 
    რიგს სერვერი წყვეტს (`App\Support\ModuleOrder::sort()`): `GET /modules`,
    `GET /dashboard` და `/admin/modules` უკვე დალაგებული მოდის, ე.ი. აქ

@@ -13,7 +13,7 @@ use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 
 /**
- * ადგილის ფაილები (FEAT-26) — `image` = ჩემი გადაღებული ფოტო,
+ * ადგილის ფაილები — `image` = ჩემი გადაღებული ფოტო,
  * `doc` = თანმხლები (ბილეთი, ბროშურა).
  *
  * ⚠️ **ვებიდან მოტანილი ფოტო აქ არ ჯდება** — ის `gallery_images`-შია
@@ -21,7 +21,7 @@ use Illuminate\Http\Request;
  * სამაგიდო თამაშის იგივე განაწილება.
  *
  * ⚠️ **MIME სერვერის მხრიდან იკითხება** (`SafeMime::ofUpload()`) და არა
- * კლიენტის განაცხადიდან — SEC-04-ის გაკვეთილი.
+ * კლიენტის განაცხადიდან.
  */
 class PlaceFileController extends Controller
 {
@@ -42,7 +42,7 @@ class PlaceFileController extends Controller
             'files.*' => $kind === 'image' ? UploadLimits::rule('image', $request->user()) : UploadLimits::rule('doc', $request->user()),
         ]);
 
-        // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე: ნახევრად გასული ატვირთვა
+        // კვოტა **მთელ პაკეტზე** ჩაწერამდე: ნახევრად გასული ატვირთვა
         // ყველაზე მტკივნეული შედეგია
         $files = $request->file('files');
         $this->meter->guard($request->user(), array_sum(array_map(
@@ -72,7 +72,7 @@ class PlaceFileController extends Controller
 
     public function destroy(PlaceFile $placeFile)
     {
-        /* ⚠️ **ურნა (Tasks §29)** — `delete()` კი არა, `moveToTrash()`: ფაილი
+        /* ⚠️ **ურნა** — `delete()` კი არა, `moveToTrash()`: ფაილი
            დისკზე და კვოტაში რჩება და ურნიდან ბრუნდება; ადგილი საბოლოო წაშლისას
            ან ვადის ამოწურვისას თავისუფლდება. სხვისი ფაილი global scope-ის
            გამო ისედაც 404-ია. */

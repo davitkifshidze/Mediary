@@ -15,7 +15,7 @@ import { useConfirm } from '@/components/ui/feedback'
 import type { RecordNote, RecordNoteInput } from '@/components/RecordNotes'
 
 /* ============================================================
-   ერთი ჩანიშვნის ფანჯარა (Tasks §6.3).
+   ერთი ჩანიშვნის ფანჯარა.
 
    შენი სიტყვები: „ციტატა და კომენტარი ტექსტები რამე ღილაკის მსგავსად იყოს
    და შიგნით მოდალი იხსნებოდეს, სადაც იქნება ვინ დაამატა, რა დაამატა,
@@ -27,7 +27,7 @@ import type { RecordNote, RecordNoteInput } from '@/components/RecordNotes'
    იმალება და **დამონტაჟებული რჩება** — ე.ი. დახურვაზე ზუსტად იმ ადგილას
    ბრუნდები, საიდანაც წამოხვედი, ნახევრად შევსებული ველების ჩათვლით.
 
-   ⚠️ **წაშლას დადასტურება აქვს** (Tasks §6.4). ეს ასიმეტრია იყო და
+   ⚠️ **წაშლას დადასტურება აქვს**. ეს ასიმეტრია იყო და
    მონაცემის დაკარგვის რეალური გზა: ფაილის წაშლა `useConfirm`-ს გადიოდა,
    ჩანიშვნისა კი პირდაპირ იძახებდა მუტაციას.
 
@@ -68,7 +68,7 @@ export function RecordNoteDialog({
   const save = () => {
     const text = body.trim()
     if (!text) return
-    // Tasks §23.2 — ციტატას თავისი დიალოგი აქვს (`BookQuotes`); აქ მხოლოდ ტექსტია
+    // ციტატას თავისი დიალოგი აქვს (`BookQuotes`); აქ მხოლოდ ტექსტია
     onSave({ body: text })
     setEditing(false)
   }
@@ -100,7 +100,7 @@ export function RecordNoteDialog({
         {/* ---------- სხეული ---------- */}
         {editing ? (
           <div className="space-y-2">
-            {/* Tasks §47 — ჩანიშვნა ფორმატით; ძველი ციტატა (`is_quote`) უბრალო ტექსტად რჩება */}
+            {/* ჩანიშვნა ფორმატით; ძველი ციტატა (`is_quote`) უბრალო ტექსტად რჩება */}
             {note.is_quote ? (
               <Textarea rows={8} value={body} onChange={(e) => setBody(e.target.value)} />
             ) : (

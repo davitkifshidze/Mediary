@@ -12,11 +12,11 @@ use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 
 /**
- * თამაშის ფაილები (Tasks §11.1/§11.3) — **ატვირთული** სქრინშოტი/artwork
+ * თამაშის ფაილები — **ატვირთული** სქრინშოტი/artwork
  * (`kind = 'image'`) და დოკუმენტები (გაიდი, სეივი, კონფიგი).
  *
  * ⚠️ RAWG-იდან **ჩამოტვირთული** კადრები აქ არ ხვდება — ისინი
- * `gallery_images`-შია (§10-ის მექანიზმი). იგივე გაყოფაა ვიდეოსა და
+ * `gallery_images`-შია. იგივე გაყოფაა ვიდეოსა და
  * ბორდგეიმზე: ჩამოტვირთული = გალერეა, ატვირთული = სექციის ცხრილი.
  */
 class GameFileController extends Controller
@@ -44,7 +44,7 @@ class GameFileController extends Controller
                 : UploadLimits::rule('image', $request->user()),
         ]);
 
-        // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე
+        // კვოტა **მთელ პაკეტზე** ჩაწერამდე
         $files = $request->file('files');
         $this->meter->guard($request->user(), array_sum(array_map(
             fn ($file) => (int) $file->getSize(),
@@ -74,7 +74,7 @@ class GameFileController extends Controller
 
     public function destroy(GameFile $gameFile)
     {
-        /* ⚠️ **ურნა (Tasks §29)** — `delete()` კი არა, `moveToTrash()`: ფაილი
+        /* ⚠️ **ურნა** — `delete()` კი არა, `moveToTrash()`: ფაილი
            დისკზე და კვოტაში რჩება და ურნიდან ბრუნდება; ადგილი საბოლოო წაშლისას
            ან ვადის ამოწურვისას თავისუფლდება. სხვისი ფაილი global scope-ის
            გამო ისედაც 404-ია. */

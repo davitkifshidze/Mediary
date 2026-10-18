@@ -51,7 +51,7 @@ import { cn } from '@/lib/utils'
 /* ============================================================
    **ლექსიკონები** — `/dictionaries` (ბარათები) და `/dictionaries/:key` (შიგთავსი).
 
-   ⚠️ **ეტაპი 8: ზემოთ ~14 პილულის რიგი ბარათების ინდექსად იქცა.** გადამრჩევი
+   ⚠️ **ზემოთ ~14 პილულის რიგი ბარათების ინდექსად იქცა.** გადამრჩევი
    ერთ ხაზზე ყველა ლექსიკონს ერთნაირ წონით აჩვენებდა, ე.ი. „ფილმის
    სტატუსები" და „ბორდგეიმის ჟანრები" ერთმანეთისგან არ გაირჩეოდა, და
    გადართვა სწორედ ის იყო, რაც მომხმარებელს „ძაან ცუდი" ჩანდა. ახლა
@@ -77,7 +77,7 @@ export function DictionariesPage() {
   const { has, loading, customModules } = useModules()
 
   /** ⚠️ გამორთული მოდული ინდექსშიც არ ჩანს და მისი ლექსიკონიც არ იხსნება.
-      §37 — პირადი მოდულის ლექსიკონები `useModules()`-იდან იწყობა (ბაზაშია). */
+      პირადი მოდულის ლექსიკონები `useModules()`-იდან იწყობა (ბაზაშია). */
   const available = useMemo(
     () => [...DICTIONARIES.filter((d) => has(d.module)), ...customDictionaries(customModules)],
     [has, customModules],
@@ -149,7 +149,7 @@ function DictionaryIndex({ available, lang }: { available: DictionaryDef[]; lang
   return (
     <PageContainer>
       {/* ⚠️ ორი გასაღები ერთდება იმიტომ, რომ **პირველი წინადადება საიდბარშიც
-          წერია** (ეტაპი 9) — ერთი წყარო, თორემ ორი ტექსტი გაშორდებოდა */}
+          წერია** — ერთი წყარო, თორემ ორი ტექსტი გაშორდებოდა */}
       <PageHeader
         tool="dictionaries"
         title={t('dictionaries.title')}
@@ -218,7 +218,7 @@ function DictionaryCard({
   lang: string
 }) {
   const { t, i18n } = useTranslation()
-  // §37 / Q30 — კლასიფიკაციის ველის გადარქმეული სახელი, თუ არსებობს
+  // კლასიფიკაციის ველის გადარქმეული სახელი, თუ არსებობს
   const title = useDictionaryTitle(def)
   // მოდულის ფერი — `PageHeader`-ის იგივე წყარო (`modules.color`), ე.ი. ბარათი და შიდა გვერდი ერთ ტონშია
   const color = module?.color ?? null
@@ -338,7 +338,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
 
   /**
    * გადალაგება: drag & drop **და** ისრები — ორივე ერთსა და იმავე ფუნქციას
-   * იძახებს (§2.4).
+   * იძახებს.
    *
    * ⚠️ **სტატუსის ლექსიკონზე ერთ რიგმა ორ ფაქტს შეიძლება ცვლოს**:
    * სტატუსების ურთიერთ რიგს (`sort_order`) და ფსევდო-განყოფილების ანკერს.
@@ -366,10 +366,10 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
   const rowIds = rows.map((r) => r.id)
 
   /**
-   * **„ნაგულისხმევების აღდგენა" (2026-10-02 §1)** — მხოლოდ ის, რაც აკლია.
+   * **„ნაგულისხმევების აღდგენა"** — მხოლოდ ის, რაც აკლია.
    *
    * ⚠️ ურნიდან დაბრუნებული სტატუსი ჩანაწერებს ისევ უჩანს (მათი `status_id`
-   * მასზე რჩებოდა, §29.8) — ამიტომ ჩანაწერების ქეშიც ნახლდება, ურნისაც.
+   * მასზე რჩებოდა) — ამიტომ ჩანაწერების ქეშიც ნახლდება, ურნისაც.
    */
   const restore = useMutation({
     mutationFn: () => def.restoreDefaults!(),
@@ -436,7 +436,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
 
       {!isLoading && (
         <ul className={cn('space-y-2', !items.length && 'mt-4')}>
-          {/* Tasks §11 — drag & drop ერთი კომპონენტით: წყვეტილი სლოტი, მაუსთან ასლი, კლავიატურა სახელურზე */}
+          {/* drag & drop ერთი კომპონენტით: წყვეტილი სლოტი, მაუსთან ასლი, კლავიატურა სახელურზე */}
           <Sortable ids={rowIds} onReorder={onReorder}>
           {rows.map((row) => {
             // ⚠️ სტატუსი და ერთეული ერთი ფორმისაა; ფსევდო-განყოფილებას ერთეული არ აქვს
@@ -444,7 +444,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
               row.kind === 'item' ? row.item : row.kind === 'status' ? (row.status as unknown as DictionaryItem) : null
             const pseudo = row.kind === 'pseudo' ? row.pseudo : null
 
-            /* Tasks §7 — მარჯვენა ღილაკი: რედაქტირება · მენიუში ჩვენება/დამალვა · ზევით/ქვევით · — · წაშლა */
+            /* მარჯვენა ღილაკი: რედაქტირება · მენიუში ჩვენება/დამალვა · ზევით/ქვევით · — · წაშლა */
             const actions: MenuAction[] = [
               ...(item ? [{ key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, run: () => setEditing(item) }] : []),
               ...(layout
@@ -506,7 +506,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
                 </span>
 
                 <span className="flex shrink-0 items-center gap-2">
-                  {/* Tasks §12 — ისრები წავიდა (გადალაგება სახელურით, §11); თვალის ნაცვლად დიდი გადამრთველი „მენიუში" */}
+                  {/* ისრები წავიდა (გადალაგება სახელურით); თვალის ნაცვლად დიდი გადამრთველი „მენიუში" */}
                   {layout && (
                     <label className="mr-1 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
                       <Switch
@@ -600,7 +600,7 @@ function DeleteDictionaryEntry({
           ? { deleteRecords: true }
           : mode === 'reassign' && moveTo
             ? { moveTo: Number(moveTo) }
-            // ⚠️ ცხადი ფლაგი და არა `moveTo: null` (Tasks GAP-09)
+            // ⚠️ ცხადი ფლაგი და არა `moveTo: null`
             : { clearRecords: true },
       ),
     onSuccess: ({ moved, deleted }) => {
@@ -692,7 +692,7 @@ function DeleteDictionaryEntry({
               <span className="text-sm font-medium">{t('dictionaries.moveNone')}</span>
             </label>
 
-            {/* ეტაპი 8 — ჩანაწერებიც. ⚠️ ველი label-ის **გარეთ**აა, იგივე მიზეზით, რაც select */}
+            {/* ჩანაწერებიც. ⚠️ ველი label-ის **გარეთ**აა, იგივე მიზეზით, რაც select */}
             <div
               className={cn(
                 'rounded-lg border p-3 transition-colors',
@@ -745,7 +745,7 @@ function DeleteDictionaryEntry({
 }
 
 /**
- * **ლექსიკონის სათაური** — კლასიფიკაციის ველის გადარქმეული სახელი (Tasks §37, Q30)
+ * **ლექსიკონის სათაური** — კლასიფიკაციის ველის გადარქმეული სახელი
  * ან ნაგულისხმევი.
  *
  * ⚠️ **ერთი ადგილი ყველა მოდულზე**: ველის სახელი `/modules/{key}`-ზე

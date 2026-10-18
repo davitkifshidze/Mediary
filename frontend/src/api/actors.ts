@@ -2,7 +2,7 @@ import { api } from '@/lib/api'
 import type { Actor } from '@/api/media'
 
 /* ============================================================
-   **მსახიობების გვერდი `/actors` (Tasks §35.2).**
+   **მსახიობების გვერდი `/actors`.**
 
    ⚠️ „ჩემი" მსახიობი — ჩემს ჩანაწერზეა ან ჩემი ფოტო აქვს; რიცხვები
    (`counts`, `records`, `photos`) ჩემი ბიბლიოთეკისაა და არა TMDB-ის
@@ -28,17 +28,17 @@ export interface ActorCard {
   known_for: string | null
   popularity: number | null
   has_tmdb: boolean
-  /** §35.9 — ჩემი ხელით შექმნილი: რედაქტირდება და ურნაში იშლება */
+  /** ჩემი ხელით შექმნილი: რედაქტირდება და ურნაში იშლება */
   editable?: boolean
-  /** ბიოგრაფია და ბმულები TMDB-დან ჩამოსულია (§8.1) */
+  /** ბიოგრაფია და ბმულები TMDB-დან ჩამოსულია */
   synced: boolean
   counts: { movie: number; series: number; anime: number }
   records: number
   /** ჩემი ფოტოები გალერეაში */
   photos: number
-  /** ჩემი საძიებო ტეგები (§7.5) */
+  /** ჩემი საძიებო ტეგები */
   tags: string[]
-  /* §35.5 — ჩემი ლოკი (მნახველისაა: სხვას მსახიობი ჩვეულებრივ უჩანს) */
+  /* ჩემი ლოკი (მნახველისაა: სხვას მსახიობი ჩვეულებრივ უჩანს) */
   hidden?: false
   locked?: boolean
   unlocked?: boolean
@@ -46,7 +46,7 @@ export interface ActorCard {
   unlock_blocked_until?: string | null
 }
 
-/** §35.5 — დამალული (ჩაკეტილი, ამ სესიაში დაუხსნელი): მხოლოდ სახელი და ბოქლომი */
+/** დამალული (ჩაკეტილი, ამ სესიაში დაუხსნელი): მხოლოდ სახელი და ბოქლომი */
 export interface HiddenActorCard {
   id: number
   name: string
@@ -68,7 +68,7 @@ export interface ActorFilters {
   photos?: 'with' | 'without'
   records_min?: number
   synced?: 'yes' | 'no'
-  /** §35.5 — მხოლოდ ჩემ მიერ ჩაკეტილები */
+  /** მხოლოდ ჩემ მიერ ჩაკეტილები */
   locked?: boolean
   sort?: ActorSort
   locale?: 'ka' | 'en'
@@ -86,7 +86,7 @@ export interface ActorList {
   options: { known_for: string[]; tags: string[] }
 }
 
-/** Tasks §35.3 — ახალი მსახიობი ან ხელით შექმნილის რედაქტირება */
+/** ახალი მსახიობი ან ხელით შექმნილის რედაქტირება */
 export interface ActorInput {
   /** TMDB-ის პირი — საერთო ლექსიკონი (დანარჩენი ველები მაშინ არ იგზავნება) */
   tmdb_person_id?: number
@@ -152,7 +152,7 @@ export async function detachActorEverywhere(id: number): Promise<{ removed: numb
 }
 
 /**
- * **Tasks §35.9 (Q17) — ხელით შექმნილი მსახიობის წაშლა ურნაში.**
+ * **ხელით შექმნილი მსახიობის წაშლა ურნაში.**
  *
  * ⚠️ „წაშლა ჩემი ჩანაწერებიდან"-ისგან (`detachActorEverywhere`) განსხვავდება:
  * იქ მსახიობი რჩება, აქ კი თვითონ მიდის — ბმულებთან და ფოტოებთან ერთად,

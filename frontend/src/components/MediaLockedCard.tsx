@@ -11,7 +11,7 @@ import { RecordUnlockDialog } from '@/components/locks/RecordLock'
 import { RecordView } from '@/components/RecordView'
 
 /* ============================================================
-   **დამალული ფილმის/სერიალის/ანიმეს ბარათი (Tasks §35.5, Q9).**
+   **დამალული ფილმის/სერიალის/ანიმეს ბარათი.**
 
    ჩანს მხოლოდ ფილტრში „ჩაკეტილები": სათაური და ბოქლომი — სერვერი პოსტერს,
    აღწერას, სტატუსს და დანარჩენს საერთოდ არ აგზავნის (`lockedCard()`).
@@ -40,7 +40,7 @@ export function MediaLockedCard({ movie, type }: { movie: MovieListItem; type: M
   )
 }
 
-/** Tasks §45 — იგივე სტრიქონების ხედში: ბოქლომი ფოტოს ადგილას, სათაური, „ჩაკეტილი"; ზოლი და მენიუ არ აქვს */
+/** იგივე სტრიქონების ხედში: ბოქლომი ფოტოს ადგილას, სათაური, „ჩაკეტილი"; ზოლი და მენიუ არ აქვს */
 export function MediaLockedRow({ movie, type }: { movie: MovieListItem; type: MediaType }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CUT_STYLE_KEYS, cutStyle, hasCutStyle } from './cutStyle'
 
 /* ============================================================
-   ჭრილის რეესტრი (Tasks §2).
+   ჭრილის რეესტრი.
 
    ⚠️ ორივე წესი, რაც აქ მოწმდება, **ჩუმად** ირღვევა: hex მუქ თემაზე
    უბრალოდ არასწორ ფერს აჩვენებს (შეცდომას არავინ დააგდებს), უცნობი
@@ -38,11 +38,11 @@ describe('cutStyle', () => {
       'cast', 'playlist', 'gallery', 'account', 'chat', 'backup',
       'image', 'video', 'doc', 'book',
       'record', 'records', 'actors',
-      // Tasks §54.1 — ჟანრის ფანჯრის ჩანართები
+      // ჟანრის ფანჯრის ჩანართები
       'names', 'add',
-      // Tasks §56.1 — მარშრუტის საწყისი
+      // მარშრუტის საწყისი
       'here', 'home', 'address', 'myplace', 'pin',
-      // Tasks §59.2 — „ექსპორტ & იმპორტის" ჩანართები
+      // „ექსპორტ & იმპორტის" ჩანართები
       'export', 'import', 'database',
     ]
 

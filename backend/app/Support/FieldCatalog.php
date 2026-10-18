@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * **ველების კატალოგი (Tasks §6)** — რომელი ველების მორგება შეუძლია user-ს
+ * **ველების კატალოგი** — რომელი ველების მორგება შეუძლია user-ს
  * თითო მოდულზე: ჩვენება/დამალვა, სავალდებულოობა, ლეიბლი/placeholder და
  * საჯარო ბარათზე ჩვენება.
  *
@@ -11,7 +11,7 @@ namespace App\Support;
  * მხოლოდ **გადახრები** ინახება, ე.ი. კოდში დამატებული ახალი ველი ყველა
  * ანგარიშზე ავტომატურად ჩნდება და მიგრაციას არ მოითხოვს.
  *
- * ⚠️ **§6.5 (2026-09-11) — ახლა აქ ფორმის *ყველა* ველია და აღარ მხოლოდ
+ * ⚠️ **ახლა აქ ფორმის *ყველა* ველია და აღარ მხოლოდ
  * არჩევითები.** ადრე სავალდებულო ველი (ვიდეოს `url`, ჩანაწერის `title`)
  * კატალოგში საერთოდ არ იწერებოდა, რომ მისი გამორთვა ჩაწერას არ გატეხავდა —
  * მაგრამ მაშინ რედაქტორი „მოდულის ველების" ნაცვლად მხოლოდ ერთ ნაწილს
@@ -45,7 +45,7 @@ final class FieldCatalog
         ['key' => 'is_favorite', 'type' => 'bool', 'sort_order' => 70],
         ['key' => 'rating', 'type' => 'number', 'sort_order' => 80],
         [
-            // Tasks §2.5 — ხანგრძლივობა ხელით (`DurationInput`, ერთეული **წუთი**).
+            // ხანგრძლივობა ხელით (`DurationInput`, ერთეული **წუთი**).
             // ⚠️ სვეტი TMDB-იდანაც ივსება, ე.ი. ველი მხოლოდ შესწორებისთვისაა —
             // ამიტომ default-ად გამორთულია, ვიდეოს `duration`-ის მსგავსად.
             'key' => 'runtime',
@@ -61,7 +61,7 @@ final class FieldCatalog
      * მოდულის ველები.
      *
      * გამოტოვებული გასაღებების ნაგულისხმევები `defaults()`-შია:
-     * `enabled = true` (⚠️ §6.5 — **ახლად დამატებული ველი ავტომატურად
+     * `enabled = true` (⚠️ **ახლად დამატებული ველი ავტომატურად
      * მონიშნულია**), `required = false`, `public = true`, `locked = false`.
      *
      * ⚠️ სიაში **სწრაფი შევსების ძებნა (`lookup`) არ არის** — ის ველი არაა,
@@ -71,14 +71,14 @@ final class FieldCatalog
     private const FIELDS = [
         'movie' => self::MEDIA_FIELDS,
         'series' => self::MEDIA_FIELDS,
-        // §7.1 — ანიმე იმავე ფორმას ხატავს, კონფიგი კი per-module-ია
+        // ანიმე იმავე ფორმას ხატავს, კონფიგი კი per-module-ია
         'anime' => self::MEDIA_FIELDS,
         'video' => [
             // `url`-ის გარეშე ვიდეო არ არსებობს (`VideoUrl` მისგან იღებს embed-ს)
             ['key' => 'url', 'type' => 'link', 'locked' => true, 'sort_order' => 10],
             ['key' => 'title', 'type' => 'text', 'sort_order' => 20],
             ['key' => 'type_id', 'type' => 'select', 'sort_order' => 30],
-            // §6.4 — სტატუსი ვიდეოსაც: მართვადი ლექსიკონი, ფორმა მას ითვალისწინებს
+            // სტატუსი ვიდეოსაც: მართვადი ლექსიკონი, ფორმა მას ითვალისწინებს
             ['key' => 'status', 'type' => 'select', 'sort_order' => 35],
             [
                 'key' => 'duration',
@@ -90,16 +90,16 @@ final class FieldCatalog
                 'sort_order' => 40,
             ],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 50],
-            // Q52 — ვებძებნა და ბმულის ჩასმა ორივეს ავსებს; ფორმაც აჩვენებს
+            // ვებძებნა და ბმულის ჩასმა ორივეს ავსებს; ფორმაც აჩვენებს
             ['key' => 'channel', 'type' => 'text', 'sort_order' => 54],
             ['key' => 'published_at', 'type' => 'date', 'sort_order' => 56],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 60],
             ['key' => 'thumbnail', 'type' => 'file', 'sort_order' => 70],
         ],
-        /* ⚠️ §5.3 → Tasks §25.4 — „ჩემი ქულა" (`rating`) 2026-09-10-ს კატალოგიდან
+        /* ⚠️ „ჩემი ქულა" (`rating`) 2026-09-10-ს კატალოგიდან
            მოიხსნა, რადგან ველი ფორმიდან წავიდა (ჩამრთველი აღარაფერს აკეთებდა).
            2026-09-27-ს ის **დაბრუნდა** — ერთი ამრჩევით (`RatingSelect`) ხუთივე
-           ფორმაში (Q17): ადგილი, წიგნი, თამაში, სამაგიდო და სიმღერა. */
+           ფორმაში: ადგილი, წიგნი, თამაში, სამაგიდო და სიმღერა. */
         'song' => [
             ['key' => 'url', 'type' => 'link', 'locked' => true, 'sort_order' => 10],
             ['key' => 'title', 'type' => 'text', 'sort_order' => 20],
@@ -108,15 +108,15 @@ final class FieldCatalog
             ['key' => 'year', 'type' => 'number', 'sort_order' => 50],
             ['key' => 'duration', 'type' => 'number', 'sort_order' => 60],
             ['key' => 'genres', 'type' => 'list', 'sort_order' => 70],
-            // Tasks §25.4 — „ჩემი ქულა" 1–10 (`RatingSelect`)
+            // „ჩემი ქულა" 1–10 (`RatingSelect`)
             ['key' => 'rating', 'type' => 'number', 'sort_order' => 75],
             ['key' => 'thumbnail', 'type' => 'file', 'sort_order' => 80],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 90],
             ['key' => 'playlists', 'type' => 'list', 'sort_order' => 100],
         ],
-        /* ⚠️ §5.1 — `age_rating` და `size_gb` კატალოგიდან **მოხსნილია**
+        /* ⚠️ `age_rating` და `size_gb` კატალოგიდან **მოხსნილია**
            2026-09-10-ს: ორივე ველი ფორმიდან წავიდა, ე.ი. მათი ჩამრთველი
-           აღარაფერს აკეთებდა (იგივე წესი, რაც §5.3/§5.7-ს აქვს). სვეტები და
+           აღარაფერს აკეთებდა (იგივე წესი, რაც სხვა მოხსნილ ველებს აქვს). სვეტები და
            ძველი მნიშვნელობები რჩება — RAWG მათ ისევ ავსებს და ჩანაწერზე ჩანს. */
         'game' => [
             ['key' => 'title', 'type' => 'text', 'locked' => true, 'sort_order' => 10],
@@ -125,11 +125,11 @@ final class FieldCatalog
             ['key' => 'platforms', 'type' => 'list', 'sort_order' => 40],
             ['key' => 'modes', 'type' => 'list', 'sort_order' => 50],
             ['key' => 'genres', 'type' => 'list', 'sort_order' => 60],
-            // ⚠️ ტექსტის ნაცვლად მოდალის ღილაკია (§5.1) — ველი მაინც ველია
+            // ⚠️ ტექსტის ნაცვლად მოდალის ღილაკია — ველი მაინც ველია
             ['key' => 'franchise', 'type' => 'text', 'sort_order' => 70],
             ['key' => 'status', 'type' => 'select', 'sort_order' => 90],
-            /* Tasks §25.4 — „ჩემი ქულა" ბრუნდება (§5.1-მა ქულების ბლოკთან ერთად
-               მოხსნა); OpenCritic და მოთამაშეების ქულა ფორმის გარეთ რჩება */
+            /* „ჩემი ქულა" ბრუნდება (ერთხელ ქულების ბლოკთან ერთად
+               მოიხსნა); OpenCritic და მოთამაშეების ქულა ფორმის გარეთ რჩება */
             ['key' => 'rating', 'type' => 'number', 'sort_order' => 95],
             ['key' => 'rawg_id', 'type' => 'number', 'sort_order' => 100],
             ['key' => 'links', 'type' => 'list', 'sort_order' => 110],
@@ -137,20 +137,20 @@ final class FieldCatalog
             ['key' => 'cover', 'type' => 'file', 'sort_order' => 130],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 140],
         ],
-        /* ⚠️ §5.7 — `isbn` კატალოგიდან **მოხსნილია** 2026-09-10-ს: ველი ფორმიდან
+        /* ⚠️ `isbn` კატალოგიდან **მოხსნილია** 2026-09-10-ს: ველი ფორმიდან
            წავიდა („ველების სია მკაცრად შემოკლდეს"), ე.ი. მისი ჩამრთველი
            აღარაფერს აკეთებდა. სვეტი და მონაცემი რჩება. `rating` მაშინ იმავე
-           მიზეზით წავიდა და Tasks §25.4-ით (Q17) დაბრუნდა. */
+           მიზეზით წავიდა და მოგვიანებით დაბრუნდა. */
         'book' => [
             ['key' => 'title', 'type' => 'text', 'locked' => true, 'sort_order' => 10],
             ['key' => 'author', 'type' => 'text', 'sort_order' => 20],
             ['key' => 'publisher', 'type' => 'text', 'sort_order' => 30],
             ['key' => 'year', 'type' => 'number', 'sort_order' => 40],
             ['key' => 'pages', 'type' => 'number', 'sort_order' => 50],
-            // ⚠️ `key` **არ იცვლება** (Tasks §6.1) — გასაღების ცვლილება ყველა
+            // ⚠️ `key` **არ იცვლება** — გასაღების ცვლილება ყველა
             // მომხმარებლის `module_user.settings.fields` overrides-ს ობოლს ტოვებს
             ['key' => 'language', 'type' => 'select', 'sort_order' => 60],
-            // Tasks §25.4 — „ჩემი ქულა" 1–10 (`RatingSelect`)
+            // „ჩემი ქულა" 1–10 (`RatingSelect`)
             ['key' => 'rating', 'type' => 'number', 'sort_order' => 65],
             ['key' => 'source_url', 'type' => 'link', 'sort_order' => 70],
             // ⚠️ **ფორმატი პროგრესის ერთეულს წყვეტს** (`Book::syncProgress()`:
@@ -159,7 +159,7 @@ final class FieldCatalog
             ['key' => 'format', 'type' => 'select', 'sort_order' => 80],
             ['key' => 'status', 'type' => 'select', 'sort_order' => 90],
             ['key' => 'genre', 'type' => 'select', 'sort_order' => 100],
-            // Tasks §13.4 — ტეგები ფორმაში დაბრუნდა („აბსოლუტურად ყველგან"); Open Library-ის საგნებიც აქ ჯდება
+            // ტეგები ფორმაში დაბრუნდა („აბსოლუტურად ყველგან"); Open Library-ის საგნებიც აქ ჯდება
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 105],
             ['key' => 'cover', 'type' => 'file', 'sort_order' => 110],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 120],
@@ -173,7 +173,7 @@ final class FieldCatalog
             ['key' => 'playtime', 'type' => 'number', 'sort_order' => 60],
             ['key' => 'age', 'type' => 'number', 'sort_order' => 70],
             ['key' => 'complexity', 'type' => 'number', 'sort_order' => 80],
-            // Tasks §25.4 — „ჩემი ქულა" 1–10; BGG-ის ქულა (`bgg_rating`) ცალკეა
+            // „ჩემი ქულა" 1–10; BGG-ის ქულა (`bgg_rating`) ცალკეა
             ['key' => 'rating', 'type' => 'number', 'sort_order' => 85],
             ['key' => 'bgg_id', 'type' => 'number', 'sort_order' => 90],
             ['key' => 'genre', 'type' => 'select', 'sort_order' => 110],
@@ -190,7 +190,7 @@ final class FieldCatalog
             ['key' => 'description', 'type' => 'text', 'sort_order' => 60],
             ['key' => 'links', 'type' => 'list', 'sort_order' => 70],
         ],
-        // §18 — ბუკმარკის იდენტობა თვითონ ბმულია, ე.ი. `url` locked-ია
+        // ბუკმარკის იდენტობა თვითონ ბმულია, ე.ი. `url` locked-ია
         'bookmark' => [
             ['key' => 'url', 'type' => 'link', 'locked' => true, 'sort_order' => 10],
             /* ⚠️ სახელი აქ **სავალდებულოა default-ად** და არა `locked`: სვეტი
@@ -203,10 +203,10 @@ final class FieldCatalog
             ['key' => 'thumbnail', 'type' => 'file', 'sort_order' => 50],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 60],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 70],
-            // Tasks §36.3 — დამატებითი ბმულები (მაღაზია, ფასი, მიმოხილვა…)
+            // დამატებითი ბმულები (მაღაზია, ფასი, მიმოხილვა…)
             ['key' => 'links', 'type' => 'list', 'sort_order' => 80],
         ],
-        /* FEAT-25 — კურსები. ⚠️ `url` **`locked` არ არის** (ბუკმარკისგან
+        /* კურსები. ⚠️ `url` **`locked` არ არის** (ბუკმარკისგან
            განსხვავებით): ოფლაინ კურსსაც მისამართი არ აქვს და ჩანაწერი მის
            გარეშეც სრულფასოვანია. */
         'course' => [
@@ -218,7 +218,7 @@ final class FieldCatalog
             ['key' => 'description', 'type' => 'text', 'sort_order' => 100],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 110],
         ],
-        /* FEAT-26 — ადგილები. ⚠️ კოორდინატი ერთი ველია (`coords`) და არა ორი:
+        /* ადგილები. ⚠️ კოორდინატი ერთი ველია (`coords`) და არა ორი:
            განცალკევებული გრძედი უაზროა და მისი დამალვა ნახევრად გატეხილ
            ფორმას დატოვებდა. */
         'place' => [
@@ -234,19 +234,19 @@ final class FieldCatalog
             ['key' => 'photo', 'type' => 'file', 'sort_order' => 100],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 110],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 120],
-            // Tasks §57.1 — წყაროდან (Google Maps); წყაროს რეიტინგი ფორმაში მხოლოდ ჩანს
+            // წყაროდან (Google Maps); წყაროს რეიტინგი ფორმაში მხოლოდ ჩანს
             ['key' => 'phone', 'type' => 'text', 'sort_order' => 130],
             ['key' => 'website', 'type' => 'text', 'sort_order' => 140],
             ['key' => 'opening_hours', 'type' => 'list', 'sort_order' => 150],
         ],
-        /* Tasks §33 — პირადი გალერეის ჩანაწერი ადამიანია (ფოტოს ფორმა არ აქვს —
+        /* პირადი გალერეის ჩანაწერი ადამიანია (ფოტოს ფორმა არ აქვს —
            ფოტო ატვირთვით ჩნდება). ⚠️ სახელის გარეშე ადამიანი არ არსებობს. */
         'personal' => [
             ['key' => 'name', 'type' => 'text', 'locked' => true, 'sort_order' => 10],
             ['key' => 'birthday', 'type' => 'date', 'sort_order' => 20],
             ['key' => 'note', 'type' => 'text', 'sort_order' => 30],
         ],
-        /* Tasks §34 — მორიგეობა: თარიღი და საათები ჩანაწერის არსია (`locked`);
+        /* მორიგეობა: თარიღი და საათები ჩანაწერის არსია (`locked`);
            სამსახური, ტიპი, დრო, თანხა და შენიშვნა მორგებადია. */
         'duty' => [
             ['key' => 'date', 'type' => 'date', 'locked' => true, 'sort_order' => 10],
@@ -260,7 +260,7 @@ final class FieldCatalog
     ];
 
     /**
-     * **Tasks §37 — ინტერფეისიდან შექმნილი მოდულის ჩაშენებული ველები.**
+     * **ინტერფეისიდან შექმნილი მოდულის ჩაშენებული ველები.**
      *
      * ⚠️ ერთი სია ყველა პირად მოდულზე — ჩანაწერის სვეტები ერთია
      * (`custom_records`); მოდულის სპეციფიკას მფლობელი **დამატებითი ველებით**
@@ -315,7 +315,7 @@ final class FieldCatalog
             /* ⚠️ **`locked` კატალოგის ფაქტია და ისე რჩება** — ის სქემაზე
                ამბობს სიმართლეს („ამ ველის გარეშე ჩანაწერი არ ჩაიწერება").
                მესამე მდგომარეობა `unlocked`-ია: **მომხმარებლის ცხადი
-               არჩევანი** (Tasks §4.3), რომელსაც მხოლოდ `super_admin` წერს.
+               არჩევანი**, რომელსაც მხოლოდ `super_admin` წერს.
 
                ⚠️ ორივე ბრუნდება განზრახ: `locked: true, unlocked: true`
                ინტერფეისს აძლევს იმის თქმის საშუალებას, რომ „ჩაკეტილია,
@@ -344,7 +344,7 @@ final class FieldCatalog
     }
 
     /**
-     * **ველები, რომლებიც საჯარო ბარათზე არ უნდა გამოჩნდეს** (§6 ფაზა 4 → §16).
+     * **ველები, რომლებიც საჯარო ბარათზე არ უნდა გამოჩნდეს**.
      *
      * ⚠️ ეს **ჩანაწერის მფლობელის** არჩევანია და არა მნახველის — საჯარო
      * პროფილზე წყვეტს ის, ვისიც ჩანაწერია.
@@ -419,7 +419,7 @@ final class FieldCatalog
     /**
      * გამოტოვებული გასაღებების შევსება.
      *
-     * ⚠️ `enabled` ნაგულისხმევად **`true`-ია** (§6.5): ახლად დამატებული ველი
+     * ⚠️ `enabled` ნაგულისხმევად **`true`-ია**: ახლად დამატებული ველი
      * მაშინვე უნდა ჩანდეს, თორემ კოდში ველის დამატება ჩუმად არაფერს იძლევა.
      *
      * @param  array<string, mixed>  $field

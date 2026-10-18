@@ -29,7 +29,7 @@ import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   საჯარო პროფილი `/u/{username}` — Tasks §16.1.
+   საჯარო პროფილი `/u/{username}`.
 
    ⚠️ **ერთადერთი გვერდი `Protected`-ის გარეთ.** ავტორიზაციის გარეშეც იხსნება,
    რადგან „საჯარო პროფილი" გაზიარებად ბმულს ნიშნავს. მონაცემი ვიწროა:
@@ -47,7 +47,7 @@ export function PublicProfilePage() {
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  /* §16.3 — „მიწერა": საუბარს backend ხსნის (არსებულს აბრუნებს, დუბლს არ ქმნის),
+  /* „მიწერა": საუბარს backend ხსნის (არსებულს აბრუნებს, დუბლს არ ქმნის),
      ჩვენ მხოლოდ გადავდივართ. შეცდომა toast-ია — 409 „პროფილი საჯარო არაა",
      403 „დაბლოკილია". */
   const openChat = useMutation({
@@ -57,11 +57,11 @@ export function PublicProfilePage() {
   })
 
   const [domain, setDomain] = useState<PublicDomainKey | null>(null)
-  // §16.2 — „ჩანაწერები" vs „დამთხვევები"; მეორე მხოლოდ შესულ სტუმარს აქვს
+  // „ჩანაწერები" vs „დამთხვევები"; მეორე მხოლოდ შესულ სტუმარს აქვს
   const [view, setView] = useState<'records' | 'matches'>('records')
-  // Tasks §33 — გახსნილი ფლეილისტი (მისი შიგთავსი და დაკვრა ფანჯარაშია)
+  // გახსნილი ფლეილისტი (მისი შიგთავსი და დაკვრა ფანჯარაშია)
   const [openPlaylist, setOpenPlaylist] = useState<PublicCard | null>(null)
-  // Tasks §33 (Q7) — პირადი გალერეის საჯარო ალბომი (ფოტო/ვიდეო ფანჯარაში)
+  // პირადი გალერეის საჯარო ალბომი (ფოტო/ვიდეო ფანჯარაში)
   const [openPersonalAlbum, setOpenPersonalAlbum] = useState<PublicCard | null>(null)
 
   const profileQuery = useQuery({
@@ -79,8 +79,8 @@ export function PublicProfilePage() {
     }
   }, [profile, domain])
 
-  /* Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; ტაბის შეცვლა პირველ გვერდზე აბრუნებს.
-     ⚠️ გალერეის ჩანართს **სხვა endpoint** ემსახურება (§7.4) — ბარათების წამოღება იქ ზედმეტია */
+  /* გვერდზე 10: ნომრები + „მეტის ჩვენება"; ტაბის შეცვლა პირველ გვერდზე აბრუნებს.
+     ⚠️ გალერეის ჩანართს **სხვა endpoint** ემსახურება — ბარათების წამოღება იქ ზედმეტია */
   const itemsQuery = usePages({
     queryKey: ['public-profile-items', username, domain],
     fetchPage: (page) =>
@@ -179,7 +179,7 @@ export function PublicProfilePage() {
               <p className="mt-2 max-w-2xl text-sm text-foreground/80">{profile.profile.bio}</p>
             )}
 
-            {/* §16.3 — ჩატის ბუნებრივი შესასვლელი. ⚠️ იმავე პირობაზე ჩანს,
+            {/* ჩატის ბუნებრივი შესასვლელი. ⚠️ იმავე პირობაზე ჩანს,
                 რაც დამთხვევები: შესული ვარ და ეს სხვისი პროფილია. */}
             {canMatch && (
               <Button
@@ -199,7 +199,7 @@ export function PublicProfilePage() {
           </div>
         </header>
 
-        {/* ---------- §16.2 — „ჩანაწერები" / „დამთხვევები" ----------
+        {/* ---------- „ჩანაწერები" / „დამთხვევები" ----------
             შედარებას მეორე მხარე სჭირდება, ე.ი. ანონიმურ სტუმარს არ ეხება;
             საკუთარ თავთან შედარებაც უაზროა (backend-იც 422-ს აბრუნებს). */}
         {canMatch && (
@@ -245,9 +245,9 @@ export function PublicProfilePage() {
             </div>
 
             {/* ---------- ბადე ----------
-                ⚠️ **გალერეის ჩანართი ბარათებს არ ხატავს** (Tasks §7.4): მისი
+                ⚠️ **გალერეის ჩანართი ბარათებს არ ხატავს**: მისი
                 ჩანაწერი ალბომია (საქაღალდე), ჩვენება კი ფოტოებია — ბარათებად
-                „3 ალბომი" ეწერებოდა იქ, სადაც ორასი ფოტოა. §32-იდან შიგნით
+                „3 ალბომი" ეწერებოდა იქ, სადაც ორასი ფოტოა. შიგნით
                 მფლობელის გალერეის ჭრილებია; ბიბლიოთეკის დომენების სახელი და
                 ფერი ამ პროფილის `modules`-იდან მოდის (სტუმარს `useModules()` არ აქვს). */}
             {domain === 'gallery_album' ? (
@@ -310,12 +310,12 @@ export function PublicProfilePage() {
 }
 
 /**
- * **ფლეილისტის ბარათი იხსნება** (Tasks §33.2) — აქამდე ის მხოლოდ სახელსა და
+ * **ფლეილისტის ბარათი იხსნება** — აქამდე ის მხოლოდ სახელსა და
  * რიცხვს ხატავდა და არაფერს აკეთებდა. შიგნით: სიმღერები რიგით, დაკვრა და
  * წყაროს ბმული (`PublicPlaylistDialog`).
  *
  * ⚠️ რიცხვი ყველა სტუმარს ერთნაირად ეწერება — შესულ უცხოს აქამდე „0" ჩანდა
- * (`PublicProfileService::query()`-ის `withCount`, §33.3).
+ * (`PublicProfileService::query()`-ის `withCount`).
  */
 function PublicPlaylistTile({ card, onOpen }: { card: PublicCard; onOpen: () => void }) {
   const { t } = useTranslation()
@@ -364,7 +364,7 @@ function PublicCardTile({ card, lang }: { card: PublicCard; lang: 'ka' | 'en' })
           {title}
         </p>
         {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
-        {/* Tasks §9 — მფლობელის ქულა ვარსკვლავით, მედიაზე TMDB-ის საშუალო ცალკე */}
+        {/* მფლობელის ქულა ვარსკვლავით, მედიაზე TMDB-ის საშუალო ცალკე */}
         {(ratings.mine != null || ratings.average != null) && (
           <p className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
             {ratings.mine != null && (

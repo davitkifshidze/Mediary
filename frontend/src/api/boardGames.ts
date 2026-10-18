@@ -3,9 +3,9 @@ import { readPage, type ListParams, type Page } from '@/lib/paged'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
-   ბორდგეიმების მოდული (`board_game`, Tasks §14).
+   ბორდგეიმების მოდული (`board_game`).
 
-   ⚠️ სათაური ერთენოვანია (`title`) — §14 ორ ენას არ ითხოვს და წყარო (BGG)
+   ⚠️ სათაური ერთენოვანია (`title`) — ორი ენა აქ არ სჭირდება და წყარო (BGG)
    ინგლისურია. იგივე გადაწყვეტილებაა, რაც ვიდეოსა და სიმღერაზე.
    ============================================================ */
 
@@ -56,7 +56,7 @@ export interface BoardGameFilters extends ListParams {
   genre_id?: string
   /** მექანიკები — მძიმით გამოყოფილი სია */
   /** „რამდენი კაცით ვთამაშობთ" — დიაპაზონში მოხვედრა */
-  /** ⚠️ ეტაპი 8 — მძიმით გაყოფილი სია (`"2,4"`), სერვერზე OR */
+  /** ⚠️ მძიმით გაყოფილი სია (`"2,4"`), სერვერზე OR */
   players?: string
   sort?: string
 }
@@ -102,7 +102,7 @@ function toFormData(input: BoardGameInput): FormData {
     'year', 'genre_id', 'players_min', 'players_max', 'age_min',
     'playtime_min', 'playtime_max', 'complexity', 'bgg_id', 'bgg_rating', 'rating',
   ]
-  /* Tasks §25.3 (§4.8-ის წესი) — `null` („გაასუფთავე“) ცარიელ სტრიქონად
+  /* `null` („გაასუფთავე“) ცარიელ სტრიქონად
      იგზავნება და მხოლოდ `undefined` („არ შეეხო“) რჩება გამოტოვებული; ადრე
      გასუფთავებული რიცხვი (ქულა, წელი…) საერთოდ არ იგზავნებოდა და შენახვის
      შემდეგ ძველი უკან ბრუნდებოდა. */
@@ -159,7 +159,7 @@ export async function toggleBoardGameFavorite(id: number): Promise<BoardGame> {
   return data.data
 }
 
-/* ---------- BoardGameGeek (§14-ის enrichment) ---------- */
+/* ---------- BoardGameGeek (enrichment) ---------- */
 
 export interface BggCandidate {
   bgg_id: number
@@ -194,7 +194,7 @@ export async function fetchBggDraft(bggId: number): Promise<BggCandidate> {
   return data.draft
 }
 
-/* ---------- ქართული მაღაზიები (Tasks §7.2) ---------- */
+/* ---------- ქართული მაღაზიები ---------- */
 
 /** მაღაზიის კოდი — backend-ის `GeorgianShops::SHOPS`-ის გასაღებები */
 export const GE_SHOPS = ['corners', 'puzz'] as const
@@ -295,7 +295,7 @@ export async function createBoardGameNote(gameId: number, body: string): Promise
   return data.data
 }
 
-/** იგივე, რაც თამაშზე — `PATCH` არსებობდა, ჰელპერი აკლდა (Tasks §6.5) */
+/** იგივე, რაც თამაშზე — `PATCH` არსებობდა, ჰელპერი აკლდა */
 export async function updateBoardGameNote(id: number, body: string): Promise<BoardGameNote> {
   const { data } = await api.patch(`/board-game-notes/${id}`, { body })
   return data.data
@@ -313,7 +313,7 @@ export interface BoardGameGenre {
   name_ka: string
   name_en: string
   icon: string | null
-  /** Tasks §24.3 — ჟანრის ფერი: პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; `null` — ნაცრისფერი */
+  /** ჟანრის ფერი: პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; `null` — ნაცრისფერი */
   color: string | null
   sort_order: number
   board_games_count?: number

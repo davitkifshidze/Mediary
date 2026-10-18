@@ -2,7 +2,7 @@ import type { ShareDomainSpec, ShareDomains, ShareDomainKey, ShareScopeMode } fr
 import { SHARE_DOMAINS } from '@/api/shareLinks'
 
 /* ============================================================
-   გაზიარების ბმულის სუფთა წესები (Tasks §40) — ტესტირებადი.
+   გაზიარების ბმულის სუფთა წესები — ტესტირებადი.
    ============================================================ */
 
 /** სტატუსის მექანიზმი — `ShareDomain::statusKind()`-ის სარკე */
@@ -13,13 +13,13 @@ export type ShareClassifierKind = 'genre' | 'category' | 'type'
 
 export interface ShareDomainMeta {
   status: ShareStatusKind
-  /** `null` — კლასიფიკატორი არ აქვს (პლეილისტი, §40.13) */
+  /** `null` — კლასიფიკატორი არ აქვს (პლეილისტი) */
   classifier: ShareClassifierKind | null
   /** pivot — „ნებისმიერი/ყველა" მხოლოდ მას აქვს აზრი */
   multi: boolean
   /** მედიის გლობალური ჟანრი (slug); დანარჩენზე — მფლობელის ლექსიკონის id */
   global: boolean
-  /** მფლობელის **საკუთარი** შეფასება (`ShareDomain::personal_rating`); მედიაზე ეს `my_rating`-ია (Tasks §9) */
+  /** მფლობელის **საკუთარი** შეფასება (`ShareDomain::personal_rating`); მედიაზე ეს `my_rating`-ია */
   personalRating: boolean
   /** „რჩეული" (`is_favorite`) — პლეილისტს არ აქვს */
   favorite: boolean
@@ -32,7 +32,7 @@ export interface ShareDomainMeta {
 }
 
 /**
- * **თითო დომენის თვისებები — `ShareDomain::DOMAINS`-ის სარკე** (§40.10, §40.13).
+ * **თითო დომენის თვისებები — `ShareDomain::DOMAINS`-ის სარკე**.
  *
  * ⚠️ რიგები **ერთ ხაზზეა** განზრახ: `RegistryConsistencyTest` მათ წყაროდან
  * კითხულობს და სტატუსს, კლასიფიკატორს, `multi`-ს, `global`-ს, შეფასებას,

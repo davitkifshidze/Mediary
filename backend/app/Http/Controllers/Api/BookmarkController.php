@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * ბუკმარკების მოდული (`bookmark`, Tasks §18).
+ * ბუკმარკების მოდული (`bookmark`).
  *
  * მფლობელობა — `BelongsToUser` global scope (სხვისი ჩანაწერი 404), უფლებები —
  * `permission:bookmark` middleware.
@@ -34,12 +34,12 @@ class BookmarkController extends Controller
 
     public function index(Request $request)
     {
-        // Tasks §36 — ფაილებისა და გალერეის ფოტოების რიცხვი რიგის „ფაილები"-სთვის
+        // ფაილებისა და გალერეის ფოტოების რიცხვი რიგის „ფაილები"-სთვის
         $query = Bookmark::query()->with('category')->withCount(['files', 'galleryImages']);
-        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'bookmark', $request);
 
-        // §6.4 — სტატუსი per-user ლექსიკონია; ფილტრი გასაღებით რჩება
+        // სტატუსი per-user ლექსიკონია; ფილტრი გასაღებით რჩება
         foreach ($this->slugList($request->string('status')->toString()) as $key) {
             $query->statusKey($key);
         }
@@ -47,7 +47,7 @@ class BookmarkController extends Controller
             $query->where('is_favorite', true);
         }
 
-        // კატეგორიები/ტეგები — მძიმით გამოყოფილი სია (5.2-ის წესი).
+        // კატეგორიები/ტეგები — მძიმით გამოყოფილი სია.
         // ⚠️ კატეგორია **სვეტია** (ერთია ჩანაწერზე), ე.ი. `whereIn` და არა
         // `whereHas`: მრავალი კატეგორია ერთ ჩანაწერზე ვერ იქნება, ამიტომ
         // მათი AND-ით კვეთა ყოველთვის ცარიელ სიას მოგვცემდა.
@@ -64,7 +64,7 @@ class BookmarkController extends Controller
         if ($q = $request->string('q')->toString()) {
             $query->where(fn (Builder $inner) => $inner
                 ->where('title', 'like', Like::contains($q))
-                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // §47 — ფორმატის გარეშე
+                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // ფორმატის გარეშე
                 ->orWhere('url', 'like', Like::contains($q))
                 ->orWhere('domain', 'like', Like::contains($q))
                 ->orWhere('tags', 'like', Like::contains($q)));
@@ -82,7 +82,7 @@ class BookmarkController extends Controller
         return BookmarkResource::collection($this->paginated($request, $query));
     }
 
-    /** Tasks §36.1 — დეტალის ფანჯარა `?open=<id>`-ით ჩანაწერს id-ით კითხულობს */
+    /** დეტალის ფანჯარა `?open=<id>`-ით ჩანაწერს id-ით კითხულობს */
     public function show(Bookmark $bookmark)
     {
         return new BookmarkResource(
@@ -95,7 +95,7 @@ class BookmarkController extends Controller
      * ⚠️ ჩავარდნა 200-ია ცარიელი ველებით და არა 5xx: გვერდის დახურვა
      * (403/timeout) ჩვეულებრივი ამბავია და ხელით შევსებას არ უნდა უშლიდეს.
      */
-    /** Tasks §44.1 — ერთი წყარო (`LinkResolver`): YouTube-ის ბმულზეც სრული ინფო */
+    /** ერთი წყარო (`LinkResolver`): YouTube-ის ბმულზეც სრული ინფო */
     public function metadata(Request $request, LinkResolver $links)
     {
         $data = $request->validate(['url' => ['required', 'string', 'max:1000', 'url']]);
@@ -124,7 +124,7 @@ class BookmarkController extends Controller
 
     public function destroy(Bookmark $bookmark)
     {
-        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+        /* ⚠️ **კალათა** — `delete()` კი არა, `moveToTrash()`.
            ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
            გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
            ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
@@ -195,9 +195,9 @@ class BookmarkController extends Controller
             'favicon_url' => ['nullable', 'string', 'max:500', 'url'],
             'thumbnail' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_thumbnail' => ['nullable', 'boolean'],
-            /* Tasks §36.3 — დამატებითი ბმულები (წიგნის წესი: `url`, `max:1000`).
+            /* დამატებითი ბმულები (წიგნის წესი: `url`, `max:1000`).
                ⚠️ `SafeHttp` არ სჭირდება — ბმული მხოლოდ ინახება და სერვერი მას არ
-               ხსნის; მეტა-მონაცემი ფორმაში `/links/metadata`-ით მოდის (§15).
+               ხსნის; მეტა-მონაცემი ფორმაში `/links/metadata`-ით მოდის.
                ⚠️ მხოლოდ `http(s)` — ბმული `<a href>`-ად იხატება, ე.ი. სხვა სქემა აქ არ შედის.
                ⚠️ წარწერა 255-მდეა და არა 60-მდე: ის ხშირად გვერდის სათაურიდან ივსება.
                ⚠️ ხატულა **არ** მოწმდება `url`-ით: ის კოსმეტიკაა და გვერდიდან მოდის
@@ -232,7 +232,7 @@ class BookmarkController extends Controller
             $bookmark->tags = Bookmark::normalizeTags($data['tags'] ?? []);
         }
         if (array_key_exists('links', $data)) {
-            /* ⚠️ **`ksort` აუცილებელია** (თამაშის §22.3-ის გაკვეთილი): `validate()`
+            /* ⚠️ **`ksort` აუცილებელია**: `validate()`
                wildcard-ის მასივს **წესების** რიგით აგებს, ე.ი. სხვადასხვა ველიანი
                რიგების გასაღებები 1, 3, 0, 2-ად მოდის და `array_values` ბმულებს აურევდა. */
             $raw = $data['links'] ?? [];
@@ -254,14 +254,14 @@ class BookmarkController extends Controller
         }
 
         if ($request->boolean('remove_thumbnail')) {
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($bookmark, 'thumbnail_path');
             $bookmark->thumbnail_path = null;
         }
 
         if ($request->hasFile('thumbnail')) {
-            // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($bookmark, 'thumbnail_path');
             $bookmark->thumbnail_path = $this->meter
                 ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::BOOKMARK_THUMBNAILS);
@@ -283,7 +283,7 @@ class BookmarkController extends Controller
             return;
         }
 
-        // §44.1 — ფორმის probe-ის იგივე წყარო და ქეში
+        // ფორმის probe-ის იგივე წყარო და ქეში
         $meta = app(LinkResolver::class)->resolve($bookmark->url);
 
         if (! $bookmark->title) {

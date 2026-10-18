@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * მსახიობის ხელით დამატება ჩანაწერზე — ეტაპი 1 (2026-09-13).
+ * მსახიობის ხელით დამატება ჩანაწერზე.
  *
  * ⚠️ **ეს ერთი სვეტი მთელი ფუნქციონალის მზიდია.** `MovieEnricher`,
  * `TvEnricher` და `ItemSyncer` მსახიობებს `$record->cast()->sync($sync)`-ით

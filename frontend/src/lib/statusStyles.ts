@@ -1,7 +1,7 @@
 /**
  * სტატუსების ერთიანი ფერადი სტილი (აქტიური = შევსებული, არააქტიური = ღია + წყვეტილი).
  *
- * ⚠️ **გასაღები აქ „ტონია" და არა სტატუსის `key`** (Tasks §6.4): სტატუსი
+ * ⚠️ **გასაღები აქ „ტონია" და არა სტატუსის `key`**: სტატუსი
  * per-user ლექსიკონია, ე.ი. „მიტოვებული" ან „ვნახე" ამ რუკაში ვერასდროს
  * იქნებოდა — და უფერული დარჩებოდა. ტონს `statusTone()` ირჩევს: ჯერ
  * ნაგულისხმევი გასაღები, მერე `role`.
@@ -31,7 +31,7 @@ export const STATUS_INACTIVE: Record<string, string> = {
   favorite: 'border-dashed border-favorite/50 bg-favorite/10 text-favorite hover:bg-favorite/20',
 }
 
-/** Tasks §16.3 — აიქონის/ტექსტის ფერი ტონით (მენიუ, სელექტი); ლიტერალები, რომ Tailwind-მა დაინახოს */
+/** აიქონის/ტექსტის ფერი ტონით (მენიუ, სელექტი); ლიტერალები, რომ Tailwind-მა დაინახოს */
 export const STATUS_TEXT: Record<string, string> = {
   undecided: 'text-status-undecided',
   towatch: 'text-status-towatch',
@@ -46,7 +46,7 @@ export const STATUS_BADGE: Record<string, string> = {
   towatch: 'bg-status-towatch/15 text-status-towatch',
   watching: 'bg-status-watching/15 text-status-watching',
   watched: 'bg-status-watched/15 text-status-watched',
-  /* Tasks §21 — „მიტოვებული" (წიგნი, კურსი). ⚠️ ლექსიკონის სამი როლიდან
+  /* „მიტოვებული" (წიგნი, კურსი). ⚠️ ლექსიკონის სამი როლიდან
      არცერთს არ უდრის, ამიტომ საკუთარი ტონი აქვს და ის წითელია — ისევე,
      როგორც წიგნის ძველ ხელით დაწერილ რუკაში იყო. */
   dropped: 'bg-destructive/15 text-destructive',
@@ -54,7 +54,7 @@ export const STATUS_BADGE: Record<string, string> = {
 
 /**
  * **იგივე ტონი გრაფიკისთვის** — CSS-ცვლადად, რადგან ზოლი ფერს inline
- * `style`-ით იღებს (Tasks §28). ⚠️ ცალკე პალიტრა არ იწერება: სტატისტიკის
+ * `style`-ით იღებს. ⚠️ ცალკე პალიტრა არ იწერება: სტატისტიკის
  * „ნანახი" ზუსტად იმ მწვანეშია, რაც ჩანაწერის ბეჯზე.
  */
 export const STATUS_FILL: Record<string, string> = {

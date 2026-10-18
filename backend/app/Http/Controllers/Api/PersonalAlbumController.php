@@ -15,13 +15,13 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * **პირადი გალერეის ალბომები (Tasks §33.5)** — „გარეთ" და ადამიანის შიგნით.
+ * **პირადი გალერეის ალბომები** — „გარეთ" და ადამიანის შიგნით.
  *
  * `?person_id=5` — ერთი ადამიანის ალბომები; `?outside=1` — მხოლოდ „გარე".
  * ⚠️ გვერდებად არ იჭრება (ადამიანების წესი) — ალბომი ათეულებია.
  *
- * ⚠️ **ჩაკეტილი ალბომი (§33.7)**: დაუხსნელს ცვლილება არ ეხება (423), და ის
- * **საჯარო ვერასდროს იქნება** (Q7) — ჩაკეტვა ჩამრთველს თიშავს, ჩაკეტილზე
+ * ⚠️ **ჩაკეტილი ალბომი**: დაუხსნელს ცვლილება არ ეხება (423), და ის
+ * **საჯარო ვერასდროს იქნება** — ჩაკეტვა ჩამრთველს თიშავს, ჩაკეტილზე
  * ჩართვა კი 422-ია.
  */
 class PersonalAlbumController extends Controller
@@ -80,7 +80,7 @@ class PersonalAlbumController extends Controller
             RecordLocks::ensureOpen(Person::query()->find($data['person_id']));
         }
 
-        // Q7 — ჩაკეტილი ალბომი საჯარო არასდროსაა
+        // ჩაკეტილი ალბომი საჯარო არასდროსაა
         abort_if(
             ($data['visibility'] ?? null) === 'public' && RecordLocks::isLocked($personalAlbum),
             422,
@@ -164,7 +164,7 @@ class PersonalAlbumController extends Controller
                 'nullable', 'integer',
                 Rule::exists('personal_media', 'id')->where('user_id', $userId)->whereNull('trashed_at'),
             ],
-            // Q7 — საჯარო პროფილზე მხოლოდ ალბომი ჩანს, თავისი ჩამრთველით
+            // საჯარო პროფილზე მხოლოდ ალბომი ჩანს, თავისი ჩამრთველით
             'visibility' => ['nullable', 'in:'.implode(',', PublicDomain::VALUES)],
         ]);
 
@@ -186,7 +186,7 @@ class PersonalAlbumController extends Controller
     }
 
     /**
-     * ⚠️ **ჩაკეტვა საჯაროობას თიშავს** (Q7) — ცხადად და არა მხოლოდ საჯარო
+     * ⚠️ **ჩაკეტვა საჯაროობას თიშავს** — ცხადად და არა მხოლოდ საჯარო
      * query-ში: ჩამრთველი ტყუილს არ უნდა ამბობდეს, ლოკის მოხსნა კი ალბომს
      * უკითხავად აღარ გამოაქვეყნებს.
      */

@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **ვიდეოს ტიპის ფერი** (Tasks §19.2) — სტატუსის ფერის იგივე ფორმატი.
+ * **ვიდეოს ტიპის ფერი** — სტატუსის ფერის იგივე ფორმატი.
  */
 class VideoTypeColorTest extends TestCase
 {

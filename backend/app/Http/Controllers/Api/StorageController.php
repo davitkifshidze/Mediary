@@ -8,7 +8,7 @@ use App\Services\Storage\StorageMeter;
 use Illuminate\Http\Request;
 
 /**
- * საცავის მდგომარეობა (Tasks 17.1/17.3).
+ * საცავის მდგომარეობა.
  *
  * მოდულებად დაშლა დისკს კითხავს, ამიტომ ცალკე endpoint-ია და არა
  * `GET /auth/me`-ს ნაწილი (იქ მხოლოდ დაქეშილი ჯამი მიდის).
@@ -23,7 +23,7 @@ class StorageController extends Controller
     }
 
     /**
-     * **§17.2 — ლიმიტების გადანაწილება მოდულებზე.**
+     * **ლიმიტების გადანაწილება მოდულებზე.**
      *
      * ⚠️ `PUT` და არა `POST`: არსებულ მდგომარეობას ვცვლით. `null` მნიშვნელობა
      * ლიმიტს **ხსნის** (მოდული საერთო აუზში ბრუნდება) — 0 კი „ატვირთვა
@@ -56,7 +56,7 @@ class StorageController extends Controller
     }
 
     /**
-     * 17.5 — ატვირთვების **მედია-ბიბლიოთეკა**: ყველა ფაილი ერთად (ფრონტზე
+     * ატვირთვების **მედია-ბიბლიოთეკა**: ყველა ფაილი ერთად (ფრონტზე
      * სქროლით, ფილტრებით და ძებნით). ადმინის ხედი (`/users/{id}`) იმავე
      * `StorageMeter::files()`-იდან იკვებება, ე.ი. ორი სხვადასხვა სია ვერ გაჩნდება.
      *
@@ -66,7 +66,7 @@ class StorageController extends Controller
     public function files(Request $request)
     {
         $limit = max(1, min((int) $request->integer('limit', 2000), 5000));
-        // ⚠️ Tasks §29 — ურნაში მყოფი აქ არ ჩანს, მაგრამ ადგილს იკავებს: ჯამი `trash`-შია
+        // ⚠️ ურნაში მყოფი აქ არ ჩანს, მაგრამ ადგილს იკავებს: ჯამი `trash`-შია
         $library = $this->meter->library($request->user());
         $files = $library['files']->sortByDesc('size')->values();
 
@@ -87,7 +87,7 @@ class StorageController extends Controller
      * ატვირთული ფაილების წაშლა. `path`-ს ვალიდაციას **`StorageMeter` აკეთებს**
      * (ეძებს user-ის `files()`-ში), ამიტომ სხვისი გზა 404-ია.
      *
-     * §6.2 — ბიბლიოთეკამ „მონიშნულების წაშლა" და „ყველას წაშლა" მიიღო, ე.ი.
+     * ბიბლიოთეკამ „მონიშნულების წაშლა" და „ყველას წაშლა" მიიღო, ე.ი.
      * იმავე endpoint-ს ახლა `paths[]`-იც მოსდის. ⚠️ **ცალკე bulk-endpoint
      * განზრახ არ გაჩნდა**: წესი („მხოლოდ ის, რაც `files()`-შია") ერთ ადგილას
      * უნდა იყოს, თორემ ორი გზა ერთ დღეს დაშორდებოდა ერთმანეთს.
@@ -125,13 +125,13 @@ class StorageController extends Controller
             ...$this->meter->usage($user->refresh(), withModules: true),
             'deleted' => $result['files'],
             'freed' => $result['bytes'],
-            // Tasks §29 — ურნაში გადავიდა (ადგილს კვლავ იკავებს)
+            // ურნაში გადავიდა (ადგილს კვლავ იკავებს)
             'trashed' => $result['trashed'],
         ]);
     }
 
     /**
-     * **§6.2 — მონიშნულების/ყველას ჩამოტვირთვა ერთ zip-ად.**
+     * **მონიშნულების/ყველას ჩამოტვირთვა ერთ zip-ად.**
      *
      * ⚠️ **`POST` და არა `GET`**: მონიშვნა ასეულ გზას შეიძლება შეიცავდეს და
      * query-string-ს ეს არ ჯდება. `EnsureModulePermission` აქ არ ერევა —
@@ -174,7 +174,7 @@ class StorageController extends Controller
      */
     private function pickPaths(array $data, User $user): array
     {
-        // ⚠️ „ყველა" = სიაში ნაჩვენები; ურნაში მყოფს სია არ აჩვენებს (Tasks §29)
+        // ⚠️ „ყველა" = სიაში ნაჩვენები; ურნაში მყოფს სია არ აჩვენებს
         if ($data['all'] ?? false) {
             return $this->meter->library($user)['files']->pluck('path')->all();
         }
@@ -186,7 +186,7 @@ class StorageController extends Controller
     }
 
     /**
-     * 17.5 — ობოლი ფაილები. **გლობალური** ოპერაციაა (ბაზაში არ-მოხსენიებულ
+     * ობოლი ფაილები. **გლობალური** ოპერაციაა (ბაზაში არ-მოხსენიებულ
      * ფაილს მფლობელი აღარ აქვს), ამიტომ route `super_admin`-ითაა შემოსაზღვრული.
      */
     public function orphans()

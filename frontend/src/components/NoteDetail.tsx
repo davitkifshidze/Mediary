@@ -12,29 +12,29 @@ import { useRecordOpen } from '@/lib/audit'
 import { useDateFormat } from '@/lib/dates'
 
 /* ============================================================
-   ჩანაწერის დეტალები — ბმულები, ატვირთვები და შეხსენებები (Tasks §13).
+   ჩანაწერის დეტალები — ბმულები, ატვირთვები და შეხსენებები.
 
-   ⚠️ ატვირთვები **კვოტაზე გადის** (§13.1 → 17.1): ლიმიტის ამოწურვაზე
+   ⚠️ ატვირთვები **კვოტაზე გადის**: ლიმიტის ამოწურვაზე
    backend 413-ს აბრუნებს და toast ცხადად წერს, რამდენი დარჩა.
 
-   ⚠️ **რიგი §26.4-ით**: ფოტოები ზემოთ, მერე ვადა, აღწერა, ბმულები,
+   ⚠️ **რიგი დეტალის ფანჯრების საერთოა**: ფოტოები ზემოთ, მერე ვადა, აღწერა, ბმულები,
    დოკუმენტები და ვიდეოები. ⚠️ ფოტოები პრივატულ დისკზეა, ამიტომ ისინი
    `NoteUploads`-ის ბადეში რჩება და არა საჯარო ვიტრინაში (`DetailPhotos`).
    ============================================================ */
 
-/* ⚠️ **`focus`-ის პროპი და გადახვევა მოიხსნა (ეტაპი 11).** ის ეტაპ 7-ზე
+/* ⚠️ **`focus`-ის პროპი და გადახვევა მოიხსნა.** ის
    იმიტომ დაიბადა, რომ შეხსენებები გრძელი მოდალის **ბოლოში** იყო ჩამარხული
    და სიის ბეჯს იქამდე უნდა მიეყვანა. ახლა ბეჯი პირდაპირ შეხსენებების
    ფანჯარას ხსნის, ე.ი. გადასახვევი აღარაფერია. */
 export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => void }) {
   const { t } = useTranslation()
-  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  // გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen('note', note.id)
-  // ⚠️ თარიღი `lib/dates.ts`-ზე გადის და არა `toLocaleString()`-ზე (Tasks 18):
+  // ⚠️ თარიღი `lib/dates.ts`-ზე გადის და არა `toLocaleString()`-ზე:
   // პირდაპირი ძახილი ბრაუზერის ლოკალს მიჰყვებოდა და პარამეტრს არ ემორჩილებოდა
   const { dateTime } = useDateFormat()
   const [reminders, setReminders] = useState(false)
-  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
+  // რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
   const qc = useQueryClient()
   const favorite = useMutation({
     mutationFn: () => toggleNoteFavorite(note.id),
@@ -62,16 +62,16 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
   return (
     <ModalShell title={note.title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
-        {/* Tasks §8/§26.2 — ჰეროში ორივე ღილაკი: შემხსენებელი (ქარვისფერი) და რჩეული, ერთი სიმაღლის */}
+        {/* ჰეროში ორივე ღილაკი: შემხსენებელი (ქარვისფერი) და რჩეული, ერთი სიმაღლის */}
         <div className="flex flex-wrap items-center justify-end gap-2">
           <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(true)} />
           <FavoriteButton active={note.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
         </div>
 
-        {/* §26.2 — შემხსენებლების ბარათი **ზემოთ**, აღწერამდე (აქამდე ბოლოში იყო ჩამარხული) */}
+        {/* შემხსენებლების ბარათი **ზემოთ**, აღწერამდე (აქამდე ბოლოში იყო ჩამარხული) */}
         <NoteRemindersButton note={note} onOpen={() => setReminders(true)} />
 
-        {/* ---------- ფოტოები — ზემოთ (§26.4) ---------- */}
+        {/* ---------- ფოტოები — ზემოთ ---------- */}
         <NoteUploads noteId={note.id} kinds={['image']} />
 
         {note.due_at && (

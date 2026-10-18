@@ -25,16 +25,16 @@ namespace App\Support;
  *   boardgames/files/{rules,images,docs} — `board_game_files` (წესები, გალერეა)
  *   games/covers           — თამაშის ყდა
  *   games/files/{images,docs} — `game_files` (ატვირთული სქრინშოტი/დოკუმენტი)
- *   notes/files/{images,videos,docs} — `note_entry_files` (Tasks §13)
- *   bookmarks/thumbnails   — `bookmarks.thumbnail_path` (Tasks §18)
- *   bookmarks/files/images — `bookmark_files.path` (Tasks §36.4 — ჩემი ფოტოები)
- *   courses/thumbnails     — `courses.thumbnail_path` (FEAT-25)
+ *   notes/files/{images,videos,docs} — `note_entry_files`
+ *   bookmarks/thumbnails   — `bookmarks.thumbnail_path`
+ *   bookmarks/files/images — `bookmark_files.path` (ჩემი ფოტოები)
+ *   courses/thumbnails     — `courses.thumbnail_path`
  *   courses/files/*        — `course_files.path` (`image`/`doc`; ძველი სერტიფიკატები — `certificates/`)
- *   {მოდულის ფესვი}/fields — `<module>_field_values.value_path` (§6 ფაზა 4b)
- *   gallery/images         — `gallery_images` (polymorphic — Tasks 10)
- *   chat/files/{images,videos,docs} — `messages.attachment_path` (§16.3, **პრივატული**)
+ *   {მოდულის ფესვი}/fields — `<module>_field_values.value_path`
+ *   gallery/images         — `gallery_images` (polymorphic)
+ *   chat/files/{images,videos,docs} — `messages.attachment_path` (**პრივატული**)
  *   cast/photos            — მსახიობის ფოტო (გლობალური ლექსიკონი, არა მოდული)
- *   personal/{photos,videos,thumbs} — პირადი გალერეა (Tasks §33, **პრივატული**)
+ *   personal/{photos,videos,thumbs} — პირადი გალერეა (**პრივატული**)
  *
  * ⚠️ ეს კლასი **ერთადერთი წყაროა**: ატვირთვა პირდაპირ სტრიქონს არ წერს.
  * ახალი მოდული ერთ ფესვს ამატებს `ROOTS`-ში და თავის კონსტანტას აქ.
@@ -47,7 +47,7 @@ final class StorageFolder
 
     public const SERIES_POSTERS = 'series/posters';
 
-    /** §7.1 — ანიმეს **თავისი** ფესვი: ბრტყელ საქაღალდეში ერთნაირი
+    /** ანიმეს **თავისი** ფესვი: ბრტყელ საქაღალდეში ერთნაირი
      *  slug-ის სერიალი და ანიმე ერთმანეთს გადააწერდნენ */
     public const ANIME_POSTERS = 'anime/posters';
 
@@ -58,7 +58,7 @@ final class StorageFolder
     public const VIDEO_DOCS = 'videos/files/docs';
 
     /**
-     * §7.1 — `yt-dlp`-ით ლოკალურად ჩამოწერილი ვიდეო.
+     * `yt-dlp`-ით ლოკალურად ჩამოწერილი ვიდეო.
      *
      * ⚠️ **პრივატულ დისკზეა**, თუმცა ფესვი (`videos/`) საჯაროა — იხ.
      * `PRIVATE_FOLDERS`. მიზეზი მარტივია: ჩამოწერილი ფაილი მთელი ვიდეოა და
@@ -93,17 +93,17 @@ final class StorageFolder
     /** ბუკმარკის ატვირთული ფოტო (og:image **არ** ჩამოგვაქვს — ის დაშორებული URL-ია) */
     public const BOOKMARK_THUMBNAILS = 'bookmarks/thumbnails';
 
-    /** Tasks §36.4 — ბუკმარკზე მიმაგრებული ჩემი ფოტოები („შოპინგის" სკრინშოტი) */
+    /** ბუკმარკზე მიმაგრებული ჩემი ფოტოები („შოპინგის" სკრინშოტი) */
     public const BOOKMARK_IMAGES = 'bookmarks/files/images';
 
-    /** FEAT-25 — კურსის ესკიზი (og:image დაშორებული რჩება, ბუკმარკის წესი) */
+    /** კურსის ესკიზი (og:image დაშორებული რჩება, ბუკმარკის წესი) */
     public const COURSE_THUMBNAILS = 'courses/thumbnails';
 
     public const COURSE_IMAGES = 'courses/files/images';
 
     public const COURSE_DOCS = 'courses/files/docs';
 
-    /** FEAT-26 — ადგილის მთავარი ფოტო */
+    /** ადგილის მთავარი ფოტო */
     public const PLACE_PHOTOS = 'places/photos';
 
     public const PLACE_IMAGES = 'places/files/images';
@@ -119,7 +119,7 @@ final class StorageFolder
     public const GALLERY_IMAGES = 'gallery/images';
 
     /**
-     * **ჩაკეტილი ალბომის ფოტოები (Tasks §7.9) — პირად დისკზე.**
+     * **ჩაკეტილი ალბომის ფოტოები — პირად დისკზე.**
      *
      * ⚠️ `videos/downloads`-ის ზუსტი პრეცედენტი: საჯარო ფესვის შიგნით
      * პრივატული ქვესაქაღალდე. უამისოდ ლოკი მხოლოდ **პასუხს** ფარავდა,
@@ -137,16 +137,16 @@ final class StorageFolder
     public const CAST_PHOTOS = 'cast/photos';
 
     /**
-     * **ხელით შექმნილი მსახიობის ატვირთული ფოტო (Tasks §35.3)** — `cast/uploads/{id}/…`.
+     * **ხელით შექმნილი მსახიობის ატვირთული ფოტო** — `cast/uploads/{id}/…`.
      *
-     * ⚠️ `cast/photos` TMDB-ის საერთო ფაილია და კვოტაში არ ითვლება (19.4/B); ეს კი
+     * ⚠️ `cast/photos` TMDB-ის საერთო ფაილია და კვოტაში არ ითვლება; ეს კი
      * შემქმნელის ატვირთვაა და **მის კვოტაშია** (`StorageMeter::files()`). ცალკე
      * საქაღალდე სწორედ ამ ორის გასარჩევადაა (`CastMember::ownsPhotoFile()`).
      */
     public const CAST_UPLOADS = 'cast/uploads';
 
     /**
-     * **პირადი გალერეა (Tasks §33, Q7) — მთელი ფესვი პირად დისკზეა.**
+     * **პირადი გალერეა — მთელი ფესვი პირად დისკზეა.**
      *
      * ⚠️ ახლობლების ფოტოები და ვიდეოებია — `/storage/*`-ით ღიად დადება მათ
      * ინტერნეტში გამოიტანდა (ჩატის/ჩანაწერების წესი). ფაილი მხოლოდ
@@ -160,7 +160,7 @@ final class StorageFolder
     public const PERSONAL_THUMBS = 'personal/thumbs';
 
     /**
-     * **ბაზის დამპი** (Tasks §22).
+     * **ბაზის დამპი**.
      *
      * ⚠️ **პრივატულ დისკზეა და ეს არ განიხილება.** ფაილი მთელი ბაზის ასლია —
      * `/storage/*`-ით დადებული ის ყველა ანგარიშის ყველა ჩანაწერს, ჰეშირებულ
@@ -170,35 +170,35 @@ final class StorageFolder
     public const BACKUPS = 'backups';
 
     /**
-     * ატვირთვების **ფესვები** — 17.5-ის ობოლების სკანერი მხოლოდ აქ იყურება.
+     * ატვირთვების **ფესვები** — ობოლების სკანერი მხოლოდ აქ იყურება.
      * სკანირება რეკურსიულია, ე.ი. ქვესაქაღალდის დამატება აქ არაფერს მოითხოვს.
      */
     public const ROOTS = [
         'account', 'movies', 'series', 'anime', 'videos', 'songs', 'books', 'boardgames', 'games', 'notes', 'bookmarks', 'courses', 'places', 'gallery', 'chat', 'cast', 'backups',
-        // Tasks §33 — პირადი გალერეა (პრივატული ფესვი)
+        // პირადი გალერეა (პრივატული ფესვი)
         'personal',
-        // Tasks §34 — მორიგეობის დამატებითი ველების ფაილები (პრივატული)
+        // მორიგეობის დამატებითი ველების ფაილები (პრივატული)
         'duty',
-        // Tasks §37 — ყველა პირადი მოდული ერთ ფესვში, `custom/{key}/…`
+        // ყველა პირადი მოდული ერთ ფესვში, `custom/{key}/…`
         CustomModules::ROOT,
     ];
 
     /**
-     * **პრივატულ დისკზე მცხოვრები ფესვები (Tasks §17.5).**
+     * **პრივატულ დისკზე მცხოვრები ფესვები.**
      *
      * ⚠️ ეს **ერთადერთი ადგილია**, სადაც წყდება, რომელი ატვირთვა არ უნდა
      * იხსნებოდეს `/storage/*`-ით. დანარჩენი კოდი მხოლოდ `diskFor()`-ს
-     * ეკითხება — ე.ი. ახალი პრივატული სექცია (ჩატი, §16.3) აქ ერთი
+     * ეკითხება — ე.ი. ახალი პრივატული სექცია (ჩატი) აქ ერთი
      * სტრიქონია და არა ათი `if`.
      *
      * ⚠️ **პოსტერები/გალერეა განზრახ საჯაროა**: ისინი TMDB-ის საჯარო
-     * სურათებია და საჯარო პროფილზეც ჩანს (§16.1). პრივატულია ის, რაც
+     * სურათებია და საჯარო პროფილზეც ჩანს. პრივატულია ის, რაც
      * user-ის **პირადი დოკუმენტია** — `notes/`.
      */
     public const PRIVATE_ROOTS = ['notes', 'chat', 'backups', 'personal', 'duty'];
 
     /**
-     * **პრივატული ქვესაქაღალდე საჯარო ფესვში (Tasks §7.1).**
+     * **პრივატული ქვესაქაღალდე საჯარო ფესვში.**
      *
      * ⚠️ `PRIVATE_ROOTS` მხოლოდ **პირველ სეგმენტს** უყურებს და განზრახ —
      * თორემ ხვალინდელი `notes-archive/` ჩუმად პრივატული გახდებოდა. ვიდეოს
@@ -220,16 +220,16 @@ final class StorageFolder
     public const LEGACY_ROOTS = ['avatars', 'posters', 'actors', 'documents'];
 
     /**
-     * **ფესვი → მოდულის key (Tasks §17.2).**
+     * **ფესვი → მოდულის key.**
      *
      * ⚠️ ეს რუკა **უნდა ემთხვეოდეს** `StorageMeter::files()`-ის `module`
      * ველს — თორემ ატვირთვა ერთ მოდულს დაეთვლებოდა, ლიმიტი კი მეორეს
      * ამოწმებდა და user ვერ მიხვდებოდა, რატომ არ ეტევა.
      *
      * ⚠️ `account`, `chat` და `cast` **მოდულები არ არიან**: პირველი ანგარიშისაა
-     * (ავატარი), მეორე სოციალური ფენაა (§16.3 — `modules` ცხრილში ჩანაწერი
-     * არ აქვს), მესამე გლობალური ლექსიკონია და კვოტაში საერთოდ არ ითვლება
-     * (19.4/B). სამივე საერთო აუზში რჩება — ლიმიტს ვერ მიიღებს.
+     * (ავატარი), მეორე სოციალური ფენაა (`modules` ცხრილში ჩანაწერი
+     * არ აქვს), მესამე გლობალური ლექსიკონია და კვოტაში საერთოდ არ ითვლება.
+     * სამივე საერთო აუზში რჩება — ლიმიტს ვერ მიიღებს.
      */
     private const MODULE_BY_ROOT = [
         'movies' => 'movie',
@@ -244,15 +244,15 @@ final class StorageFolder
         'bookmarks' => 'bookmark',
         'courses' => 'course',
         'places' => 'place',
-        // Tasks §33 — ფესვი და მოდული ერთი სიტყვაა (ლიმიტი §17.2 და კვოტის ჯამი ერთს ითვლის)
+        // ფესვი და მოდული ერთი სიტყვაა (მოდულის ლიმიტი და კვოტის ჯამი ერთს ითვლის)
         'personal' => 'personal',
-        // Tasks §34 — მორიგეობის ველის ფაილი (ტაბელის სკანი) მისი მოდულის ლიმიტშია
+        // მორიგეობის ველის ფაილი (ტაბელის სკანი) მისი მოდულის ლიმიტშია
         'duty' => 'duty',
         'gallery' => 'gallery',
         'account' => 'account',
         'chat' => 'chat',
         'cast' => 'cast',
-        /* §22 — ფსევდომოდული, `chat`/`account`-ის წესით: `modules` ცხრილში
+        /* ფსევდომოდული, `chat`/`account`-ის წესით: `modules` ცხრილში
            რიგი არ აქვს, ე.ი. ცალკე ლიმიტს ვერ იღებს და საერთო აუზში რჩება. */
         'backups' => 'backup',
     ];
@@ -262,9 +262,9 @@ final class StorageFolder
     {
         $parts = explode('/', ltrim($pathOrFolder, '/'), 3);
 
-        /* ⚠️ Tasks §37 — **პირადი მოდული მეორე სეგმენტშია** (`custom/{key}/…`):
+        /* ⚠️ **პირადი მოდული მეორე სეგმენტშია** (`custom/{key}/…`):
            ერთი ფესვი ყველასთვის, რომ ობოლების სკანერს ახალი ფესვი არ
-           სჭირდებოდეს, ხოლო მოდულის ლიმიტი (§17.2) ისევ თავის მოდულს
+           სჭირდებოდეს, ხოლო მოდულის ლიმიტი ისევ თავის მოდულს
            ითვლიდეს. უცნობ გასაღებს მოდული არ ეძლევა. */
         if ($parts[0] === CustomModules::ROOT) {
             return isset($parts[1]) && CustomModules::isKey($parts[1]) ? $parts[1] : null;
@@ -274,7 +274,7 @@ final class StorageFolder
     }
 
     /**
-     * რომელ დისკზე ცხოვრობს ეს გზა/საქაღალდე (Tasks §17.5).
+     * რომელ დისკზე ცხოვრობს ეს გზა/საქაღალდე.
      *
      * ⚠️ მუშაობს **ორივეზე** — გზაზეც (`notes/files/docs/x.pdf`) და თვითონ
      * საქაღალდეზეც (`notes/files/docs`), რადგან ატვირთვამდე ჯერ მხოლოდ
@@ -294,12 +294,12 @@ final class StorageFolder
             return true;
         }
 
-        // §7.1 — საჯარო ფესვის პრივატული ქვესაქაღალდე (`videos/downloads`)
+        // საჯარო ფესვის პრივატული ქვესაქაღალდე (`videos/downloads`)
         return isset($parts[1]) && in_array($parts[0].'/'.$parts[1], self::PRIVATE_FOLDERS, true);
     }
 
     /**
-     * გალერეის ფაილია? (Tasks §29, ეტაპი 4)
+     * გალერეის ფაილია?
      *
      * ⚠️ „მთავარად დაყენება" ჩანაწერის სვეტს გალერეის ფაილზე მიუთითებს — ის
      * `gallery_images`-ის რიგს ეკუთვნის და არა სვეტს: მისი წაშლა ან ურნაში
@@ -339,7 +339,7 @@ final class StorageFolder
         };
     }
 
-    /** FEAT-25 — კურსის ფაილი სახის მიხედვით */
+    /** კურსის ფაილი სახის მიხედვით */
     public static function courseFiles(string $kind): string
     {
         return match ($kind) {
@@ -348,7 +348,7 @@ final class StorageFolder
         };
     }
 
-    /** FEAT-26 — ადგილის ფაილი სახის მიხედვით */
+    /** ადგილის ფაილი სახის მიხედვით */
     public static function placeFiles(string $kind): string
     {
         return match ($kind) {
@@ -357,7 +357,7 @@ final class StorageFolder
         };
     }
 
-    /** Tasks §33 — პირადი გალერეის ფაილი სახის მიხედვით (`photo` · `video`) */
+    /** პირადი გალერეის ფაილი სახის მიხედვით (`photo` · `video`) */
     public static function personalMedia(string $kind): string
     {
         return $kind === 'video' ? self::PERSONAL_VIDEOS : self::PERSONAL_PHOTOS;
@@ -379,7 +379,7 @@ final class StorageFolder
         return $kind === 'doc' ? self::GAME_DOCS : self::GAME_IMAGES;
     }
 
-    /** `note_entry_files.kind` → საქაღალდე (Tasks §13) */
+    /** `note_entry_files.kind` → საქაღალდე */
     public static function noteFiles(string $kind): string
     {
         return match ($kind) {
@@ -390,18 +390,18 @@ final class StorageFolder
     }
 
     /**
-     * **მორგებული `ფაილი` ველის საქაღალდე** (§6 ფაზა 4b) — მოდულის key-დან.
+     * **მორგებული `ფაილი` ველის საქაღალდე** — მოდულის key-დან.
      *
      * ⚠️ **ახალი ფესვი განზრახ არ ჩნდება**: ფაილი მოდულის **თავის** ფესვში
      * ჯდება (`movies/fields`, `videos/fields`…), ე.ი. სამივე მექანიზმი
-     * უცვლელად მუშაობს — `moduleFor()` ლიმიტს სწორ მოდულს მიაწერს (§17.2),
+     * უცვლელად მუშაობს — `moduleFor()` ლიმიტს სწორ მოდულს მიაწერს,
      * ობოლების სკანერი რეკურსიულია და მას აქ დამატება არ სჭირდება, ხოლო
      * `notes/fields` **ავტომატურად პრივატულ დისკზეა** (`PRIVATE_ROOTS`).
      * ცალკე `fields/` ფესვი სამივეს გატეხავდა.
      */
     public static function customFields(string $module): string
     {
-        // §37 — პირადი მოდულის ველი თავის ქვესაქაღალდეშია (`custom/{key}/fields`)
+        // პირადი მოდულის ველი თავის ქვესაქაღალდეშია (`custom/{key}/fields`)
         if (CustomModules::isKey($module)) {
             return CustomModules::folder($module, 'fields');
         }
@@ -413,20 +413,20 @@ final class StorageFolder
         return ($root === false ? 'account' : $root).'/fields';
     }
 
-    /** Tasks §37 — პირადი მოდულის ჩანაწერის მთავარი ფოტო */
+    /** პირადი მოდულის ჩანაწერის მთავარი ფოტო */
     public static function customPhotos(string $module): string
     {
         return CustomModules::folder($module, 'photos');
     }
 
-    /** Tasks §37.5 — პირადი მოდულის ჩანაწერის ფაილი სახის მიხედვით */
+    /** პირადი მოდულის ჩანაწერის ფაილი სახის მიხედვით */
     public static function customFiles(string $module, string $kind): string
     {
         return CustomModules::folder($module, $kind === 'doc' ? 'files/docs' : 'files/images');
     }
 
     /**
-     * `messages.type` → საქაღალდე (Tasks §16.3).
+     * `messages.type` → საქაღალდე.
      *
      * ⚠️ ფესვი `chat/` **პრივატულ დისკზეა** (`PRIVATE_ROOTS`): პირადი
      * მიმოწერის სურათი `/storage/*`-ით ვერ უნდა იხსნებოდეს, თუნდაც

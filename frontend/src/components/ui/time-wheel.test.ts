@@ -5,7 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **დროის ბორბლები მოდალის შიგნით** (Tasks §23.1).
+   **დროის ბორბლები მოდალის შიგნით**.
 
    ⚠️ ზუსტად შენი შენიშვნა: ძველი ბლოკი გარეთ დაჭერაზე არ იხურებოდა,
    `Escape` კი **მთელ მოდალს** ხურავდა. popover-ი Radix-ის ფენაა, ე.ი.
@@ -22,8 +22,8 @@ if (!('ResizeObserver' in globalThis)) {
   }
 }
 
-/* ⚠️ მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ (DEBT-12-ის წესი,
-   `PlacesPage.test.ts`): ტესტი `date-picker`-ს (react-day-picker) და მოდალს
+/* ⚠️ მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ (როგორც
+   `PlacesPage.test.ts`-ში): ტესტი `date-picker`-ს (react-day-picker) და მოდალს
    თვითონ იწევს და სრულ `npm test`-ში პირველი იმპორტი 5 წმ-ს სცდებოდა —
    ცალკე გაშვებისას კი გადიოდა. */
 beforeAll(async () => {
@@ -105,7 +105,7 @@ describe('TimeWheelPopover', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  /** ⚠️ მეორე შემთხვევა 23.1-იდან — ბორბლები **კალენდრის popover-ის** შიგნით */
+  /** ⚠️ მეორე შემთხვევა — ბორბლები მოდალის ნაცვლად **კალენდრის popover-ის** შიგნით */
   it('inside the calendar popover, Escape closes the wheels and keeps the calendar', async () => {
     const { DatePicker } = await import('@/components/ui/date-picker')
 
@@ -152,9 +152,9 @@ describe('TimeWheelPopover', () => {
     expect(confirmButton()).toBeFalsy()
   })
 
-  /* Tasks §4 — ველზე დაჭერაც ხსნის ბორბლებს; ფოკუსი სეგმენტებს რჩება, რომ
+  /* ველზე დაჭერაც ხსნის ბორბლებს; ფოკუსი სეგმენტებს რჩება, რომ
      აკრეფა არ გაწყდეს; დადასტურება ისევ ველის მნიშვნელობას წერს და ხურავს. */
-  it('clicking the time field itself opens the wheels and keeps the focus in the field (§4)', async () => {
+  it('clicking the time field itself opens the wheels and keeps the focus in the field', async () => {
     const onChange = vi.fn()
     await mount(onChange, () => {})
 

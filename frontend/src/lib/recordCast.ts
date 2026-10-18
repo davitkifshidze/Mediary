@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Circle, CircleOff, SquarePen, Trash2, UserRound 
 import type { CastMember } from '@/api/types'
 
 /* ============================================================
-   ჩანაწერის მსახიობები — მოქმედებები და რიგი (Tasks §16).
+   ჩანაწერის მსახიობები — მოქმედებები და რიგი.
 
    შენი მოთხოვნა: „უშუალოდ ფილმში მსახიობზე მარჯვენა კლიკით კონტექსტური
    მენიუ ჰქონდეს; drag & drop-ით დალაგებაც შესაძლებელი იყოს; მსახიობის
@@ -65,7 +65,7 @@ export function castActions({
   if (!hidden && onLater) list.push({ key: 'later', label: t('cast.moveLater'), icon: ArrowRight, run: onLater })
 
   list.push(
-    // Tasks §12 — თვალის ნაცვლად წრე: „დამალვა/ჩვენება" სიტყვითაა, აიქონი მხოლოდ ნიშანი
+    // თვალის ნაცვლად წრე: „დამალვა/ჩვენება" სიტყვითაა, აიქონი მხოლოდ ნიშანი
     hidden
       ? { key: 'show', label: t('cast.unhide'), icon: Circle, run: onToggleHidden }
       : { key: 'hide', label: t('cast.hide'), icon: CircleOff, run: onToggleHidden },

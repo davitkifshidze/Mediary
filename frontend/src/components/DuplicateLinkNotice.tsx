@@ -3,7 +3,7 @@ import { CopyCheck, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 /**
- * **„ეს ბმული უკვე გაქვს" (FEAT-17).**
+ * **„ეს ბმული უკვე გაქვს".**
  *
  * ⚠️ **გაფრთხილებაა და არა აკრძალვა.** ერთი ბმულის ორჯერ შენახვა
  * ლეგიტიმურია — სხვა ტიპით, სხვა ტეგებით — ამიტომ არც `unique` ინდექსი

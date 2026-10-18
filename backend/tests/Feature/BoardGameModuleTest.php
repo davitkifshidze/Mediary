@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * ბორდგეიმების მოდული (`board_game`, Tasks §14).
+ * ბორდგეიმების მოდული (`board_game`).
  *
  * ამოწმებს იმას, რაც აქ ადვილად ტყდება: მოდულის gate, per-user ლექსიკონი,
  * მოთამაშეთა რაოდენობით ფილტრი, მაღაზიის ბმულის ფასი, `bgg_id`-ის per-user
@@ -50,7 +50,7 @@ class BoardGameModuleTest extends TestCase
     }
 
     /**
-     * ⚠️ ჟანრი სავალდებულოა — სტატუსი სამაგიდო თამაშს აღარ აქვს (Tasks §12).
+     * ⚠️ ჟანრი სავალდებულოა — სტატუსი სამაგიდო თამაშს აღარ აქვს.
      */
     private function gameDefaults(?User $user = null): array
     {
@@ -69,7 +69,7 @@ class BoardGameModuleTest extends TestCase
             ->json('data.id');
     }
 
-    /** მოდულის gate + §14-ის ველების ნაკრები */
+    /** მოდულის gate + ველების ნაკრები */
     public function test_module_gate_and_field_set(): void
     {
         $outsider = $this->makeUser('nomodule', []);
@@ -108,9 +108,9 @@ class BoardGameModuleTest extends TestCase
             ->assertJsonPath('data.bgg_url', 'https://boardgamegeek.com/boardgame/174430')
             ->assertJsonPath('data.links.0.price', 149.99)
             ->assertJsonPath('data.links.0.currency', 'USD')
-            // 16.5 — ხილვადობა default-ად პირადია
+            // ხილვადობა default-ად პირადია
             ->assertJsonPath('data.visibility', 'private')
-            // ეტაპი 8 — მექანიკები სრულად მოიხსნა: ველი პასუხში აღარ არსებობს
+            // მექანიკები სრულად მოიხსნა: ველი პასუხში აღარ არსებობს
             ->assertJsonMissingPath('data.mechanics');
     }
 
@@ -130,7 +130,7 @@ class BoardGameModuleTest extends TestCase
     }
 
     /**
-     * **ეტაპი 8 — რამდენიმე რაოდენობა ერთდროულად, OR-ით.**
+     * **რამდენიმე რაოდენობა ერთდროულად, OR-ით.**
      *
      * ⚠️ „1 **ან** 10 მოთამაშეს უდგება" და არა „ორივეს ერთდროულად": AND
      * დიაპაზონურ ველზე თითქმის ყოველთვის ცარიელ პასუხს იძლეოდა.
@@ -263,7 +263,7 @@ class BoardGameModuleTest extends TestCase
             ->assertOk()
             ->assertJsonPath('modules.board_game', $used);
 
-        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+        /* ⚠️ **კალათა** — `DELETE /api/<module>/{id}` ჩანაწერს
            აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
            როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/board-games/{$id}")->assertNoContent();
@@ -276,7 +276,7 @@ class BoardGameModuleTest extends TestCase
     }
 
     /**
-     * Tasks §12 — **სტატუსი და შეძენის თარიღი აღარ არსებობს**: endpoint 404-ია,
+     * **სტატუსი და შეძენის თარიღი აღარ არსებობს**: endpoint 404-ია,
      * გაგზავნილი `status` კი ჩუმად იგნორირდება (სვეტი აღარაა), ჩანაწერი
      * მის გარეშე იქმნება და პასუხში ველი აღარ ჩანს.
      */
@@ -308,7 +308,7 @@ class BoardGameModuleTest extends TestCase
         $this->actingAs($other)->deleteJson("/api/board-games/{$id}")->assertStatus(404);
     }
 
-    /* ---------- ქართული მაღაზიები (§7.2) ---------- */
+    /* ---------- ქართული მაღაზიები ---------- */
 
     /**
      * ორივე მაღაზიის ნამდვილი მარკაპი (`tests/Fixtures/*.html`, აღებული
@@ -398,7 +398,7 @@ class BoardGameModuleTest extends TestCase
     }
 
     /**
-     * **DEBT-23 — გვერდი ჭერზე წყდება და მთელი მეხსიერებაში არ ჩამოდის.**
+     * **გვერდი ჭერზე წყდება და მთელი მეხსიერებაში არ ჩამოდის.**
      *
      * ⚠️ `Http::fake()` სხეულს მეხსიერებაში ისედაც ინახავს, ე.ი. ტესტს
      * რეალური მეხსიერების დაზოგვა **ვერ** დაუმტკიცებია — ის იმას ამოწმებს,
@@ -429,7 +429,7 @@ class BoardGameModuleTest extends TestCase
     }
 
     /**
-     * **DEBT-23 — ცხადად გამოცხადებული უზარმაზარი პასუხი საერთოდ არ იკითხება.**
+     * **ცხადად გამოცხადებული უზარმაზარი პასუხი საერთოდ არ იკითხება.**
      *
      * ⚠️ ძველი კოდი `$res->body()`-ს იძახებდა, ე.ი. `Content-Length`-ს
      * მნიშვნელობა არ ჰქონდა — მთელი სხეული უკვე მეხსიერებაში იყო და

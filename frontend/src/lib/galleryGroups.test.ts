@@ -4,7 +4,7 @@ import type { Status } from '@/api/types'
 import { sectionGalleryGroups, sortGalleryGroups } from './galleryGroups'
 
 /* ============================================================
-   `lib/galleryGroups.ts` — ჯგუფების დალაგება და სექციებად დაყოფა (ეტაპი 2).
+   `lib/galleryGroups.ts` — ჯგუფების დალაგება და სექციებად დაყოფა.
 
    ⚠️ ორივე წესი **ეკრანზე დაწერილ სახელს** ეყრდნობა, ე.ი. სერვერზე ვერ
    გადავა; სწორედ ამიტომ ცხოვრობს `lib/`-ში და აქვს ტესტი.

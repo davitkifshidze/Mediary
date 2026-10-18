@@ -9,9 +9,9 @@ import type { DutySettingsData, DutyShift, DutyShiftType, DutySummary, DutyWorkp
 import i18n from '@/i18n'
 
 /* ============================================================
-   **მორიგეობის გვერდი (Tasks §34.9)** — პერიოდის სათაური და ჯამი, მონიშვნა →
+   **მორიგეობის გვერდი** — პერიოდის სათაური და ჯამი, მონიშვნა →
    „დამატება“ თითო დღეზე ტარიფით და ჯამით, ჯამების ხედი, სიის მარჯვენა ღილაკის
-   მენიუ (§7).
+   მენიუ.
    ============================================================ */
 
 const workplaces: DutyWorkplace[] = [
@@ -201,7 +201,7 @@ describe('DutyPage', () => {
     expect(container!.querySelector('[data-testid="duty-totals-workplaces"]')!.textContent).toContain('კლინიკა')
   })
 
-  /* Tasks §7 — სიის სტრიქონზე მარჯვენა ღილაკი: რჩეული · რედაქტირება · წაშლა (დადასტურებით, ურნაში) */
+  /* სიის სტრიქონზე მარჯვენა ღილაკი: რჩეული · რედაქტირება · წაშლა (დადასტურებით, ურნაში) */
   it('opens the row context menu in the list view and moves the shift to the trash after confirming', async () => {
     defaults()
     await render('/duty?view=list')

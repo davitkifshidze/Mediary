@@ -5,9 +5,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **ჩანაწერის გაზიარება ჩატში (FEAT-13).**
+ * **ჩანაწერის გაზიარება ჩატში.**
  *
- * ⚠️ **სვეტს `record` ჰქვია და არა `payload`** (ტასქის სიტყვა). „payload"
+ * ⚠️ **სვეტს `record` ჰქვია და არა `payload`**. „payload"
  * არაფერს ამბობს შიგთავსზე — ამ პროექტის წესი კი სწორედ საპირისპიროა
  * (`notes` → `note_entries`, „სახელი უნდა ამბობდეს, რა დევს შიგნით").
  *

@@ -8,13 +8,13 @@ import type { Place, RoutePlan } from '@/api/places'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **რუკა და მარშრუტები ადგილის ფანჯარაში** (Tasks §30.5).
+   **რუკა და მარშრუტები ადგილის ფანჯარაში**.
 
    ⚠️ Leaflet თვითონ არ იტვირთება — `PlaceMap` ჩანკი ყალბი `div`-ით ჩანაცვლებულია,
    რომელიც მხოლოდ იმას ამბობს, რამდენი მარშრუტი მიიღო. მოწმდება: ლეიზი საზღვარი
    (ჯერ სკელეტი, მერე რუკა), ღრმა ბმულები, უარყოფილი გეოლოკაცია (ტოსტი და
    არცერთი რექვესთი) და ნაპოვნი მდებარეობიდან გამოთვლა (პირველი აქტიური).
-   Tasks §56 — უზუსტო გეოლოკაცია (სიზუსტე და გაფრთხილება; სახლი თავისით),
+   ასევე: უზუსტო გეოლოკაცია (სიზუსტე და გაფრთხილება; სახლი თავისით),
    საწყისი მისამართით და რუკიდან, გზების რაოდენობა მეხსიერებიდან, „ნაპოვნია N
    გზა", შენახული მარშრუტები რუკის ქვემოთ „საიდან"-ით.
    ============================================================ */
@@ -33,7 +33,7 @@ vi.mock('@/components/PlaceMap', () => ({
     h(
       'div',
       { 'data-testid': 'leaflet-map', 'data-routes': String(props.routes?.length ?? 0), 'data-from': props.from ? 'yes' : 'no' },
-      // §56.1 — „რუკაზე" რეჟიმში დაჭერა საწყისს სვამს
+      // „რუკაზე" რეჟიმში დაჭერა საწყისს სვამს
       props.onPickFrom ? h('button', { 'data-testid': 'map-pick', onClick: () => props.onPickFrom!(41.1, 44.1) }) : null,
     ),
 }))
@@ -147,7 +147,7 @@ const button = (label: string) =>
   [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === label) as HTMLButtonElement | undefined
 const toasts = () => [...document.body.querySelectorAll('.fb-toast p.font-medium')].map((n) => n.textContent)
 
-describe('PlaceRoutes (§30)', () => {
+describe('PlaceRoutes', () => {
   it('loads the map chunk lazily and always offers the deep links', async () => {
     const el = await mount()
 
@@ -207,7 +207,7 @@ describe('PlaceRoutes (§30)', () => {
   })
 })
 
-describe('PlaceRoutes — the start, the number of routes and the saved list (§56)', () => {
+describe('PlaceRoutes — the start, the number of routes and the saved list', () => {
   const tab = (label: string) =>
     [...document.querySelectorAll<HTMLButtonElement>('button[aria-pressed]')].find((b) => b.textContent?.includes(label))
 

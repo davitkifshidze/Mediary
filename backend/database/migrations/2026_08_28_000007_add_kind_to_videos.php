@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * K7 — ვიდეოს ტიპი საიდბარის სექციებისთვის:
+ * ვიდეოს ტიპი საიდბარის სექციებისთვის:
  *   media — გასართობი (მუსიკა, კლიპი, ფილმი)
  *   info  — ინფორმაციული (გაკვეთილი, ლექცია, მიმოხილვა)
  */

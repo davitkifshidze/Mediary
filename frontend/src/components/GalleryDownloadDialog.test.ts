@@ -14,7 +14,7 @@ import type { GalleryDownloadPin } from '@/components/GalleryDownloadDialog'
 import '@/i18n'
 
 /* ============================================================
-   გალერეის ჩამოტვირთვის დიალოგი — **Tasks §18**.
+   გალერეის ჩამოტვირთვის დიალოგი.
 
    შენი სიტყვები: „ხელით რომ ვნიშნავ მსახიობებს, მოდალი სიმაღლეში იკლებს და
    მერე იზრდება“ · „როცა კონკრეტულ მსახიობზე ვდგავარ … „თითო მსახიობზე“
@@ -121,7 +121,7 @@ function plan(cast: GalleryCastMember[], items: GalleryPlanItem[] = []): Gallery
 let root: Root | null = null
 let container: HTMLDivElement | null = null
 
-// ⚠️ დიალოგი მძიმე მოდულებს ტვირთავს (ჟანრები, ამრჩევები) — DEBT-12-ის გაკვეთილი
+// ⚠️ დიალოგი მძიმე მოდულებს ტვირთავს (ჟანრები, ამრჩევები) — წინასწარ ვათბობთ, ტესტის ბიუჯეტის გარეთ
 beforeAll(async () => {
   await import('@/components/GalleryDownloadDialog')
 }, 60_000)
@@ -215,7 +215,7 @@ async function openSelected() {
   expect(body().textContent).toContain('Keanu Reeves')
 }
 
-describe('GalleryDownloadDialog — Tasks §18', () => {
+describe('GalleryDownloadDialog', () => {
   it('მონიშვნისას სია და ძებნის ველი ადგილზე რჩება, სანამ ახალი გეგმა მოდის', async () => {
     mocks.fetchGalleryPlan.mockResolvedValue(plan(ALL))
     await mount()
@@ -282,10 +282,10 @@ describe('GalleryDownloadDialog — Tasks §18', () => {
     await mount({ actor: { id: 9, name: 'Keanu Reeves' } })
 
     expect(body().textContent).toContain('რამდენი ფოტო ჩამოიტვირთოს მონიშნულ მსახიობზე')
-    // §18.4 — ცრუ „ჩანაწერისგან დამოუკიდებელია…“ აღარ არსებობს
+    // ცრუ „ჩანაწერისგან დამოუკიდებელია…“ აღარ არსებობს
     expect(body().textContent).not.toContain('ჩანაწერისგან დამოუკიდებელია')
 
-    // §18.5 — სათაურის i „ამ ჩანაწერების მსახიობებს“ აღარ ახსენებს
+    // სათაურის i „ამ ჩანაწერების მსახიობებს“ აღარ ახსენებს
     const hint = body().querySelector<HTMLButtonElement>('button[aria-label="ინფორმაცია"]')
     await click(hint)
     expect(body().textContent).toContain('ფოტო მსახიობზე მიება და ყველა ფილმში ჩანს')

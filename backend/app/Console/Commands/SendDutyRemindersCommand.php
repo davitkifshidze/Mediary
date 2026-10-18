@@ -6,7 +6,7 @@ use App\Services\Duty\DutyReminder;
 use Illuminate\Console\Command;
 
 /**
- * **მორიგეობის შეხსენება წინა დღეს (Tasks §34.7)** — scheduler ყოველ წუთს.
+ * **მორიგეობის შეხსენება წინა დღეს** — scheduler ყოველ წუთს.
  *
  * ⚠️ scheduler-ის გარეშეც არაფერი იკარგება: იმავე სერვისს ღია აპის polling-ი
  * იძახებს (`GET /api/duty/reminders/due`); ტელეგრამი მაშინ მიდის, როცა აპი გახსნილია.

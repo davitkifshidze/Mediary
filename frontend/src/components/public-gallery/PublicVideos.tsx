@@ -13,13 +13,13 @@ import { usePages } from '@/lib/paged'
 import { VideoEmbed } from '@/components/VideoEmbed'
 
 /* ============================================================
-   **საჯარო „ვიდეოები" — შენახული ვიდეო-ბმულები** (Tasks §32.2).
+   **საჯარო „ვიდეოები" — შენახული ვიდეო-ბმულები**.
 
    მფლობელის `VideosCut`-ის სია: ესკიზი, სათაური, არხი და ვისზეა მიბმული.
 
    ⚠️ **ყურება ფანჯარაშია და არა საერთო ფლეერში.** ფლეერი (`PlayerProvider`)
    `Protected`-ის შიგნით ცხოვრობს, საჯარო პროფილი კი მის გარეთაა — ე.ი.
-   `usePlayer()` აქ არ არსებობს. ⚠️ **§35-მა ეს განზრახ ასე დატოვა**:
+   `usePlayer()` აქ არ არსებობს. ⚠️ **ეს განზრახ ასე დარჩა**:
    გლობალური დამკვრელი ჩართვას მფლობელის ჩანაწერზე ითვლის და სესიას
    ითხოვს, სტუმარს კი არც ერთი აქვს — ე.ი. აქ `VideoEmbed` ხატავს, იგივე
    allowlist-ით (`lib/embed.ts` ჰოსტს ხელახლა ამოწმებს — სერვერის `embed_url`-საც).
@@ -36,7 +36,7 @@ export function PublicVideos({ username }: { username: string }) {
   const lang = useContentLang(i18n.language)
   const [watching, setWatching] = useState<PublicGalleryVideo | null>(null)
 
-  // Tasks §46 — ნომრები + „მეტის ჩვენება"
+  // ნომრები + „მეტის ჩვენება"
   const query = usePages({
     queryKey: ['public-gallery', username, 'videos'],
     fetchPage: (page) => fetchPublicGalleryVideos(username, page).then((r) => ({ ...r, items: r.data, total: r.meta.total, lastPage: r.meta.last_page })),

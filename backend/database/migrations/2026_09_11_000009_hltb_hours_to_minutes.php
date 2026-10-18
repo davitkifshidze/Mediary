@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * თამაშის საათები → წუთები (Tasks §2.5).
+ * თამაშის საათები → წუთები.
  *
  * `hltb_*` ერთადერთი ხანგრძლივობა იყო, რომელიც `DurationInput`-ზე ვერ
  * გადავიდა: სვეტი `decimal(5,1)` **საათებია**, ე.ი. „2 სთ 20 წთ" → 2.3 სთ →

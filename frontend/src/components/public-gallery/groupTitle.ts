@@ -1,7 +1,7 @@
 import type { PublicGalleryGroup } from '@/api/publicProfile'
 
 /* ============================================================
-   საჯარო ჯგუფის სათაური და ორიენტირი (Tasks §32).
+   საჯარო ჯგუფის სათაური და ორიენტირი.
 
    ⚠️ **ცალკე ფაილშია და არა `PublicGroupGrid.tsx`-ში**: კომპონენტის ფაილიდან
    ფუნქციის ექსპორტი Fast Refresh-ს ტეხს (oxlint-ის `only-export-components`),

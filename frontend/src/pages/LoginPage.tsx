@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { LanguageDropdown } from '@/components/LanguageDropdown'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
-/** ავტორიზაციის გვერდი (F4) — email ან username + პაროლი */
+/** ავტორიზაციის გვერდი — email ან username + პაროლი */
 export function LoginPage() {
   const { t } = useTranslation()
   const { login } = useAuth()
@@ -20,7 +20,7 @@ export function LoginPage() {
   const location = useLocation()
 
   const [form, setForm] = useState({ login: '', password: '' })
-  /* FEAT-16 — მეორე ნაბიჯი. ⚠️ **პაროლი ფორმაში რჩება და თან ხელახლა
+  /* მეორე ნაბიჯი. ⚠️ **პაროლი ფორმაში რჩება და თან ხელახლა
      იგზავნება**: სერვერზე „ნახევრად შესული" მდგომარეობა განზრახ არ
      არსებობს, ე.ი. მეორე ნაბიჯი იმავე მოთხოვნის გამეორებაა კოდით. */
   const [code, setCode] = useState('')
@@ -155,7 +155,7 @@ export function LoginPage() {
             <>
               <p className="mt-5 text-center text-sm text-muted-foreground">
                 {t('auth.noAccount')}{' '}
-                {/* §40.6 — „საიდან მოვედი" რეგისტრაციასაც მიჰყვება (გაზიარების ბმული) */}
+                {/* „საიდან მოვედი" რეგისტრაციასაც მიჰყვება (გაზიარების ბმული) */}
                 <Link
                   to="/register"
                   state={location.state}
@@ -165,7 +165,7 @@ export function LoginPage() {
                 </Link>
               </p>
 
-              {/* FEAT-16 — ამ აპს წერილის გაგზავნა არ შეუძლია, ე.ი. „აღდგენა"
+              {/* ამ აპს წერილის გაგზავნა არ შეუძლია, ე.ი. „აღდგენა"
                   ღილაკი ვერაფერს გააკეთებდა; ერთადერთი ნამდვილი გზა ადმინია
                   და ტექსტიც ზუსტად ამას ამბობს. */}
               <p className="mt-2 text-center text-sm text-muted-foreground">

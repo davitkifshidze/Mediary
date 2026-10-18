@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 /* ============================================================
-   რეგრესია: **ყოველი poll მთელ `['notes']` ქეშს ინვალიდირებდა** (Tasks PERF-12).
+   რეგრესია: **ყოველი poll მთელ `['notes']` ქეშს ინვალიდირებდა**.
 
    `qc.invalidateQueries({ queryKey: ['notes'] })` ციკლის გარეთ, უპირობოდ
    იდგა — ე.ი. სანამ `due` არაცარიელია, ყოველ წუთს ყველა `['notes']*`
@@ -101,7 +101,7 @@ async function mount() {
   return { qc, notes }
 }
 
-describe('useNoteReminderWatcher — PERF-12', () => {
+describe('useNoteReminderWatcher', () => {
   it('reloads the notes cache once a reminder has actually been shown', async () => {
     mocks.fetchDueNotifications.mockResolvedValue([due(1, 'პირველი')])
     mocks.markNotificationRead.mockResolvedValue(undefined)

@@ -1,5 +1,5 @@
 /* ============================================================
-   **Polyline-ის გაშლა** (Tasks §30) — Google-ის encoded polyline ალგორითმი,
+   **Polyline-ის გაშლა** — Google-ის encoded polyline ალგორითმი,
    precision 5: ზუსტად ის, რასაც OSRM `geometries=polyline`-ით აბრუნებს და
    რაც `place_routes.geometry`-ში ინახება.
 

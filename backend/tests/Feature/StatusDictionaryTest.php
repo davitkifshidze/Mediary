@@ -15,7 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **სტატუსი როგორც per-user ლექსიკონი (Tasks §6.2/§6.4).**
+ * **სტატუსი როგორც per-user ლექსიკონი.**
  *
  * ექვს დომენზე `status` enum-ს ადგილი `statuses` ცხრილმა დაიკავა. აქ ის
  * მოწმდება, რაც გამორჩენისას **ჩუმად** ჩავარდებოდა:
@@ -92,8 +92,7 @@ class StatusDictionaryTest extends TestCase
     }
 
     /**
-     * ⚠️ **ვიდეოს სტატუსი ახლა აქვს** — ეს თვითონ §6.4-ის მოთხოვნაა
-     * („ვიდეოზეც"), და მოდულს ის აქამდე საერთოდ არ ჰქონდა.
+     * ⚠️ **ვიდეოს სტატუსი ახლა აქვს** — მოდულს ის აქამდე საერთოდ არ ჰქონდა.
      */
     public function test_video_has_a_status_now(): void
     {
@@ -154,7 +153,7 @@ class StatusDictionaryTest extends TestCase
     /**
      * `clear_records`-ით ჩანაწერი **რჩება**, უბრალოდ სტატუსის გარეშე.
      *
-     * ⚠️ **ფლაგი ცხადია და სავალდებულო** (Tasks GAP-09): უამისოდ იგივე
+     * ⚠️ **ფლაგი ცხადია და სავალდებულო**: უამისოდ იგივე
      * პასუხს იძლეოდა დავიწყებული ველიც, ე.ი. ნახევრად აწყობილი ფორმა
      * უხმოდ იღებდა „სტატუსის გარეშე დარჩი"-ს.
      */
@@ -173,7 +172,7 @@ class StatusDictionaryTest extends TestCase
     }
 
     /**
-     * **განზრახვის გარეშე წაშლა — 422 და არა ჩუმი „ცარიელი"** (Tasks GAP-09).
+     * **განზრახვის გარეშე წაშლა — 422 და არა ჩუმი „ცარიელი"**.
      *
      * ⚠️ სამივე მცდარი ფორმა ერთსა და იმავე კოდს იღებს, რომ კლიენტმა
      * განსხვავება არ გამოიცნოს: გასაღების არყოფნა · ცხადი `null` · თავის
@@ -359,7 +358,7 @@ class StatusDictionaryTest extends TestCase
     }
 
     /**
-     * ⚠️ GAP-01 — `forbidden_permission` **ყოველთვის** `permission`-ით ბრუნდება,
+     * ⚠️ `forbidden_permission` **ყოველთვის** `permission`-ით ბრუნდება,
      * `EnsureModulePermission`-ის მსგავსად: SPA-ს ტექსტი მას ფრჩხილებში ასახელებს,
      * და ეს ერთადერთი ადგილი მის გარეშე ბრუნდებოდა (`abort_unless(…, 'code')`).
      */
@@ -397,7 +396,7 @@ class StatusDictionaryTest extends TestCase
         $this->assertSame('video', $video->refresh()->status->module);
     }
 
-    /* ---------- ეტაპი 8: წაშლა ჩანაწერებით ---------- */
+    /* ---------- წაშლა ჩანაწერებით ---------- */
 
     /**
      * ⚠️ **ჩანაწერებიც იშლება — და მოდელის გავლით.** `deleted` ივენთი სწორედ
@@ -405,7 +404,7 @@ class StatusDictionaryTest extends TestCase
      * მას ჩუმად გვერდს აუვლიდა. სხვა სტატუსის ჩანაწერი ადგილზე რჩება.
      */
     /**
-     * ⚠️ **„ჩანაწერებიც წაიშალოს" მფლობელის ურნაშია** (Tasks §29.8) — `deleted`
+     * ⚠️ **„ჩანაწერებიც წაიშალოს" მფლობელის ურნაშია** — `deleted`
      * ჯერ არ ისვრის, ჩანაწერი სიიდან ქრება და ბაზაში `trashed_at`-ით რჩება;
      * ნამდვილად მხოლოდ ურნის დაცლა შლის.
      */
@@ -441,7 +440,7 @@ class StatusDictionaryTest extends TestCase
     }
 
     /**
-     * **გადატანა `watched_at`-საც ასწორებს** (Tasks BUG-05).
+     * **გადატანა `watched_at`-საც ასწორებს**.
      *
      * ⚠️ „როდის ვნახე" მხოლოდ `HasStatus::applyStatus()`-ს ეწერება, ე.ი.
      * მასობრივი `update(['status_id' => …])` მას ვერ დაინახავდა: `done`
@@ -470,7 +469,7 @@ class StatusDictionaryTest extends TestCase
     }
 
     /**
-     * **მასობრივი გადატანა აუდიტის ლოგში ჩანს** (Tasks BUG-05).
+     * **მასობრივი გადატანა აუდიტის ლოგში ჩანს**.
      *
      * `AuditObserver` მოდელის ივენთებზე ზის, ე.ი. query-builder-ის
      * `update()` მას გვერდს უვლიდა: „ჩემი ასი ფილმი სხვა სტატუსზე
@@ -541,7 +540,7 @@ class StatusDictionaryTest extends TestCase
             ->assertJsonPath('data.key', 'all-2');
     }
 
-    /* ---------- ეტაპი 8: საიდბარის განლაგება ---------- */
+    /* ---------- საიდბარის განლაგება ---------- */
 
     /** განლაგება `module_user.settings`-ში ჯდება — და იქ მდგარ სხვა პარამეტრებს არ წაშლავს */
     public function test_sidebar_sections_are_stored_next_to_other_module_settings(): void

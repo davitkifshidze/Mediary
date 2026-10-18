@@ -8,7 +8,7 @@ import type { Genre } from '@/api/types'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **ჟანრის რედაქტირების ფანჯარა** (Tasks §54).
+   **ჟანრის რედაქტირების ფანჯარა**.
 
    ⚠️ მოწმდება: ჩანართები ბარათებია (`CutTabs`, `aria-pressed`); დომენი
    მოდულის ბარათით ირჩევა (ანიმეც); „ჩანაწერებში" ჩადგმული სქროლი აღარ არის,
@@ -133,11 +133,11 @@ const card = (label: string) =>
 const buttonWith = (label: string) =>
   [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes(label))
 
-describe('GenresPage — the edit window (§54)', () => {
+describe('GenresPage — the edit window', () => {
   it('uses card tabs, keeps "save" on the names tab only and drops the nested scroll', async () => {
     await openEditor()
 
-    // §54.1 — სამი ბარათ-ჩანართი; სახელები აქტიურია და „შენახვა" ჩანს
+    // სამი ბარათ-ჩანართი; სახელები აქტიურია და „შენახვა" ჩანს
     expect(card(i18n.t('genres.tabNames'))?.getAttribute('aria-pressed')).toBe('true')
     expect(card(i18n.t('genres.tabItems'))?.getAttribute('aria-pressed')).toBe('false')
     expect(card(i18n.t('genres.tabAdd'))).toBeTruthy()
@@ -147,7 +147,7 @@ describe('GenresPage — the edit window (§54)', () => {
     await flush()
 
     expect(buttonWith(i18n.t('genres.save'))).toBeUndefined()
-    // §54.3 — ჩადგმული `max-h-64` აღარ არის
+    // ჩადგმული `max-h-64` აღარ არის
     expect(document.querySelector('.max-h-64')).toBeNull()
     expect(document.querySelector('[data-testid="genre-records"]')?.textContent).toContain('Alpha')
 

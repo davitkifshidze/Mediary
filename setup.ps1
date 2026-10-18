@@ -20,7 +20,7 @@ if ($missing.Count) { Write-Host "Missing tools: $($missing -join ', '). Install
 Write-Host "`n[1/4] Backend: composer install" -ForegroundColor Yellow
 Push-Location "$root\backend"
 composer install
-# Tasks SEC-11 - .env.example is safe by default (APP_DEBUG=false,
+# .env.example is safe by default (APP_DEBUG=false,
 # SESSION_SECURE_COOKIE=true), because a server install copies it too.
 # A local install is the opposite case and says so here: debug on so a 500 is
 # readable, and the session cookie NOT secure - local runs over http://, where
@@ -44,7 +44,7 @@ if ($envtxt -notmatch 'APP_KEY=base64:') { php artisan key:generate }
 php artisan storage:link 2>$null
 
 # --- database ---
-# No dump is committed any more (Tasks SEC-01): it carried password hashes,
+# No dump is committed any more: it carried password hashes,
 # remember tokens, sessions and private chat. A fresh clone starts from an empty
 # seeded database. `migrate` offers to create a missing `mediary` (default: yes).
 # No --no-interaction here: without --force it makes migrate skip that creation.

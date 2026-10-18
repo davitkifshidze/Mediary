@@ -9,7 +9,7 @@ use App\Models\BoardGameNote;
 use App\Support\RichText;
 use Illuminate\Http\Request;
 
-/** ბორდგეიმის ჩანიშვნები (Tasks §14) — საკუთარი ცხრილი `board_game_notes` */
+/** ბორდგეიმის ჩანიშვნები — საკუთარი ცხრილი `board_game_notes` */
 class BoardGameNoteController extends Controller
 {
     public function index(BoardGame $boardGame)
@@ -40,7 +40,7 @@ class BoardGameNoteController extends Controller
 
     public function destroy(BoardGameNote $boardGameNote)
     {
-        // ⚠️ ურნა (Tasks §29, ეტაპი 2) — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
+        // ⚠️ ურნა — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
         $boardGameNote->moveToTrash();
 
         return response()->noContent();

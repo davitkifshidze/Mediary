@@ -21,16 +21,16 @@ use Illuminate\Validation\Rule;
 /**
  * მოდულების რეესტრი ადმინისთვის — ჩართვა/გამორთვა და პრეზენტაციული ველები.
  * ახალი მოდულის *შექმნა* კოდსაც მოითხოვს (migration/model/controller),
- * ამიტომ ის seeder-იდან/კოდიდან მოდის და აქ არ იქმნება — იხ. docs/I7-*.md §7.3.
+ * ამიტომ ის seeder-იდან/კოდიდან მოდის და აქ არ იქმნება.
  */
 class AdminModuleController extends Controller
 {
     /**
-     * K14/L3: „N მომხმარებელი"-ს ნაცვლად ჩანს, **ვის** აქვს ჩართული.
+     * „N მომხმარებელი"-ს ნაცვლად ჩანს, **ვის** აქვს ჩართული.
      * super_admin-ებიც ითვლებიან — მათ მოდული pivot-ის გარეშეც აქვთ.
      *
      * სიაში ხვდება ყველა, ვისაც **უფლება** აქვს (`isGrantedModule`), მათ შორის
-     * ისინიც, ვინც თვითონ გამორთო (K13) — ისინი `hidden_by_user`-ით აღინიშნება.
+     * ისინიც, ვინც თვითონ გამორთო — ისინი `hidden_by_user`-ით აღინიშნება.
      * `users_count` კი მხოლოდ **რეალურად ჩართულებს** ითვლის.
      */
     public function index(Request $request)
@@ -38,23 +38,23 @@ class AdminModuleController extends Controller
         /*
          * pivot-ები წინასწარ — `enabled_at`/`is_hidden` მეხსიერებიდან იკითხება.
          *
-         * ⚠️ **`role`-იც, და ეს არ არის „სულ ერთია, დავამატოთ"** (Tasks PERF-04):
+         * ⚠️ **`role`-იც, და ეს არ არის „სულ ერთია, დავამატოთ"**:
          * `users_list` ყოველ მომხმარებელზე `roleKey()`-სა და `isSuperAdmin()`-ს
          * ეკითხება, ე.ი. მის გარეშე პასუხი **წრფივად** იზრდებოდა ანგარიშების
          * რიცხვზე — გაზომილი: 3 მომხმარებელი → 9 query, 12 → 18, 30 → 36, სადაც
          * 18-დან 14 სწორედ `roles`-ზე მოდიოდა. `modules`-ის ანალოგიური ნახევარი
-         * PERF-01-მა უკვე მოხსნა.
+         * უკვე მოხსნილია.
          */
         $users = User::with('modules', 'role')->orderBy('id')->get();
 
-        /* Tasks §36 — სუპერადმინის **პირადი** რიგით: `/modules` ამ სიას ხატავს,
+        /* სუპერადმინის **პირადი** რიგით: `/modules` ამ სიას ხატავს,
            ე.ი. საერთო რიგით დალაგებული მის გადათრევას ყოველ ჩატვირთვაზე
            „უკან დააბრუნებდა". საერთო რიგი `sort_order`-ის ველში რჩება. */
-        /* ⚠️ §37 — **საბაზისო და საკუთარი პირადი** (`visibleTo`) — ზუსტად ის,
+        /* ⚠️ **საბაზისო და საკუთარი პირადი** (`visibleTo`) — ზუსტად ის,
            რასაც `/modules` ხატავს, თორემ სუპერადმინის საკუთარი მოდული ამ
-           სიიდან ამოვარდებოდა და მისი რიგი (§36) ორ სიას შორის გაიყოფოდა.
+           სიიდან ამოვარდებოდა და მისი რიგი ორ სიას შორის გაიყოფოდა.
            **სხვისი** პირადი მოდული აქ არასდროს ჩანს — ზედამხედველობა ცალკე
-           სიაა (37.8), აგრეგატებით და არა შიგთავსით. */
+           სიაა, აგრეგატებით და არა შიგთავსით. */
         $modules = ModuleOrder::sort(Module::visibleTo($request->user())->get(), $request->user())->each(function (Module $m) use ($users) {
             $holders = $users->filter(fn (User $u) => $u->isGrantedModule($m->key));
 
@@ -70,7 +70,7 @@ class AdminModuleController extends Controller
                     'is_super_admin' => $u->isSuperAdmin(),
                     // ავტომატურად აქვს (super_admin, pivot-ის გარეშე), თუ ადმინმა ჩართო
                     'implicit' => $u->isSuperAdmin() && ! $pivot,
-                    // თვითონ გამორთო — უფლება რჩება, მაგრამ ჩართული არაა (K13)
+                    // თვითონ გამორთო — უფლება რჩება, მაგრამ ჩართული არაა
                     'hidden_by_user' => (bool) $pivot?->is_hidden,
                     'enabled_at' => $pivot?->enabled_at,
                 ];
@@ -81,7 +81,7 @@ class AdminModuleController extends Controller
     }
 
     /**
-     * **„მომხმარებლების მოდულები" — სუპერადმინის ზედამხედველობა (Tasks §37.8, Q41).**
+     * **„მომხმარებლების მოდულები" — სუპერადმინის ზედამხედველობა.**
      *
      * ⚠️ **აგრეგატები და არა შიგთავსი**: სახელი, მფლობელი, ჩანაწერების
      * რაოდენობა და დაკავებული ადგილი. ჩანაწერები სუპერადმინისთვისაც 404-ია
@@ -131,7 +131,7 @@ class AdminModuleController extends Controller
     }
 
     /**
-     * **პირადი მოდულის გამორთვა/ჩართვა (Tasks §37.8)** — გლობალური `is_active`.
+     * **პირადი მოდულის გამორთვა/ჩართვა** — გლობალური `is_active`.
      *
      * ⚠️ **მფლობელის საკუთარ გადამრთველზე მაღლა დგას**: `PATCH /modules/{key}`
      * მხოლოდ აქტიურ მოდულს პოულობს, ე.ი. მფლობელი მას თვითონ ვეღარ ჩართავს;
@@ -168,7 +168,7 @@ class AdminModuleController extends Controller
         return response()->json(['data' => $this->overview($module, $records, $bytes)]);
     }
 
-    /** ზედამხედველობის ერთი რიგი — ⚠️ მხოლოდ აგრეგატები (Q41) */
+    /** ზედამხედველობის ერთი რიგი — ⚠️ მხოლოდ აგრეგატები */
     private function overview(Module $module, int $records, int $bytes): array
     {
         $owner = $module->owner;
@@ -194,7 +194,7 @@ class AdminModuleController extends Controller
 
     public function update(Request $request, Module $module)
     {
-        /* ⚠️ §37.8 — **პირადი მოდული აქ არ იცვლება**: სახელი, იერსახე და
+        /* ⚠️ **პირადი მოდული აქ არ იცვლება**: სახელი, იერსახე და
            ნაგულისხმევობა მფლობელისაა (`PUT /modules/{key}/details`), ხოლო
            სუპერადმინის ერთადერთი მოქმედება — გამორთვა — ცალკე გზით მიდის
            (`setCustomActive()`, შეტყობინებით). სხვაგვარად ამ კარით ვინმეს
@@ -207,7 +207,7 @@ class AdminModuleController extends Controller
             'description_ka' => ['nullable', 'string', 'max:255'],
             'description_en' => ['nullable', 'string', 'max:255'],
             'icon' => ['sometimes', 'required', 'string', 'max:64'],
-            // Tasks §2.1 — ჰედერის ფონი. ⚠️ `nullable` + hex-ის regex: ნებისმიერი
+            // ჰედერის ფონი. ⚠️ `nullable` + hex-ის regex: ნებისმიერი
             // სტრიქონი CSS-ში ჩასმულ მნიშვნელობად გადადიოდა
             'color' => ['sometimes', 'nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'is_active' => ['sometimes', 'boolean'],
@@ -221,7 +221,7 @@ class AdminModuleController extends Controller
     }
 
     /**
-     * **„ეს რიგი ყველასთვის ნაგულისხმევად"** (Tasks §36.3, Q27).
+     * **„ეს რიგი ყველასთვის ნაგულისხმევად"**.
      *
      * საერთო რიგს (`modules.sort_order`) წერს — მას მიჰყვება ყველა, ვისაც
      * პირადი რიგი ჯერ არ აქვს (ახალი ანგარიშიც). ⚠️ **პირად რიგს არავის
@@ -240,7 +240,7 @@ class AdminModuleController extends Controller
      */
     public function saveDefaultOrder(Request $request, AuditLogger $audit)
     {
-        // ⚠️ §37 — საერთო რიგი საბაზისო მოდულებისაა; პირადს თავისი მფლობელი ალაგებს
+        // ⚠️ საერთო რიგი საბაზისო მოდულებისაა; პირადს თავისი მფლობელი ალაგებს
         $current = Module::base()->orderBy('sort_order')->orderBy('id')->pluck('key')->all();
 
         $data = $request->validate([

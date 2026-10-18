@@ -102,7 +102,7 @@ export function SongGenreDialog({
           />
         </div>
 
-        {/* Tasks §24.3 — ფერი ჩიპისა და ბარათისთვის; იგივე პალიტრა, რაც სტატუსებს (§16) */}
+        {/* ფერი ჩიპისა და ბარათისთვის; იგივე პალიტრა, რაც სტატუსებს */}
         <ColorPick
           value={form.color ?? null}
           onChange={(color) => setForm((f) => ({ ...f, color }))}

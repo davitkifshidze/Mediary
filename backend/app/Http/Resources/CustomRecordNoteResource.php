@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** პირადი მოდულის ჩანაწერის ჩანიშვნა (Tasks §37.5) — `RecordNotes`-ის ფორმა */
+/** პირადი მოდულის ჩანაწერის ჩანიშვნა — `RecordNotes`-ის ფორმა */
 class CustomRecordNoteResource extends JsonResource
 {
     public function toArray(Request $request): array

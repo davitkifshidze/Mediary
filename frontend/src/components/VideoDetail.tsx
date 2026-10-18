@@ -39,18 +39,18 @@ import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   ვიდეოს დეტალური ხედი (K3): ვიდეო · ფოტოები · დოკუმენტები · ჩანიშვნები.
+   ვიდეოს დეტალური ხედი: ვიდეო · ფოტოები · დოკუმენტები · ჩანიშვნები.
    ფაილები `video_files`-შია, ჩანიშვნები `video_notes`-ში — ცხრილი სექციისაა.
 
-   ⚠️ Tasks §26.4 — ჩანართების რიგი ყველა დეტალის ფანჯრის რიგს მიჰყვება
+   ⚠️ ჩანართების რიგი ყველა დეტალის ფანჯრის რიგს მიჰყვება
    (ფოტოები ზემოთ, მერე … დოკუმენტები, ჩანიშვნები); ჩანართები თვითონ რჩება —
    ეს შენი გადაწყვეტილებაა (ბარათები შიგთავსს ეკრანის ქვემოთ ჩაწევდა).
 
-   ⚠️ **Tasks §35.6 — საკუთარი ჩაშენება აღარ აქვს.** აქ `VideoEmbed` იდგა და
+   ⚠️ **საკუთარი ჩაშენება აღარ აქვს.** აქ `VideoEmbed` იდგა და
    გლობალურ დამკვრელთან ერთად **ორივე ჟღერდა**. „ნანახად" ჩათვლა დამკვრელშია
    (ჩართვაზე) და არა ფანჯრის გახსნაზე: გახსნა ყურება არაა.
 
-   ⚠️ **Tasks §48.1 — ვიდეო ფანჯარაშივე უკრავს**: ვიდეოს ჩანართის ესკიზი
+   ⚠️ **ვიდეო ფანჯარაშივე უკრავს**: ვიდეოს ჩანართის ესკიზი
    აპის დამკვრელის ადგილია (`PlayerSpot`) — „დაკვრაზე" დამკვრელი მასზე
    ჯდება და ფანჯარა **აღარ იხურება** (ერთი ფრეიმი, თავიდან ჩატვირთვის
    გარეშე). „გატანა" (ესკიზის კუთხეში და აქ, მოქმედებების რიგში) ვიდეოს
@@ -75,33 +75,33 @@ export function VideoDetail({
 }: {
   video: Video
   onClose: () => void
-  /** „მსგავს ვიდეოზე" გადასვლა (K4) — მშობელი წყვეტს, რას აკეთებს */
+  /** „მსგავს ვიდეოზე" გადასვლა — მშობელი წყვეტს, რას აკეთებს */
   onOpen?: (video: Video) => void
   /**
-   * დამკვრელისთვის გადაცემა (§35.6) — გვერდი წყვეტს რიგს: სიაში მყოფი
+   * დამკვრელისთვის გადაცემა — გვერდი წყვეტს რიგს: სიაში მყოფი
    * ვიდეო **გაფილტრულ სიას** აქედან უშვებს, სიის გარეთა — მარტო საკუთარ თავს.
    */
   onPlay: (video: Video) => void
-  /** Tasks §19.6 — „რედაქტირება“ ფანჯრიდან; გვერდი წყვეტს, რა გაიხსნას */
+  /** „რედაქტირება“ ფანჯრიდან; გვერდი წყვეტს, რა გაიხსნას */
   onEdit?: (video: Video) => void
 }) {
   const { t, i18n } = useTranslation()
-  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  // გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen('video', video.id)
   const lang = useContentLang(i18n.language)
   const { date } = useDateFormat()
   const qc = useQueryClient()
-  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ ბარათზე იყო)
+  // რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ ბარათზე იყო)
   const favorite = useMutation({
     mutationFn: () => toggleVideoFavorite(video.id),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['videos'] }),
   })
   const { toast } = useToast()
   const player = usePlayer()
-  /** §48.2 — ეს ვიდეო ახლა ამ ფანჯარაში უკრავს — „გატანა" მოქმედებების რიგშიც ჩანს */
+  /** ეს ვიდეო ახლა ამ ფანჯარაში უკრავს — „გატანა" მოქმედებების რიგშიც ჩანს */
   const inline = player.layout === 'inline' && player.current?.kind === 'video' && player.current.id === video.id
   const [tab, setTab] = useState<Tab>('video')
-  /** Tasks §21.2 — ლოკალური ფლეერი ფანჯრის თავზე (მოდალები ერთმანეთზე დგება) */
+  /** ლოკალური ფლეერი ფანჯრის თავზე (მოდალები ერთმანეთზე დგება) */
   const [localOpen, setLocalOpen] = useState(false)
 
   const filesQ = useQuery({
@@ -129,7 +129,7 @@ export function VideoDetail({
   })
   const removeFile = useMutation({ mutationFn: deleteVideoFile, onSuccess: refresh, onError: fail })
   /* ონლაინ მნახველი (2026-09-14) — ⚠️ `resolve: storageUrl` იმიტომაა, რომ ეს
-     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი (§17.5). */
+     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი. */
   const viewer = useFileViewer({ resolve: storageUrl, onDelete: (id) => removeFile.mutate(id) })
 
   const pick = (kind: 'image' | 'doc') => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,7 +143,7 @@ export function VideoDetail({
     { value: 'images', label: t('videos.tabImages'), badge: images.length || undefined },
     { value: 'docs', label: t('videos.tabDocs'), badge: docs.length || undefined },
     { value: 'notes', label: t('videos.tabNotes'), badge: notes.length || undefined },
-    // Tasks §21.4 — „ლოკალური ასლი" მხოლოდ მაშინ, როცა რამე არის სათქმელი
+    // „ლოკალური ასლი" მხოლოდ მაშინ, როცა რამე არის სათქმელი
     ...(video.download_status ? [{ value: 'local' as Tab, label: t('videos.local.tab') }] : []),
   ]
 
@@ -163,15 +163,15 @@ export function VideoDetail({
 
   return (
     <ModalShell title={video.title} onClose={onClose} wide>
-      {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
+      {/* ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
           `/profile`-ზეა, ე.ი. აქ მარტო ეს გადამრთველი ვერაფერს გამოაჩენს. */}
-      {/* Tasks §19.6 — სათაურის ქვეშ იგივე სამი ბეჯი, რაც ბარათზეა (ტიპი · სტატუსი · პლატფორმა), და „რედაქტირება“ */}
+      {/* სათაურის ქვეშ იგივე სამი ბეჯი, რაც ბარათზეა (ტიპი · სტატუსი · პლატფორმა), და „რედაქტირება“ */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
         <VideoBadges video={video} lang={lang} />
         <div className="flex flex-wrap items-center gap-2">
-          {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+          {/* ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
           <VisibilityBadge value={video.visibility} />
-          {/* Tasks §53 (Q14) — ბმული ბარათის ზოლიდან აქ გადმოვიდა (და კონტექსტურ მენიუშია) */}
+          {/* ბმული ბარათის ზოლიდან აქ გადმოვიდა (და კონტექსტურ მენიუშია) */}
           {video.url && (
             <a
               href={video.url}
@@ -211,7 +211,7 @@ export function VideoDetail({
         {tab === 'video' && (
           <>
             <PlayerSpot video={video} onPlay={() => onPlay(video)} />
-            {/* Q52 — ვინ ატვირთა და როდის (ვებძებნიდან ან ბმულის ჩასმისას) */}
+            {/* ვინ ატვირთა და როდის (ვებძებნიდან ან ბმულის ჩასმისას) */}
             {(video.channel || video.published_at) && (
               <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {video.channel && (
@@ -248,7 +248,7 @@ export function VideoDetail({
           <>
             <TabInfo>{t('videos.imagesInfo')}</TabInfo>
             <div className="mb-3">{uploadButton('image')}</div>
-            {/* საერთო `PhotoGrid` (§2.9) — ადრე თვითნაკეთი ბადე იყო, სადაც
+            {/* საერთო `PhotoGrid` — ადრე თვითნაკეთი ბადე იყო, სადაც
                 დაჭერა ფოტოს **ახალ ჩანართში** ხსნიდა; ახლა lightbox-ია,
                 მონიშვნებით და „რამდენი გამოჩნდეს" არჩევანით. */}
             <PhotoGrid
@@ -267,7 +267,7 @@ export function VideoDetail({
         {tab === 'notes' && (
           <>
             <TabInfo>{t('videos.notesInfo')}</TabInfo>
-            {/* ⚠️ სხეული გაზიარებულია (Tasks §6.7) — აქ ადრე ხელით აწყობილი
+            {/* ⚠️ სხეული გაზიარებულია — აქ ადრე ხელით აწყობილი
                 სია იდგა თავისი inline რედაქტირებით, წაშლის დადასტურების
                 გარეშე და `toLocaleString()`-ით. */}
             <RecordNotes
@@ -349,7 +349,7 @@ export function VideoDetail({
   )
 }
 
-/* ---------- Tasks §48.1 — ვიდეო ფანჯარაშივე ---------- */
+/* ---------- ვიდეო ფანჯარაშივე ---------- */
 
 /**
  * ვიდეოს ადგილი ფანჯარაში — **ესკიზი, რომელზეც აპის დამკვრელი ჯდება**.
@@ -401,7 +401,7 @@ function PlayerSpot({ video, onPlay }: { video: Video; onPlay: () => void }) {
   )
 }
 
-/* ---------- მსგავსი ვიდეოები (K4) ---------- */
+/* ---------- მსგავსი ვიდეოები ---------- */
 
 /**
  * შემოთავაზება **ჩემი ბიბლიოთეკიდან** — საერთო ტეგები, სათაურის მსგავსება,
@@ -475,7 +475,7 @@ function SimilarVideos({ video, onOpen }: { video: Video; onOpen?: (video: Video
 }
 
 /**
- * **„ლოკალური ასლი" ჩანართი** (Tasks §21.4) — მდგომარეობა, ზომა, ფორმატი, თარიღი,
+ * **„ლოკალური ასლი" ჩანართი** — მდგომარეობა, ზომა, ფორმატი, თარიღი,
  * დაკვრა ლოკალურ ფლეერში და ფაილის წაშლა. ⚠️ ჩამოტვირთვის **დაწყება** აქ არ არის —
  * ის ბარათზე და კონტექსტურ მენიუშია (`yt-dlp`-ის არსებობას გვერდი ამოწმებს).
  */

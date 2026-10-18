@@ -7,7 +7,7 @@ import {
 } from '@/api/notes'
 
 /* ============================================================
-   ბრაუზერის შეტყობინებები (Tasks §13.3).
+   ბრაუზერის შეტყობინებები.
 
    ⚠️ **მთავარი არხი და დამოკიდებულების გარეშე**: არც push-სერვისი, არც
    worker — მარტივი polling. `GET /note-reminders/due` backend-ზე იმავე
@@ -52,7 +52,7 @@ async function registration(): Promise<ServiceWorkerRegistration | null> {
 
 /**
  * service worker-ით, თუ არის; თორემ პირდაპირ გვერდიდან (desktop-ზე ისიც მუშაობს).
- * ⚠️ Tasks §34.7 — მორიგეობის შეხსენებაც ამ გზით მიდის (`lib/dutyReminders.ts`).
+ * ⚠️ მორიგეობის შეხსენებაც ამ გზით მიდის (`lib/dutyReminders.ts`).
  */
 export async function showBrowserNotification(title: string, options: NotificationOptions) {
   const reg = await registration()
@@ -76,7 +76,7 @@ async function show(item: NoteNotification) {
 }
 
 /**
- * Tasks §27.2 — სატესტო შეტყობინება „მონაცემების" ბრაუზერის ბარათიდან.
+ * სატესტო შეტყობინება „მონაცემების" ბრაუზერის ბარათიდან.
  * ⚠️ **იმავე გზით**, რითაც ნამდვილი შეხსენება მივა (service worker → გვერდი):
  * სხვა გზით გაგზავნილი ტესტი იმას ამოწმებდა, რაც არ გამოიყენება.
  */
@@ -125,7 +125,7 @@ export function useNoteReminderWatcher(enabled: boolean) {
       )
     }
 
-    /* ⚠️ **ინვალიდაცია მხოლოდ რეალურ ჩვენებაზე** (Tasks PERF-12). ადრე ის
+    /* ⚠️ **ინვალიდაცია მხოლოდ რეალურ ჩვენებაზე**. ადრე ის
        ციკლის გარეთ, უპირობოდ იდგა, ე.ი. არაცარიელ `due`-ზე ყოველ poll-ზე
        ყველა `['notes']*` query თავიდან იტვირთებოდა — მაშინაც, როცა ყველა
        ერთეული უკვე `shown.current`-შია და **არაფერი შეცვლილა**.

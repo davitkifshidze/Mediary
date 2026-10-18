@@ -13,10 +13,10 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * **`/actors` — ყველა „ჩემი" მსახიობი ერთ სიაში (Tasks §35.2).**
+ * **`/actors` — ყველა „ჩემი" მსახიობი ერთ სიაში.**
  *
- * ⚠️ **„ჩემი" სამი წყაროდან იკრიბება** (Q9): ვინც ჩემს ჩანაწერზეა (ფილმი,
- * სერიალი, ანიმე), ვისაც ჩემი ფოტო აქვს გალერეაში და (§35.3) ვინც მე შევქმენი.
+ * ⚠️ **„ჩემი" სამი წყაროდან იკრიბება**: ვინც ჩემს ჩანაწერზეა (ფილმი,
+ * სერიალი, ანიმე), ვისაც ჩემი ფოტო აქვს გალერეაში და ვინც მე შევქმენი.
  * `cast_members` გლობალური ლექსიკონია — უფილტრო სია სხვის მსახიობებსაც
  * აჩვენებდა.
  *
@@ -78,7 +78,7 @@ final class ActorIndex
             $query->selectRaw('0 as records_count, 0 as movie_count, 0 as series_count, 0 as anime_count');
         }
 
-        // ⚠️ ავზი: ჩემს ჩანაწერზეა, ჩემი ფოტო აქვს ან მე შევქმენი (§35.3) — `left join`-ები აქ იჭრება
+        // ⚠️ ავზი: ჩემს ჩანაწერზეა, ჩემი ფოტო აქვს ან მე შევქმენი — `left join`-ები აქ იჭრება
         $query->where(function (Builder $w) use ($records) {
             $w->whereNotNull('p.cast_member_id')
                 ->orWhere('cast_members.created_by', $this->userId);
@@ -227,7 +227,7 @@ final class ActorIndex
             default => null,
         };
 
-        /* Tasks §35.5 — „ჩაკეტილები": ჩემი ჩაკეტილი მსახიობები, დამალულიც (ბოქლომიანი
+        /* „ჩაკეტილები": ჩემი ჩაკეტილი მსახიობები, დამალულიც (ბოქლომიანი
            ბარათით). ⚠️ დანარჩენ სიაში დამალული საერთოდ არ არის (`record_lock` scope). */
         if (! empty($filters['locked'])) {
             $query->onlyLocked();
@@ -280,7 +280,7 @@ final class ActorIndex
     /**
      * ჩემი ფოტოები თითო მსახიობზე. ⚠️ `GalleryImage`-ის scope-ები მოქმედებს —
      * `owner` (ჩემი), `trash` და `album_lock` (ჩაკეტილი ალბომის ფოტო არ ითვლება:
-     * დამალული ყველგან დამალულია, Q9).
+     * დამალული ყველგან დამალულია).
      */
     private function photoCounts(): QueryBuilder
     {

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * ვიდეოს ტიპი (Tasks 5.1) — per-user მართვადი ლექსიკონი.
+ * ვიდეოს ტიპი — per-user მართვადი ლექსიკონი.
  *
  * ჟანრებისგან განსხვავებით ეს **არ არის** გლობალური: ტიპი ისეთივე პირადია,
  * როგორც თვითონ ვიდეო, ამიტომ `BelongsToUser`-ის `owner` scope-ზე გადის.
@@ -17,18 +17,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class VideoType extends Model
 {
     /**
-     * ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — წაშლა რიგს ურნაში აგზავნის
+     * ⚠️ **ურნა** — წაშლა რიგს ურნაში აგზავნის
      * (`DictionaryTrash::trash()`); `trash_meta` იმახსოვრებს გადატანილ
      * ჩანაწერებს, რომ აღდგენამ მათი დაბრუნება შემოგთავაზოს.
      */
     use BelongsToUser, HasTrash;
 
-    /** §B3 — უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
+    /** უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
     use HasDictionaryKey;
 
     /**
-     * ახალ ანგარიშზე ავტომატურად შექმნილი ტიპები (5.1).
-     * Tasks §19.2 — `color` სტატუსის პალიტრის გასაღებია (`lib/statusColor.ts`):
+     * ახალ ანგარიშზე ავტომატურად შექმნილი ტიპები.
+     * `color` სტატუსის პალიტრის გასაღებია (`lib/statusColor.ts`):
      * ინფორმაციული — ლურჯი, გასართობი — იისფერი.
      */
     public const DEFAULTS = [
@@ -61,7 +61,7 @@ class VideoType extends Model
      */
     public static function ensureDefaults(int $userId): void
     {
-        // ⚠️ ურნაში მყოფიც (Tasks §29) — სხვაგვარად ნაგულისხმევები იმავე გასაღებით ჩაიწერებოდა და ინდექსი დაიძვრებოდა
+        // ⚠️ ურნაში მყოფიც — სხვაგვარად ნაგულისხმევები იმავე გასაღებით ჩაიწერებოდა და ინდექსი დაიძვრებოდა
         if (static::withoutGlobalScopes(['owner', 'trash'])->where('user_id', $userId)->exists()) {
             return;
         }

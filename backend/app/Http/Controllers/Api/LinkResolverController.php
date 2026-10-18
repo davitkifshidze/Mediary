@@ -8,7 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * **`POST /links/metadata`** (Tasks §15.1) — ბმულის მეტა-მონაცემი ნებისმიერი
+ * **`POST /links/metadata`** — ბმულის მეტა-მონაცემი ნებისმიერი
  * ფორმისთვის: წიგნის წყარო, თამაშის/სამაგიდოს/ჩანაწერის ბმულები, ფილმის
  * ტრეილერი, თამაშისა და გალერეის ვიდეო.
  *

@@ -29,13 +29,13 @@ import { DutyWorkplaceDeleteDialog } from '@/components/duty/DutyWorkplaceDelete
 import { DutyWorkplaceDialog } from '@/components/duty/DutyWorkplaceDialog'
 
 /* ============================================================
-   **მორიგეობის პარამეტრები (Tasks §34.2–34.3).**
+   **მორიგეობის პარამეტრები.**
 
    პერიოდის პირველი დღე (1–28), ვალუტა, სწრაფი დამატების ნაგულისხმევები და
    **სამსახურები** (ტარიფებით, რიგით, წაშლით). ტიპები კლასიფიკატორია და
    `/dictionaries/duty-types`-ზე იმართება — აქ მხოლოდ ბმულია.
 
-   ⚠️ **პერიოდის დღის შეცვლა მომავალზე მოქმედებს** (Q8): თუ მიმდინარე ან წინა
+   ⚠️ **პერიოდის დღის შეცვლა მომავალზე მოქმედებს**: თუ მიმდინარე ან წინა
    პერიოდში მორიგეობა უკვე გაქვს, ახალი დღე **მომდევნო პერიოდიდან** იწყება
    (სერვერი წყვეტს; ფანჯარა დაგეგმილ ცვლილებას ცხადად წერს). ჩანაწერების გარეშე
    — მაშინვე.
@@ -142,7 +142,7 @@ export function DutySettingsDialog({
             </Select>
           </FormField>
 
-          {/* §34.7 — შეხსენება წინა დღეს (ბრაუზერი; ტელეგრამი — არჩევით) */}
+          {/* შეხსენება წინა დღეს (ბრაუზერი; ტელეგრამი — არჩევით) */}
           <FormField label={t('duty.settings.remind')} htmlFor="duty-remind-at" hint={t('duty.settings.remindHint')}>
             <div className="flex flex-wrap items-center gap-3">
               <TimePicker id="duty-remind-at" value={remindAt} onChange={setRemindAt} clearable />

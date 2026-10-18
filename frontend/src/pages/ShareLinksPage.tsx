@@ -45,7 +45,7 @@ import { ShareLinkDialog } from '@/components/share/ShareLinkDialog'
 import { ShareQr } from '@/components/share/ShareQr'
 
 /* ============================================================
-   **„გაზიარების ბმულები" — ცალკე განყოფილება** (Tasks §40.14).
+   **„გაზიარების ბმულები" — ცალკე განყოფილება**.
 
    შენი სიტყვები: „ეს ფუნქციონალი არ იყოს ყველა მოდულში შიდა ღილაკად,
    არამედ სადმე ცალკე მენიუში გაიტანე — მაგალითად, მონაცემების ქვევით".
@@ -226,7 +226,7 @@ function ShareLinkCard({ link, onEdit, onQr }: { link: ShareLink; onEdit: () => 
 
   const sections = SHARE_DOMAINS.filter((d) => d in link.domains)
 
-  /* Tasks §7 — ერთი სია `⋯`-სთვისაც და მარჯვენა ღილაკისთვისაც: QR · მისამართის შეცვლა ·
+  /* ერთი სია `⋯`-სთვისაც და მარჯვენა ღილაკისთვისაც: QR · მისამართის შეცვლა ·
      გაუქმება/აღდგენა · — · წაშლა */
   const actions: MenuAction[] = [
     ...(link.readable && active ? [{ key: 'qr', label: t('share.qr'), icon: QrCode, run: onQr }] : []),
@@ -296,7 +296,7 @@ function ShareLinkCard({ link, onEdit, onQr }: { link: ShareLink; onEdit: () => 
         {link.last_opened_at && <span>{t('share.lastOpened', { when: relative(link.last_opened_at) })}</span>}
       </p>
 
-      {/* §40.8 — ვინ დაიმატა ამ ბმულიდან (ახლები ზემოთ; ბევრზე — პირველი ხუთი და „კიდევ N") */}
+      {/* ვინ დაიმატა ამ ბმულიდან (ახლები ზემოთ; ბევრზე — პირველი ხუთი და „კიდევ N") */}
       {link.importers.length > 0 && (
         <p className="text-xs text-muted-foreground">
           {t('share.importedBy', {

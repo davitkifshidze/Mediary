@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
 
-/** კურსზე მიმაგრებული ფაილი — `image` · `doc` (სერტიფიკატი §55.5-მა მოხსნა) */
+/** კურსზე მიმაგრებული ფაილი — `image` · `doc` (სერტიფიკატი მოიხსნა) */
 class CourseFileResource extends JsonResource
 {
     public function toArray(Request $request): array
@@ -16,7 +16,7 @@ class CourseFileResource extends JsonResource
             'id' => $this->id,
             'kind' => $this->kind,
             'path' => $this->path,
-            // ⚠️ დისკს **საქაღალდე** წყვეტს და არა გამომძახებელი (§17.5)
+            // ⚠️ დისკს **საქაღალდე** წყვეტს და არა გამომძახებელი
             'url' => Storage::disk(StorageFolder::diskFor($this->path))->url($this->path),
             'original_name' => $this->original_name,
             'mime' => $this->mime,

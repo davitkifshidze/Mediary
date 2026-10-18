@@ -2,8 +2,8 @@
    მედია-დომენი: movie | series | anime.
    ერთი generic UI/API ფენა მუშაობს სამივეზე ამ დესკრიპტორით.
 
-   ⚠️ **ანიმე მესამე დომენად ჯდება და არა მესამე ფორმად** (Tasks §7.1):
-   ერთი და იმავე გვერდის მესამედ დაწერა §2-ის წესს („ერთი საერთო
+   ⚠️ **ანიმე მესამე დომენად ჯდება და არა მესამე ფორმად**:
+   ერთი და იმავე გვერდის მესამედ დაწერა წესს („ერთი საერთო
    კომპონენტი") არღვევდა. Backend-ზე მისი სარკეა `App\Support\MediaDomain`.
    ============================================================ */
 
@@ -23,7 +23,7 @@ export const MEDIA: Record<MediaType, MediaDescriptor> = {
     type: 'movie',
     apiBase: '/movies',
     detailBase: '/movies',
-    // Tasks 2.2 — `/` დეშბორდისაა; ბიბლიოთეკა `/movies`-ზეა, სერიალების ანალოგიით
+    // `/` დეშბორდისაა; ბიბლიოთეკა `/movies`-ზეა, სერიალების ანალოგიით
     libraryPath: '/movies',
   },
   series: {
@@ -49,7 +49,7 @@ export function mediaOf(type: MediaType): MediaDescriptor {
 
 /**
  * მიმდინარე მისამართიდან დომენის ამოცნობა.
- * ⚠️ `/` აღარ ნიშნავს ფილმს (Tasks 2.2) — ის დეშბორდია, ე.ი. აქ `null` ბრუნდება.
+ * ⚠️ `/` აღარ ნიშნავს ფილმს — ის დეშბორდია, ე.ი. აქ `null` ბრუნდება.
  */
 export function mediaFromPath(pathname: string): MediaType | null {
   for (const d of Object.values(MEDIA)) {

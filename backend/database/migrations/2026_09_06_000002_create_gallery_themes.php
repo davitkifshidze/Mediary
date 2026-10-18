@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Tasks 10 — გალერეის **თემატური** კატეგორიები (`DECISIONS.md` §3, პასუხი „ბ").
+ * გალერეის **თემატური** კატეგორიები (პასუხი „ბ").
  *
  * ⚠️ **`gallery_images.category`-ს არ ცვლის და არ ეხება.** ის TMDB-ის
  * ტექნიკური ტიპია (`backdrop|poster|logo|actor`) და წყაროდან მოდის; თემა კი

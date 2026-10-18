@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 /**
- * **Tasks §59.6 — ექსპორტის ერთი რიგი → ჩემი ახალი ჩანაწერი.**
+ * **ექსპორტის ერთი რიგი → ჩემი ახალი ჩანაწერი.**
  *
  * ⚠️ **id-ები თავიდან ინომრება და სხვისი რიცხვი არსად ჯდება.** ფაილის `id`,
  * `user_id`, `status_id` ამ ბაზაში არაფერს ნიშნავს: ჩანაწერი ახალ id-ს იღებს,
@@ -25,7 +25,7 @@ use Illuminate\Support\Str;
  * თუ არ მაქვს, იქმნება — სხვა ანგარიშის რიგზე მიბმა პრინციპულად შეუძლებელია.
  *
  * ⚠️ **მონაცემი ფაილიდან იღება, როგორც არის** — TMDB-ს, Open Library-ს და
- * სხვა წყაროს არავინ ეკითხება (Tasks §59.6, Q16). ცარიელი ველი ცარიელი
+ * სხვა წყაროს არავინ ეკითხება. ცარიელი ველი ცარიელი
  * რჩება; შეავსებს `/sync`, თუ მოინდომებ.
  *
  * ⚠️ **ჩანაწერი მოდელით იწერება** (`save()`), ე.ი. მოდელის ყველა წესი
@@ -38,7 +38,7 @@ class MediaryWriter
     private const SKIP = [
         'id', 'user_id', 'module', 'status', 'status_id', 'created_at', 'updated_at', 'trashed_at',
         'sort_order', 'visibility',
-        // ჩამოწერილი ვიდეო თავიდან ჩამოიწერება — სახელი ფაილის გარეშე არაფერია (§7.1)
+        // ჩამოწერილი ვიდეო თავიდან ჩამოიწერება — სახელი ფაილის გარეშე არაფერია
         'download_name', 'download_path',
     ];
 
@@ -181,7 +181,7 @@ class MediaryWriter
         $nameKa = $this->text($def['name_ka'] ?? null, 60) ?? $key;
         $nameEn = $this->text($def['name_en'] ?? null, 60) ?? $nameKa;
 
-        // ⚠️ გასაღები თავისუფალია? (ურნაში მყოფიც იკავებს — Tasks §29)
+        // ⚠️ გასაღები თავისუფალია? (ურნაში მყოფიც იკავებს)
         $taken = in_array($key, StatusDomain::RESERVED_KEYS, true)
             || ! preg_match('/^[a-z0-9_-]{1,60}$/', $key)
             || Status::withoutGlobalScopes()->where('user_id', $userId)->where('module', $module)->where('key', $key)->exists();

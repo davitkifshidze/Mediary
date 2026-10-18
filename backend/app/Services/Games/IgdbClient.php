@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 /**
- * IGDB — თამაშების **სათადარიგო** წყარო (`DECISIONS.md` §7, პასუხი 2026-09-06).
+ * IGDB — თამაშების **სათადარიგო** წყარო.
  *
- * ⚠️ **RAWG-ის ჩანაცვლება არაა.** §11.4-ში RAWG სწორედ იმიტომ აირჩა, რომ ერთ
+ * ⚠️ **RAWG-ის ჩანაცვლება არაა.** RAWG სწორედ იმიტომ აირჩა, რომ ერთ
  * უფასო კლავიშს ითხოვს; IGDB Twitch-ის OAuth-ზეა (ორი საიდუმლო + ტოკენის
  * განახლება). ამიტომ ის მაშინ ერთვება, როცა RAWG-ს კლავიში არ აქვს ან შედეგი
  * არ მოაქვს — `GameController::candidates()`/`lookup()` ამ რიგს იცავს.
@@ -34,7 +34,7 @@ class IgdbClient
     private const TOKEN_KEY = 'igdb.access_token';
 
     /**
-     * ტოკენის ქეშის key **გასაღების ანაბეჭდით** (Tasks §21.5).
+     * ტოკენის ქეშის key **გასაღების ანაბეჭდით**.
      *
      * ⚠️ Twitch-ის ტოკენი კონკრეტულ `client_id`-ს ეკუთვნის. ერთი, საერთო
      * key ერთი მომხმარებლის ტოკენს მეორეს დაუბრუნებდა — და შედეგი იქნებოდა
@@ -128,7 +128,7 @@ class IgdbClient
     }
 
     /**
-     * სქრინშოტების URL-ები (§11.3) — გალერეის ჩამოსატვირთად.
+     * სქრინშოტების URL-ები — გალერეის ჩამოსატვირთად.
      *
      * @return array<int, array{url: string, width: int|null, height: int|null}>
      */
@@ -334,7 +334,7 @@ class IgdbClient
      * ოფიციალური საიტი და მაღაზიები.
      * IGDB-ის `websites.category`: 1 = official, 13 = Steam, 16 = Epic, 17 = GOG.
      *
-     * ⚠️ §22.3 — ორი ღერძი: 1 → `official`, მაღაზიები → `store` + მაღაზია.
+     * ⚠️ ორი ღერძი: 1 → `official`, მაღაზიები → `store` + მაღაზია.
      *
      * @return array<int, array{label: string, url: string, kind: string, store: ?string}>
      */

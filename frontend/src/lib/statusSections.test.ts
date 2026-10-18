@@ -11,7 +11,7 @@ import {
   type SectionRow,
 } from './statusSections'
 
-/* საიდბარის განყოფილებების რიგი (ეტაპი 8) — ლექსიკონის გვერდი და საიდბარი
+/* საიდბარის განყოფილებების რიგი — ლექსიკონის გვერდი და საიდბარი
    ერთსა და იმავე ფუნქციას ეკითხება, ე.ი. ეს ტესტი ორივეს ფარავს. */
 
 const status = (key: string, i: number) =>
@@ -40,7 +40,7 @@ function move(rows: SectionRow[], id: string, index: number): SectionRow[] {
 }
 
 describe('arrangeSections', () => {
-  // Tasks §35.5 — მედიას „ჩაკეტილებიც" აქვს, „რჩეულის" შემდეგ
+  // მედიას „ჩაკეტილებიც" აქვს, „რჩეულის" შემდეგ
   it('starts with "all", ends with "favorite" and "locked"', () => {
     expect(ids(arrangeSections(STATUSES, PSEUDO_SECTIONS.movie, EMPTY_LAYOUT))).toEqual([
       'all',

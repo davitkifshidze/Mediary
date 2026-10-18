@@ -9,7 +9,7 @@ import type { Book } from '@/api/books'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **წიგნის დეტალი — გალერეა ვებიდან** (Tasks §22.5).
+   **წიგნის დეტალი — გალერეა ვებიდან**.
 
    ⚠️ მოწმდება: სექცია „გალერეა" ორ საცავს ერთ ხედად აჩვენებს — „ატვირთული"
    (წიგნის ფაილები) და „ვებიდან" (გალერეის მოდული, `owner=book:<id>`) ვებძებნის
@@ -136,7 +136,7 @@ async function mount(gallery: boolean) {
 
 const button = (label: string) => [...document.querySelectorAll('button')].find((b) => b.textContent?.includes(label))
 
-describe('BookDetail — გალერეა (§22)', () => {
+describe('BookDetail — გალერეა', () => {
   it('shows both stores under one gallery section with the web-search buttons', async () => {
     await mount(true)
 
@@ -165,7 +165,7 @@ describe('BookDetail — გალერეა (§22)', () => {
   })
 })
 
-describe('BookDetail — ფაილები, ციტატები, პროგრესი (§23)', () => {
+describe('BookDetail — ფაილები, ციტატები, პროგრესი', () => {
   it('attaches files through one drop zone without kind chips', async () => {
     await mount(true)
 
@@ -217,7 +217,7 @@ describe('BookDetail — ფაილები, ციტატები, პრ
     expect(document.querySelector('[data-testid="page-stepper"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="progress-slider"]')?.getAttribute('max')).toBe('412')
 
-    /* Tasks §40.6 — „შენახვა" და „დავასრულე" ცალკე, ქვედა ზოლში და ერთად: სლაიდერის
+    /* „შენახვა" და „დავასრულე" ცალკე, ქვედა ზოლში და ერთად: სლაიდერის
        რიგში აღარ არიან (იქ „დავასრულე" მარტო ჩამოდიოდა ქვედა ხაზზე) */
     const actions = document.querySelector('[data-testid="progress-actions"]')!
     expect([...actions.querySelectorAll('button')].map((b) => b.textContent?.trim())).toEqual([

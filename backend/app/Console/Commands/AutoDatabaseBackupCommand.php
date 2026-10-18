@@ -9,7 +9,7 @@ use App\Services\Backup\DatabaseDumper;
 use Illuminate\Console\Command;
 
 /**
- * **დაგეგმილი ბაზის ასლი (FEAT-12).**
+ * **დაგეგმილი ბაზის ასლი.**
  *
  * ⚠️ **ფონურ პროცესს არ იშვებს და ეს განზრახია.** `POST /admin/backups`
  * `BackgroundProcess`-ით გადის, რადგან `artisan serve` ერთძაფიანია და
@@ -18,7 +18,7 @@ use Illuminate\Console\Command;
  * (`ProcessEnv`-ის გაკვეთილი), ისე რომ არავის არაფერს აჩქარებს.
  *
  * ⚠️ **მფლობელი პირველი სუპერ-ადმინია.** ასლს ვიღაცის კვოტა უნდა
- * გადაიხადოს (§22-ის წესი — „ის საცავზე აისახება"), ხოლო `/backups`
+ * გადაიხადოს (ის საცავზე აისახება), ხოლო `/backups`
  * ისედაც `super_admin`-ია, ე.ი. სხვა მფლობელი ფაილს იმ ადამიანისთვის
  * უხილავს გახდიდა, ვისაც მასზე პასუხისმგებლობა აქვს.
  *
@@ -31,7 +31,7 @@ class AutoDatabaseBackupCommand extends Command
     protected $signature = 'backups:auto {--keep= : რამდენი ბოლო დაგეგმილი ასლი დარჩეს}
                             {--force : გაეშვას მაშინაც, როცა `BACKUP_AUTO=false`}';
 
-    protected $description = 'დაგეგმილი ბაზის ასლი და ძველების გასუფთავება (FEAT-12)';
+    protected $description = 'დაგეგმილი ბაზის ასლი და ძველების გასუფთავება';
 
     public function handle(BackupRunner $runner, DatabaseDumper $dumper): int
     {
@@ -83,7 +83,7 @@ class AutoDatabaseBackupCommand extends Command
     /**
      * ⚠️ **მხოლოდ `schedule` წყაროს რიგები იჭრება.** ხელით აღებული ასლი
      * და ატვირთული ფაილი ადამიანის გადაწყვეტილებაა; ავტომატური წმენდა
-     * მათზე ზუსტად ის იქნებოდა, რისგანაც კალათა (FEAT-11) იცავს.
+     * მათზე ზუსტად ის იქნებოდა, რისგანაც კალათა იცავს.
      *
      * ⚠️ **წაშლა მოდელით ხდება** — `StoredFile`-ის `deleted` hook შლის
      * ფაილს დისკიდან და კვოტასაც ათავისუფლებს; query-ზე `delete()`
@@ -118,8 +118,8 @@ class AutoDatabaseBackupCommand extends Command
 
     /**
      * ⚠️ **`is_super_admin` სვეტი არ არსებობს** — ის `UserResource`-ის
-     * ველია, მოდელს კი `isSuperAdmin()` აქვს (იხ. §21.9-ის გაკვეთილი:
-     * ატრიბუტად დაწერილი ის `null`-ია და შემოწმება ჩუმად ცრუვდება).
+     * ველია, მოდელს კი `isSuperAdmin()` აქვს (ატრიბუტად დაწერილი ის
+     * `null`-ია და შემოწმება ჩუმად ცრუვდება).
      */
     private function owner(): ?User
     {

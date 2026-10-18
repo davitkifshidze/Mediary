@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 /**
- * მასობრივი წაშლა ადმინიდან (Tasks 20).
+ * მასობრივი წაშლა ადმინიდან.
  *
  * ორნაბიჯიანია: `plan` აჩვენებს, **რა** წაიშლება (ჩანაწერი, ფოტო, მოცულობა),
  * `run` კი მოითხოვს ცხად დადასტურებას — `confirm = "DELETE"`. ერთი „დიახ"
@@ -37,12 +37,12 @@ class AdminPurgeController extends Controller
         $data = $this->validated($request);
         $user = $this->targetUser($request, $data);
 
-        // ⚠️ Tasks §29.8 — `/purge` სამიზნე ანგარიშის ურნაში აგზავნის (Q39 — „ა")
+        // ⚠️ `/purge` სამიზნე ანგარიშის ურნაში აგზავნის
         $plan = $this->purge->plan($user, $data, PurgeService::TO_TRASH);
 
         return response()->json([
             'plan' => $plan,
-            // ერთეული = ერთი ჩანაწერი რიგში (20.2)
+            // ერთეული = ერთი ჩანაწერი რიგში
             'eta_seconds' => (int) ceil(count($plan['items']) * 60 / PurgeService::ITEMS_PER_MINUTE),
             'user' => ['id' => $user->id, 'display_name' => $user->display_name],
             'storage' => $this->meter->usage($user),
@@ -50,7 +50,7 @@ class AdminPurgeController extends Controller
     }
 
     /**
-     * `ids` სკოუპის ამრჩევის სია (§25.2).
+     * `ids` სკოუპის ამრჩევის სია.
      *
      * ⚠️ **`GET`-ია და არა `POST`** — მხოლოდ კითხულობს. `POST`-ს ისედაც
      * `confirm`-ის ლოგიკასთან აურევდნენ, და ჩვენ აქ არაფერს ვშლით.
@@ -90,7 +90,7 @@ class AdminPurgeController extends Controller
     }
 
     /**
-     * რიგის ერთი ნაბიჯი (20.2) — ერთი ჩანაწერი, ერთი მოკლე რექვესთი.
+     * რიგის ერთი ნაბიჯი — ერთი ჩანაწერი, ერთი მოკლე რექვესთი.
      *
      * `mode`/სკოუპი აქ **არ მონაწილეობს**: id-ები `plan`-მა უკვე გამოთვალა და
      * user-მა დაადასტურა, ე.ი. ვალიდაცია მხოლოდ სამიზნესა და ანგარიშზეა.
@@ -104,7 +104,7 @@ class AdminPurgeController extends Controller
             'media_type' => ['nullable', MediaDomain::rule()],
             'id' => ['required', 'integer'],
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
-            /* §25.5 — „ფოტოები გალერეაში დამიტოვე". ⚠️ რიგის **ყოველ** ნაბიჯს
+            /* „ფოტოები გალერეაში დამიტოვე". ⚠️ რიგის **ყოველ** ნაბიჯს
                უნდა მოჰყვეს, თორემ პირველი ჩანაწერის ფოტოები დარჩებოდა და
                დანარჩენების — წაიშლებოდა. */
             'keep_gallery' => ['nullable', 'boolean'],
@@ -140,7 +140,7 @@ class AdminPurgeController extends Controller
     private function validated(Request $request, bool $withConfirm = false): array
     {
         $rules = [
-            // ⚠️ §37.5 — სია სამიზნე ანგარიშისაა (მისი პირადი მოდულებით), ქვემოთ მოწმდება
+            // ⚠️ სია სამიზნე ანგარიშისაა (მისი პირადი მოდულებით), ქვემოთ მოწმდება
             'target' => ['required', 'string', 'max:40'],
             'mode' => ['required', Rule::in(PurgeService::MODES)],
             // `target = gallery`-ზე რომელ დომენის ჩანაწერებს ვასუფთავებთ
@@ -157,13 +157,13 @@ class AdminPurgeController extends Controller
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string'],
             'keep_favorites' => ['nullable', 'boolean'],
-            // §25.5 — ფოტოები უკატეგორიოში გადადის და არა იშლება
+            // ფოტოები უკატეგორიოში გადადის და არა იშლება
             'keep_gallery' => ['nullable', 'boolean'],
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
         ];
 
         if ($withConfirm) {
-            // ⚠️ ხელით ჩაწერილი დადასტურება (20.2) — ჩუმად ვერ გაეშვება
+            // ⚠️ ხელით ჩაწერილი დადასტურება — ჩუმად ვერ გაეშვება
             $rules['confirm'] = ['required', 'in:DELETE'];
         }
 
@@ -196,7 +196,7 @@ class AdminPurgeController extends Controller
         if ($data['mode'] === 'status') {
             $domain = $data['target'] === 'gallery' ? ($data['media_type'] ?? 'movie') : $data['target'];
 
-            /* ⚠️ სია **სამიზნე ანგარიშისაა** და არა ჩემი (§6.4): სტატუსი
+            /* ⚠️ სია **სამიზნე ანგარიშისაა** და არა ჩემი: სტატუსი
                per-user ლექსიკონია, ე.ი. მისი გადარქმეული „ნანახი" ჩემს
                ნაგულისხმევებთან შედარებისას ცრუ 422-ს მოგვცემდა. */
             $userId = isset($data['user_id'])
@@ -214,12 +214,12 @@ class AdminPurgeController extends Controller
     }
 
     /**
-     * **სამიზნე ანგარიშის პირადი მოდულები (Tasks §37.5)** —
+     * **სამიზნე ანგარიშის პირადი მოდულები** —
      * `GET /admin/purge/targets?user_id=`.
      *
      * ⚠️ ცალკე endpoint-ია, რადგან სხვისი პირადი მოდული ყველა ჩვეულებრივ კარზე
-     * 404-ია (Q28) — `/modules` მხოლოდ **ჩემსას** აბრუნებს. აქ მხოლოდ ის ჩანს,
-     * რაც სუპერადმინს Q41-ით ისედაც ეკუთვნის: სახელი, ხატულა, ფერი და
+     * 404-ია — `/modules` მხოლოდ **ჩემსას** აბრუნებს. აქ მხოლოდ ის ჩანს,
+     * რაც სუპერადმინს ისედაც ეკუთვნის: სახელი, ხატულა, ფერი და
      * რომელი სკოუპები აქვს; ჩანაწერების შიგთავსი — არა.
      */
     public function targets(Request $request)
@@ -255,7 +255,7 @@ class AdminPurgeController extends Controller
     }
 
     /**
-     * სამიზნე **ამ ანგარიშისაა** — საბაზისო მოდული ან მისი პირადი (§37.5).
+     * სამიზნე **ამ ანგარიშისაა** — საბაზისო მოდული ან მისი პირადი.
      *
      * ⚠️ სხვა ანგარიშის პირადი გასაღები 422-ია — იგივე, რაც უცნობ სამიზნეზე:
      * „ასეთი მოდული სხვასთან არსებობს" არ ჟონავს.

@@ -20,7 +20,7 @@ class SongResource extends JsonResource
             'artist' => $this->artist,
             'album' => $this->album,
             'year' => $this->year,
-            // ⚠️ **მრავალჟანრიანია** (`DECISIONS.md` §5) — `genre_id` აღარ არსებობს
+            // ⚠️ **მრავალჟანრიანია** — `genre_id` აღარ არსებობს
             'genres' => SongGenreResource::collection($this->whenLoaded('genres')),
             'genre_ids' => $this->whenLoaded('genres', fn () => $this->genres->pluck('id')),
             'duration' => $this->duration,
@@ -35,10 +35,10 @@ class SongResource extends JsonResource
             'is_favorite' => $this->is_favorite,
             'play_count' => $this->play_count,
             'played_at' => $this->played_at?->toIso8601String(),
-            // 16.5 — საჯარო პროფილის წინაპირობა; default `private`
+            // საჯარო პროფილის წინაპირობა; default `private`
             'visibility' => $this->visibility,
             'playlist_ids' => $this->whenLoaded('playlists', fn () => $this->playlists->pluck('id')),
-            /* §5.3 — სიაში უნდა ეწეროს, **რომელ პლეილისტს ეკუთვნის** სიმღერა.
+            /* სიაში უნდა ეწეროს, **რომელ პლეილისტს ეკუთვნის** სიმღერა.
                ⚠️ ცარიელი მასივი და „არ არის ჩატვირთული" ერთი და იგივე არაა:
                `whenLoaded`-ის გარეშე ფრონტი „არცერთ პლეილისტში" დაწერდა იქაც,
                სადაც კავშირი უბრალოდ არ მოგვითხოვია. */

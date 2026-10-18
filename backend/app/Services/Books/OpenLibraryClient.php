@@ -7,11 +7,11 @@ use Illuminate\Http\Client\Response;
 use Throwable;
 
 /**
- * Open Library — წიგნების გამამდიდრებელი წყარო (Tasks §12).
+ * Open Library — წიგნების გამამდიდრებელი წყარო.
  *
  * ორი უფასო ვარიანტიდან (Open Library / Google Books) **Open Library** ავირჩიე:
  * გასაღებს საერთოდ არ ითხოვს, ე.ი. TMDB-ისგან განსხვავებით „მონაცემებში"
- * არაფერი იწერება (Tasks §30) და ყოველ ანგარიშზე ისე მუშაობს, როგორც არის.
+ * არაფერი იწერება და ყოველ ანგარიშზე ისე მუშაობს, როგორც არის.
  *
  * ⚠️ Windows-ის cURL-ს CA bundle არ აქვს → `verify` ხელით (იგივე წესი, რაც
  * `TmdbClient`-ზე). ⚠️ Open Library **ორ სახეობას** აბრუნებს: `work`

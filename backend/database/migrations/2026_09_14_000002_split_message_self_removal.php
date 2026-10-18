@@ -6,9 +6,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **„მხოლოდ ჩემთან წაშლა" თითო მხარისაა (აუდიტი 2026-09-14, §B2).**
+ * **„მხოლოდ ჩემთან წაშლა" თითო მხარისაა.**
  *
- * §4.6-მა სამი სვეტი დაამატა — `removed_at`/`removed_by`/`removed_scope` — და
+ * `add_message_removal`-მა სამი სვეტი დაამატა — `removed_at`/`removed_by`/`removed_scope` — და
  * ორივე სახის წაშლა მათში ეწერა. `both`-ისთვის ეს სწორია (ფაქტი მართლა
  * შეტყობინებისაა), `self`-ისთვის კი — არა: ეს **მაყურებლის** ფაქტია და ორ
  * მონაწილეს ერთი ბუდე ჰქონდა.

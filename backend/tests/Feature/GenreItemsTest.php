@@ -11,7 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **`GET|POST /genres/{genre}/items`** (Tasks DEBT-14).
+ * **`GET|POST /genres/{genre}/items`**.
  *
  * ⚠️ ეს endpoint **ჟანრის ბარათიდან ცვლის ჩანაწერების მიბმებს** — ე.ი.
  * ერთი მოთხოვნით მთელი ბიბლიოთეკის გადაწერა შეუძლია (`all=1` + `replace`),
@@ -207,7 +207,7 @@ class GenreItemsTest extends TestCase
         $this->assertFalse($mine->fresh()->genres->contains($this->action->id));
     }
 
-    /* ================= DEBT-22 — slug-ის შექმნა ================= */
+    /* ================= slug-ის შექმნა ================= */
 
     /**
      * **გრძელი ქართული სახელის slug სვეტს ეტევა და უნიკალურია.**

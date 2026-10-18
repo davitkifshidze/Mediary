@@ -6,7 +6,7 @@ import type { LinkPreview } from '@/api/links'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
-   ვიდეოს მოდული (I5) — ბმულები ნებისმიერი წყაროდან.
+   ვიდეოს მოდული — ბმულები ნებისმიერი წყაროდან.
    ============================================================ */
 
 export type VideoPlatform = 'youtube' | 'vimeo' | 'dailymotion' | 'file' | 'other'
@@ -15,16 +15,16 @@ export interface Video {
   id: number
   title: string
   description: string | null
-  /** Q52 — ვინ ატვირთა (ვებძებნიდან ან oEmbed-ის `author_name`-იდან) */
+  /** ვინ ატვირთა (ვებძებნიდან ან oEmbed-ის `author_name`-იდან) */
   channel: string | null
-  /** Q52 — წყაროზე გამოქვეყნების დღე, `YYYY-MM-DD` (დრო არ აქვს) */
+  /** წყაროზე გამოქვეყნების დღე, `YYYY-MM-DD` (დრო არ აქვს) */
   published_at: string | null
-  /** მართვადი ტიპი (Tasks 5.1) — `kind` enum-ი აღარ არსებობს */
+  /** მართვადი ტიპი — `kind` enum-ი აღარ არსებობს */
   type_id: number | null
   type?: VideoType | null
-  /** §6.4 — მართვადი სტატუსი; ამ მოდულს ის აქამდე არ ჰქონდა */
+  /** მართვადი სტატუსი; ამ მოდულს ის აქამდე არ ჰქონდა */
   status: Status | null
-  /** 5.6/16.5 — საჯარო პროფილის წინაპირობა */
+  /** საჯარო პროფილის წინაპირობა */
   visibility: 'private' | 'public'
   url: string
   platform: VideoPlatform
@@ -40,7 +40,7 @@ export interface Video {
   watched_at: string | null
   created_at: string | null
   /**
-   * §7.1 — ლოკალური ასლი (`yt-dlp`).
+   * ლოკალური ასლი (`yt-dlp`).
    *
    * ⚠️ სამი სხვადასხვა ფაქტია და ერთ boolean-ში არ ეტევა: `null` — არასდროს
    * გვიცდია · `running` — მიმდინარეობს · `failed` + `download_error` — ვცადეთ
@@ -61,13 +61,13 @@ export interface Video {
    * სერვერი უკვე უშვებდა ხელახლა გაშვებას (`Video::downloadStale()`).
    */
   download_stale: boolean
-  /** მიმაგრებული შიგთავსი (K3) */
+  /** მიმაგრებული შიგთავსი */
   images_count?: number
   documents_count?: number
   notes_count?: number
 }
 
-/* ---------- მიმაგრებული ფაილები და ჩანიშვნები (K3) ----------
+/* ---------- მიმაგრებული ფაილები და ჩანიშვნები ----------
    ⚠️ ცხრილიც და მისამართიც **სექციისაა** (`video_files` / `video_notes`),
    უნივერსალური `attachments`/`notes` აღარ არსებობს (2026-09-03). */
 
@@ -129,7 +129,7 @@ export async function deleteVideoNote(id: number): Promise<void> {
   await api.delete(`/video-notes/${id}`)
 }
 
-/* ---------- ვიდეოს ტიპები — მართვადი ლექსიკონი (Tasks 5.1) ---------- */
+/* ---------- ვიდეოს ტიპები — მართვადი ლექსიკონი ---------- */
 
 export interface VideoType {
   id: number
@@ -137,7 +137,7 @@ export interface VideoType {
   name_ka: string
   name_en: string
   icon: string | null
-  /** Tasks §19.2 — ბეჯის ფერი: პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; `null` — ნაცრისფერი */
+  /** ბეჯის ფერი: პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; `null` — ნაცრისფერი */
   color: string | null
   sort_order: number
   videos_count?: number
@@ -185,13 +185,13 @@ export interface VideoFilters extends ListParams {
   q?: string
   platform?: string
   favorite?: boolean
-  /** ტეგები — მძიმით გამოყოფილი სია (5.2) */
+  /** ტეგები — მძიმით გამოყოფილი სია */
   tag?: string
-  /** ტიპები — მძიმით გამოყოფილი id-ები (5.2) */
+  /** ტიპები — მძიმით გამოყოფილი id-ები */
   type_id?: string
-  /** §7.1 — მხოლოდ ლოკალურად ჩამოწერილები (მიმდინარეებიც) */
+  /** მხოლოდ ლოკალურად ჩამოწერილები (მიმდინარეებიც) */
   downloaded?: boolean
-  /** §6.4 — სტატუსის **გასაღები** (მძიმით გამოყოფილი სიაც შეიძლება) */
+  /** სტატუსის **გასაღები** (მძიმით გამოყოფილი სიაც შეიძლება) */
   status?: string
   sort?: string
 }
@@ -200,11 +200,11 @@ export interface VideoInput {
   title: string
   url: string
   type_id?: number | null
-  /** §6.4 — ლექსიკონის გასაღები; `undefined` = „არ შეცვალო" */
+  /** ლექსიკონის გასაღები; `undefined` = „არ შეცვალო" */
   status?: string
   visibility?: 'private' | 'public'
   description?: string
-  /** Q52 — `undefined` = არ შეცვალო, `null`/`''` = გაასუფთავე */
+  /** `undefined` = არ შეცვალო, `null`/`''` = გაასუფთავე */
   channel?: string | null
   published_at?: string | null
   duration?: number | null
@@ -212,7 +212,7 @@ export interface VideoInput {
   /** ატვირთული thumbnail; მითითების შემთხვევაში multipart-ად იგზავნება */
   thumbnail?: File | null
   remove_thumbnail?: boolean
-  /** Tasks §44.2 — ბმულიდან ჩარჩოში ჩასმული ფოტო (URL); ატვირთულზე სერვერი იგნორირებს */
+  /** ბმულიდან ჩარჩოში ჩასმული ფოტო (URL); ატვირთულზე სერვერი იგნორირებს */
   thumbnail_url?: string | null
 }
 
@@ -221,7 +221,7 @@ function toFormData(input: VideoInput): FormData {
   fd.append('title', input.title)
   fd.append('url', input.url)
   fd.append('description', input.description ?? '')
-  /* ⚠️ `undefined` გამოტოვებულია, `null` ცარიელად მიდის (Tasks §4.8-ის წესი):
+  /* ⚠️ `undefined` გამოტოვებულია, `null` ცარიელად მიდის:
      backend-ი ველს `array_key_exists`-ით წერს, ე.ი. გამოტოვებული ველი ძველს
      ტოვებს, ცარიელი კი ასუფთავებს — გასუფთავებული არხი შენახვის შემდეგ
      უკან არ უნდა დაბრუნდეს. */
@@ -239,18 +239,18 @@ function toFormData(input: VideoInput): FormData {
 }
 
 /**
- * ვიდეოს/სიმღერის probe — Tasks §44.1: **`LinkPreview`-ის ფორმა** (ერთი წყარო,
+ * ვიდეოს/სიმღერის probe — **`LinkPreview`-ის ფორმა** (ერთი წყარო,
  * `LinkResolver`) + ვიდეოს საკუთარი ველები. ⚠️ ესკიზი `image_url`-შია (ადრე
- * `thumbnail_url`), ფორმა მას მთავარი ფოტოს ჩარჩოში სვამს (§44.2).
+ * `thumbnail_url`), ფორმა მას მთავარი ფოტოს ჩარჩოში სვამს.
  */
 export interface VideoMetadata extends Omit<LinkPreview, 'platform'> {
   platform: VideoPlatform
-  /** შენი YouTube-ის გასაღები („მონაცემები", Tasks §30) არის თუ არა (ხანგრძლივობა/ტეგებისთვის) */
+  /** შენი YouTube-ის გასაღები („მონაცემები") არის თუ არა (ხანგრძლივობა/ტეგებისთვის) */
   youtube_key: boolean
-  /** Tasks §44.3 — `yt-dlp` დაყენებულია: გასაღების გარეშეც სრული ინფო მოდის */
+  /** `yt-dlp` დაყენებულია: გასაღების გარეშეც სრული ინფო მოდის */
   ytdlp: boolean
   /**
-   * FEAT-17 — ამ ბმულის ჩანაწერი უკვე გაქვს?
+   * ამ ბმულის ჩანაწერი უკვე გაქვს?
    * ⚠️ **გაფრთხილებაა და არა აკრძალვა**: ერთი ბმულის ორჯერ შენახვა
    * ლეგიტიმურია (სხვა ტიპით, სხვა ტეგებით), ამიტომ ფორმა მხოლოდ ამბობს
    * და არავის აჩერებს.
@@ -259,7 +259,7 @@ export interface VideoMetadata extends Omit<LinkPreview, 'platform'> {
 }
 
 /**
- * ბმულის მეტამონაცემი ფორმის შესავსებად (K2) — ჩანაწერს არ ქმნის.
+ * ბმულის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის.
  * ⚠️ `exclude` რედაქტირებისთვისაა: ჩანაწერი საკუთარი თავის დუბლი არაა.
  */
 export async function fetchVideoMetadata(url: string, exclude?: number): Promise<VideoMetadata> {
@@ -268,7 +268,7 @@ export async function fetchVideoMetadata(url: string, exclude?: number): Promise
 }
 
 /**
- * Tasks §17 (Q4) — „რა ვნახო დღეს" ვიდეოებზე: N შემთხვევითი, სტატუსები და
+ * „რა ვნახო დღეს" ვიდეოებზე: N შემთხვევითი, სტატუსები და
  * გამორიცხვა სერვერზე. სიის `status` (`?view=`) ვარდება — დიალოგის ჩიპები
  * მასზე მაღლა დგას; `all` აქ აზრს მოკლებულია.
  */
@@ -298,7 +298,7 @@ export async function fetchVideos(filters: VideoFilters = {}): Promise<Page<Vide
   return readPage<Video>(data)
 }
 
-/* ---------- §7.1 — ლოკალური ასლი (`yt-dlp`) ----------
+/* ---------- ლოკალური ასლი (`yt-dlp`) ----------
    ⚠️ ერთი მისამართი, სამი ზმნა: დაწყება · მიწოდება · წაშლა. */
 
 export interface VideoDownloadStatus {
@@ -307,12 +307,12 @@ export interface VideoDownloadStatus {
   version: string | null
   /** ⚠️ ffmpeg-ის გარეშე „საუკეთესო" ერთფაილიან ვარიანტამდე ეცემა */
   ffmpeg: boolean
-  /** Tasks §21.3 — მზა ასლების რიცხვი და ჯამური ზომა (მხოლოდ ჩემი) */
+  /** მზა ასლების რიცხვი და ჯამური ზომა (მხოლოდ ჩემი) */
   downloaded_count: number
   downloaded_size: number
 }
 
-/** ერთი ვიდეო id-ით — FEAT-17-ის „დუბლის გახსნა" (სიაში შეიძლება არც იყოს) */
+/** ერთი ვიდეო id-ით — „დუბლის გახსნა" (სიაში შეიძლება არც იყოს) */
 export async function fetchVideo(id: number): Promise<Video> {
   const { data } = await api.get(`/videos/${id}`)
   return data.data
@@ -337,7 +337,7 @@ export async function deleteVideoDownload(id: number): Promise<Video> {
 /**
  * ლოკალური ფაილის მისამართი.
  *
- * ⚠️ **`/storage/*` აქ არ გამოდგება**: ფაილი პრივატულ დისკზეა (§17.5-ის წესი),
+ * ⚠️ **`/storage/*` აქ არ გამოდგება**: ფაილი პრივატულ დისკზეა,
  * ე.ი. მას მხოლოდ ეს ავტორიზებული API-მარშრუტი გამოიტანს.
  */
 export function videoDownloadUrl(id: number): string {
@@ -345,7 +345,7 @@ export function videoDownloadUrl(id: number): string {
 }
 
 /**
- * „მსგავსი ვიდეოები" (K4) — backend ითვლის **ჩემი ბიბლიოთეკიდან**
+ * „მსგავსი ვიდეოები" — backend ითვლის **ჩემი ბიბლიოთეკიდან**
  * (საერთო ტეგები + სათაურის მსგავსება + იგივე პლატფორმა/ტიპი).
  */
 export async function fetchSimilarVideos(id: number): Promise<Video[]> {
@@ -365,7 +365,7 @@ export async function updateVideo(id: number, input: VideoInput): Promise<Video>
   return data.data
 }
 
-/** §6.4 — სტატუსის შეცვლა ცალკე endpoint-ია (მედია-დომენების ანალოგი) */
+/** სტატუსის შეცვლა ცალკე endpoint-ია (მედია-დომენების ანალოგი) */
 export async function setVideoStatus(id: number, status: string): Promise<Video> {
   const { data } = await api.patch(`/videos/${id}/status`, { status })
   return data.data
@@ -385,13 +385,13 @@ export async function markVideoWatched(id: number): Promise<Video> {
   return data.data
 }
 
-/* ---------- მასობრივი ოპერაცია (Tasks 4 / 19.9) ---------- */
+/* ---------- მასობრივი ოპერაცია ---------- */
 
 /** ვიდეოს სტატუსი არ აქვს, ამიტომ მასობრივად ტიპი და ტეგები იცვლება */
 export type VideoBulkAction = 'type' | 'tags_add' | 'tags_remove' | 'status'
 
 /**
- * **ვის შეეხება (Tasks §9).**
+ * **ვის შეეხება.**
  *
  * ⚠️ **ლექსიკა `PurgeService::TARGET_MODES`-ისაა და არა გამოგონილი** — იგივე
  * სიტყვები, იგივე მნიშვნელობა. ორი ლექსიკონი ერთსა და იმავე ცნებაზე
@@ -435,8 +435,8 @@ export interface VideoBulkPreview {
 }
 
 /**
- * „რამდენს შეეხება" — **სერვერის პასუხი და არა კლიენტზე დათვლილი რიცხვი**
- * (Tasks §9.2/§9.4): ორი განმარტება ნიშნავდა, რომ ნაჩვენები რიცხვი და
+ * „რამდენს შეეხება" — **სერვერის პასუხი და არა კლიენტზე დათვლილი რიცხვი**:
+ * ორი განმარტება ნიშნავდა, რომ ნაჩვენები რიცხვი და
  * შეხებული რიგები ერთმანეთს აცდებოდა.
  *
  * ⚠️ **`GET`**: `preview` `UPDATE_ENDPOINTS`-ში არ არის, ე.ი. POST-ს

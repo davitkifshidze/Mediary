@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
- * **Tasks §16.1 — საჯარო პროფილი `/u/{username}`.**
+ * **საჯარო პროფილი `/u/{username}`.**
  *
  * ⚠️ **ეს ერთადერთი დომენური endpoint-ებია, რომლებიც `auth:sanctum`-ის გარეთ დგას.**
  * გადაწყვეტილება ცხადია და უკან იხსნება: „საჯარო პროფილი" ბმულს ნიშნავს, რომელიც
@@ -32,10 +32,10 @@ use Illuminate\Validation\Rule;
  * (პროფილი → მოდული → ჩანაწერი), ყველა default-ით `private`, და მთელი მექანიზმი
  * ერთი გადამრთველით ითიშება: `PUBLIC_PROFILES=false` (`config/mediary.php`).
  *
- * ⚠️ **თერთმეტი მარშრუტია და ერთი მათგანი წერს** (Tasks DEBT-20; აქამდე ეს
- * კომენტარი „მხოლოდ ორი GET"-ს ამბობდა და ორივეში ცდებოდა; §32-მა კიდევ
- * სამი დაამატა, §33-მა — ფლეილისტის შიგთავსი, პირადი გალერეის ალბომი და
- * მისი ფაილი). ათი GET-ია — პროფილის თავი, გალერეის შეჯამება, ჯგუფები,
+ * ⚠️ **თერთმეტი მარშრუტია და ერთი მათგანი წერს** (აქამდე ეს კომენტარი
+ * „მხოლოდ ორი GET"-ს ამბობდა და ორივეში ცდებოდა; მოგვიანებით კიდევ სამი
+ * დაემატა, მერე — ფლეილისტის შიგთავსი, პირადი გალერეის ალბომი და მისი
+ * ფაილი). ათი GET-ია — პროფილის თავი, გალერეის შეჯამება, ჯგუფები,
  * ფოტოების გვერდი, ერთი ფაილი, ვიდეო-ბმულები, ფლეილისტის შიგთავსი, პირადი
  * ალბომის შიგთავსი და მისი ფაილი/ესკიზი, დომენის ბარათები — ხოლო
  * `unlockAlbum()` პაროლს ამოწმებს და **სერვერის სესიას ცვლის**. სწორედ
@@ -44,7 +44,7 @@ use Illuminate\Validation\Rule;
  * სხვისი პირადი ალბომის პაროლის გამოცნობის საშუალება იქნებოდა.
  *
  * ⚠️ კომენტარი, რომელიც კოდს ეწინააღმდეგება, მის არქონაზე უარესია —
- * GAP-06 ზუსტად ამ ხაზზე დაყრდნობით გაჩნდა.
+ * ერთი ხარვეზი ზუსტად ამ ხაზზე დაყრდნობით გაჩნდა.
  */
 class PublicProfileController extends Controller
 {
@@ -70,7 +70,7 @@ class PublicProfileController extends Controller
         return response()->json([
             'profile' => $this->profiles->header($user),
             'domains' => $domains,
-            /* ⚠️ **გალერეის ტაბის რიცხვი ალბომების რაოდენობა არ არის** (Tasks §7.4):
+            /* ⚠️ **გალერეის ტაბის რიცხვი ალბომების რაოდენობა არ არის**:
                `gallery_album` დომენის ჩანაწერი საქაღალდეა, ჩანართში კი ფოტოები
                იხატება. ბარათი რომ ალბომებს დაეთვალა, „3" ეწერებოდა და შიგნით
                ორასი ფოტო იდებოდა. */
@@ -96,14 +96,14 @@ class PublicProfileController extends Controller
         // მოდული საჯარო არაა → დომენი არ არსებობს ამ პროფილისთვის
         abort_unless(in_array($domain, $this->profiles->domains($user), true), 404);
 
-        /* ⚠️ **ქვედა ზღვარიც აუცილებელია და არა მარტო ჭერი** (აუდიტი
-           2026-09-14, §B4). `Builder::limit()` **უარყოფით** მნიშვნელობას
+        /* ⚠️ **ქვედა ზღვარიც აუცილებელია და არა მარტო ჭერი**.
+           `Builder::limit()` **უარყოფით** მნიშვნელობას
            ჩუმად უგულებელყოფს, ე.ი. `?per_page=-1` `LIMIT`-ს საერთოდ
            აშორებდა და ეს endpoint — **ავტორიზაციის გარეშე** — მთელ საჯარო
            ბიბლიოთეკას ერთ პასუხში აბრუნებდა. წესი `perPage()`-შია, ერთხელ. */
         $page = $this->profiles->query($user, $domain)->paginate($this->perPage($request));
 
-        /* §6 ფაზა 4 — რომელი ველი დამალა **მფლობელმა** საჯარო ბარათზე.
+        /* რომელი ველი დამალა **მფლობელმა** საჯარო ბარათზე.
            ერთხელ ითვლება რექვესთზე და არა თითო ჩანაწერზე. */
         $hidden = $this->fields->hiddenOnPublic($user, PublicDomain::module($domain));
 
@@ -121,11 +121,11 @@ class PublicProfileController extends Controller
     }
 
     /**
-     * **საჯარო ფლეილისტის შიგთავსი (Tasks §33.1)** —
+     * **საჯარო ფლეილისტის შიგთავსი** —
      * `GET /public/profiles/{username}/playlists/{playlist}`.
      *
      * ფლეილისტის ბარათი და მისი სიმღერები, ფლეილისტის რიგით. ⚠️ **პირადი
-     * სიმღერაც ჩანს** (Q24 — მშობლის ხილვადობას იღებს); „სიმღერების" ჩანართი კი
+     * სიმღერაც ჩანს** (მშობლის ხილვადობას იღებს); „სიმღერების" ჩანართი კი
      * მხოლოდ თავად საჯაროს აჩვენებს — იხ. `PublicProfileService::playlistSongs()`.
      *
      * ⚠️ **სიმღერა ვიწრო ბარათით მოდის** (`PublicDomain::card('song')`) და
@@ -138,7 +138,7 @@ class PublicProfileController extends Controller
      * ურნაში მყოფი ან სხვისი ფლეილისტი **404-ია** — „ასეთი არსებობს" თვითონაც
      * ინფორმაციაა.
      *
-     * ⚠️ **გვერდებადაა** და `per_page` ქვემოდანაც იზღუდება (§B4): ფლეილისტში
+     * ⚠️ **გვერდებადაა** და `per_page` ქვემოდანაც იზღუდება: ფლეილისტში
      * მთელი ბიბლიოთეკა შეიძლება იდოს, ეს კი ავტორიზაციის გარეშე endpoint-ია.
      */
     public function playlist(Request $request, string $username, int $playlist)
@@ -152,7 +152,7 @@ class PublicProfileController extends Controller
         $record = $this->profiles->playlist($user, $playlist);
         abort_unless($record, 404);
 
-        // Tasks §10 → §43 — სხვისი გახსნა საჯარო პროფილიდან ჟურნალში; მფლობელი თავის თავს არ ითვლის
+        // სხვისი გახსნა საჯარო პროფილიდან ჟურნალში; მფლობელი თავის თავს არ ითვლის
         $this->audit->openFromPublic($record, $request, $user, AuditLogger::OPEN_PUBLIC);
 
         $page = $this->profiles->playlistSongs($user, $record)->paginate($this->perPage($request));
@@ -175,7 +175,7 @@ class PublicProfileController extends Controller
     }
 
     /**
-     * **პირადი გალერეის საჯარო ალბომი (Tasks §33, Q7)** —
+     * **პირადი გალერეის საჯარო ალბომი** —
      * `GET /public/profiles/{username}/personal-albums/{album}`.
      *
      * ალბომის ბარათი და მისი ფოტო/ვიდეო, ალბომის რიგით. ⚠️ **ფაილის გზა
@@ -226,7 +226,7 @@ class PublicProfileController extends Controller
     }
 
     /**
-     * **საჯარო ალბომის ფაილი ან ესკიზი (Tasks §33)** —
+     * **საჯარო ალბომის ფაილი ან ესკიზი** —
      * `GET /public/profiles/{username}/personal-media/{media}/{file|thumb}`.
      *
      * ⚠️ ფაილი პირად დისკზეა და სხვაგან უცხოსთვის ვერსად გამოვა (შიდა
@@ -270,7 +270,7 @@ class PublicProfileController extends Controller
     }
 
     /**
-     * **საჯარო გალერეა (Tasks §7.4 → §32)** — `GET /public/profiles/{username}/gallery-photos`.
+     * **საჯარო გალერეა** — `GET /public/profiles/{username}/gallery-photos`.
      *
      * ⚠️ **ცალკე endpoint-ია და არა `{domain}`-ის კიდევ ერთი მნიშვნელობა**:
      * აქ ჩანაწერის ბარათი კი არა, ფოტოს რიგი ბრუნდება — სხვა ფორმა, ე.ი.
@@ -279,7 +279,7 @@ class PublicProfileController extends Controller
      * ⚠️ **მარშრუტი `{domain}`-ზე ზემოთ უნდა იდგეს**, თორემ „gallery-photos"
      * დომენად წაიკითხება (იგივე წესი, რაც `/gallery/{type}/{id}`-ს აქვს).
      *
-     * **§32.1 — ჭრილის ფილტრები.** `owner` ერთი ჯგუფია (`movie:12` ·
+     * **ჭრილის ფილტრები.** `owner` ერთი ჯგუფია (`movie:12` ·
      * `actor:5` · `album:3` — მფლობელის გალერეის იგივე გრამატიკა);
      * `parent` ირჩევს ხილვადობის წესს (`record` · `actor`), `type`/`from`
      * მას ერთ დომენზე ჭრის, `album=any` — საჯარო ალბომების ფოტოები.
@@ -296,7 +296,7 @@ class PublicProfileController extends Controller
     {
         $user = $this->galleryOwner($username);
 
-        /* §37.4 — ⚠️ ჩამოთვლა **მფლობელისაა** (`$user`) და არა სტუმრისა:
+        /* ⚠️ ჩამოთვლა **მფლობელისაა** (`$user`) და არა სტუმრისა:
            `recordKeys()` უპარამეტროდ შესული მნახველის პირად მოდულებს დაამატებდა. */
         $owners = implode('|', [...GalleryParent::recordKeys($user), 'actor', 'album']);
 
@@ -319,7 +319,7 @@ class PublicProfileController extends Controller
     }
 
     /**
-     * **ჭრილების მთვლელები (Tasks §32.2)** — `GET /public/profiles/{username}/gallery-summary`.
+     * **ჭრილების მთვლელები** — `GET /public/profiles/{username}/gallery-summary`.
      *
      * ⚠️ ცალკე endpoint-ია და არა პროფილის თავის ველი — იხ. `PublicGallery::summary()`.
      */
@@ -329,7 +329,7 @@ class PublicProfileController extends Controller
     }
 
     /**
-     * **ჯგუფები (Tasks §32.1)** — `GET /public/profiles/{username}/gallery-groups`.
+     * **ჯგუფები** — `GET /public/profiles/{username}/gallery-groups`.
      *
      * `by=record` (ჩანაწერები, `type` — ერთი დომენი) · `by=actor` (`from` —
      * ვინც ამ დომენის საჯარო ჩანაწერებში თამაშობს, `gender`) · `by=album`.
@@ -355,7 +355,7 @@ class PublicProfileController extends Controller
     }
 
     /**
-     * **ვიდეო-ბმულები (Tasks §32.1)** — `GET /public/profiles/{username}/gallery-videos`.
+     * **ვიდეო-ბმულები** — `GET /public/profiles/{username}/gallery-videos`.
      *
      * ⚠️ ვიდეოს ხილვადობა მისი მშობლისაა (ჩანაწერი ან მსახიობი) — ფოტოს
      * იგივე მემკვიდრეობა; ცალკე სვეტი არ არსებობს.
@@ -386,7 +386,7 @@ class PublicProfileController extends Controller
     }
 
     /**
-     * ⚠️ **ქვედა ზღვარიც აუცილებელია** (აუდიტი 2026-09-14, §B4):
+     * ⚠️ **ქვედა ზღვარიც აუცილებელია**:
      * `?per_page=-1` `LIMIT`-ს ჩუმად აშორებს, ხოლო ეს ავტორიზაციის გარეშე
      * endpoint-ებია.
      */
@@ -404,7 +404,7 @@ class PublicProfileController extends Controller
      * **საჯარო გალერეის ფაილი პირად დისკიდან (2026-09-17)** —
      * `GET /public/profiles/{username}/gallery-photos/{image}/file`.
      *
-     * გახსნილი ჩაკეტილი ალბომის ფოტო `gallery/locked`-შია (§7.9), რასაც
+     * გახსნილი ჩაკეტილი ალბომის ფოტო `gallery/locked`-შია, რასაც
      * `/storage/*` ვერ კითხულობს; შიდა `/gallery/images/{id}/file` კი
      * `auth:sanctum`-ის უკანაა და უცხოსთვის 404-ია. ე.ი. პაროლის შეყვანის
      * შემდეგ საჯარო გვერდზე ფოტო **არსაიდან ვერ გამოვიდოდა**.
@@ -425,7 +425,7 @@ class PublicProfileController extends Controller
         $disk = Storage::disk(StorageFolder::diskFor((string) $galleryImage->path));
         abort_unless($disk->exists($galleryImage->path), 404);
 
-        /* ⚠️ **ჩაკეტილი ალბომის ფოტო არსად არ უნდა დაიკეშოს** (Tasks GAP-08).
+        /* ⚠️ **ჩაკეტილი ალბომის ფოტო არსად არ უნდა დაიკეშოს**.
            ის აქ მხოლოდ იმიტომ გამოდის, რომ პაროლი **ამ სესიაში** შეიყვანეს —
            ე.ი. შუამავალი (CDN/proxy) მას სხვას მიაწოდებდა, ბრაუზერის კეში კი
            პაროლის მოხსნის შემდეგაც გახსნიდა. ზუსტად ის კლასის ხვრელია, რასაც
@@ -439,7 +439,7 @@ class PublicProfileController extends Controller
            მეორე — ბრაუზერის დისკსაც.
 
            ⚠️ **`album` `visible()`-მა უკვე ჩატვირთა** — `owner` scope-ის გარეშე
-           და მფლობელის ცხადი id-ით (Tasks §1.2). აქ თავიდან წაკითხული რელაცია
+           და მფლობელის ცხადი id-ით. აქ თავიდან წაკითხული რელაცია
            შესულ უცხოს მის საკუთარ ალბომებზე მოჭრიდა → `null` → `no-store`
            აღარ გაიგზავნებოდა. */
         $locked = $galleryImage->album_id !== null && $galleryImage->album?->isLocked();
@@ -452,7 +452,7 @@ class PublicProfileController extends Controller
     }
 
     /**
-     * **ჩაკეტილი ალბომის გახსნა საჯარო გვერდზეც (Tasks §7.12).**
+     * **ჩაკეტილი ალბომის გახსნა საჯარო გვერდზეც.**
      *
      * შენი სიტყვები: „საჯაროშიც პაროლიან ალბომებს პაროლი ჭირდება".
      *
@@ -464,10 +464,10 @@ class PublicProfileController extends Controller
      * ⚠️ **გახსნილობა სესიაშია** (`AlbumLock::unlock()`) და არა კლიენტის
      * ტოკენში — ზუსტად იგივე მიზეზი, რაც შიდა გვერდზე.
      *
-     * ⚠️ **throttle როუტზეა** და ანონიმზე **IP + ალბომი** (§7.13): უამისოდ
+     * ⚠️ **throttle როუტზეა** და ანონიმზე **IP + ალბომი**: უამისოდ
      * ოთხსიმბოლოიანი პაროლი წუთებში ცვივა.
      *
-     * ⚠️ **სესიის გარეშე პაროლი საერთოდ არ იცდება** (Tasks BUG-02, 409
+     * ⚠️ **სესიის გარეშე პაროლი საერთოდ არ იცდება** (409
      * `session_required`) და ეს ორ სხვადასხვა ხვრელს ხურავს ერთდროულად:
      * (ა) არა-stateful კლიენტს პასუხი `unlocked: true`-ს ეუბნებოდა, ალბომი
      * კი ჩაკეტილი რჩებოდა — ე.ი. სწორ პაროლს უხმაურო ჩავარდნა მოჰყვებოდა;
@@ -501,7 +501,7 @@ class PublicProfileController extends Controller
            მაინც პასუხობდა „სწორია თუ არა". */
         abort_unless(AlbumLock::hasSession(), 409, 'session_required');
 
-        /* ⚠️ **ბლოკი `Hash::check`-ზე ადრე** (Tasks FEAT-04) — იხ.
+        /* ⚠️ **ბლოკი `Hash::check`-ზე ადრე** — იხ.
            `GalleryAlbumController::unlock()`. მრიცხველი **ალბომზეა**, ე.ი.
            საჯარო და შიდა კარი ერთსა და იმავე რიგს ემატება: უამისოდ
            თავდამსხმელი უბრალოდ მეორე endpoint-ზე გადავიდოდა. */

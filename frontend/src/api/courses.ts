@@ -4,7 +4,7 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
 import type { LinkMetadata } from '@/api/bookmarks'
 
 /* ============================================================
-   კურსების მოდული (`course`, FEAT-25).
+   კურსების მოდული (`course`).
 
    ⚠️ გამამდიდრებელი წყარო არ არსებობს (Udemy/Coursera-ს კატალოგი
    დახურულია). ერთადერთი დახმარება `POST /courses/metadata`-ა — **იგივე
@@ -19,7 +19,7 @@ export const COURSE_STATUSES = ['to_take', 'taking', 'done', 'dropped'] as const
 
 export type CourseStatus = (typeof COURSE_STATUSES)[number]
 
-/** ⚠️ სერტიფიკატი (`certificate`) Tasks §55.5-მა მოხსნა — ძველი ფაილები დოკუმენტებშია */
+/** ⚠️ სერტიფიკატი (`certificate`) მოიხსნა — ძველი ფაილები დოკუმენტებშია */
 export const COURSE_FILE_KINDS = ['image', 'doc'] as const
 
 export type CourseFileKind = (typeof COURSE_FILE_KINDS)[number]
@@ -87,7 +87,7 @@ export interface CourseInput {
   status?: CourseStatus
   visibility?: 'private' | 'public'
   /**
-   * Tasks §55.4 — ბმულიდან ნაპოვნი ფოტო (ადრე ფორმა მას აჩვენებდა, მაგრამ არ აგზავნიდა).
+   * ბმულიდან ნაპოვნი ფოტო (ადრე ფორმა მას აჩვენებდა, მაგრამ არ აგზავნიდა).
    * `undefined` — არ შეეხო · `null` — მოხსენი · სტრიქონი — ახალი.
    */
   image_url?: string | null
@@ -107,7 +107,7 @@ function toFormData(input: CourseInput): FormData {
   if (input.status) fd.append('status', input.status)
   if (input.visibility) fd.append('visibility', input.visibility)
   if (input.image_url !== undefined) fd.append('image_url', input.image_url ?? '')
-  /* Tasks §4.8 — `null` („გაასუფთავე“) ცარიელ სტრიქონად იგზავნება, მხოლოდ
+  /* `null` („გაასუფთავე“) ცარიელ სტრიქონად იგზავნება, მხოლოდ
      `undefined` („არ შეეხო“) რჩება გამოტოვებული — თორემ გასუფთავებული ველი
      შენახვის შემდეგ ძველ მნიშვნელობაზე ბრუნდებოდა. */
   for (const key of ['started_at', 'finished_at'] as const) {
@@ -171,7 +171,7 @@ export async function setCourseStatus(id: number, status: CourseStatus): Promise
   return data.data
 }
 
-/* ---------- Tasks §55 — YouTube-ის ფლეილისტი ---------- */
+/* ---------- YouTube-ის ფლეილისტი ---------- */
 
 /** ფლეილისტის ერთი ვიდეო — ჩვენებისთვის; ჩანაწერად არ ინახება („გაკვეთილები" დახურულია) */
 export interface CoursePlaylistItem {

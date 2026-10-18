@@ -7,11 +7,11 @@ import type { MediaType } from '@/lib/media'
 import type { SerpVideo } from './web'
 
 /* ============================================================
-   გალერეის მოდული (Tasks 10 → **§8, გალერეა 2.0**).
+   გალერეის მოდული (**გალერეა 2.0**).
 
    ორი სახის შიგთავსი, ერთსა და იმავე მშობლებზე:
      · **ფოტო** (`gallery_images`) — ფაილია დისკზე, კვოტაში ითვლება;
-     · **ვიდეო** (`gallery_videos`, §8.1) — მხოლოდ ბმულია, კვოტას არ ეხება.
+     · **ვიდეო** (`gallery_videos`) — მხოლოდ ბმულია, კვოტას არ ეხება.
 
    მშობელი შეიძლება იყოს ჩანაწერი (ფილმი · სერიალი · ანიმე · სიმღერა ·
    წიგნი · თამაში) ან **მსახიობი** — ე.ი. ერთი მსახიობის ფოტო ერთხელ ინახება
@@ -37,7 +37,7 @@ export const GALLERY_SUBJECTS = ['stills', 'posters'] as const
 export type GallerySubject = (typeof GALLERY_SUBJECTS)[number]
 
 /**
- * **ზომების სია სახეობიდან მოდის** (§8.2) — `GalleryFetcher::SUBJECT_SIZES`-ის ასლი.
+ * **ზომების სია სახეობიდან მოდის** — `GalleryFetcher::SUBJECT_SIZES`-ის ასლი.
  *
  * ⚠️ TMDB-ს თითო სახეობაზე თავისი ზომები აქვს: პოსტერზე `w1280` არ არსებობს,
  * ლოგოზე `w780` არ არსებობს. ერთი საერთო სია მომხმარებელს არარსებულ
@@ -58,7 +58,7 @@ export const GALLERY_CAST_MODES = ['none', 'all', 'female', 'male', 'selected'] 
 export type GalleryCastMode = (typeof GALLERY_CAST_MODES)[number]
 
 /**
- * **მსახიობის ფოტოს წყარო (§8.2).**
+ * **მსახიობის ფოტოს წყარო.**
  *
  * ⚠️ სწორედ ესაა პასუხი იმაზე, რომ „ოფიციალურ წყაროზე მსახიობს სამი ფოტო
  * აქვს": `profiles` მართლა მწირია, `tagged` კი იმ ფილმების კადრებია, სადაც
@@ -68,7 +68,7 @@ export const GALLERY_CAST_SOURCES = ['profiles', 'tagged', 'both'] as const
 export type GalleryCastSource = (typeof GALLERY_CAST_SOURCES)[number]
 
 /**
- * მსახიობის პორტრეტის ზომები (Tasks §3.2).
+ * მსახიობის პორტრეტის ზომები.
  *
  * ⚠️ **ჩანაწერის ზომებს არ ემთხვევა და ეს TMDB-ის პირობაა** — `profile`
  * ზომებში `w780` არ არსებობს.
@@ -93,7 +93,7 @@ export const GALLERY_TARGETS = ['record', 'actor'] as const
 export type GalleryTarget = (typeof GALLERY_TARGETS)[number]
 
 /**
- * სკოუპი — **ცხადი არჩევანი** (§8.2).
+ * სკოუპი — **ცხადი არჩევანი**.
  *
  * ⚠️ `off` მხოლოდ მსახიობების სამიზნეზეა და „ჩანაწერებს ნუ მიხედავ,
  * ზოგადად მსახიობებზე ჩამოწერე"-ს ნიშნავს.
@@ -138,7 +138,7 @@ export const GALLERY_FALLBACK_DEFAULTS: GalleryDefaults = {
   subjects: ['stills'],
   limits: { stills: GALLERY_DEFAULT_LIMIT, posters: GALLERY_DEFAULT_LIMIT },
   sizes: { ...GALLERY_SUBJECT_DEFAULT_SIZE },
-  /* ⚠️ **„არცერთი" აღარ არის ნაგულისხმევი** (Tasks §3.2): მსახიობები ცალკე
+  /* ⚠️ **„არცერთი" აღარ არის ნაგულისხმევი**: მსახიობები ცალკე
      ტაბია, ე.ი. იქ „არცერთი" იმას ნიშნავდა, რომ ტაბი თავისთავად გამორთულია. */
   cast: 'all',
   cast_source: 'profiles',
@@ -150,7 +150,7 @@ export const GALLERY_FALLBACK_DEFAULTS: GalleryDefaults = {
 /** უცნობი/მოძველებული მნიშვნელობა fallback-ზე ბრუნდება (settings JSON-ია) */
 export function readGalleryDefaults(raw?: Record<string, unknown> | null): GalleryDefaults {
   /**
-   * ⚠️ **`zeroAllowed` აუცილებელია რაოდენობებზე:** 0 „არცერთს" ნიშნავს (§3.6)
+   * ⚠️ **`zeroAllowed` აუცილებელია რაოდენობებზე:** 0 „არცერთს" ნიშნავს
    * და ცხადი არჩევანია. უამისოდ „მსახიობზე არცერთი ფოტო" გაშვების შემდეგ
    * ჩუმად 3-ად ბრუნდებოდა.
    */
@@ -208,13 +208,13 @@ export function readGalleryDefaults(raw?: Record<string, unknown> | null): Galle
 /* ---------- ფოტო ---------- */
 
 /** ვისაც ფოტო/ვიდეო ჰკიდია — backend-ის `GalleryParent`-ის ასლი */
-/* Tasks §4.10 — `place` აკლდა (FEAT-26-იდან backend-ში დგას), ამიტომ ადგილის
+/* `place` აკლდა (backend-ში დიდი ხანია დგას), ამიტომ ადგილის
    ჩანართი არ ჩანდა და ფოტოს მასზე ვერ გადაიტანდი. ⚠️ სია
    `RegistryConsistencyTest`-ით `GalleryParent::recordKeys()`-ს ედარება. */
-// Tasks §11 — `song` გავიდა (Q9); Tasks §36.4 — ბუკმარკი დაემატა
+// `song` გავიდა, ბუკმარკი დაემატა
 export const GALLERY_PARENTS = ['movie', 'series', 'anime', 'book', 'game', 'place', 'bookmark'] as const
 /**
- * მშობლის სახე — საბაზისოები და (§37.4) **პირადი მოდულები, თავისი გასაღებით**.
+ * მშობლის სახე — საბაზისოები და **პირადი მოდულები, თავისი გასაღებით**.
  * ⚠️ `GALLERY_PARENTS` მხოლოდ საბაზისოებს ჩამოთვლის (ტესტი მას ადარებს);
  * პირადი მოდულები ანგარიშისაა და `galleryParentsOf()`-ით ემატება.
  */
@@ -222,7 +222,7 @@ export type GalleryParentKind = (typeof GALLERY_PARENTS)[number] | CustomModuleK
 
 /**
  * **ამ ანგარიშის გალერეის მშობლები** — ჩართული საბაზისოები (`GALLERY_PARENTS`-ის
- * რიგით) და ჩართული პირადი მოდულები (Tasks §37.4).
+ * რიგით) და ჩართული პირადი მოდულები.
  *
  * ⚠️ ერთი ფუნქცია ორ ადგილს ემსახურება (ბიბლიოთეკის ჭრილი და გადატანის
  * ფანჯარა): ორ ასლში პირადი მოდული ერთგან გამოჩნდებოდა, მეორეგან — არა,
@@ -251,26 +251,26 @@ export interface GalleryImage {
   size: number
   created_at: string | null
   source: 'upload' | 'tmdb' | 'wikimedia' | 'web' | string | null
-  /** ორიგინალის გვერდი — ვებიდან ჩამოწერილს აქვს (§4.3) */
+  /** ორიგინალის გვერდი — ვებიდან ჩამოწერილს აქვს */
   source_url: string | null
-  /** ორიგინალი ხელმისაწვდომი არ იყო და ესკიზი ჩამოიწერა (§4.3) */
+  /** ორიგინალი ხელმისაწვდომი არ იყო და ესკიზი ჩამოიწერა */
   is_thumbnail: boolean
   /** ⚠️ TMDB-ის **ტექნიკური** ტიპი — წყაროდან მოდის და ხელით არ იცვლება */
   category: 'backdrop' | 'poster' | 'logo' | 'actor' | null
   /**
-   * ⚠️ **„მთავარად დაყენებას" backend წყვეტს** (Tasks BUG-20): მშობელს
+   * ⚠️ **„მთავარად დაყენებას" backend წყვეტს**: მშობელს
    * მთავარი სურათის სვეტი შეიძლება საერთოდ არ ჰქონდეს (მსახიობი) ან სხვა
    * ერქვას (`thumbnail_path`, `cover_path`). `category !== 'actor'`-ზე
    * დაყრდნობა სიმღერაზე/წიგნზე/თამაშზე **500-ს** იძლეოდა.
    */
   supports_primary?: boolean
-  /** §26 — user-ის თავისი დახარისხება; მშობლისგან დამოუკიდებელი */
+  /** user-ის თავისი დახარისხება; მშობლისგან დამოუკიდებელი */
   album_id: number | null
   width: number | null
   height: number | null
   /**
-   * ⚠️ **დისკს backend ამბობს** (§17.5-ის წესი): ჩაკეტილი ალბომის ფოტო
-   * პირად დისკზეა (§7.9) და `/storage/*` მას ვერ კითხულობს —
+   * ⚠️ **დისკს backend ამბობს**: ჩაკეტილი ალბომის ფოტო
+   * პირად დისკზეა და `/storage/*` მას ვერ კითხულობს —
    * `PrivateImage`-ით უნდა დაიხატოს.
    */
   private?: boolean
@@ -279,7 +279,7 @@ export interface GalleryImage {
 }
 
 /**
- * **ჩაკეტილი ალბომის ფოტო — მხოლოდ ოთხი ფაქტი (Tasks §7.11 → 2026-09-20).**
+ * **ჩაკეტილი ალბომის ფოტო — მხოლოდ ოთხი ფაქტი.**
  *
  * ⚠️ `url` აქ **არ არსებობს** და ეს არ არის დავიწყებული ველი: სერვერი
  * ბილიკს საერთოდ არ აგზავნის, ე.ი. ინსპექტორშიც არაფერია საპოვნელი.
@@ -318,7 +318,7 @@ export interface GalleryOwnedImage extends GalleryImage {
   } | null
 }
 
-/* ---------- ვიდეო-ბმული (§8.1) ---------- */
+/* ---------- ვიდეო-ბმული ---------- */
 
 export interface GalleryVideo {
   id: number
@@ -381,7 +381,7 @@ export interface GalleryGroup {
   locked?: boolean
   unlocked?: boolean
 
-  /* ---------- ეტაპი 2: შიდა დაჯგუფების საკვები ----------
+  /* ---------- შიდა დაჯგუფების საკვები ----------
      ⚠️ **სამივე ჯგუფშივე მოდის და ცალკე არ იკითხება.** „ჟანრი / წელი /
      სტატუსი" სექციებად დაყოფა ფრონტზე ხდება (იხ. `lib/galleryGroups.ts`),
      ე.ი. თითო ბარათზე ცალკე მოთხოვნა ასჯერ გაიგზავნებოდა.
@@ -389,7 +389,7 @@ export interface GalleryGroup {
      ველები არ აქვთ. */
   year?: number | null
   favorite?: boolean
-  /** ⚠️ **ობიექტია და არა სტრიქონი** (§6.4) — სახელი მფლობელის ლექსიკონშია */
+  /** ⚠️ **ობიექტია და არა სტრიქონი** — სახელი მფლობელის ლექსიკონშია */
   status?: Status | null
   genres?: { slug: string; name_ka: string | null; name_en: string | null }[]
 }
@@ -398,7 +398,7 @@ export interface GalleryGroups {
   by: GalleryGroupBy
   groups: GalleryGroup[]
   /**
-   * **ფასეტური მთვლელები ჭრილის ბარათებისთვის** (§24).
+   * **ფასეტური მთვლელები ჭრილის ბარათებისთვის**.
    *
    * ⚠️ **ჭრილი საკუთარ თავს არ ითვლის** — რიცხვი ფილტრის *გარეშე* მოდის,
    * თორემ „ქალების" არჩევისთანავე „კაცები" ნულზე ჩამოვიდოდა და ბარათი
@@ -425,7 +425,7 @@ export interface GalleryPhotoPage {
 }
 
 /**
- * **ჩაკეტილი ალბომის გვერდი (Tasks §7.11).**
+ * **ჩაკეტილი ალბომის გვერდი.**
  *
  * ⚠️ **ცალკე ტიპია და არა „`url` არჩევითი"**: სერვერი ბილიკს საერთოდ არ
  * აგზავნის, ე.ი. ერთ ტიპში შერევა კომპილატორს ატყუებდა და ბადე
@@ -439,7 +439,7 @@ export interface GalleryLockedPage {
   meta: GalleryPageMeta
 }
 
-/** „არეული / ახალი / ძველი" — §8.3-ის გადამრთველი */
+/** „არეული / ახალი / ძველი" — გადამრთველი */
 export const GALLERY_SORTS = ['new', 'old', 'random'] as const
 export type GallerySort = (typeof GALLERY_SORTS)[number]
 
@@ -449,12 +449,12 @@ export interface GalleryPhotoFilters {
    * მისი გარეშე — ყველა ფოტო.
    *
    * ⚠️ **`none` და „owner არ მოსულა" ორი სხვადასხვა კითხვაა**: პირველი
-   * უკატეგორიოა (§26), მეორე — მთელი ბიბლიოთეკა.
+   * უკატეგორიოა, მეორე — მთელი ბიბლიოთეკა.
    */
   owner?: string
-  /** §28 — „არეული" ხედი ჭრილის ფარგლებში: ვის ჰკიდია ფოტო */
+  /** „არეული" ხედი ჭრილის ფარგლებში: ვის ჰკიდია ფოტო */
   parent?: 'record' | 'actor' | 'none'
-  /** §28 — ერთ დომენზე ჭრა („არეული" ხედი ერთი ტაბის შიგნით) */
+  /** ერთ დომენზე ჭრა („არეული" ხედი ერთი ტაბის შიგნით) */
   type?: GalleryParentKind
   album_id?: number
   /**
@@ -477,7 +477,7 @@ export interface GalleryPhotoFilters {
   per_page?: number
 }
 
-/** სხვა მოდულების ფოტო — **მხოლოდ კითხვადი** (§8.3) */
+/** სხვა მოდულების ფოტო — **მხოლოდ კითხვადი** */
 export interface ModulePhoto {
   /** ⚠️ სტრიქონია: ორი სხვადასხვა ცხრილის რიგები ერთ სიაშია */
   id: string
@@ -504,7 +504,7 @@ export interface ModulePhotoPage {
   }
 }
 
-/** ქვე-მენიუს მთვლელები — ერთი გამოძახება სამი სიის ნაცვლად (§8.3) */
+/** ქვე-მენიუს მთვლელები — ერთი გამოძახება სამი სიის ნაცვლად */
 export interface GallerySummary {
   photos: number
   bytes: number
@@ -517,9 +517,9 @@ export interface GallerySummary {
    * ამიტომ ჩანდა „ლოგო" ცარიელ ბიბლიოთეკაზეც — სია ფრონტში კონსტანტა იყო.
    */
   categories: Partial<Record<string, number>>
-  /** §26 — მშობლის გარეშე დარჩენილი ფოტოები */
+  /** მშობლის გარეშე დარჩენილი ფოტოები */
   uncategorized: number
-  /** §26 — რამდენი ალბომია */
+  /** რამდენი ალბომია */
   albums: number
   videos: number
   module_groups: number
@@ -540,7 +540,7 @@ export interface GalleryCastMember {
   photos: number
 }
 
-/** მსახიობის სრული ფორმა — `CastMember::toDetailArray()`-ის ასლი (§8.1) */
+/** მსახიობის სრული ფორმა — `CastMember::toDetailArray()`-ის ასლი */
 export interface GalleryActor extends GalleryCastMember {
   tmdb_person_id?: number | null
   imdb_id: string | null
@@ -604,7 +604,7 @@ export interface GalleryPlanItem {
 
 export interface GalleryPlanFilters extends GalleryOptions {
   target?: GalleryTarget
-  /** ⚠️ **სია და არა ერთი დომენი** (§8.2) — „ფილმებზე, სერიალებზე და ანიმეებზე ჯამში" */
+  /** ⚠️ **სია და არა ერთი დომენი** — „ფილმებზე, სერიალებზე და ანიმეებზე ჯამში" */
   types?: MediaType[]
   scope?: GalleryScope
   statuses?: string[]
@@ -622,7 +622,7 @@ export interface GalleryPlanFilters extends GalleryOptions {
 export interface GalleryPlan {
   target: GalleryTarget
   types: MediaType[]
-  /** Tasks §30.6 — ჩემი TMDB-ის გასაღები მაქვს? (`false` — ჩამოტვირთვა ვერ დაიწყება) */
+  /** ჩემი TMDB-ის გასაღები მაქვს? (`false` — ჩამოტვირთვა ვერ დაიწყება) */
   tmdb: boolean
   items: GalleryPlanItem[]
   count: number
@@ -636,7 +636,7 @@ export interface GalleryPlan {
    * ფოტოები უკვე აქვს — ეს ორი სრულიად სხვადასხვა მდგომარეობაა.
    */
   skipped_with_photos: number
-  /** ⚠️ ზედა ზღვარია: TMDB სიაში ფაილის ზომას არ იძლევა (17.3) */
+  /** ⚠️ ზედა ზღვარია: TMDB სიაში ფაილის ზომას არ იძლევა */
   estimated_bytes: number
   storage: StorageUsage
   fits: boolean
@@ -657,7 +657,7 @@ export interface GalleryFetchResult {
   added: number
   skipped: number
   bytes: number
-  /** კვოტა გავსდა → ნაკადი უნდა გაჩერდეს, არა გაგრძელდეს (Tasks 10) */
+  /** კვოტა გავსდა → ნაკადი უნდა გაჩერდეს, არა გაგრძელდეს */
   quota_exceeded: boolean
   error: string | null
   title: string
@@ -675,7 +675,7 @@ export async function fetchGallerySummary(): Promise<GallerySummary> {
 }
 
 /**
- * ჯგუფების ჭრილის ფილტრი (ეტაპი 2).
+ * ჯგუფების ჭრილის ფილტრი.
  *
  * ⚠️ **`have: 'without'` — „რომელ ჩანაწერს არ აქვს ფოტო".** აქამდე ჯგუფების
  * სია ყოველთვის `has('galleryImages')`-ით იწყებოდა, ე.ი. სწორედ ის ჩანაწერები
@@ -718,7 +718,7 @@ export async function fetchGalleryPhotos(
   return data
 }
 
-/* ---------- ალბომები და გადატანა (Tasks §26) ---------- */
+/* ---------- ალბომები და გადატანა ---------- */
 
 export interface GalleryAlbum {
   id: number
@@ -735,7 +735,7 @@ export interface GalleryAlbum {
   locked: boolean
   unlocked: boolean
   /**
-   * §7.5 — ალბომი გალერეაში ერთადერთია, რასაც საკუთარი ხილვადობა აქვს:
+   * ალბომი გალერეაში ერთადერთია, რასაც საკუთარი ხილვადობა აქვს:
    * ფოტო მშობლის ხილვადობას იმემკვიდრებს, **უმშობლოს** კი მემკვიდრეობით
    * არაფერი მოსდის.
    */
@@ -774,10 +774,9 @@ export async function updateGalleryAlbum(
     /** ლოკის მოხსნა */
     remove_password?: boolean
     /**
-     * ⚠️ **ანგარიშის პაროლია და აღარ ალბომისა** (Tasks §7.8, შენი
-     * გადაწყვეტილება): ლოკის შეცვლა/მოხსნა მფლობელობის დამტკიცებას
-     * ითხოვს, „ალბომის პაროლი დამავიწყდა" კი აღარ არის ჩიხი. ამ სესიაში
-     * უკვე გახსნილს ის აღარ სჭირდება.
+     * ⚠️ **ანგარიშის პაროლია და აღარ ალბომისა**: ლოკის შეცვლა/მოხსნა
+     * მფლობელობის დამტკიცებას ითხოვს, „ალბომის პაროლი დამავიწყდა" კი
+     * აღარ არის ჩიხი. ამ სესიაში უკვე გახსნილს ის აღარ სჭირდება.
      */
     account_password?: string
     visibility?: 'private' | 'public'
@@ -810,7 +809,7 @@ export async function reorderGalleryAlbums(ids: number[]): Promise<GalleryAlbum[
 }
 
 /**
- * **ფოტოს გადატანა (§26.3).**
+ * **ფოტოს გადატანა.**
  *
  * ⚠️ **ორი ღერძი ცალ-ცალკე**: `target` მშობელს ცვლის, `album` —
  * დახარისხებას. გამოტოვებული გასაღები „ხელუხლებელს" ნიშნავს, ცხადი
@@ -828,7 +827,7 @@ export async function moveGalleryImages(body: {
   return data
 }
 
-/** სხვა მოდულების ფოტოები (§8.3) — მხოლოდ დათვალიერება */
+/** სხვა მოდულების ფოტოები — მხოლოდ დათვალიერება */
 export async function fetchModulePhotos(
   module: string,
   params: { page?: number; per_page?: number } = {},
@@ -887,9 +886,9 @@ export async function setGalleryPrimary(id: number): Promise<{ poster_path: stri
   return data
 }
 
-/* ---------- ვიდეო-ბმულები (§8.1/§8.4) ---------- */
+/* ---------- ვიდეო-ბმულები ---------- */
 
-/** Tasks §25.5 — ვიდეოების გვერდის პარამეტრები */
+/** ვიდეოების გვერდის პარამეტრები */
 export type GalleryVideoOwnerType = 'record' | 'actor'
 export type GalleryVideoSort = 'new' | 'old' | 'title'
 
@@ -930,7 +929,7 @@ export async function saveGalleryVideo(
 
 /**
  * ვებძებნით ნაპოვნი ვიდეოს შენახვა ჩანაწერის გალერეაში — **ერთი გზა** ძებნის ფანჯრისთვის
- * და ახალი ბუკმარკის ფორმისთვის, რომელიც ვიდეოს შექმნის შემდეგ ინახავს (Tasks §41.3).
+ * და ახალი ბუკმარკის ფორმისთვის, რომელიც ვიდეოს შექმნის შემდეგ ინახავს.
  */
 export function saveSerpVideo(target: SaveGalleryVideoBody['target'], id: number, video: SerpVideo) {
   return saveGalleryVideo({
@@ -952,7 +951,7 @@ export async function deleteGalleryVideo(id: number): Promise<void> {
 }
 
 /**
- * **Tasks §35.5 — ფოტოს ჩაკეტვა**: სისტემურ ჩაკეტილ ალბომში („ჩაკეტილი ფოტოები")
+ * **ფოტოს ჩაკეტვა**: სისტემურ ჩაკეტილ ალბომში („ჩაკეტილი ფოტოები")
  * გადატანა. ⚠️ პირველად ალბომი არ არსებობს — 409 `locked_album_password_required`,
  * მაშინ იგივე იგზავნება `password`-ით.
  */

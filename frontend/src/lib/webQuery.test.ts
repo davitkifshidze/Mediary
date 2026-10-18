@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { addTerm, findTerm, hasTerm, removeTerm, toggleTerm } from './webQuery'
 
 /* ============================================================
-   `lib/webQuery.ts` — ვებძებნის შეკითხვის ჩიპები (Tasks §19.1).
+   `lib/webQuery.ts` — ვებძებნის შეკითხვის ჩიპები.
 
    ⚠️ **ორივე შეცდომა ჩუმია.** არასწორი „აქტიური" ჩიპი ტიპებით არ იჭერა
    (ყველაფერი `string`-ია), სიტყვის ნაწილის ამოჭრა კი ეკრანზე მხოლოდ მაშინ

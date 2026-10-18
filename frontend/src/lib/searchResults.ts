@@ -71,19 +71,19 @@ export function resultPath(item: SearchItem, routeBase: string | undefined): str
   if (item.domain === 'cast') return `/actors/${item.id}`
   if (item.domain === 'playlist') return `/playlists/${item.id}`
   if (item.domain === 'gallery') return '/gallery/videos'
-  /* Tasks §33 — პირადი გალერეა: ადამიანსა და ალბომს თავისი გვერდი აქვს, ფოტო კი
+  /* პირადი გალერეა: ადამიანსა და ალბომს თავისი გვერდი აქვს, ფოტო კი
      „ფოტო & ვიდეო"-ს ძებნით იხსნება (წარწერა) */
   if (item.domain === 'personal') return `/personal/people/${item.id}`
   if (item.domain === 'personal_album') return `/personal/albums/${item.id}`
   if (item.domain === 'personal_media') return `/personal/media?q=${encodeURIComponent(item.title)}`
-  // Tasks §34 — მორიგეობის პერიოდი იხსნება და რედაქტირება ჩანს (`DutyPage`, `?shift=`)
+  // მორიგეობის პერიოდი იხსნება და რედაქტირება ჩანს (`DutyPage`, `?shift=`)
   if (item.domain === 'duty') return `/duty?shift=${item.id}`
 
   if (!routeBase) return null
 
   if (MEDIA_DOMAINS.includes(item.domain)) return `${routeBase}/${item.id}`
 
-  /* §37 — პირადი მოდულის ჩანაწერი **id-ით** იხსნება (`?open=`): ერთ მოდულში
+  /* პირადი მოდულის ჩანაწერი **id-ით** იხსნება (`?open=`): ერთ მოდულში
      ერთნაირი სათაური ხშირია (რეცეპტები, ნივთები), ე.ი. `?q=`-ით ძებნა სწორ
      ჩანაწერს ვერ დაგანახებდა. გვერდი პარამეტრს მაშინვე შლის. */
   if (isCustomModuleKey(item.domain)) return `${routeBase}?open=${item.id}`

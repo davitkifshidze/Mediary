@@ -65,7 +65,7 @@ class PlaylistTest extends TestCase
             ->postJson('/api/playlists', ['name' => 'გზაში'])
             ->assertStatus(201)
             ->assertJsonPath('data.name', 'გზაში')
-            // 16.5 — ხილვადობა default-ად პირადია
+            // ხილვადობა default-ად პირადია
             ->assertJsonPath('data.visibility', 'private')
             ->assertJsonPath('data.songs_count', 0)
             ->json('data.id');

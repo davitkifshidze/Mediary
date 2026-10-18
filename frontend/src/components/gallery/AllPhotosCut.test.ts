@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '@/i18n'
 
 /* ============================================================
-   რეგრესია: **`counts` ყოველ რენდერზე ახალი ობიექტი იყო** (Tasks PERF-11).
+   რეგრესია: **`counts` ყოველ რენდერზე ახალი ობიექტი იყო**.
 
    `const counts = summaryQ.data?.categories ?? {}` — ჩატვირთვისას ინლაინ
    `{}` ყოველ რენდერზე სხვა რეფერენციაა, ე.ი. `useMemo`-ს deps ყოველთვის
@@ -89,7 +89,7 @@ async function mountThenRerenderTwice() {
   }
 }
 
-describe('AllPhotosCut — PERF-11', () => {
+describe('AllPhotosCut — სტაბილური memo', () => {
   /* ⚠️ **ჩატვირთვის მდგომარეობაა და არა შეცდომა**: `data` `undefined`-ია,
      ე.ი. სწორედ ის შემთხვევა, სადაც ინლაინ `{}` იბადებოდა. */
   it('keeps the options array stable while the summary is loading', async () => {

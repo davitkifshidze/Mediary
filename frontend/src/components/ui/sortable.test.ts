@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **Drag & drop ერთი კომპონენტით** (Tasks §11, Q3).
+   **Drag & drop ერთი კომპონენტით**.
 
    ⚠️ jsdom-ს განლაგება არ აქვს — ყველა მართკუთხედი ნულია, ე.ი. dnd-kit-ი
    „ქვემოთ" ვერაფერს იპოვიდა. ამიტომ `getBoundingClientRect` აქ ელემენტის
@@ -164,7 +164,7 @@ describe('Sortable', () => {
   })
 })
 
-/* Tasks §58.1 — მოდულების ნელი, რბილი გადანაცვლება; დანარჩენი სიები უცვლელი */
+/* მოდულების ნელი, რბილი გადანაცვლება; დანარჩენი სიები უცვლელი */
 describe('sortableMotion', () => {
   it('keeps the quick lists as they were and slows the modules down', async () => {
     const { sortableMotion } = await import('@/components/ui/sortable')

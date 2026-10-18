@@ -3,7 +3,7 @@
 namespace App\Policies;
 
 /**
- * Series-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ * Series-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია.
  *
  * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
  * აღმოჩენისთვის არსებობს (`App\Models\Series` → `App\Policies\SeriesPolicy`)

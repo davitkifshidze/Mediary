@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * ვიდეოს სტატუსი (Tasks §6.4) — **ახალი ველი**: ამ მოდულს სტატუსი
+ * ვიდეოს სტატუსი — **ახალი ველი**: ამ მოდულს სტატუსი
  * აქამდე საერთოდ არ ჰქონდა.
  */
 class VideoStatusController extends RecordStatusController

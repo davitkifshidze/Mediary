@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { DutyShift } from '@/api/duty'
 
 /* ============================================================
-   **მორიგეობის შეხსენება ბრაუზერში (Tasks §34.7).**
+   **მორიგეობის შეხსენება ბრაუზერში.**
 
    სერვერი ხვალინდელ შეხსენებულებს მთელი საღამო აბრუნებს — ⚠️ ერთი და იგივე
    მორიგეობა მეორე poll-ზე, გადატვირთვაზე ან მეორე ტაბში ხელახლა არ უნდა
@@ -100,7 +100,7 @@ async function mount() {
   return qc
 }
 
-describe('useDutyReminderWatcher — §34.7', () => {
+describe('useDutyReminderWatcher', () => {
   it('shows tomorrow’s shifts in one notification', async () => {
     mocks.fetchDueDutyReminders.mockResolvedValue([shift(1, 'კლინიკა'), shift(2, 'საავადმყოფო')])
 

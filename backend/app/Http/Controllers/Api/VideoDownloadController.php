@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * **ვიდეოს ლოკალური ასლი (Tasks §7.1) — ერთი მისამართი, სამი ზმნა.**
+ * **ვიდეოს ლოკალური ასლი — ერთი მისამართი, სამი ზმნა.**
  *
  *  · `POST   /api/videos/{video}/download` — ჩამოწერის დაწყება (202)
  *  · `GET    /api/videos/{video}/download` — ფაილის მიწოდება
@@ -60,10 +60,10 @@ class VideoDownloadController extends Controller
 
         abort_unless($disk->fileExists($video->download_path), 404);
 
-        /* Tasks §6.4 — ⚠️ **`SafeMime`-ით და Range-ით.** აქამდე `$disk->response()` იყო:
+        /* ⚠️ **`SafeMime`-ით და Range-ით.** აქამდე `$disk->response()` იყო:
            პროექტის წესს („პირადი ფაილი მხოლოდ `SafeMime`-ით") გვერდს უვლიდა და
            `StreamedResponse` Range-ს არ იცნობდა — `<video>`-ში გადახვევა ვერ იმუშავებდა
-           (§21-ის ლოკალური ფლეერის წინაპირობა). */
+           (ლოკალური ფლეერის წინაპირობა). */
         return SafeMime::fileResponse(
             $disk,
             $video->download_path,
@@ -90,7 +90,7 @@ class VideoDownloadController extends Controller
      */
     public function status(YtDlp $ytdlp)
     {
-        /* Tasks §21.3 — „ჩამოტვირთული" სექციის სათაურისთვის: რამდენი ასლია და რამდენი
+        /* „ჩამოტვირთული" სექციის სათაურისთვის: რამდენი ასლია და რამდენი
            ადგილი უკავია. ⚠️ `owner` scope — მხოლოდ ჩემი; მხოლოდ **მზა** ასლები,
            მიმდინარეს ზომა ჯერ არ აქვს. ცალკე endpoint-ი არ გაკეთდა — SPA ამას
            ისედაც კითხულობს ღილაკისთვის. */

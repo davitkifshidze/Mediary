@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Support\Str;
 
 /**
- * ანიმე — მესამე მედია-დომენი (Tasks §7.1).
+ * ანიმე — მესამე მედია-დომენი.
  *
  * ⚠️ **სერიალის ასლია და არა მისი ქვეტიპი** (შენი მითითება: „ყველაფერი
  * თავისი ჰქონდეს"): საკუთარი ცხრილი, კონტროლერი, რესურსი და გამამდიდრებელი.
@@ -33,33 +33,33 @@ class Anime extends Model
     use BelongsToUser;
 
     /**
-     * ⚠️ **მსახიობები (Tasks §16)** — `cast()` წაშლილს (`is_removed`) თვითონ
+     * ⚠️ **მსახიობები** — `cast()` წაშლილს (`is_removed`) თვითონ
      * ფილტრავს, `castLinks()` კი ყველა რიგს ხედავს. იხ. `HasCastMembers`.
      */
     use HasCastMembers;
 
-    /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
+    /** მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
-    /** §10 — გალერეის ფოტოები (`gallery_images`) */
+    /** გალერეის ფოტოები (`gallery_images`) */
     use HasGallery;
 
-    /** Tasks §6.4 — სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
+    /** სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
     use HasStatus;
 
     /**
-     * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
+     * ⚠️ **კალათა** — `destroy()` `moveToTrash()`-ს იძახის და არა
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
 
     /**
-     * ⚠️ **ხელახლა ნახვის ჟურნალი (FEAT-14)** — `watched_at` „ბოლო ნახვაა"
+     * ⚠️ **ხელახლა ნახვის ჟურნალი** — `watched_at` „ბოლო ნახვაა"
      * და `media_watches`-იდან იწერება; გამეორება აღარ იკარგება.
      */
     use HasWatchLog;
 
-    /** Tasks §35.4 (Q9) — ჩაკეტილი ჩანაწერი იმალება ყველგან, ფილტრის „ჩაკეტილები"-ს გარდა */
+    /** ჩაკეტილი ჩანაწერი იმალება ყველგან, ფილტრის „ჩაკეტილები"-ს გარდა */
     use HidesLockedRecords;
 
     protected $guarded = ['id'];
@@ -71,18 +71,18 @@ class Anime extends Model
         'tmdb_id' => 'integer',
         'ge_id' => 'integer',
         'rating' => 'decimal:1',
-        // Tasks §9 (Q1) — „ჩემი ქულა" ცალკე სვეტშია; `rating` TMDB-ის საშუალოა
+        // „ჩემი ქულა" ცალკე სვეტშია; `rating` TMDB-ის საშუალოა
         'my_rating' => RatingCast::class,
         'runtime' => 'integer',
         'seasons' => 'integer',
         'episodes' => 'integer',
         'is_favorite' => 'boolean',
-        // Tasks §31 — სინქრონის კვალი და „აღარ განაახლო"
+        // სინქრონის კვალი და „აღარ განაახლო"
         'sync_paused' => 'boolean',
         'last_synced_at' => 'datetime',
         'last_translated_at' => 'datetime',
         'watched_at' => 'datetime',
-        // FEAT-10 — შემდეგი ეპიზოდის ეთერი (TMDB-ის `next_episode_to_air`)
+        // შემდეგი ეპიზოდის ეთერი (TMDB-ის `next_episode_to_air`)
         'next_air_at' => 'date',
         'next_season' => 'integer',
         'next_episode' => 'integer',
@@ -103,7 +103,7 @@ class Anime extends Model
     }
 
     /**
-     * **ხელით ატვირთული პოსტერის მოშორება** (§17.1) — იგივე წესი, რაც
+     * **ხელით ატვირთული პოსტერის მოშორება** — იგივე წესი, რაც
      * `Movie::deletePoster()`-ს აქვს: მოდელშია, რომ `PurgeService`-ის
      * `$record->delete()`-მაც გაათავისუფლოს ადგილი, და **მხოლოდ `upload`**
      * იშლება (TMDB-ის პოსტერი საერთო ფაილია და კვოტაშიც არ ითვლება).

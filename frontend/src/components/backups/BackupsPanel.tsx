@@ -36,10 +36,10 @@ import { formatBytes } from '@/lib/utils'
 import { isApiCode } from '@/lib/errors'
 
 /* ============================================================
-   **ბაზის დამპი და აღდგენა (Tasks §22).**
+   **ბაზის დამპი და აღდგენა.**
 
    ⚠️ **გამოკითხვა მხოლოდ მაშინ, როცა რამე მართლა მიმდინარეობს** — ვიდეოს
-   ჩამოწერის იგივე წესი (§7.1). მუდმივი polling ერთნაკადიან `artisan serve`-ს
+   ჩამოწერის იგივე წესი. მუდმივი polling ერთნაკადიან `artisan serve`-ს
    ტყუილად აჯდება, ხოლო **მიტოვებული** `running` თვითონ ვერასდროს შეიცვლება,
    ე.ი. მასზე გამოკითხვა უსასრულო იქნებოდა — ამიტომ `stale` გამოკითხვას
    ჩერდება.
@@ -47,7 +47,7 @@ import { isApiCode } from '@/lib/errors'
    ⚠️ **აღდგენა აკრეფილ სიტყვას ითხოვს** (`/purge`-ის წესი): ის მიმდინარე
    ბაზას **ცვლის** და ერთი შეცდომით დაჭერილი ღილაკი ბიბლიოთეკას შლის.
 
-   ⚠️ **Tasks §59.2 — ცალკე გვერდი აღარ არის**: ეს „ექსპორტ & იმპორტის"
+   ⚠️ **ცალკე გვერდი აღარ არის**: ეს „ექსპორტ & იმპორტის"
    „ბაზის" ჩანართია (`/transfer?tab=database`; `/backups` იქ გადამისამართდება),
    შენი სიტყვებით — „ბაზის ასლი და რამეც ცალკე რომ მაქვს — აქ შემოიტანე".
    ღილაკები („ატვირთვა", „ასლის შექმნა") სათაურის ზოლიდან პანელის თავში გადმოვიდა.
@@ -66,7 +66,7 @@ export function BackupsPanel() {
 
   const [note, setNote] = useState('')
   const [restoring, setRestoring] = useState<Backup | null>(null)
-  // §11 — ასლის ვიუერი (ცხრილები, რიგები, ნაწილობრივი აღდგენა)
+  // ასლის ვიუერი (ცხრილები, რიგები, ნაწილობრივი აღდგენა)
   const [viewing, setViewing] = useState<Backup | null>(null)
   const [typed, setTyped] = useState('')
 
@@ -177,7 +177,7 @@ export function BackupsPanel() {
         </p>
       )}
 
-      {/* ===== დაგეგმილი ასლი (FEAT-12) =====
+      {/* ===== დაგეგმილი ასლი =====
           ⚠️ **გადამრთველი არ არის და ეს განზრახია.** ეს ინსტალაციის
           პარამეტრია (`BACKUP_AUTO` `.env`-ში) და არა მომხმარებლის: ორი
           სუპერ-ადმინის შემთხვევაში „ვისი გადამრთველია" კითხვას პასუხი
@@ -222,7 +222,7 @@ export function BackupsPanel() {
       <ul className="space-y-2">
         {rows.map((b) => {
           const ready = b.status === 'ready'
-          /* Tasks §7 — მარჯვენა ღილაკი: გადმოწერა · შიგთავსი · აღდგენა · — · წაშლა */
+          /* მარჯვენა ღილაკი: გადმოწერა · შიგთავსი · აღდგენა · — · წაშლა */
           const actions: MenuAction[] = [
             { key: 'download', label: t('actions.download'), icon: Download, disabled: !ready, run: () => downloadBackup(b) },
             { key: 'view', label: t('backups.viewerTitle'), icon: Table2, disabled: !ready, run: () => setViewing(b) },
@@ -281,7 +281,7 @@ export function BackupsPanel() {
               >
                 <Download className="size-4" />
               </Button>
-              {/* §11 — „რა არის შიგნით"; ცხრილების სია აღდგენას არ მოითხოვს */}
+              {/* „რა არის შიგნით"; ცხრილების სია აღდგენას არ მოითხოვს */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -367,7 +367,7 @@ export function BackupsPanel() {
 /**
  * ⚠️ **ოთხი მდგომარეობა და არა სამი.** „მიმდინარეობს" და „პროცესი მოკვდა"
  * ერთნაირად `running`-ია ბაზაში, მაგრამ მომხმარებელს სხვადასხვა რამეს
- * ეუბნება: პირველზე ელოდები, მეორეზე — თავიდან უშვებ (§7.1-ის ნასწავლი).
+ * ეუბნება: პირველზე ელოდები, მეორეზე — თავიდან უშვებ.
  */
 function StatusBadge({ backup }: { backup: Backup }) {
   const { t } = useTranslation()

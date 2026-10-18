@@ -9,7 +9,7 @@ use App\Models\VideoNote;
 use App\Support\RichText;
 use Illuminate\Http\Request;
 
-/** ვიდეოს ჩანიშვნები (K3) — საკუთარი ცხრილი `video_notes` */
+/** ვიდეოს ჩანიშვნები — საკუთარი ცხრილი `video_notes` */
 class VideoNoteController extends Controller
 {
     public function index(Video $video)
@@ -40,7 +40,7 @@ class VideoNoteController extends Controller
 
     public function destroy(VideoNote $videoNote)
     {
-        // ⚠️ ურნა (Tasks §29, ეტაპი 2) — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
+        // ⚠️ ურნა — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
         $videoNote->moveToTrash();
 
         return response()->noContent();

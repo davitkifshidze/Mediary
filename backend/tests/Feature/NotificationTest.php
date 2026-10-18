@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **შეტყობინებების ცენტრი (FEAT-19).**
+ * **შეტყობინებების ცენტრი.**
  */
 class NotificationTest extends TestCase
 {
@@ -115,7 +115,7 @@ class NotificationTest extends TestCase
     /**
      * ⚠️ სხვისი შეტყობინება **404-ია**: `DatabaseNotification` არც
      * `BelongsToUser`-ს იყენებს და არც `EnsureRecordOwnership` ხედავს
-     * (`Illuminate\Bus\Batch`-ის იგივე ხაფანგი, SEC-09).
+     * (`Illuminate\Bus\Batch`-ის იგივე ხაფანგი).
      */
     public function test_another_users_notification_is_a_404(): void
     {

@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 /**
- * ბორდგეიმების მოდული (`board_game`, Tasks §14).
+ * ბორდგეიმების მოდული (`board_game`).
  *
  * მფლობელობა — `BelongsToUser` global scope (სხვისი ჩანაწერი 404), უფლებები —
  * `permission:board_game` middleware. გამამდიდრებელი წყარო **BoardGameGeek**-ია
@@ -42,19 +42,19 @@ class BoardGameController extends Controller
     public function index(Request $request)
     {
         $query = BoardGame::query()->with('genre')->withCount(['files', 'images', 'notes']);
-        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'board_game', $request);
 
         if ($request->boolean('favorite')) {
             $query->where('is_favorite', true);
         }
-        // ჟანრები — მძიმით გამოყოფილი სია (5.2-ის წესი)
+        // ჟანრები — მძიმით გამოყოფილი სია
         if ($genres = $this->slugList($request->string('genre_id')->toString())) {
             $query->whereIn('genre_id', array_map('intval', $genres));
         }
 
         /* „რამდენი კაცით ვთამაშობთ" — ყველაზე ხშირი კითხვა ბორდგეიმზე.
-           ⚠️ **სია და OR** (ეტაპი 8), ჟანრებისგან განსხვავებით: „2 **ან** 4
+           ⚠️ **სია და OR**, ჟანრებისგან განსხვავებით: „2 **ან** 4
            მოთამაშეს უდგება". AND ნიშნავდა „ორივეს ერთდროულად უდგება", რაც
            დიაპაზონურ ველზე თითქმის ყოველთვის იმავე პასუხს იძლევა.
            ⚠️ **ვალიდაცია 422-ია და არა ჩუმი გაფილტვრა**: `?players=abc`
@@ -129,7 +129,7 @@ class BoardGameController extends Controller
 
     public function destroy(BoardGame $boardGame)
     {
-        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+        /* ⚠️ **კალათა** — `delete()` კი არა, `moveToTrash()`.
            ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
            გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
            ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
@@ -147,7 +147,7 @@ class BoardGameController extends Controller
         return new BoardGameResource($boardGame->load('genre'));
     }
 
-    /* ---------- BoardGameGeek (§14-ის enrichment) ---------- */
+    /* ---------- BoardGameGeek (enrichment) ---------- */
 
     /**
      * არჩევანის სია — ავტომატურად არაფერს ვამთხვევთ (BGG-ში ერთი თამაშის
@@ -187,7 +187,7 @@ class BoardGameController extends Controller
     }
 
     /**
-     * ქართული მაღაზიები — corners.ge / puzz.ge (Tasks §7.2).
+     * ქართული მაღაზიები — corners.ge / puzz.ge.
      *
      * ⚠️ **GET და არა POST**: ეს ძებნაა და არაფერს ქმნის, POST-ზე კი
      * `EnsureModulePermission` მეთოდიდან `create`-ს გამოიყვანდა და ჩანაწერის
@@ -219,7 +219,7 @@ class BoardGameController extends Controller
     {
         $userId = $request->user()->id;
 
-        // ⚠️ ტიპი (ჟანრი) სავალდებულოა — სტატუსი სამაგიდო თამაშს აღარ აქვს (Tasks §12).
+        // ⚠️ ტიპი (ჟანრი) სავალდებულოა — სტატუსი სამაგიდო თამაშს აღარ აქვს.
         // რედაქტირებისას `sometimes`: თუ ველი საერთოდ არ გამოიგზავნა, ძველი
         // მნიშვნელობა რჩება (შექმნისას სავალდებულო იყო) — მაგრამ ცარიელს ვეღარ გაგზავნი.
         $must = $game ? ['sometimes', 'required'] : ['required'];
@@ -302,7 +302,7 @@ class BoardGameController extends Controller
         }
 
         if ($request->boolean('remove_image')) {
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($game, 'image_path', 'image_source');
             $game->image_path = null;
             $game->image_source = null;
@@ -313,8 +313,8 @@ class BoardGameController extends Controller
         }
 
         if ($request->hasFile('image')) {
-            // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($game, 'image_path', 'image_source');
             $game->image_path = $this->meter
                 ->storeUpload($request->user(), $request->file('image'), StorageFolder::BOARD_GAME_IMAGES);
@@ -326,7 +326,7 @@ class BoardGameController extends Controller
     /**
      * BGG-ის ფოტოს ჩამოტვირთვა შენახვისას.
      *
-     * ⚠️ **კვოტაში არ ითვლება** (19.4/B) — TMDB-ის პოსტერივით ეს user-ის
+     * ⚠️ **კვოტაში არ ითვლება** — TMDB-ის პოსტერივით ეს user-ის
      * ატვირთვა არაა. ფაილის სახელი `bgg_id`-ია, ე.ი. საერთოა ანგარიშებს
      * შორის და ჩანაწერთან ერთად **არ იშლება** (`BoardGame::deleteImage()`).
      */

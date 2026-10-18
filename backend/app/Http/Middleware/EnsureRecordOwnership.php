@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * **მფლობელობის მეორე ფენა (აუდიტი 2026-09-14, §A5).**
+ * **მფლობელობის მეორე ფენა.**
  *
  * ⚠️ **ჩვიდმეტი policy კლასი დაწერილი იყო და არასდროს გამოიძახებოდა.**
  * `grep -rn "authorize(\|Gate::\|->can(" app/Http/Controllers` **0 შედეგს**
@@ -70,7 +70,7 @@ class EnsureRecordOwnership
                 abort(404);
             }
 
-            /* **Tasks §35.4 — დამალული ჩანაწერი (Q9).** მისამართი მას პოულობს
+            /* **დამალული ჩანაწერი.** მისამართი მას პოულობს
                (`HidesLockedRecords::resolveRouteBindingQuery()`), რომ გვერდმა
                ბოქლომი დახატოს; დანარჩენი კარი — რედაქტირება, წაშლა, სტატუსი,
                გალერეა, კოლექცია — 423-ია, ჯერ გახსნა. ⚠️ ერთ ადგილას და არა თითო
@@ -98,7 +98,7 @@ class EnsureRecordOwnership
         $segments = explode('/', (string) $request->route()?->uri());
 
         /* ⚠️ მეთოდიც `show` უნდა იყოს — `GET /gallery/cast/{castMember}` (გალერეა) ბოლო
-           სეგმენტით გვერდს ჰგავს, ოღონდ მსახიობის ფოტოებს აჩვენებს (§35.5). */
+           სეგმენტით გვერდს ჰგავს, ოღონდ მსახიობის ფოტოებს აჩვენებს. */
         return str_starts_with((string) end($segments), '{')
             && $request->route()?->getActionMethod() === 'show';
     }

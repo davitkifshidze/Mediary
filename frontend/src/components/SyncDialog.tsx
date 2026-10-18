@@ -32,11 +32,11 @@ import { useQueue } from '@/components/ui/queue'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   მასობრივი სინქრონის დიალოგი (Tasks J2/J4):
+   მასობრივი სინქრონის დიალოგი:
    სკოუპი → რა განახლდეს → რამდენ ჩანაწერს შეეხება → გაშვება რიგში.
-   თვითონ ციკლს queue ატარებს (J3).
+   თვითონ ციკლს queue ატარებს.
 
-   ⚠️ **ორი ნაკადი** (Tasks §20/§39): „ჩანაწერები" (TMDB-ის პოსტერი,
+   ⚠️ **ორი ნაკადი**: „ჩანაწერები" (TMDB-ის პოსტერი,
    აღწერა, ჟანრები…) და „მსახიობები" (ბიოგრაფია, ბმულები, ფოტო). ორივე
    ერთსა და იმავე დომენის ბარათებს იყენებს — „რომელ ბიბლიოთეკაში" — და
    ორივე დამონტაჟებული რჩება, ე.ი. გადართვა არჩევანს არ აქრობს.
@@ -48,7 +48,7 @@ type Flow = 'records' | 'cast'
 export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const { t } = useTranslation()
 
-  /* Tasks §4.2 — დომენები ჩართული მედია-მოდულებიდან მოდის. ხელით ჩაწერილი
+  /* დომენები ჩართული მედია-მოდულებიდან მოდის. ხელით ჩაწერილი
      `['movie', 'series']` ანიმეს საერთოდ არ სთავაზობდა, გამორთულ მოდულს კი
      სთავაზობდა. `null` = „ყველა ხელმისაწვდომი“ — მოდულები შეიძლება დიალოგის
      შემდეგ ჩაიტვირთოს და საწყისი მნიშვნელობა ცარიელი არ უნდა გაიყინოს. */
@@ -65,7 +65,7 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const [flow, setFlow] = useState<Flow>('records')
   const close = () => onOpenChange(false)
 
-  /* ⚠️ **ნაკადი ბარათია და არა მეოთხე დომენი** (§20.1 → §39): დომენების რიგში
+  /* ⚠️ **ნაკადი ბარათია და არა მეოთხე დომენი**: დომენების რიგში
      „მსახიობები" „ფილმები + მსახიობები"-ად წაიკითხებოდა, ანუ „ორივე
      დაასინქრონე", მაშინ როცა ქვემოთ ფორმა მთლიანად იცვლება. */
   const header = (
@@ -81,7 +81,7 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       />
 
       {/* ---------- დომენი ----------
-          Tasks §20.1 — ბარათები მოდულის ფერითა და რიცხვით (ჩეკბოქსების
+          ბარათები მოდულის ფერითა და რიცხვით (ჩეკბოქსების
           ნაცვლად); ერთი დომენის შემთხვევაში არჩევანი არ არსებობს */}
       {domains.length > 1 && (
         <div>
@@ -92,7 +92,7 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
     </>
   )
 
-  /* Tasks §37.6 — საერთო `ModalShell` (`DialogContent` წაიშალა): იგივე სიმაღლე
+  /* საერთო `ModalShell` (`DialogContent` წაიშალა): იგივე სიმაღლე
      შიგთავსის მიხედვით, სიგანე ეკრანის მიხედვით და მიმაგრებული ქვედა ზოლი */
   if (!open) return null
 
@@ -137,13 +137,13 @@ function RecordsFlow({
   const { enqueueSync, isBusy } = useQueue()
 
   const lang = useContentLang(i18n.language)
-  // §6.4 — სტატუსების სია არჩეულ დომენებს მიჰყვება
+  // სტატუსების სია არჩეულ დომენებს მიჰყვება
   const statuses = useMergedStatuses(types)
   const [scope, setScope] = useState<Scope>('all')
   const [status, setStatus] = useState<string>('')
   const [genres, setGenres] = useState<string[]>([])
   const [ids, setIds] = useState<Record<MediaType, number[]>>(emptyMediaIds)
-  /* Tasks §31.2 — **ნაგულისხმევად ჩართული**: წარმატებით განახლებული და უცვლელი აღარ ჩანს,
+  /* **ნაგულისხმევად ჩართული**: წარმატებით განახლებული და უცვლელი აღარ ჩანს,
      ცარიელი პასუხი და ჩავარდნა კი კვლავ შემოთავაზებაა; გამორთვით — ყველა */
   const [hideProcessed, setHideProcessed] = useState(true)
 
@@ -180,7 +180,7 @@ function RecordsFlow({
 
   const plan = planQ.data
   const nothingSelected = !media && fields.length === 0
-  /* Tasks §30.6 — ⚠️ **გასაღები ანგარიშისაა**: მის გარეშე გაშვება 300 ერთნაირ
+  /* ⚠️ **გასაღები ანგარიშისაა**: მის გარეშე გაშვება 300 ერთნაირ
      ჩავარდნად იქცეოდა, ამიტომ გეგმა თვითონ ამბობს და ღილაკი ითიშება */
   const noKey = plan?.tmdb === false
   const canRun = !!plan?.count && !nothingSelected && types.length > 0 && !planQ.isFetching && !noKey
@@ -215,7 +215,7 @@ function RecordsFlow({
                   <SelectValue placeholder={t('sync.statusPick')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* §6.4 — სია არჩეული დომენების ლექსიკონების გაერთიანებაა */}
+                  {/* სია არჩეული დომენების ლექსიკონების გაერთიანებაა */}
                   {statuses.map((s) => (
                     <SelectItem key={s.key} value={s.key}>
                       {statusName(s, lang)}
@@ -239,7 +239,7 @@ function RecordsFlow({
           </RadioGroup>
         </div>
 
-        {/* Tasks §31.2 — დამუშავებულების დამალვა */}
+        {/* დამუშავებულების დამალვა */}
         <label
           className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm"
           data-testid="hide-processed"
@@ -329,7 +329,7 @@ function RecordsFlow({
                   {t('sync.noTmdb', { count: plan.skipped_without_tmdb })}
                 </span>
               )}
-              {/* Tasks §31 — რამდენი დაიმალა და რამდენია შეჩერებული */}
+              {/* რამდენი დაიმალა და რამდენია შეჩერებული */}
               {plan.skipped_processed > 0 && (
                 <span className="block text-xs text-muted-foreground">
                   {t('sync.processedHidden', { count: plan.skipped_processed })}

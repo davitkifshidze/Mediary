@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 /* ============================================================
    ტექსტური ველი.
 
-   ## Tasks §5.3 — `autoGrow`
+   ## `autoGrow`
    ⚠️ **ველი შიგთავსს მიჰყვება და შიდა გადახვევას არ აჩენს**: `rows` ქვედა
    ზღვარია, `maxRows` (ნაგულისხმევად 10) — ზედა; მხოლოდ მასზე მეტზე ჩნდება
    ველის საკუთარი სქროლი. აქამდე აღწერის `rows=4` ველი გრძელ ტექსტზე შიგნით
@@ -35,7 +35,7 @@ function rowsToPx(el: HTMLTextAreaElement, rows: number): number {
 export const Textarea = React.forwardRef<
   HTMLTextAreaElement,
   React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
-    /** შიგთავსს მიჰყვება `rows`-დან `maxRows`-მდე (Tasks §5.3) */
+    /** შიგთავსს მიჰყვება `rows`-დან `maxRows`-მდე */
     autoGrow?: boolean
     maxRows?: number
   }

@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * **ურნაში მყოფი ჩანაწერის ხელახლა დამატება (Tasks §40.1ა).**
+ * **ურნაში მყოფი ჩანაწერის ხელახლა დამატება.**
  *
  * ⚠️ დუბლიკატის ძებნა `trash` scope-ის ქვეშ იყო და ურნაში მყოფს ვერ ხედავდა,
  * `unique(user_id, imdb_id)` კი ხედავდა: ფილმი „აღმოჩენიდან" → ურნაში →
@@ -131,7 +131,7 @@ class TrashDuplicateTest extends TestCase
 
     /**
      * იმპორტი იმავე ბრმა წერტილზე იდგა — `imdb_id`-იანი რიგი პირველივე `save()`-ზე ვარდებოდა.
-     * Tasks §59.6 — ახლა Mediary-ის ფაილით: გეგმა „ურნაშია"-ს ამბობს, ერთეული კი id-ს აბრუნებს.
+     * ახლა Mediary-ის ფაილით: გეგმა „ურნაშია"-ს ამბობს, ერთეული კი id-ს აბრუნებს.
      */
     public function test_import_names_a_trashed_duplicate(): void
     {

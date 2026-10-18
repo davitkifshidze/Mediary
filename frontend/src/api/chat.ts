@@ -2,13 +2,13 @@ import { api, API_URL } from '@/lib/api'
 import type { PublicProfile } from './publicProfile'
 
 /* ============================================================
-   ჩატი (Tasks §16.3) — პირადი მიმოწერა ორ მომხმარებელს შორის.
+   ჩატი — პირადი მიმოწერა ორ მომხმარებელს შორის.
 
    ⚠️ **მიწერა მხოლოდ ორ საჯარო პროფილს შორის შეიძლება** — იგივე კარიბჭე,
-   რაც დამთხვევებს (§16.2). არასაჯარო მხარეზე backend 409-ს აბრუნებს
+   რაც დამთხვევებს. არასაჯარო მხარეზე backend 409-ს აბრუნებს
    (`profile_not_public`), დაბლოკვაზე კი 403-ს (`chat_blocked`).
 
-   **მედია გაკეთდა 2026-09-06-ს** (`docs/DECISIONS.md` §1).
+   **ჩატში მედიაც იგზავნება.**
 
    ⚠️ **ფაილი პრივატულ დისკზეა** და `/storage/*`-ით არ იხსნება: ერთადერთი
    გზა `GET /api/chat/files/{message}`-ია, რომელიც მონაწილეობას ამოწმებს.
@@ -47,22 +47,22 @@ export interface ChatMessage {
   /** სახელი წაშლის შემდეგაც რჩება: ჩანაცვლებამ უნდა თქვას, რა იყო */
   attachment_name: string | null
   /**
-   * §10.10 — ემოჯი → რამდენჯერ. ⚠️ **თითო ადამიანზე ერთი რეაქციაა**
+   * ემოჯი → რამდენჯერ. ⚠️ **თითო ადამიანზე ერთი რეაქციაა**
    * (Messenger-ის სემანტიკა), ე.ი. ჯამი მონაწილეთა რაოდენობას ვერ
    * გადააჭარბებს.
    */
   reactions: Record<string, number>
   /** ჩემი რეაქცია — იმავეს ხელახლა დაჭერა მოხსნაა */
   my_reaction: string | null
-  /** §10.7 — დაპინულია თუ არა; **ორივე მონაწილეს შეუძლია** */
+  /** დაპინულია თუ არა; **ორივე მონაწილეს შეუძლია** */
   pinned: boolean
-  /** FEAT-13 — გაზიარებული ჩანაწერი; `null` — ჩვეულებრივი წერილი */
+  /** გაზიარებული ჩანაწერი; `null` — ჩვეულებრივი წერილი */
   record: SharedRecord | null
   created_at: string | null
 }
 
 /* ============================================================
-   გაზიარებული ჩანაწერი (FEAT-13).
+   გაზიარებული ჩანაწერი.
 
    ⚠️ **`card` `null`-ია ორ შემთხვევაში და ეს განზრახვაა**: ჩანაწერი
    პირადია, ან უკვე აღარ არსებობს. ორივეზე ინტერფეისს ერთი და იგივე
@@ -115,11 +115,11 @@ export interface ChatConversation {
   } | null
   unread: number
   /**
-   * §10.5 — დადუმებული. ⚠️ **რიცხვი პატიოსანი რჩება**: დადუმება ნიშნავს
+   * დადუმებული. ⚠️ **რიცხვი პატიოსანი რჩება**: დადუმება ნიშნავს
    * „ნუ მაწუხებ" და არა „დამალე" — მხოლოდ ჰედერის ბეჯი ჩუმდება.
    */
   muted: boolean
-  /** §10.11 — ჩემი დარქმეული სახელი; ნამდვილი `profile`-ში რჩება */
+  /** ჩემი დარქმეული სახელი; ნამდვილი `profile`-ში რჩება */
   nickname: string | null
   theme: string | null
   last_message_at: string | null
@@ -128,19 +128,19 @@ export interface ChatConversation {
 export interface ChatThread {
   data: ChatMessage[]
   /**
-   * §10.8 — **კურსორი და არა გვერდის ნომერი.** ახალი წერილი სიას წინ
+   * **კურსორი და არა გვერდის ნომერი.** ახალი წერილი სიას წინ
    * ემატება, ე.ი. „მე-2 გვერდი" ყოველ ახალ წერილზე სხვა რიგებს ნიშნავდა
    * და ისტორიის კითხვისას დუბლები ჩნდებოდა.
    */
   meta: { has_more: boolean; oldest_id: number | null; newest_id: number | null }
   profile: Profile | null
   /**
-   * Tasks §34.5 — მეორე მხარის პროფილი საჯაროა თუ არა. სუპერადმინთან საუბარი
+   * მეორე მხარის პროფილი საჯაროა თუ არა. სუპერადმინთან საუბარი
    * დახურული პროფილითაც შეიძლება, `/u/{username}` კი მაშინ 404-ია — ამიტომ
    * `false`-ზე სახელი ბმულად არ იხატება.
    */
   profile_public?: boolean
-  /** §10.3 — მეორე მხარემ სად წაიკითხა; „ნანახია" ნიშანი ამაზე დგას */
+  /** მეორე მხარემ სად წაიკითხა; „ნანახია" ნიშანი ამაზე დგას */
   other_read_at: string | null
   muted: boolean
   theme: string | null
@@ -171,7 +171,7 @@ export async function openConversation(username: string): Promise<number> {
 }
 
 /**
- * **ძაფის კითხვა კურსორით (§10.8).**
+ * **ძაფის კითხვა კურსორით.**
  *
  * ⚠️ `before_id` — „ძველი"; `around_id` — ნახტომი ძებნიდან ან პინიდან.
  * ⚠️ **`around_id` წაკითხულად არ ნიშნავს**: ისტორიაში ჩახტომა „ყველაფერი
@@ -185,7 +185,7 @@ export async function fetchThread(
   return data
 }
 
-/* ---------- §10 — Messenger-ის დონე ---------- */
+/* ---------- Messenger-ის დონე ---------- */
 
 export interface ChatSearchHit {
   id: number
@@ -195,13 +195,13 @@ export interface ChatSearchHit {
   created_at: string | null
 }
 
-/** ძებნა ერთ საუბარში (§10.9) — დამალული წერილი შედეგებში არ ჩნდება */
+/** ძებნა ერთ საუბარში — დამალული წერილი შედეგებში არ ჩნდება */
 export async function searchThread(id: number, q: string): Promise<ChatSearchHit[]> {
   const { data } = await api.get(`/chat/${id}/search`, { params: { q } })
   return data.data
 }
 
-/** პინების სია (§10.7) — წაშლილი თავისით ცვივა, მეორე ჩაწერის გარეშე */
+/** პინების სია — წაშლილი თავისით ცვივა, მეორე ჩაწერის გარეშე */
 export async function fetchPins(id: number): Promise<ChatMessage[]> {
   const { data } = await api.get(`/chat/${id}/pins`)
   return data.data
@@ -214,7 +214,7 @@ export async function pinMessage(messageId: number, pinned: boolean): Promise<Ch
 }
 
 /**
- * რეაქცია (§10.10). ⚠️ **`null` = მოხსნა**, და იმავე ემოჯის ხელახლა
+ * რეაქცია. ⚠️ **`null` = მოხსნა**, და იმავე ემოჯის ხელახლა
  * გაგზავნაც მოხსნაა — Messenger-ის ქცევა, backend-ზე გადაწყვეტილი.
  */
 export async function reactToMessage(messageId: number, emoji: string | null): Promise<ChatMessage> {
@@ -222,19 +222,19 @@ export async function reactToMessage(messageId: number, emoji: string | null): P
   return data.data
 }
 
-/** დადუმება (§10.5). ⚠️ `until`-ის გარეშე — სამუდამოდ */
+/** დადუმება. ⚠️ `until`-ის გარეშე — სამუდამოდ */
 export async function setChatMuted(id: number, muted: boolean, until?: string): Promise<boolean> {
   const { data } = await api.put(`/chat/${id}/mute`, { muted, until })
   return data.muted as boolean
 }
 
-/** თემა (§10.6) — **საუბრისაა**, ორივე მხარე ერთსა და იმავე ფერს ხედავს */
+/** თემა — **საუბრისაა**, ორივე მხარე ერთსა და იმავე ფერს ხედავს */
 export async function setChatTheme(id: number, theme: string | null): Promise<string | null> {
   const { data } = await api.put(`/chat/${id}/theme`, { theme })
   return data.theme as string | null
 }
 
-/** ნიკნეიმი (§10.11) — **მხოლოდ ჩემს ხედში**; ცარიელი მნიშვნელობა შლის */
+/** ნიკნეიმი — **მხოლოდ ჩემს ხედში**; ცარიელი მნიშვნელობა შლის */
 export async function setChatNickname(id: number, nickname: string | null): Promise<string | null> {
   const { data } = await api.put(`/chat/${id}/nickname`, { nickname })
   return data.nickname as string | null
@@ -246,11 +246,11 @@ export async function sendMessage(id: number, body: string, type: MessageType = 
 }
 
 /**
- * ფაილის გაგზავნა (§16.3). იგივე endpoint-ია, რაც ტექსტისა — `file`-ის
+ * ფაილის გაგზავნა. იგივე endpoint-ია, რაც ტექსტისა — `file`-ის
  * არსებობა წყვეტს, რომელია; ასე დაბლოკვის/საჯაროობის კარიბჭე ერთია.
  *
  * ⚠️ ადგილის ამოწურვაზე backend **413**-ს აბრუნებს (`storage_quota_exceeded`
- * ან `module_quota_exceeded`) — ტექსტი იმავე მდგომარეობაშიც იგზავნება (§16.4).
+ * ან `module_quota_exceeded`) — ტექსტი იმავე მდგომარეობაშიც იგზავნება.
  */
 export async function sendAttachment(
   id: number,
@@ -267,21 +267,21 @@ export async function sendAttachment(
   return data.data
 }
 
-/** ფაილის წაშლა — **ორივესთან** ქრება, შეტყობინება რჩება (`DECISIONS.md` §1) */
+/** ფაილის წაშლა — **ორივესთან** ქრება, შეტყობინება რჩება */
 export async function deleteAttachment(messageId: number): Promise<ChatMessage> {
   const { data } = await api.delete(`/chat/files/${messageId}`)
   return data.data
 }
 
-/** წაშლის სკოუპი (Tasks §4.6) — `self` მხოლოდ ჩემთან, `both` ორივესთან */
+/** წაშლის სკოუპი — `self` მხოლოდ ჩემთან, `both` ორივესთან */
 export const REMOVAL_SCOPES = ['self', 'both'] as const
 export type RemovalScope = (typeof REMOVAL_SCOPES)[number]
 
 /**
- * **წერილის წაშლა (Tasks §4.6).**
+ * **წერილის წაშლა.**
  *
  * ⚠️ **`scope` სავალდებულოა** — არჩევანი მომხმარებელს ეკითხება; „ვივარაუდოთ
- * ორივესთან" სწორედ ის ძველი ქცევაა, რომელიც ამ თასქმა შეცვალა.
+ * ორივესთან" სწორედ ის ძველი ქცევაა, რომელიც შეიცვალა.
  *
  * ⚠️ **რიგი ბაზაში რჩება** (აღდგენისთვის), ე.ი. ეს დამალვაა და არა `delete`.
  * `both` მხოლოდ ავტორს შეუძლია — სხვაგვარად backend 403-ს აბრუნებს.
@@ -290,7 +290,7 @@ export async function deleteMessage(messageId: number, scope: RemovalScope): Pro
   await api.delete(`/chat/messages/${messageId}`, { data: { scope } })
 }
 
-/* ---------- „მიწერე ადმინს" (Tasks §34.5) ---------- */
+/* ---------- „მიწერე ადმინს" ---------- */
 
 export interface ChatAdmin {
   username: string
@@ -321,7 +321,7 @@ export async function setBlocked(username: string, blocked: boolean): Promise<bo
   return data.blocked as boolean
 }
 
-/* ---------- ჩანაწერის გაზიარება (FEAT-13) ---------- */
+/* ---------- ჩანაწერის გაზიარება ---------- */
 
 /**
  * ჩანაწერის გაგზავნა ბარათად.

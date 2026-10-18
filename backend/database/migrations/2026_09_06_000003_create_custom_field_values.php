@@ -6,7 +6,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **Tasks §6, ფაზა 3 — მორგებული ველების მნიშვნელობები** (`DECISIONS.md` §2).
+ * **მორგებული ველების მნიშვნელობები**.
  *
  * user-ის პასუხი: **(ა) ცალკე ცხრილი `<module>_field_values`**, და არა JSON
  * სვეტი ჩანაწერზე — რომ ფილტრაცია/დახარისხება SQL-ში დარჩეს. ეს 2026-09-03-ის

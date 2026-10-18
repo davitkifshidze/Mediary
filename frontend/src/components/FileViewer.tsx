@@ -19,7 +19,7 @@ import { formatBytes } from '@/lib/utils'
    ატვირთვისას ჩაიწერა. გაფართოება მხოლოდ სათადარიგო გზაა.
 
    ⚠️ **პრივატული დისკი blob-ად იკითხება** (`usePrivateFileUrl`) — `/storage/*`
-   მას ვერ ხედავს (§17.5), ე.ი. `<iframe src="/storage/…">` ცარიელი გამოვიდოდა.
+   მას ვერ ხედავს, ე.ი. `<iframe src="/storage/…">` ცარიელი გამოვიდოდა.
    ერთი და იგივე კომპონენტი ორივე დისკს ემსახურება: `private` დროშა
    **backend-ის სათქმელია** და არა ფრონტის გამოსაცნობი.
 
@@ -35,7 +35,7 @@ export interface ViewableFile {
   name?: string | null
   mime?: string | null
   size?: number | null
-  /** ⚠️ პრივატულ დისკზეა თუ არა — backend-ის სათქმელი (§17.5) */
+  /** ⚠️ პრივატულ დისკზეა თუ არა — backend-ის სათქმელი */
   private?: boolean
 }
 
@@ -191,7 +191,7 @@ export interface FileRow {
  * ⚠️ **`node`-ს გამომძახებელი ხატავს** — hook-ს პორტალის დახატვა არ შეუძლია,
  * და სწორედ ეს არის `GroupsCut`-ის წესი: state და JSX ერთ კომპონენტში.
  * ⚠️ `resolve` საჯარო დისკისთვისაა (`storageUrl`), `private` კი პრივატულისთვის —
- * ორივე **გამომძახებლის სათქმელია**, თორემ ფრონტი დისკს გამოიცნობდა (§17.5).
+ * ორივე **გამომძახებლის სათქმელია**, თორემ ფრონტი დისკს გამოიცნობდა.
  */
 export function useFileViewer(opts: {
   private?: boolean

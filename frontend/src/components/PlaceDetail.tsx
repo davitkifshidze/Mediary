@@ -34,9 +34,9 @@ import { useContentLang } from '@/lib/settings'
 import { PlaceRoutes } from '@/components/PlaceRoutes'
 
 /**
- * **ადგილის ბარათი (FEAT-26).**
+ * **ადგილის ბარათი.**
  *
- * ⚠️ **რუკა და მარშრუტები `PlaceRoutes`-შია** (Tasks §30): Leaflet ლეიზი
+ * ⚠️ **რუკა და მარშრუტები `PlaceRoutes`-შია**: Leaflet ლეიზი
  * ჩანკია და მხოლოდ აქ იტვირთება; ნავიგაცია ჩემი მიმდინარე მდებარეობიდან
  * OSRM-ით, ალტერნატივებით და შენახვით; ღრმა ბმული Google Maps-ზე/OSM-ზე
  * ყოველთვის რჩება. 2026-09-21-ის „მოგვიანებით" სწორედ ეს იყო.
@@ -52,12 +52,12 @@ const KIND_ICON: Record<PlaceFileKind, typeof MapPin> = {
 
 export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => void }) {
   const { t, i18n } = useTranslation()
-  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  // გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen('place', place.id)
   const lang = useContentLang(i18n.language)
   const { date: formatDate } = useDateFormat()
   const qc = useQueryClient()
-  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
+  // რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
   const favorite = useMutation({
     mutationFn: () => togglePlaceFavorite(place.id),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['places'] }),
@@ -101,7 +101,7 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
     const rows = files.filter((f) => f.kind === kind)
     const Icon = KIND_ICON[kind]
 
-    /* Tasks §29.2 — ხელნაწერი `<section>` → საერთო `DetailSection` + `EmptyState` */
+    /* ხელნაწერი `<section>` → საერთო `DetailSection` + `EmptyState` */
     return (
       <DetailSection
         key={kind}
@@ -172,7 +172,7 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
   return (
     <ModalShell title={place.name} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
-        {/* ---------- თავი: ფოტო, სტატუსი, ქულა, მისამართი (§26.4) ---------- */}
+        {/* ---------- თავი: ფოტო, სტატუსი, ქულა, მისამართი ---------- */}
         <DetailHero
           image={storageUrl(place.photo)}
           alt={place.name}
@@ -181,9 +181,9 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
           badges={
             <>
               <EnumStatusBadge domain="place" status={place.status} size="row" />
-              {/* Tasks §9 — ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
+              {/* ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
               <RatingStars value={place.rating} />
-              {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+              {/* ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={place.visibility} />
               <FavoriteButton active={place.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
@@ -205,7 +205,7 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
               </span>
             )}
             {place.visited_at && <span>{t('places.visitedOn', { date: formatDate(place.visited_at) })}</span>}
-            {/* Tasks §57.1 — წყაროდან: ტელეფონი, ვებგვერდი, წყაროს რეიტინგი (შენი ქულა ზემოთაა) */}
+            {/* წყაროდან: ტელეფონი, ვებგვერდი, წყაროს რეიტინგი (შენი ქულა ზემოთაა) */}
             {place.phone && (
               <a href={`tel:${place.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1.5 hover:text-foreground">
                 <Phone className="size-4 shrink-0" />
@@ -232,7 +232,7 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
           </DetailFacts>
         </DetailHero>
 
-        {/* ---------- ფოტოები — ზემოთ და დიდად (§26.4) ---------- */}
+        {/* ---------- ფოტოები — ზემოთ და დიდად ---------- */}
         <DetailPhotos
           title={t('places.fileKinds.image')}
           hint={t('places.photosHint')}
@@ -250,7 +250,7 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
           <Markdown text={place.description} className="text-sm text-muted-foreground" />
         )}
 
-        {/* Tasks §57.1 — სამუშაო საათები (წყაროს ენით, თითო ხაზზე) */}
+        {/* სამუშაო საათები (წყაროს ენით, თითო ხაზზე) */}
         {(place.opening_hours ?? []).length > 0 && (
           <DetailSection title={t('places.hoursTitle')} icon={<Clock className="size-4 text-muted-foreground" />}>
             <ul className="space-y-0.5 text-sm text-muted-foreground" data-testid="place-hours">
@@ -261,11 +261,11 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
           </DetailSection>
         )}
 
-        {/* Tasks §30 — რუკა მარკერით, მარშრუტი ჩემი მდებარეობიდან, შენახული მარშრუტები;
+        {/* რუკა მარკერით, მარშრუტი ჩემი მდებარეობიდან, შენახული მარშრუტები;
             ღრმა ბმულები (Google Maps · OSM) სექციის სათაურშია */}
         <PlaceRoutes place={place} />
 
-        {/* დოკუმენტები — ფოტოები ზემოთაა (§26.4) */}
+        {/* დოკუმენტები — ფოტოები ზემოთაა */}
         {filesQ.isLoading ? (
           <p className="text-sm text-muted-foreground">{t('api.loading')}</p>
         ) : (

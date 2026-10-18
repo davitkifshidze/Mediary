@@ -24,9 +24,9 @@ use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
- * **მსახიობების მონაცემების მასობრივი სინქრონიზაცია** (Tasks §39).
+ * **მსახიობების მონაცემების მასობრივი სინქრონიზაცია**.
  *
- * ⚠️ **`Http::fake()` ერთხელ და ერთი stub-ით** — FEAT-10-ის გაკვეთილი:
+ * ⚠️ **`Http::fake()` ერთხელ და ერთი stub-ით**:
  * fake **ამატებს** stub-ებს და პირველი დამთხვეული იმარჯვებს, ე.ი. მეორე
  * `Http::fake()` ჩუმად არაფერს ცვლიდა. პასუხი `$this->people`-დან მოდის და
  * ტესტი მხოლოდ ამ მასივს ცვლის.
@@ -58,7 +58,7 @@ class CastSyncTest extends TestCase
         $this->alice = $this->makeUser('alice', ['movie', 'series']);
         $this->bob = $this->makeUser('bob', ['movie']);
 
-        // Tasks §30 — გასაღები ანგარიშისაა: ორივეს თავისი
+        // გასაღები ანგარიშისაა: ორივეს თავისი
         $this->giveCredential($this->alice, 'tmdb');
         $this->giveCredential($this->bob, 'tmdb');
 
@@ -145,7 +145,7 @@ class CastSyncTest extends TestCase
         return collect($res->json('items'))->pluck('id')->sort()->values()->all();
     }
 
-    /* ================= ფარგლები და გეგმა (§39.1) ================= */
+    /* ================= ფარგლები და გეგმა ================= */
 
     public function test_the_default_scope_is_the_actors_that_were_never_synced(): void
     {
@@ -180,7 +180,7 @@ class CastSyncTest extends TestCase
     }
 
     /**
-     * ⚠️ **სხვისი ჩანაწერის მსახიობი ჩემს ფარგლებში ვერ ხვდება** (§39.7) —
+     * ⚠️ **სხვისი ჩანაწერის მსახიობი ჩემს ფარგლებში ვერ ხვდება** —
      * `cast_members` გლობალურია, ე.ი. უფილტრო სია სხვის ბიბლიოთეკასაც
      * გამოაჩენდა; კონკრეტული id-ითაც კი.
      */
@@ -228,7 +228,7 @@ class CastSyncTest extends TestCase
         $this->plan($nobody)->assertStatus(403)->assertJsonPath('message', 'module_disabled');
     }
 
-    /* ================= ერთი ნაბიჯი (§39.2, §39.4) ================= */
+    /* ================= ერთი ნაბიჯი ================= */
 
     public function test_a_step_fills_the_chosen_fields_and_stamps_the_actor(): void
     {
@@ -253,7 +253,7 @@ class CastSyncTest extends TestCase
         $this->assertNotNull($actor->details_synced_at);
     }
 
-    /** ⚠️ ცარიელი პასუხი არსებულს არ შლის — ლექსიკონი ყველა ანგარიშისაა (§39.4) */
+    /** ⚠️ ცარიელი პასუხი არსებულს არ შლის — ლექსიკონი ყველა ანგარიშისაა */
     public function test_an_empty_answer_never_clears_an_existing_value(): void
     {
         $actor = $this->actor(11, 'One', ['biography' => 'Old bio', 'place_of_birth' => 'Kutaisi']);
@@ -284,7 +284,7 @@ class CastSyncTest extends TestCase
     }
 
     /**
-     * ⚠️ **მეორე გაშვებაზე „ვისაც ჯერ არ განახლებია" ცარიელია** (§39.7) —
+     * ⚠️ **მეორე გაშვებაზე „ვისაც ჯერ არ განახლებია" ცარიელია** —
      * თორემ რიგი იმავე მსახიობებს უსასრულოდ ჩაყრიდა. 404-იც ითვლება:
      * „ვკითხეთ და TMDB-მ არ იცის".
      */
@@ -373,7 +373,7 @@ class CastSyncTest extends TestCase
             ->assertStatus(422);
     }
 
-    /* ================= ჟურნალი (§39.6) ================= */
+    /* ================= ჟურნალი ================= */
 
     /**
      * ⚠️ **ერთი რიგი გაშვებაზე** — 300 მსახიობი ჟურნალში 300 `update`-ად
@@ -428,7 +428,7 @@ class CastSyncTest extends TestCase
         $this->assertNull($actor->refresh()->photo_path, 'ღილაკი ფოტოს არასდროს ეხებოდა');
     }
 
-    /** §39.5 — ორივე გზა TMDB-ის საერთო ბიუჯეტზე დგას */
+    /** ორივე გზა TMDB-ის საერთო ბიუჯეტზე დგას */
     public function test_both_person_routes_are_throttled(): void
     {
         foreach (['api/cast/sync/{castMember}', 'api/cast/{castMember}/resync'] as $uri) {
@@ -440,7 +440,7 @@ class CastSyncTest extends TestCase
         }
     }
 
-    /* ================= სერვერზე გადაცემა (§39.3) ================= */
+    /* ================= სერვერზე გადაცემა ================= */
 
     public function test_a_cast_batch_is_accepted_with_actor_items_only(): void
     {

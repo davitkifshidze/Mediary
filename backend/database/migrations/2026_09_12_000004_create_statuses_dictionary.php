@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **Tasks §6.2/§6.4 — სტატუსი per-user ლექსიკონად.**
+ * **სტატუსი per-user ლექსიკონად.**
  *
  * ექვს დომენზე `status` enum ქრება და მის ადგილს `status_id` იკავებს
  * (`statuses` ცხრილი, `module` სვეტით ჭრილი). არჩევანი „სრული ლექსიკონია"

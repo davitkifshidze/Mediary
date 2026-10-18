@@ -49,11 +49,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
-/** Tasks §49.3 — მედიის წელს გვერდი თავის ფილტრის პანელში კითხულობს (`year_min`/`year_max`) */
+/** მედიის წელს გვერდი თავის ფილტრის პანელში კითხულობს (`year_min`/`year_max`) */
 const MEDIA_DRILL_EXCEPT = ['year_min', 'year_max']
 
 /* ============================================================
-   ბიბლიოთეკა — ბადე + მარჯვენა ფილტრების პანელი (Tasks 2.1/2.2).
+   ბიბლიოთეკა — ბადე + მარჯვენა ფილტრების პანელი.
 
    ჟანრების ჩიპები (`GenreChips`) მოიხსნა: ჟანრი, სტატუსი, წელი და
    რეიტინგი ერთ პანელშია და **„გაფილტვრაზე"** მოქმედებს. ტულბარში
@@ -72,7 +72,7 @@ const EMPTY_RANGES: Ranges = { yearMin: '', yearMax: '', ratingMin: '', ratingMa
 
 /**
  * პანელის მონახაზი — ჯერ გაუშვებელი მონიშვნები.
- * სტატუსი **აქ არ არის** (Tasks 3): ის სექციიდან/`?view=`-იდან მოდის და
+ * სტატუსი **აქ არ არის**: ის სექციიდან/`?view=`-იდან მოდის და
  * პანელში დუბლი იყო.
  */
 interface Draft {
@@ -85,22 +85,22 @@ const EMPTY_DRAFT: Draft = { genres: [], ranges: EMPTY_RANGES }
 export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
-  // §6.4 — სექციის სახელისთვის
+  // სექციის სახელისთვის
   const { data: statuses = [] } = useStatuses(type)
   const { settings } = useSettings()
-  // Tasks §45 — ხედი თითო დომენზე (ფილმი/სერიალი/ანიმე); ნაგულისხმევი — ახლანდელი ბარათები
+  // ხედი თითო დომენზე (ფილმი/სერიალი/ანიმე); ნაგულისხმევი — ახლანდელი ბარათები
   const [layout, setLayout] = useRecordLayout(type, 'cards')
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const api = mediaApi(type)
   const { libraryPath, detailBase } = mediaOf(type)
-  // `?view=`-ის გარეშე — ნაგულისხმევი სექცია პარამეტრებიდან (E4)
+  // `?view=`-ის გარეშე — ნაგულისხმევი სექცია პარამეტრებიდან
   const view = params.get('view') ?? settings.defaultView
-  // ჟანრი URL-იდანაც მოდის (ჩანაწერის გვერდზე ჟანრზე დაჭერა — Tasks K9)
+  // ჟანრი URL-იდანაც მოდის (ჩანაწერის გვერდზე ჟანრზე დაჭერა)
   const genreParam = params.get('genre')
 
   const [q, setQ] = useState('')
-  // ნაგულისხმევი სორტირება პარამეტრებიდან (E4) — შემდეგ ხელით იცვლება
+  // ნაგულისხმევი სორტირება პარამეტრებიდან — შემდეგ ხელით იცვლება
   const [sortField, setSortField] = useState<SortField>(settings.defaultSortField)
   const [sortDir, setSortDir] = useState<SortDir>(settings.defaultSortDir)
   // ხელით შეცვლამდე ვყვებით პარამეტრს: `settings` backend-იდან პირველი
@@ -111,9 +111,9 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     setSortField(settings.defaultSortField)
     setSortDir(settings.defaultSortDir)
   }, [settings.defaultSortField, settings.defaultSortDir, sortTouched])
-  // ფრანჩაიზის დაჯგუფება — მხოლოდ ფილმებს აქვს კოლექცია (Tasks D1)
+  // ფრანჩაიზის დაჯგუფება — მხოლოდ ფილმებს აქვს კოლექცია
   const [grouped, setGrouped] = useState(true)
-  // ბადის სექციები (18) — სორტირების იმავე ლოგიკით: ხელით შეცვლამდე
+  // ბადის სექციები — სორტირების იმავე ლოგიკით: ხელით შეცვლამდე
   // პარამეტრს ვყვებით, რადგან `settings` პირველი რენდერის შემდეგ მოდის
   const [groupBy, setGroupBy] = useState<GroupBy>(settings.defaultGrouping)
   const [groupTouched, setGroupTouched] = useState(false)
@@ -122,9 +122,9 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     setGroupBy(settings.defaultGrouping)
   }, [settings.defaultGrouping, groupTouched])
   const [discoverOpen, setDiscoverOpen] = useState(false)
-  /** FEAT-20 — „რა ვნახო დღეს" */
+  /** „რა ვნახო დღეს" */
   const [pickOpen, setPickOpen] = useState(false)
-  /** Tasks §40.4 — „ეს სია გაუზიარე" (გაზიარების ბმული მიმდინარე ფილტრით) */
+  /** „ეს სია გაუზიარე" (გაზიარების ბმული მიმდინარე ფილტრით) */
   const [panelOpen, setPanelOpen] = useState(false)
 
   /* ---------- ფილტრები: მოქმედი (URL) + მონახაზი (state) ---------- */
@@ -161,7 +161,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   }
 
   // მონახაზი, „ცვლილებაა?" და მრიცხველი — ერთი აღწერა რვავე გვერდისთვის.
-  // სტატუსი მრიცხველში არ ითვლება: ის სექციაა და არა ფილტრი (Tasks 3).
+  // სტატუსი მრიცხველში არ ითვლება: ის სექციაა და არა ფილტრი.
   const applied = useMemo<Draft>(() => ({ genres, ranges }), [genres, ranges])
   const { draft, setDraft, dirty, apply, clear: clearFilters, activeCount } = useFilterDraft<Draft>(
     applied,
@@ -189,23 +189,23 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   const drill = useDrillParams(MEDIA_DRILL_EXCEPT)
   const filters: MediaFilters = {
     q: q || undefined,
-    // მრავალი ჟანრი — backend მძიმით გამოყოფილ სიას იღებს (2.2)
+    // მრავალი ჟანრი — backend მძიმით გამოყოფილ სიას იღებს
     genre: genres.length ? genres.join(',') : undefined,
     sort: sortValue === 'added' ? undefined : sortValue,
     status: view !== 'all' && view !== 'favorite' && view !== 'locked' ? view : undefined,
     favorite: view === 'favorite' ? true : undefined,
-    // Tasks §35.5 — „ჩაკეტილები": დამალული ბოქლომიანი ბარათით, გახსნილი — ჩვეულებრივად
+    // „ჩაკეტილები": დამალული ბოქლომიანი ბარათით, გახსნილი — ჩვეულებრივად
     locked: view === 'locked' ? true : undefined,
     year_min: num(ranges.yearMin),
     year_max: num(ranges.yearMax),
     rating_min: num(ranges.ratingMin),
     rating_max: num(ranges.ratingMax),
     group: type === 'movie' ? grouped : undefined,
-    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
   }
 
-  /* Tasks §46 — გვერდზე 10 (ადრე `libraryPageSize`, ახლა ფიქსირებული): ნომრები + „მეტის ჩვენება";
+  /* გვერდზე 10 (ადრე `libraryPageSize`, ახლა ფიქსირებული): ნომრები + „მეტის ჩვენება";
      მიმდინარე გვერდი `?page=`-შია. ⚠️ ფრანჩაიზის კლასტერი სერვერზე იკვრება (`group=`), ე.ი. გვერდი
      მას არ წყვეტს; სექციებად დაჯგუფება ნაჩვენებ ჩანაწერებზე ითვლება. */
   const moviesQ = usePagedList({
@@ -224,7 +224,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   }, [genresQ.data, lang])
 
   const allTitle = t(mediaKey('library.title', type))
-  /* §6.4 — სექციის სახელი ლექსიკონიდან: სტატუსი per-user-ია და გადაერქმევა,
+  /* სექციის სახელი ლექსიკონიდან: სტატუსი per-user-ია და გადაერქმევა,
      ე.ი. თარგმანის ფიქსირებული გასაღები გადარქმეულს ძველი სახელით დახატავდა. */
   const heading =
     view === 'all'
@@ -244,7 +244,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
         subtitle={countLabel}
         actions={
           <>
-            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             <div className="relative min-w-0 flex-1 sm:flex-none">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -290,7 +290,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
                 )}
               </Button>
             </div>
-            {/* ბადის სექციები (18) — ჟანრი/წელი/სტატუსი. ფრანჩაიზის ტოგლისგან
+            {/* ბადის სექციები — ჟანრი/წელი/სტატუსი. ფრანჩაიზის ტოგლისგან
                 დამოუკიდებელია და ორივე ერთდროულადაც მუშაობს. */}
             <Select
               value={groupBy}
@@ -311,7 +311,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
               </SelectContent>
             </Select>
             {/* ფრანჩაიზის დაჯგუფების ტოგლი — სერიალებს კოლექცია არ აქვს.
-                Tasks 4 — მინიშნება hover-ზე **ორივე** მდგომარეობაში ჩანს
+                მინიშნება hover-ზე **ორივე** მდგომარეობაში ჩანს
                 (`TooltipProvider delayDuration={0}` — მაშინვე, ლოდინის გარეშე). */}
             {type === 'movie' && (
               <Tooltip>
@@ -345,7 +345,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
         }
       />
 
-      {/* რას ნიშნავს მიმდინარე დაჯგუფება (Tasks D1/4) — ტექსტი ორივე
+      {/* რას ნიშნავს მიმდინარე დაჯგუფება — ტექსტი ორივე
           მდგომარეობაზე დგას, თორემ „ჩართული" მდგომარეობა აუხსნელი რჩებოდა */}
       {type === 'movie' && (
         <p className="mb-5 flex items-start gap-2 rounded-xl border border-dashed border-border bg-card/40 px-4 py-2.5 text-sm text-muted-foreground">
@@ -364,7 +364,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
               <Pagination {...moviesQ.pagination} />
             </>
           ) : (
-            /* ⚠️ §2.4 — საერთო ბლოკი: ცალკე ითქვას „ფილტრმა ჩამოჭრა" და
+            /* ⚠️ საერთო ბლოკი: ცალკე ითქვას „ფილტრმა ჩამოჭრა" და
                „ჯერ არაფერი გაქვს", თორემ ორივე ერთნაირად ცარიელი იყო. */
             <EmptyState
               title={t(mediaKey('library.empty', type))}
@@ -394,7 +394,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
-          {/* სტატუსის ჯგუფი აქ განზრახ არ არის (Tasks 3) — სექცია საიდბარშია */}
+          {/* სტატუსის ჯგუფი აქ განზრახ არ არის — სექცია საიდბარშია */}
           <FilterGroup title={t('filter.genres')} count={draft.genres.length}>
             <FilterOptionList>
               {genreList.map((g) => (
@@ -409,7 +409,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
             </FilterOptionList>
           </FilterGroup>
 
-          {/* ⚠️ §1.4 — დიაპაზონები **გაშლილია** (ჯგუფის ნაგულისხმევი მდგომარეობა):
+          {/* ⚠️ დიაპაზონები **გაშლილია** (ჯგუფის ნაგულისხმევი მდგომარეობა):
               შეკეცილი ჯგუფი მალავდა იმას, რომ წელი და ქულა საერთოდ იფილტრება.
               შეკეცვა შესაძლებელი რჩება, უბრალოდ ხელით. */}
           <FilterGroup title={t('filter.ranges')} count={filterCount(draft.ranges)}>
@@ -442,7 +442,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
         </FilterPanel>
       </div>
 
-      {/* FEAT-20 → Tasks §17 — „რა ვნახო დღეს": მოტივტივე კამათელი მარჯვენა ქვედა
+      {/* „რა ვნახო დღეს": მოტივტივე კამათელი მარჯვენა ქვედა
           კუთხეში (სათაურის ზოლიდან აქ გადმოვიდა); არჩევანი სერვერზე ხდება, იმავე
           ფილტრით, რაც სიას აქვს — სტატუსს კი დიალოგის ჩიპები წყვეტენ. */}
       <FloatingPick module={type} onOpen={() => setPickOpen(true)} />

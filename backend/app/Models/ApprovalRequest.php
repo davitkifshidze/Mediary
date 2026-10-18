@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * ადმინთან გასაგზავნი მოთხოვნა — მოდულის ჩართვა, გლობალური ჟანრის წაშლა,
- * საცავის ლიმიტის გაზრდა (17.4) ან ატვირთვის ლიმიტი (§34.5).
+ * საცავის ლიმიტის გაზრდა ან ატვირთვის ლიმიტი.
  *
  * ტიპების ნაკრები **აქ ცხოვრობს** და არა ბაზის enum-ში: ახალი ტიპი =
  * ერთი კონსტანტა + ერთი handler `AdminRequestController::approve()`-ში.
@@ -19,11 +19,11 @@ class ApprovalRequest extends Model
 
     public const TYPE_GENRE_DELETE = 'genre_delete';
 
-    /** 17.4 — `payload.requested_bytes` = **სასურველი სრული ლიმიტი** და არა მატება */
+    /** `payload.requested_bytes` = **სასურველი სრული ლიმიტი** და არა მატება */
     public const TYPE_STORAGE = 'storage_increase';
 
     /**
-     * Tasks §34.5 — ატვირთვის ლიმიტის მოთხოვნა: `payload` = `kind`, `formats`
+     * ატვირთვის ლიმიტის მოთხოვნა: `payload` = `kind`, `formats`
      * (**მხოლოდ ახალი** — ის, რაც მოთხოვნის მომენტში არ ჰქონდა), `max_kb`
      * (`null` = ზომა არ იცვლება) და მომენტის კონტექსტი (`current_*`).
      * დამტკიცებისას ადმინი ირჩევს, ვისზე ვრცელდება — `granted_scope`

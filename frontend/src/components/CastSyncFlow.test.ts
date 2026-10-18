@@ -8,7 +8,7 @@ import type { CastSyncFilters, CastSyncPlan, CastSyncPlanItem } from '@/api/medi
 import i18n from '@/i18n'
 
 /* ============================================================
-   **მსახიობების ნაკადის გაშვება** (Tasks §39).
+   **მსახიობების ნაკადის გაშვება**.
 
    ⚠️ **რიგი გაშვების პასუხიდან ივსება და არა ეკრანზე მდგარი გეგმიდან**:
    სერვერი `start: true`-ზე ჟურნალში ზუსტად იმ რიცხვს წერს, რაც რიგში
@@ -101,7 +101,7 @@ async function mount(onClose = vi.fn()) {
 
   await act(async () => {
     root!.render(
-      // ⚠️ Router — „გასაღები არ გაქვს"-ის შეტყობინებაში „მონაცემების" ბმულია (§30.6)
+      // ⚠️ Router — „გასაღები არ გაქვს"-ის შეტყობინებაში „მონაცემების" ბმულია
       h(
         MemoryRouter,
         null,
@@ -164,7 +164,7 @@ describe('CastSyncFlow', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  /** Tasks §30.6 — „შენი TMDB-ის გასაღები არ გაქვს" + ბმული „მონაცემებზე" */
+  /** „შენი TMDB-ის გასაღები არ გაქვს" + ბმული „მონაცემებზე" */
   it('keeps the run button off and points to Credentials without a TMDB key', async () => {
     mocks.fetchCastSyncPlan.mockResolvedValue({ ...plan([actor(1, 'Anna')]), tmdb: false })
 

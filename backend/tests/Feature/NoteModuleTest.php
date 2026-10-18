@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * ჩანაწერების მოდული (`note`, Tasks §13).
+ * ჩანაწერების მოდული (`note`).
  *
  * ამოწმებს იმას, რაც აქ ადვილად ტყდება: მოდულის gate, per-user ლექსიკონი,
  * ატვირთვის კვოტა, **შეხსენების დროის გამოთვლა სარტყელთან ერთად** და ის, რომ
@@ -29,7 +29,7 @@ use Tests\TestCase;
  */
 class NoteModuleTest extends TestCase
 {
-    /* ⚠️ **„ახლა" ცხადად UTC-შია მოცემული** (Tasks §8). აპლიკაციის ზონა
+    /* ⚠️ **„ახლა" ცხადად UTC-შია მოცემული**. აპლიკაციის ზონა
        `Asia/Tbilisi` გახდა, ე.ი. ბარე `Carbon::setTestNow('2026-09-04 12:00:00')`
        თბილისის 12:00-ს ნიშნავდა და ყველა UTC-ზე დაწერილი მოლოდინი 4 საათით
        აცდებოდა. ტესტები თავიდანვე UTC მომენტებზე იწერებოდა — ახლა ეს
@@ -82,7 +82,7 @@ class NoteModuleTest extends TestCase
             ->json('data.id');
     }
 
-    /** მოდულის gate + §13.1-ის ველების ნაკრები */
+    /** მოდულის gate + ველების ნაკრები */
     public function test_module_gate_and_field_set(): void
     {
         $outsider = $this->makeUser('nomodule', []);
@@ -110,7 +110,7 @@ class NoteModuleTest extends TestCase
             ->assertJsonCount(2, 'data.tags')
             ->assertJsonCount(2, 'data.links')
             ->assertJsonPath('data.status.key', 'open')
-            // ⚠️ §13 — პირადი დოკუმენტების მოდული: default ყოველთვის `private`
+            // ⚠️ პირადი დოკუმენტების მოდული: default ყოველთვის `private`
             ->assertJsonPath('data.visibility', 'private');
     }
 
@@ -146,10 +146,10 @@ class NoteModuleTest extends TestCase
         $this->actingAs($other)->getJson("/api/notes/{$noteId}")->assertStatus(404);
     }
 
-    /** ატვირთვა კვოტაზე გადის და წაშლა მას ათავისუფლებს (§13.1 → 17.1) */
+    /** ატვირთვა კვოტაზე გადის და წაშლა მას ათავისუფლებს */
     public function test_uploads_are_metered_and_released(): void
     {
-        // §17.5 — ჩანაწერების ფაილები **პრივატულ დისკზეა**
+        // ჩანაწერების ფაილები **პრივატულ დისკზეა**
         Storage::fake('private');
         $noteId = $this->makeNote();
 
@@ -170,7 +170,7 @@ class NoteModuleTest extends TestCase
             (int) app(StorageMeter::class)->breakdown($this->user->refresh())['note'],
         );
 
-        // Tasks §29 — წაშლა ურნაშია; ადგილი საბოლოო წაშლისას თავისუფლდება
+        // წაშლა ურნაშია; ადგილი საბოლოო წაშლისას თავისუფლდება
         $this->actingAs($this->user)->deleteJson("/api/note-files/{$fileId}")->assertNoContent();
         $this->assertSame($used, (int) $this->user->refresh()->storage_used_bytes);
 
@@ -181,7 +181,7 @@ class NoteModuleTest extends TestCase
     /** ჩანაწერის წაშლა ფაილსაც შლის — cascade მოდელის ივენთს არ აგდებს */
     public function test_deleting_note_releases_its_files(): void
     {
-        // §17.5 — ჩანაწერების ფაილები **პრივატულ დისკზეა**
+        // ჩანაწერების ფაილები **პრივატულ დისკზეა**
         Storage::fake('private');
         $noteId = $this->makeNote();
 
@@ -194,7 +194,7 @@ class NoteModuleTest extends TestCase
 
         $this->assertGreaterThan(0, (int) $this->user->refresh()->storage_used_bytes);
 
-        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+        /* ⚠️ **კალათა** — `DELETE /api/<module>/{id}` ჩანაწერს
            აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
            როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/notes/{$noteId}")->assertNoContent();
@@ -230,7 +230,7 @@ class NoteModuleTest extends TestCase
         Carbon::setTestNow();
     }
 
-    /** ინტერვალი ველია და არა ჩაშენებული კონსტანტა (§13.2) */
+    /** ინტერვალი ველია და არა ჩაშენებული კონსტანტა */
     public function test_interval_reminder_uses_the_given_minutes(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
@@ -251,7 +251,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * §5.5 — ყოველკვირეული **რამდენიმე დღეზე**: უახლოესი არჩეული დღე იგება.
+     * ყოველკვირეული **რამდენიმე დღეზე**: უახლოესი არჩეული დღე იგება.
      *
      * 2026-09-04 არის პარასკევი (`dayOfWeek` 5). ორშ(1)/ოთხ(3) არჩევანზე
      * უახლოესი ორშაბათია — 2026-09-07.
@@ -278,7 +278,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * **ეტაპი 11.2 — ყველა შეხსენება ერთ სიაში, ბმით ჩანაწერზე.**
+     * **ყველა შეხსენება ერთ სიაში, ბმით ჩანაწერზე.**
      *
      * შეხსენებებს თავისი გვერდი გაუჩნდა (`/notes/reminders`), ე.ი. სჭირდება
      * „რა მელის საერთოდ". ⚠️ თითო რიგს **ჩანაწერი თან უნდა მოჰყვებოდეს** —
@@ -321,7 +321,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * **ეტაპი 7 — ჩასწორება მეორე შეხსენებას არ ქმნის.**
+     * **ჩასწორება მეორე შეხსენებას არ ქმნის.**
      *
      * ⚠️ ზუსტად ის შემთხვევა, რომელიც აღიწერა: შეხსენებას ამატებ, მერე
      * ჩასწორება ვერსად ჩანს და კვლავ „დამატებას" აჭერ — ე.ი. ორი შეხსენება
@@ -365,7 +365,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * §5.5 რეგრესია — „აქტიურობის" გადამრთველი ყველა ველს უკან აგზავნის,
+     * რეგრესია — „აქტიურობის" გადამრთველი ყველა ველს უკან აგზავნის,
      * მათ შორის **ცარიელ `weekdays`-ს**. არაკვირეულ შეხსენებაზე ეს 422-ს
      * არ უნდა იძლეოდეს, კვირეულზე კი ცარიელი დღეები დაუშვებელია.
      */
@@ -404,7 +404,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * §5.5 — ყოველთვიური. ⚠️ **31 თებერვალში თვის ბოლო დღეა** და არა
+     * ყოველთვიური. ⚠️ **31 თებერვალში თვის ბოლო დღეა** და არა
      * მარტის 3: Carbon-ის ნაგულისხმევი გადავსება ჩუმად სხვა თვეს აირჩევდა.
      */
     public function test_monthly_reminder_clamps_the_day_to_the_month_length(): void
@@ -429,7 +429,7 @@ class NoteModuleTest extends TestCase
         Carbon::setTestNow();
     }
 
-    /** §5.5 — ყოველწლიური: თვე + რიცხვი, გასული თარიღი მომავალ წელს ჯდება */
+    /** ყოველწლიური: თვე + რიცხვი, გასული თარიღი მომავალ წელს ჯდება */
     public function test_yearly_reminder_moves_to_the_next_year_when_past(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
@@ -453,7 +453,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * **ეტაპი 7 — დღეში რამდენიმე დრო.** „ყოველ დღე 08:00-ზე და 20:00-ზე"
+     * **დღეში რამდენიმე დრო.** „ყოველ დღე 08:00-ზე და 20:00-ზე"
      * ერთი შეხსენებაა და უახლოეს დროს ირჩევს, არა პირველ ჩაწერილს.
      */
     public function test_daily_reminder_takes_the_nearest_of_several_times(): void
@@ -484,7 +484,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * **ეტაპი 7 — თვეში რამდენიმე რიცხვი.** „1-ში, 15-ში და 25-ში" ერთი
+     * **თვეში რამდენიმე რიცხვი.** „1-ში, 15-ში და 25-ში" ერთი
      * შეხსენებაა; 20-ში ვდგავართ, ე.ი. უახლოესი ამ თვის 25-ია.
      */
     public function test_monthly_reminder_takes_the_nearest_of_several_days(): void
@@ -509,7 +509,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * **ეტაპი 7 — მოქმედების ფანჯარა: დასაწყისი.** „ამ დიაპაზონში" ნიშნავს,
+     * **მოქმედების ფანჯარა: დასაწყისი.** „ამ დიაპაზონში" ნიშნავს,
      * რომ გახსნამდე არაფერი ისვრის — პირველი გასროლა ფანჯრის შიგნით ჯდება.
      *
      * ⚠️ ინტერვალზე **გახსნის მომენტი თვითონაა** პირველი გასროლა: „ოქტომბრის
@@ -548,7 +548,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * **ეტაპი 7 — მოქმედების ფანჯარა: დასასრული.** ბოლო გასროლის შემდეგ
+     * **მოქმედების ფანჯარა: დასასრული.** ბოლო გასროლის შემდეგ
      * შეხსენება **ითიშება**, და არა რჩება „აქტიურად" ცარიელი `next_at`-ით:
      * „აღარ ისვრის" და „აღარაა აქტიური" ერთი და იგივე ფაქტია
      * (`NoteReminder::nextStateAfterSending()`).
@@ -611,7 +611,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * §5.5 — **ჯერადობა**: მითითებული რაოდენობის შემდეგ პერიოდულიც ითიშება.
+     * **ჯერადობა**: მითითებული რაოდენობის შემდეგ პერიოდულიც ითიშება.
      *
      * ⚠️ ეს ერთადერთ ადგილას წყდება (`NoteReminder::exhaustedAfter()`), თორემ
      * „ბოლო გასროლა" ორ ფორმულას ექნებოდა.
@@ -700,7 +700,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * **ერთსა და იმავე რიგს ორი გამომძახებელი ვერ იჭერს** (Tasks DEBT-05).
+     * **ერთსა და იმავე რიგს ორი გამომძახებელი ვერ იჭერს**.
      *
      * ⚠️ ზემოთა ტესტი ამას **ვერ ამოწმებს**: იქ რეჟიმი `once`-ია, ე.ი. პირველი
      * გასროლის შემდეგ `is_active` false ხდება და მეორე გაშვებას `next_at`-ის
@@ -771,7 +771,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * **scheduler-ის mutex-ს ვადა აქვს** (Tasks BUG-09).
+     * **scheduler-ის mutex-ს ვადა აქვს**.
      *
      * `withoutOverlapping()` ნაგულისხმევად **1440 წუთია** (24 საათი) და
      * mutex მხოლოდ ნორმალურ დასრულებაზე თავისუფლდება: Ctrl-C, მანქანის
@@ -791,7 +791,7 @@ class NoteModuleTest extends TestCase
         $this->assertLessThan(1440, $event->expiresAt, 'mutex-ის ვადა ცხადად უნდა ეწეროს');
     }
 
-    /** მასობრივი წაშლა (Tasks 20) ჩანაწერებსაც ფარავს */
+    /** მასობრივი წაშლა ჩანაწერებსაც ფარავს */
     public function test_purge_covers_notes(): void
     {
         $admin = $this->makeUser('boss', ['note']);
@@ -828,10 +828,10 @@ class NoteModuleTest extends TestCase
         $this->assertSame(1, NoteEntry::withoutGlobalScope('owner')->count());
     }
 
-    /* ---------- §17.5 — პრივატული დისკი ---------- */
+    /* ---------- პრივატული დისკი ---------- */
 
     /**
-     * ⚠️ **§17.5-ის მთავარი წესი:** პირადი დოკუმენტი public დისკზე **არ**
+     * ⚠️ **მთავარი წესი:** პირადი დოკუმენტი public დისკზე **არ**
      * ჩაწერება. სწორედ ეს იყო პრობლემა — `/storage/*` ავტორიზაციას არ
      * ითხოვს, ე.ი. მისამართის ცოდნა საკმარისი იყო.
      */
@@ -873,7 +873,7 @@ class NoteModuleTest extends TestCase
         $this->actingAs($this->user)->get("/api/note-files/{$fileId}")->assertOk();
 
         // ⚠️ სხვისი ფაილი **404-ია და არა 403**: „არსებობს, უბრალოდ შენი არაა"
-        // თვითონაც ინფორმაციაა (იგივე წესი, რაც 16.1-ს)
+        // თვითონაც ინფორმაციაა (იგივე წესი, რაც საჯარო პროფილს აქვს)
         $other = $this->makeUser('nosy2', ['note']);
         $this->actingAs($other)->get("/api/note-files/{$fileId}")->assertStatus(404);
     }
@@ -896,7 +896,7 @@ class NoteModuleTest extends TestCase
 
         $this->actingAs($this->user)->deleteJson("/api/note-files/{$fileId}")->assertNoContent();
 
-        // ⚠️ ურნაში მყოფი ფაილის ფაილი ჩვეულებრივი მარშრუტით აღარ იხსნება (Tasks §29)
+        // ⚠️ ურნაში მყოფი ფაილის ფაილი ჩვეულებრივი მარშრუტით აღარ იხსნება
         Storage::disk('private')->assertExists($path);
         $this->actingAs($this->user)->get("/api/note-files/{$fileId}")->assertStatus(404);
 
@@ -907,7 +907,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * Tasks §8.2 — **ელფოსტის არხი აღარ არსებობს** („არ გვინდა").
+     * **ელფოსტის არხი აღარ არსებობს** („არ გვინდა").
      *
      * ⚠️ უარი 422-ია და არა ჩუმად გამოტოვება: SMTP ისედაც არ გვაქვს
      * (`MAIL_MAILER=log`), ე.ი. „მონიშნე და არაფერი მოხდეს" ყველაზე ცუდი
@@ -929,7 +929,7 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * Tasks §8.2 — გასროლილი შეხსენება **ჟურნალში რჩება და აპლიკაციაში იკითხება**.
+     * გასროლილი შეხსენება **ჟურნალში რჩება და აპლიკაციაში იკითხება**.
      *
      * ⚠️ ეს სწორედ ის ხვრელია, რომელსაც ელფოსტა ხურავდა: აპი დახურული იყო →
      * ამოხტომა ვერ ნახე. ახლა ჩანაწერი რჩება და ისტორიაშია.
@@ -971,11 +971,11 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * **ჩანაწერის ფაილიც სერვერის მიერ დადგენილი ტიპით გაიცემა** (Tasks SEC-08).
+     * **ჩანაწერის ფაილიც სერვერის მიერ დადგენილი ტიპით გაიცემა**.
      *
      * ⚠️ `show()` `Content-Type`-ად შენახულ `mime` სვეტს აბრუნებდა, `inline`-ით —
      * ის სვეტი კი `getClientMimeType()`-იდან იწერებოდა, ე.ი. ატვირთვისას
-     * ნათქვამიდან. SEC-05-ის შემდეგ **ახალი** `.html` ვეღარ აიტვირთება
+     * ნათქვამიდან. **ახალი** `.html` უკვე ვეღარ აიტვირთება
      * (`mimes:` შიგთავსს ამოწმებს), მაგრამ ძველი რიგები დისკზე დარჩნენ —
      * ამიტომ მდგომარეობა აქ პირდაპირ იწერება და არა endpoint-ით.
      *
@@ -995,7 +995,7 @@ class NoteModuleTest extends TestCase
             ->assertStatus(201)
             ->json('data.0.id');
 
-        // ძველი (SEC-05-მდე) მდგომარეობა: დისკზე HTML, სვეტში კლიენტის ნათქვამი
+        // ძველი მდგომარეობა: დისკზე HTML, სვეტში კლიენტის ნათქვამი
         $file = NoteEntryFile::withoutGlobalScope('owner')->findOrFail($fileId);
         Storage::disk('private')->put($file->path, '<html><body><script>alert(1)</script></body></html>');
         $file->forceFill(['mime' => 'text/html'])->save();

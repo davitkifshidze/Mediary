@@ -47,7 +47,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn, formatBytes } from '@/lib/utils'
 
 /* ============================================================
-   მოდულის შიდა გვერდი (Tasks 1.4) — მოდალის ჩამნაცვლებელი.
+   მოდულის შიდა გვერდი — მოდალის ჩამნაცვლებელი.
 
    ერთი გვერდი ორივესთვის:
    · მომხმარებელი — ჩართვა/გამორთვა თავისთვის ან წვდომის მოთხოვნა
@@ -66,9 +66,9 @@ export function ModulePage() {
 
   const [asking, setAsking] = useState(false)
   const [message, setMessage] = useState('')
-  // §6.4 — მფლობელების სია მოდალშია და აღარ ინლაინ
+  // მფლობელების სია მოდალშია და აღარ ინლაინ
   const [holdersOpen, setHoldersOpen] = useState(false)
-  // §37 — პირადი მოდულის სახელი/იერსახე/კლასიფიკაცია
+  // პირადი მოდულის სახელი/იერსახე/კლასიფიკაცია
   const [editingDetails, setEditingDetails] = useState(false)
 
   const { data: adminModules } = useQuery({
@@ -103,7 +103,7 @@ export function ModulePage() {
     onError: fail,
   })
 
-  // K13 — თვითონ ჩართვა/გამორთვა (უფლება რჩება, ადმინს ხელახლა არ ეკითხები)
+  // თვითონ ჩართვა/გამორთვა (უფლება რჩება, ადმინს ხელახლა არ ეკითხები)
   const toggleMine = useMutation({
     mutationFn: (enabled: boolean) => setModuleEnabled(key, enabled),
     onSuccess: (_d, enabled) => {
@@ -126,7 +126,7 @@ export function ModulePage() {
 
   const cancel = useMutation({ mutationFn: cancelRequest, onSuccess: done, onError: fail })
 
-  /* §37.7 — **მოდულის წაშლა ურნაში** (Q31): ჩვეულებრივი დადასტურება, რომელიც
+  /* **მოდულის წაშლა ურნაში**: ჩვეულებრივი დადასტურება, რომელიც
      რაოდენობას ასახელებს — წაშლა შექცევადია, აკრეფილი სიტყვა კი შეუქცევადისთვისაა.
      ⚠️ რიცხვი წაშლის წინ იკითხება (`/details`): ჩანაწერების სია ადმინის მიერ
      გამორთულ მოდულზე 403-ია და მისგან ვერ წაიკითხებოდა. */
@@ -141,7 +141,7 @@ export function ModulePage() {
     onError: fail,
   })
 
-  /* §32.2 — ურნის ვადა `i`-სთვის; წაშლისას რიცხვები მაინც ახლად იკითხება */
+  /* ურნის ვადა `i`-სთვის; წაშლისას რიცხვები მაინც ახლად იკითხება */
   const countsQ = useQuery({
     queryKey: ['custom-module-counts', key],
     queryFn: () => fetchCustomModuleCounts(key),
@@ -183,7 +183,7 @@ export function ModulePage() {
     (r) => r.type === 'module_access' && r.module?.id === module.id && r.status === 'pending',
   )
   const holders = module.users ?? []
-  /* §37 — პირადი მოდული: მფლობელი ერთია (ის ხარ შენ), ე.ი. „ვის აქვს ჩართული",
+  /* პირადი მოდული: მფლობელი ერთია (ის ხარ შენ), ე.ი. „ვის აქვს ჩართული",
      „ყველასთვის ნაგულისხმევად" და მოთხოვნები აქ უაზროა */
   const custom = isCustomModule(module)
   const enabledCount = users.filter(
@@ -230,7 +230,7 @@ export function ModulePage() {
           </p>
         </div>
 
-        {/* §37 — მფლობელის მოქმედებები */}
+        {/* მფლობელის მოქმედებები */}
         {custom && (
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {module.enabled && (
@@ -243,7 +243,7 @@ export function ModulePage() {
               <SquarePen className="size-4" />
               {t('customModules.editTitle')}
             </Button>
-            {/* Tasks §32.2 — ტექსტი ამბობს, რომ ურნაში მიდის; `i` — რამდენ დღეში აღდგება */}
+            {/* ტექსტი ამბობს, რომ ურნაში მიდის; `i` — რამდენ დღეში აღდგება */}
             <Button variant="destructive" disabled={remove.isPending} onClick={askDelete}>
               <Trash2 className="size-4" />
               {t('customModules.deleteToTrash')}
@@ -253,7 +253,7 @@ export function ModulePage() {
         )}
       </div>
 
-      {/* §37.8 — ადმინმა გამორთო: მიზეზი ცხადად, თორემ მენიუდან ჩუმად გამქრალი
+      {/* ადმინმა გამორთო: მიზეზი ცხადად, თორემ მენიუდან ჩუმად გამქრალი
           მოდული მონაცემების დაკარგვად წაიკითხებოდა */}
       {custom && module.disabled_by_admin && (
         <section className="mb-4 flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
@@ -326,9 +326,9 @@ export function ModulePage() {
         )}
       </section>
 
-      {/* ---------- ველები (Tasks §6, ფაზა 1) ---------- */}
+      {/* ---------- ველები ---------- */}
       <ModuleFields moduleKey={module.key} enabled={!!module.enabled} />
-      {/* §6 ფაზა 3 — user-ის საკუთარი ველები */}
+      {/* user-ის საკუთარი ველები */}
       <CustomFieldsEditor moduleKey={module.key} enabled={!!module.enabled} />
 
       {/* ---------- ადმინის ნაწილი ---------- (პირად მოდულზე უაზროა — მფლობელი ერთია) */}
@@ -361,7 +361,7 @@ export function ModulePage() {
               />
             </label>
 
-            {/* §2.1/§6.6 — მოდულის ფერი: გვერდის ჰედერის ფონი.
+            {/* მოდულის ფერი: გვერდის ჰედერის ფონი.
                 ⚠️ **გლობალურია** (ყველა ანგარიშზე ერთი), ამიტომ ადმინის
                 სექციაშია და არა „ჩემი პარამეტრების" გვერდით. */}
             <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
@@ -393,7 +393,7 @@ export function ModulePage() {
             </div>
           </section>
 
-          {/* ---------- ვის აქვს ჩართული (§6.4) ----------
+          {/* ---------- ვის აქვს ჩართული ----------
               ⚠️ სია ინლაინ **აღარაა**: ის მთელ გვერდს აგრძელებდა და ორმოც
               მომხმარებელზე ძებნის/დალაგების გარეშე უსარგებლო იყო. ახლა
               ღილაკი ხსნის მოდალს, შიგნით კი საერთო `DataTable` (ძებნა ·
@@ -435,7 +435,7 @@ export function ModulePage() {
 }
 
 /**
- * **„ვის აქვს ჩართული" (§6.4) — ცალკე კომპონენტი (Tasks PERF-07).**
+ * **„ვის აქვს ჩართული" — ცალკე კომპონენტი.**
  *
  * ⚠️ `DataTable`-ის ფილტრი/დალაგება `[rows, q, sort, columns, searchOf]`-ზე
  * იმახსოვრებს, ე.ი. **ინლაინ** `columns={[…]}` და `searchOf={(u) => …}` მემოს
@@ -587,15 +587,15 @@ function ModuleHolders({
 }
 
 /**
- * **ველების რედაქტორი (Tasks §6 → §6.5).**
+ * **ველების რედაქტორი.**
  *
- * ⚠️ **სიაში მოდულის *ყველა* ველია და აღარ მხოლოდ „არჩევითები"** (§6.5).
+ * ⚠️ **სიაში მოდულის *ყველა* ველია და აღარ მხოლოდ „არჩევითები"**.
  * ადრე სავალდებულო ველი (ვიდეოს ბმული, ჩანაწერის სახელი) კატალოგში
  * საერთოდ არ იწერებოდა, ე.ი. რედაქტორი „მოდულის ველებს" კი ეწერა, მაგრამ
  * ნაწილს აჩვენებდა. ახლა ისინი **`locked`** დროშით ჩანს: გადამრთველები
  * გამორთულია, ლეიბლი კი ისევ იმართება.
  *
- * ⚠️ **დალაგების ღილაკები მოხსნილია** (§6.5) — რიგი კატალოგისაა და
+ * ⚠️ **დალაგების ღილაკები მოხსნილია** — რიგი კატალოგისაა და
  * `PUT /modules/{key}/fields` `sort_order`-ს აღარ იღებს.
  *
  * ⚠️ **მორგებული ველები აქ არ ჩანს**: `PUT /modules/{key}/fields` მხოლოდ
@@ -690,7 +690,7 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
       {fields.map((field) => {
         /* ⚠️ ნაგულისხმევი ლეიბლი ლოკალიზაციიდან მოდის (`fields.name.*`) — backend
            გადაწერილს `null`-ად აბრუნებს, სანამ user არ შეცვლის. */
-        // §37 — პირად მოდულზე საერთო სივრცე და კლასიფიკაციის სახელი (`defaultFieldLabel`)
+        // პირად მოდულზე საერთო სივრცე და კლასიფიკაციის სახელი (`defaultFieldLabel`)
         const fallback = defaultFieldLabel(t, moduleKey, field.key, classification)
         const own = i18n.language === 'ka' ? field.label_ka : field.label_en
         const editing = open === field.key
@@ -782,7 +782,7 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
  * აბრუნებს (backend-იც ასე იქცევა). ამიტომ placeholder-ში ნაგულისხმევი
  * ტექსტი წერია: user ხედავს, რას დაუბრუნდება.
  *
- * ⚠️ **„სავალდებულო ველი" გადაერქვა** (§6.5 — „სახელი გაუგებარია"): ახლა
+ * ⚠️ **„სავალდებულო ველი" გადაერქვა** („სახელი გაუგებარია"): ახლა
  * ეწერა ის, რასაც ჩამრთველი მართლა აკეთებს — ფორმა ცარიელს არ შეინახავს.
  * ლოგიკა უცვლელია.
  */
@@ -829,7 +829,7 @@ function FieldEditor({
       </div>
 
       {/* ⚠️ ჩაკეტილ ველზე ორივე ჩამრთველი გამორთულია: სახელის/ბმულის გარეშე
-          ჩანაწერი არ ჩაიწერება და ბარათიც ვერ დაიხატება (§6.5). */}
+          ჩანაწერი არ ჩაიწერება და ბარათიც ვერ დაიხატება. */}
       <label className="flex cursor-pointer items-start gap-2 text-sm">
         <Checkbox
           checked={field.required}
@@ -843,7 +843,7 @@ function FieldEditor({
         </span>
       </label>
 
-      {/* §16 — ჩანს თუ არა ველი საჯარო ბარათზე (მფლობელი წყვეტს) */}
+      {/* ჩანს თუ არა ველი საჯარო ბარათზე (მფლობელი წყვეტს) */}
       <label className="flex cursor-pointer items-start gap-2 text-sm">
         <Checkbox
           checked={field.public}

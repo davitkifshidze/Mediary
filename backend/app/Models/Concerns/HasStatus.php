@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * **მართვადი სტატუსი ჩანაწერზე (Tasks §6.4).**
+ * **მართვადი სტატუსი ჩანაწერზე.**
  *
  * ექვსივე დომენს ერთი და იგივე ქცევა აქვს, ამიტომ ის ერთ trait-შია და არა
  * ექვს მოდელში გადაწერილი: `status_id` → `statuses` რიგზე, საიდანაც

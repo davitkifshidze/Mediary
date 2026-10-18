@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **აღდგენის ბმული ტოკენით იძებნება და არა ელფოსტით (FEAT-16).**
+ * **აღდგენის ბმული ტოკენით იძებნება და არა ელფოსტით.**
  *
  * `password_reset_tokens` Laravel-ის ნაგულისხმევი ცხრილია და `email`-ზეა
  * დაპირველადებული — ეს ზუსტად ის სემანტიკაა, რაც გვჭირდება („ერთ ანგარიშზე

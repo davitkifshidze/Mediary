@@ -23,7 +23,7 @@ export const api = axios.create({
 /** სურათის სრული URL storage-იდან (მაგ. "posters/kraken.jpg") */
 export function storageUrl(path?: string | null) {
   if (!path) return null
-  /* ⚠️ `blob:`/`data:` — შენახვამდე არჩეული ფაილის წინასწარი ხედი (Tasks §23.4).
+  /* ⚠️ `blob:`/`data:` — შენახვამდე არჩეული ფაილის წინასწარი ხედი.
      უამისოდ ის `/storage/blob:…`-ად იქცეოდა და ბადე ცარიელ უჯრას ხატავდა. */
   if (/^(https?:\/\/|blob:|data:)/.test(path)) return path
   return `${API_URL}/storage/${path.replace(/^\/+/, '')}`
@@ -41,7 +41,7 @@ export async function ensureCsrfCookie(): Promise<void> {
 export const UNAUTHENTICATED_EVENT = 'mediary:unauthenticated'
 
 /**
- * საცავის მრიცხველი შეიცვალა (17.3) — AuthProvider უსმენს და `['me']`/`['storage']`-ს
+ * საცავის მრიცხველი შეიცვალა — AuthProvider უსმენს და `['me']`/`['storage']`-ს
  * ანულებს, რომ ჰედერის ინდიკატორი არ ჩამორჩეს.
  *
  * წესი განზრახ **ფართოა**: ყველა multipart მუტაცია (ატვირთვა ყოველთვის FormData-ია)
@@ -66,7 +66,7 @@ function isAuthForm(url: string): boolean {
 }
 
 /*
- * **ინტერფეისის ენა backend-საც უნდა ეცოდებოდეს** (Tasks GAP-12).
+ * **ინტერფეისის ენა backend-საც უნდა ეცოდებოდეს**.
  *
  * ⚠️ **ბრაუზერის საკუთარი `Accept-Language` აქ გამოსადეგი არ არის** —
  * ის ოპერაციულ სისტემას ასახავს და არა აპში არჩეულ ენას, ე.ი.
@@ -97,7 +97,7 @@ api.interceptors.response.use(
     const url: string = config?.url ?? ''
 
     /*
-     * **419 — CSRF ტოკენის/სესიის ვადა** (Tasks GAP-02).
+     * **419 — CSRF ტოკენის/სესიის ვადა**.
      *
      * `SESSION_LIFETIME` 120 წუთია და იმავე ვადას ატარებს `XSRF-TOKEN` ქუქიც,
      * ე.ი. ღია ტაბში ორი საათის შემდეგ ყოველი მუტაცია 419-ს იღებდა და

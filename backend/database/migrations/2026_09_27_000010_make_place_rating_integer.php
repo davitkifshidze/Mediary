@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **ადგილის „ჩემი შეფასება" — მთელი რიცხვი 1-დან 10-მდე** (Tasks §25.2).
+ * **ადგილის „ჩემი შეფასება" — მთელი რიცხვი 1-დან 10-მდე**.
  *
  * `places.rating` `decimal(3,1)` იყო (0–10, ათწილადით), დანარჩენ ოთხ
  * მოდულს (წიგნი, თამაში, სამაგიდო, სიმღერა) კი `unsignedTinyInteger`

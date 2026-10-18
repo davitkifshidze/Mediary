@@ -9,7 +9,7 @@ import {
 import type { Status } from '@/api/types'
 
 /* ============================================================
-   **საიდბარის განყოფილებები: სტატუსები + „ყველა" / „რჩეული" (ეტაპი 8).**
+   **საიდბარის განყოფილებები: სტატუსები + „ყველა" / „რჩეული".**
 
    ლექსიკონის გვერდი და საიდბარი ერთსა და იმავე სიას ხატავს, ე.ი. „რა
    რიგით და რა ჩანს" **ერთ ფუნქციაში** (`arrangeSections`) იწყობა — ორ
@@ -41,7 +41,7 @@ export interface PseudoSection {
 
 const ALL: PseudoSection = { id: 'all', labelKey: 'filter.all', icon: 'LayoutGrid', defaultAt: 'start' }
 const FAVORITE: PseudoSection = { id: 'favorite', labelKey: 'filter.favorite', icon: 'Star', defaultAt: 'end' }
-/** §7.1 — ლოკალურად ჩამოწერილი ვიდეოები */
+/** ლოკალურად ჩამოწერილი ვიდეოები */
 const DOWNLOADED: PseudoSection = {
   id: 'downloaded',
   labelKey: 'videos.downloadedSection',
@@ -49,7 +49,7 @@ const DOWNLOADED: PseudoSection = {
   defaultAt: 'end',
 }
 
-/** Tasks §35.5 — ჩაკეტილი ფილმები/სერიალები/ანიმე (სხვაგან ისინი იმალება, Q9) */
+/** ჩაკეტილი ფილმები/სერიალები/ანიმე (სხვაგან ისინი იმალება) */
 const LOCKED: PseudoSection = { id: 'locked', labelKey: 'lock.section', icon: 'Lock', defaultAt: 'end' }
 
 /** ⚠️ სარკე: `App\Support\StatusDomain::RESERVED_KEYS` (სტატუსი ამ გასაღებებს არ იღებს) */
@@ -63,7 +63,7 @@ export const PSEUDO_SECTIONS: Record<StatusDomain, PseudoSection[]> = {
 }
 
 /**
- * დომენის ფსევდო-განყოფილებები — **პირად მოდულზეც** (Tasks §37): „ყველა" ·
+ * დომენის ფსევდო-განყოფილებები — **პირად მოდულზეც**: „ყველა" ·
  * „რჩეული" (ჩანაწერისა და ბუკმარკის ნაკრები). ⚠️ `PSEUDO_SECTIONS[key]`
  * პირად გასაღებზე `undefined`-ს დააბრუნებდა და ტიპი ამას ვერ დაინახავდა —
  * ამიტომ ყოველი ცვალებადი დომენი ამ ფუნქციაზე გადის.

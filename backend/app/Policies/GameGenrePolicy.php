@@ -3,7 +3,7 @@
 namespace App\Policies;
 
 /**
- * GameGenre-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ * GameGenre-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია.
  *
  * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
  * აღმოჩენისთვის არსებობს (`App\Models\GameGenre` → `App\Policies\GameGenrePolicy`)

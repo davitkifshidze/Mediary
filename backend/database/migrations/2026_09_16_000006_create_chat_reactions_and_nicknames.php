@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **რეაქციები და ნიკნეიმები (Tasks §10.10/§10.11).**
+ * **რეაქციები და ნიკნეიმები.**
  *
  * შენი სიტყვები: „ემოჯი [რეაქციები], ნიკნეიმები".
  *

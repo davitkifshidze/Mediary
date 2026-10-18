@@ -5,7 +5,7 @@ import type { LinkMetadata } from '@/api/bookmarks'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
-   **ინტერფეისიდან შექმნილი მოდულის ჩანაწერები (Tasks §37).**
+   **ინტერფეისიდან შექმნილი მოდულის ჩანაწერები.**
 
    ერთი API ყველა პირად მოდულზე — მისამართი `/custom/{key}/…`, სადაც
    `{key}` მოდულის გასაღებია (`c{owner}-{slug}`). სხვისი მოდული სერვერზე
@@ -80,8 +80,8 @@ export interface CustomRecordInput {
 }
 
 /**
- * ⚠️ **`null` ცარიელ სტრიქონად იგზავნება, `undefined` კი საერთოდ არა**
- * (Tasks §4.8): backend `array_key_exists`-ით წერს, ე.ი. გამოტოვებული ველი
+ * ⚠️ **`null` ცარიელ სტრიქონად იგზავნება, `undefined` კი საერთოდ არა**:
+ * backend `array_key_exists`-ით წერს, ე.ი. გამოტოვებული ველი
  * „არ შეეხო"-ა, ცარიელი კი „გაასუფთავე" (`ConvertEmptyStringsToNull`).
  */
 function toFormData(input: CustomRecordInput): FormData {
@@ -134,7 +134,7 @@ export async function updateCustomRecord(key: string, id: number, input: CustomR
   return data.data
 }
 
-/** ⚠️ ურნაში (Tasks §29) — ფაილები და ველები ადგილზე რჩება */
+/** ⚠️ ურნაში — ფაილები და ველები ადგილზე რჩება */
 export async function deleteCustomRecord(key: string, id: number): Promise<void> {
   await api.delete(`/custom/${key}/${id}`)
 }
@@ -195,7 +195,7 @@ export async function reorderCustomCategories(key: string, ids: number[]): Promi
   return data.data
 }
 
-/* ---------- მასობრივი სტატუსი (Tasks §37.5) ---------- */
+/* ---------- მასობრივი სტატუსი ---------- */
 
 /** ⚠️ `ids` ან `from_status` — ცარიელი სკოუპი სერვერზე 422-ია და არასდროს „ყველა" */
 export interface CustomBulkStatusInput {
@@ -209,7 +209,7 @@ export async function bulkCustomStatus(key: string, input: CustomBulkStatusInput
   return data.updated
 }
 
-/* ---------- ჩანაწერის საკუთარი ფაილები და ჩანიშვნები (Tasks §37.5) ---------- */
+/* ---------- ჩანაწერის საკუთარი ფაილები და ჩანიშვნები ---------- */
 
 /** `image` = ჩემი ფოტო (ვიტრინა) · `doc` = თანმხლები დოკუმენტი */
 export interface CustomRecordFile {
@@ -247,7 +247,7 @@ export async function uploadCustomRecordFiles(
   return data.data
 }
 
-/** ⚠️ ურნაში (Tasks §29) — ფაილი დისკზე და კვოტაში რჩება, სანამ საბოლოოდ არ წაიშლება */
+/** ⚠️ ურნაში — ფაილი დისკზე და კვოტაში რჩება, სანამ საბოლოოდ არ წაიშლება */
 export async function deleteCustomRecordFile(key: string, fileId: number): Promise<void> {
   await api.delete(`/custom/${key}/files/${fileId}`)
 }

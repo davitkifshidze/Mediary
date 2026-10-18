@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * **ინსტალაციის ერთი პარამეტრი (Tasks §34.1)** — გასაღები → JSON.
+ * **ინსტალაციის ერთი პარამეტრი** — გასაღები → JSON.
  *
  * ⚠️ **პირდაპირ არსად იკითხება** — ყოველი მკითხველი `App\Support\AppSettings`-ზე
  * გადის: იქაა მოთხოვნის ფარგლებში ქეში და „ცხრილი ჯერ არ არსებობს"-ის დაცვა.

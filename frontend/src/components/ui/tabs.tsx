@@ -3,7 +3,7 @@ import { Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   მარტივი კონტროლირებადი ტაბები (Tasks K1).
+   მარტივი კონტროლირებადი ტაბები.
    Radix-ის `react-tabs` პაკეტი პროექტში არ არის — აქ მხოლოდ ის გვჭირდება,
    რაც ერთი ზოლი ღილაკებით და ერთი პანელია, ამიტომ თავად ვწერთ.
    ============================================================ */
@@ -64,7 +64,7 @@ export function Tabs<T extends string>({
   )
 }
 
-/** ტაბის ზედა განმარტება — რას აკეთებს ეს სექცია (K1) */
+/** ტაბის ზედა განმარტება — რას აკეთებს ეს სექცია */
 export function TabInfo({ children }: { children: ReactNode }) {
   return (
     <p className="mb-4 flex items-start gap-2 rounded-lg border border-dashed border-border bg-card/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground">

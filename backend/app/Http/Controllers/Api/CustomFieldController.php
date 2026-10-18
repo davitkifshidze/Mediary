@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
- * **მორგებული ველები (Tasks §6, ფაზა 3 · `DECISIONS.md` §2).**
+ * **მორგებული ველები.**
  *
  * ორი წყვილი endpoint-ია და ორივე განზრახ **ერთია რვავე მოდულზე**:
  *  · განსაზღვრებები — `GET|PUT /api/modules/{key}/custom-fields`;
@@ -70,7 +70,7 @@ class CustomFieldController extends Controller
             'fields.*.sort_order' => ['nullable', 'integer', 'min:0', 'max:999'],
         ]);
 
-        // ⚠️ ტიპის შეცვლა/წაშლა ატვირთულ ფაილსაც იტანს (§6 ფაზა 4b) — ამას
+        // ⚠️ ტიპის შეცვლა/წაშლა ატვირთულ ფაილსაც იტანს — ამას
         // `saveDefinitions()` აკეთებს, რომ კვოტა და დისკი ერთ ადგილას დარჩეს
 
         return response()->json([
@@ -106,7 +106,7 @@ class CustomFieldController extends Controller
         ]);
     }
 
-    /* ---------- §6 ფაზა 4b — `ფაილი` ტიპი (🔗 §17) ---------- */
+    /* ---------- `ფაილი` ტიპი ---------- */
 
     /**
      * ატვირთვა ერთ ველზე.
@@ -116,23 +116,23 @@ class CustomFieldController extends Controller
      * მთელ მონახაზს აგზავნის, ე.ი. ჩვეულებრივი „შენახვა" ატვირთულ ფაილს
      * ცარიელ მნიშვნელობად წაიკითხავდა და ჩუმად წაშლიდა.
      *
-     * ⚠️ **კვოტა `storeUpload()`-შია** (§17-ის ცენტრალური წესი): ლიმიტის
+     * ⚠️ **კვოტა `storeUpload()`-შია** (საცავის ცენტრალური წესი): ლიმიტის
      * ამოწურვაზე პასუხი 413-ია და არა 422 — ანგარიშისაზეც (`storage_quota_exceeded`)
-     * და მოდულისაზეც (`module_quota_exceeded`, §17.2), რადგან საქაღალდე
+     * და მოდულისაზეც (`module_quota_exceeded`), რადგან საქაღალდე
      * მოდულის თავის ფესვშია.
      */
     public function storeFile(Request $request, string $module, int $id)
     {
         $this->guardRecord($request, $module, $id);
 
-        /* Tasks §34.3 — ზომა და ფორმატი `UploadLimits`-ის `field` სახეობიდან
+        /* ზომა და ფორმატი `UploadLimits`-ის `field` სახეობიდან
            (ადრე `CustomFields::FILE_MAX_KB`/`FILE_MIMES` — ხელით ჩაწერილი მეხუთე ლიმიტი).
-           ⚠️ SVG და სხვა აქტიური შიგთავსი `UploadLimits::NEVER`-ითაა გარიცხული (SEC-05). */
+           ⚠️ SVG და სხვა აქტიური შიგთავსი `UploadLimits::NEVER`-ითაა გარიცხული. */
         $rules = UploadLimits::rule('field', $request->user());
 
         $data = $request->validate([
             'key' => ['required', 'string', 'max:60'],
-            // §7.3 — ერთი ფაილი ან პარტია. ⚠️ **ძველი `file` ველი შენარჩუნებულია**,
+            // ერთი ფაილი ან პარტია. ⚠️ **ძველი `file` ველი შენარჩუნებულია**,
             // რომ ერთფაილიანი გამომძახებელი არ გატყდეს
             'file' => ['required_without:files', ...$rules],
             'files' => ['required_without:file', 'array', 'max:'.CustomFields::FILE_MAX_COUNT],
@@ -169,7 +169,7 @@ class CustomFieldController extends Controller
 
     /**
      * **ფაილის გაცემა.** ერთადერთი გზა, რომლითაც მორგებული ველის ატვირთვა
-     * გარეთ გადის — `notes/fields` პრივატულ დისკზეა (§17.5), დანარჩენი კი
+     * გარეთ გადის — `notes/fields` პრივატულ დისკზეა, დანარჩენი კი
      * იმიტომ გადის აქედან, რომ ორი განსხვავებული ქცევა ფრონტზე `if`-ს
      * დაბადებდა და ერთ დღეს პრივატულიც `/storage/*`-ზე გავიდოდა.
      *
@@ -185,7 +185,7 @@ class CustomFieldController extends Controller
             ->where('record_id', $id)
             ->where('field_key', $key)
             ->whereNotNull('value_path')
-            // §7.3 — ⚠️ id-ის გარეშე **პირველი** გაიცემა: ძველი ერთფაილიანი
+            // ⚠️ id-ის გარეშე **პირველი** გაიცემა: ძველი ერთფაილიანი
             // მისამართი (`…/file/{key}`) ისევ უნდა მუშაობდეს
             ->when($file !== null, fn ($q) => $q->where('id', $file))
             ->orderBy('sort_order')
@@ -199,18 +199,18 @@ class CustomFieldController extends Controller
         abort_unless($disk->fileExists($row->value_path), 404);
 
         /* სურათი/PDF ბარათშივე უნდა გაიხსნას; ჩამოტვირთვას ფრონტი blob-იდან აწყობს.
-           ⚠️ **`inline` მხოლოდ სკრიპტის არშემსრულებელ ტიპებზე** (Tasks SEC-08) და
+           ⚠️ **`inline` მხოლოდ სკრიპტის არშემსრულებელ ტიპებზე** და
            MIME **ფაილიდან**, და არა `value_mime`-იდან: ის სვეტი კლიენტის ნათქვამს
            ატარებდა, ე.ი. `.html`-ად ატვირთული ფაილი აპის origin-ზე იხატებოდა.
            ⚠️ მფლობელობის შემოწმება ამას არ ხსნიდა — იგივე რიგი ადმინის
-           ფაილ-ბიბლიოთეკაშიც ჩანს (SEC-04-ის შაბლონი). */
+           ფაილ-ბიბლიოთეკაშიც ჩანს. */
         return SafeMime::response($disk, $row->value_path, $row->value_name);
     }
 
     /**
      * ფაილის მოშორება — რიგიც იშლება, რადგან `file` ველზე ფაილი *არის* მნიშვნელობა.
      *
-     * ⚠️ **`{file}` არჩევითია** (§7.3): მითითებით ერთი ფაილი, მის გარეშე —
+     * ⚠️ **`{file}` არჩევითია**: მითითებით ერთი ფაილი, მის გარეშე —
      * ველის ყველა ფაილი. ე.ი. ძველი ერთფაილიანი მისამართი ისევ იმას აკეთებს,
      * რასაც აკეთებდა.
      */
@@ -229,7 +229,7 @@ class CustomFieldController extends Controller
     {
         abort_unless(CustomFields::supports($key), 404);
 
-        // ⚠️ §37 — სხვისი პირადი მოდული 404-ია და არა 403 (`visibleTo`)
+        // ⚠️ სხვისი პირადი მოდული 404-ია და არა 403 (`visibleTo`)
         Module::visibleTo($request->user())->where('key', $key)->where('is_active', true)->firstOrFail();
         abort_unless($request->user()->hasModule($key), 403);
     }
@@ -239,12 +239,12 @@ class CustomFieldController extends Controller
         $this->guardModule($request, $module);
 
         /* `owner` global scope-ის გამო სხვისი ჩანაწერი აქ **არ იძებნება**.
-           ⚠️ §37 — პირად მოდულზე query მოდულითაც იჭრება (`recordQuery()`):
+           ⚠️ პირად მოდულზე query მოდულითაც იჭრება (`recordQuery()`):
            იმავე ანგარიშის **სხვა** პირადი მოდულის ჩანაწერი ამ მოდულის
            ველებით არ უნდა იკითხებოდეს. */
         $query = CustomFields::recordQuery($module);
 
-        /* ⚠️ §33.7 — **ჩაკეტილი და ამ სესიაში დაუხსნელი ჩანაწერის ველები** (და
+        /* ⚠️ **ჩაკეტილი და ამ სესიაში დაუხსნელი ჩანაწერის ველები** (და
            მათი ფაილები — ფოტოც შეიძლება იყოს) გახსნამდე არ გამოდის და არ იცვლება:
            ბოქლომიანი ბარათი ისედაც არაფერს ითხოვს, პირდაპირი მოთხოვნა კი 404-ია. */
         abort_unless($query && RecordLocks::exceptHidden($query)->whereKey($id)->exists(), 404);

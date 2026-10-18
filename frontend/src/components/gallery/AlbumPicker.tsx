@@ -45,7 +45,7 @@ import { AlbumPasswordFields } from '@/components/gallery/AlbumPasswordFields'
    იყოს სასურველი), ე.ი. გაფრთხილების გარეშე ეს „ფოტო დავკარგე"-დ
    წაიკითხებოდა.
 
-   ## ლოკი იქვე (Tasks §17.2 — „ალბომის ჩაკეტვაც, სრული ფუნქციონალი")
+   ## ლოკი იქვე („ალბომის ჩაკეტვაც, სრული ფუნქციონალი")
    ⚠️ **ადგილზე შექმნილ ალბომს პაროლიც შეიძლება დაედოს** — `AlbumDialog`-ის
    ჩაკეტვის ნაწილი, იგივე `AlbumPasswordFields`-ით. ⚠️ **ასეთი ალბომი ამ
    სესიაში მაშინვე ღიაა** (სერვერის `store()` — „შენ ახლა დაადე"), ე.ი.
@@ -75,11 +75,11 @@ export function AlbumPicker({
 
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
-  /** §17.2 — ახალ ალბომს პაროლიც დაედოს */
+  /** ახალ ალბომს პაროლიც დაედოს */
   const [withLock, setWithLock] = useState(false)
   const [password, setPassword] = useState('')
   const [repeat, setRepeat] = useState('')
-  /** §17.2 — რომელი ალბომის პარამეტრები ღიაა (`null` — არცერთის) */
+  /** რომელი ალბომის პარამეტრები ღიაა (`null` — არცერთის) */
   const [editing, setEditing] = useState<GalleryAlbum | null>(null)
 
   const albumsQ = useQuery({ queryKey: ['gallery-albums'], queryFn: fetchGalleryAlbums })
@@ -250,7 +250,7 @@ export function AlbumPicker({
             {t('gallery.albumNew')}
           </Button>
 
-          {/* §17.2 — არჩეული ალბომის პარამეტრები აქვე, გადატანის შუაგულში */}
+          {/* არჩეული ალბომის პარამეტრები აქვე, გადატანის შუაგულში */}
           {picked && (
             <Button type="button" variant="edit" size="sm" onClick={() => setEditing(picked)}>
               <SquarePen className="size-4" />

@@ -3,7 +3,7 @@ import { readPage, type ListParams, type Page } from '@/lib/paged'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
-   წიგნების მოდული (`book`, Tasks §12).
+   წიგნების მოდული (`book`).
 
    ⚠️ ორენოვნება **ბრტყელი ველებია** (`title_ka`/`title_en`) — ისევე,
    როგორც `MovieResource`-ზე. ბაზაში translation-ცხრილი განზრახ არაა:
@@ -11,7 +11,7 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
    ============================================================ */
 
 /**
- * წიგნის ენა — **პრესეტები და არა დახურული სია** (Tasks §6.1, შენი არჩევანი).
+ * წიგნის ენა — **პრესეტები და არა დახურული სია** (შენი არჩევანი).
  *
  * ⚠️ **მკაცრი სამვარიანტიანი სია მონაცემს დაკარგავდა.** ჩვენივე
  * `OpenLibraryClient::language()` `de`-სა და `fr`-საც აბრუნებს, დანარჩენზე კი
@@ -46,7 +46,7 @@ export interface Book {
   year: number | null
   pages: number | null
   language: string | null
-  /** §5.7 — წყაროს / წასაკითხი ლინკი (ატვირთულ ფაილს არ ცვლის) */
+  /** წყაროს / წასაკითხი ლინკი (ატვირთულ ფაილს არ ცვლის) */
   source_url: string | null
   genre_id: number | null
   genre?: BookGenre | null
@@ -67,7 +67,7 @@ export interface Book {
   visibility: 'private' | 'public'
   files_count?: number
   notes_count?: number
-  /** მხოლოდ ციტატები (Tasks §6.8) — სიის ბრჭყალების მრიცხველი */
+  /** მხოლოდ ციტატები — სიის ბრჭყალების მრიცხველი */
   quotes_count?: number
   created_at: string | null
 }
@@ -130,7 +130,7 @@ function toFormData(input: BookInput): FormData {
   })
 
   const numbers: (keyof BookInput)[] = ['year', 'pages', 'genre_id', 'series_number', 'rating']
-  /* Tasks §25.3 (§4.8-ის წესი) — `null` („გაასუფთავე“) ცარიელ სტრიქონად
+  /* `null` („გაასუფთავე“) ცარიელ სტრიქონად
      იგზავნება და მხოლოდ `undefined` („არ შეეხო“) რჩება გამოტოვებული; ადრე
      გასუფთავებული რიცხვი (ქულა, წელი…) საერთოდ არ იგზავნებოდა და შენახვის
      შემდეგ ძველი უკან ბრუნდებოდა. */
@@ -184,7 +184,7 @@ export async function toggleBookFavorite(id: number): Promise<Book> {
   return data.data
 }
 
-/** სტატუსი კონტექსტური მენიუდან (Tasks §7) — `PATCH /books/{id}/status` */
+/** სტატუსი კონტექსტური მენიუდან — `PATCH /books/{id}/status` */
 export async function setBookStatus(id: number, status: BookStatus): Promise<Book> {
   const { data } = await api.patch(`/books/${id}/status`, { status })
   return data.data
@@ -199,7 +199,7 @@ export async function setBookProgress(
   return data.data
 }
 
-/* ---------- Open Library (§12-ის enrichment) ---------- */
+/* ---------- Open Library (enrichment) ---------- */
 
 export interface BookCandidate {
   key: string
@@ -218,7 +218,7 @@ export interface BookCandidate {
 /**
  * არჩევანის სია — ავტომატურად არაფერი ემთხვევა (TMDB-ის იგივე წესი).
  *
- * ⚠️ **`notice: 'manual_only'` ცარიელი სიის ტოლფასი არ არის** (§5.7): ქართულ
+ * ⚠️ **`notice: 'manual_only'` ცარიელი სიის ტოლფასი არ არის**: ქართულ
  * შეკითხვაზე წყარო საერთოდ არ იძახება, ე.ი. „ვერაფერი ვიპოვე" ტყუილი
  * იქნებოდა — ფორმა ხელით შევსებას სთავაზობს.
  */
@@ -253,7 +253,7 @@ export async function fetchBookFiles(bookId: number): Promise<BookFile[]> {
   return data.data
 }
 
-/** Tasks §23.1 — `kind` `null`-ზე სერვერი სახეს გაფართოებით ხვდება (ერთი ზონა ყველა ფაილისთვის) */
+/** `kind` `null`-ზე სერვერი სახეს გაფართოებით ხვდება (ერთი ზონა ყველა ფაილისთვის) */
 export async function uploadBookFiles(
   bookId: number,
   kind: BookFile['kind'] | null,
@@ -314,7 +314,7 @@ export interface BookGenre {
   name_ka: string
   name_en: string
   icon: string | null
-  /** Tasks §24.3 — ჟანრის ფერი: პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; `null` — ნაცრისფერი */
+  /** ჟანრის ფერი: პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; `null` — ნაცრისფერი */
   color: string | null
   sort_order: number
   books_count?: number

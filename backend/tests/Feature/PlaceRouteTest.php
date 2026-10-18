@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * **ადგილის მარშრუტები — გამოთვლა და შენახვა** (Tasks §30.5).
+ * **ადგილის მარშრუტები — გამოთვლა და შენახვა**.
  *
  * ⚠️ OSRM გარე მისამართია — `Http::fake()` ერთი stub-ით, ქეში ყოველ ტესტზე
  * სუფთავდება (კლიენტი წარმატებას 10 წუთით ინახავს).
@@ -85,7 +85,7 @@ class PlaceRouteTest extends TestCase
         Http::assertSent(fn ($r) => str_contains($r->url(), '/route/v1/foot/44.800000,41.700000;43.280000,41.380000'));
     }
 
-    /** Tasks §56.3 — გზების რაოდენობა მოთხოვნაშია და პასუხი ამბობს, რამდენი ითხოვე */
+    /** გზების რაოდენობა მოთხოვნაშია და პასუხი ამბობს, რამდენი ითხოვე */
     public function test_the_number_of_routes_is_requested_and_validated(): void
     {
         $place = $this->place($this->user);
@@ -147,7 +147,7 @@ class PlaceRouteTest extends TestCase
 
         $this->assertNotNull(PlaceRoute::find($id)->chosen_at);
 
-        // §56.4 — „საიდან" ინახება; ძველს (უსახელოს) — `null`
+        // „საიდან" ინახება; ძველს (უსახელოს) — `null`
         $labelled = $this->postJson("/api/places/{$place->id}/routes", $this->routePayload(['from_label' => 'სახლი']))
             ->assertStatus(201)
             ->assertJsonPath('data.from_label', 'სახლი')

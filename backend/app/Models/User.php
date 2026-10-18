@@ -30,12 +30,12 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'settings' => 'array',
-            /* Tasks §34.6 — ატვირთვის პირადი გამონაკლისი. ⚠️ **ცალკე სვეტია და
+            /* ატვირთვის პირადი გამონაკლისი. ⚠️ **ცალკე სვეტია და
                არა `settings`-ის გასაღები**: `PUT /auth/settings` ბლობს მთლიანად
                იღებს, ე.ი. იქ ჩაწერილ ნებართვას მომხმარებელი თავისთავს მისცემდა.
                წერს მხოლოდ `UploadLimits` (დამტკიცება ან ადმინის `/users/{id}`). */
             'upload_overrides' => 'array',
-            // FEAT-16 — ორივე `APP_KEY`-ით იშიფრება (იხ. მიგრაციის შენიშვნა)
+            // ორივე `APP_KEY`-ით იშიფრება (იხ. მიგრაციის შენიშვნა)
             'two_factor_secret' => 'encrypted',
             'two_factor_recovery_codes' => 'encrypted:array',
             'two_factor_confirmed_at' => 'datetime',
@@ -43,7 +43,7 @@ class User extends Authenticatable
     }
 
     /**
-     * როლის გარეშე შექმნილი ანგარიში ჩვეულებრივი მომხმარებელია (Tasks 1.6).
+     * როლის გარეშე შექმნილი ანგარიში ჩვეულებრივი მომხმარებელია.
      * ეს ძველი `users.role` enum-ის `default('user')`-ის ჩამნაცვლებელია — FK-ს
      * დინამიური default ვერ მიეცემა, ამიტომ მოდელზეა.
      */
@@ -66,7 +66,7 @@ class User extends Authenticatable
         return $this->hasMany(Series::class);
     }
 
-    /** §7.1 — მესამე მედია-დომენი; `StorageMeter::files()` ამ სახელით ეძებს */
+    /** მესამე მედია-დომენი; `StorageMeter::files()` ამ სახელით ეძებს */
     public function animes(): HasMany
     {
         return $this->hasMany(Anime::class);
@@ -102,7 +102,7 @@ class User extends Authenticatable
         return $this->hasMany(Game::class);
     }
 
-    /** Tasks §13 — ცხრილი `note_entries`-ია (უნივერსალური `notes` აღარ არსებობს) */
+    /** ცხრილი `note_entries`-ია (უნივერსალური `notes` აღარ არსებობს) */
     public function noteEntries(): HasMany
     {
         return $this->hasMany(NoteEntry::class);
@@ -113,8 +113,8 @@ class User extends Authenticatable
         return $this->belongsToMany(Module::class)
             // ⚠️ `is_hidden`/`is_public` და არა `hidden`/`public` — მოკლე სახელები
             // Eloquent-ის protected თვისებებს ეჯახება და pivot-იდან ჩუმად არასწორ
-            // მნიშვნელობას აბრუნებდა. `is_public` = ჩანს თუ არა საჯარო პროფილზე (16.1).
-            // `storage_limit_bytes` — §17.2 (null = ცალკე ლიმიტი არ აქვს)
+            // მნიშვნელობას აბრუნებდა. `is_public` = ჩანს თუ არა საჯარო პროფილზე.
+            // `storage_limit_bytes` — მოდულის საცავის ლიმიტი (null = ცალკე ლიმიტი არ აქვს)
             ->withPivot('settings', 'enabled_at', 'is_hidden', 'is_public', 'storage_limit_bytes');
     }
 
@@ -123,7 +123,7 @@ class User extends Authenticatable
         return $this->hasMany(ApprovalRequest::class);
     }
 
-    /** როლი (Tasks 1.6) — ადრე `users.role` enum იყო */
+    /** როლი — ადრე `users.role` enum იყო */
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
@@ -147,7 +147,7 @@ class User extends Authenticatable
     }
 
     /**
-     * **„ჯერ არცერთი ანგარიში არ არსებობს?" — ჩაკეტილი წაკითხვა (Tasks SEC-15).**
+     * **„ჯერ არცერთი ანგარიში არ არსებობს?" — ჩაკეტილი წაკითხვა.**
      *
      * ⚠️ **მხოლოდ ტრანზაქციის შიგნით აქვს აზრი.** ღია რეგისტრაციაზე პირველი
      * ანგარიში super_admin-ია, ე.ი. „დათვალე და შექმენი" ორი ერთდროული
@@ -179,7 +179,7 @@ class User extends Authenticatable
      * **ფაქტობრივად მოქმედი როლი.** როლის გარეშე დარჩენილი (ძველი რიგი)
      * ჩვეულებრივი მომხმარებლის (`user`) უფლებებით ცხოვრობს.
      *
-     * ⚠️ ერთ ადგილას, რადგან ეს ფოლბექი სამ მეთოდში იწერებოდა — და SEC-02-ის
+     * ⚠️ ერთ ადგილას, რადგან ეს ფოლბექი სამ მეთოდში იწერებოდა — და როლების
      * „აღემატება თუ არა" შედარება **ზუსტად იმავე** როლს უნდა ადარებდეს, რასაც
      * `hasPermission()` ამოწმებს, თორემ ორი პასუხი ერთ კითხვაზე შეიძლება
      * განსხვავდეს.
@@ -190,13 +190,13 @@ class User extends Authenticatable
     }
 
     /**
-     * მოდულის შიდა უფლება (Tasks 1.6 / 19.8) — `view` · `create` · `update` · `delete`.
+     * მოდულის შიდა უფლება — `view` · `create` · `update` · `delete`.
      * ⚠️ ეს **მოდულზე წვდომას არ ამოწმებს** — ის `hasModule()`-ია. ორივე სჭირდება:
      * წვდომა → მოდული ჩართულია თუ არა, უფლება → ჩართულის შიგნით რა შეუძლია.
      */
     public function hasPermission(string $module, string $action): bool
     {
-        /* ⚠️ **§37 — პირადი მოდული როლს არ ეკითხება, და ეს წესი სუპერადმინზე
+        /* ⚠️ **პირადი მოდული როლს არ ეკითხება, და ეს წესი სუპერადმინზე
            მაღლა დგას.** როლის `permissions` მოდულის გასაღებით იწერება და როლი
            **საერთოა**, ე.ი. მასში ჩაწერა ყველას მიანიჭებდა — ამიტომ მფლობელს
            საკუთარ მოდულზე სრული CRUD ავტომატურად აქვს (2026-09-15-იდან `*`
@@ -214,7 +214,7 @@ class User extends Authenticatable
     }
 
     /**
-     * **ადმინის სექციაზე წვდომა (Tasks 1.6)** — `users` | `roles` | `requests`.
+     * **ადმინის სექციაზე წვდომა** — `users` | `roles` | `requests`.
      *
      * ⚠️ `super_admin` ყოველთვის გადის; დანარჩენს **ცხადად ჩაწერილი**
      * `admin:<resource>` სჭირდება (`"*"` აქ არ მოქმედებს — იხ. `Role`).
@@ -249,7 +249,7 @@ class User extends Authenticatable
 
     private function activeModuleKeys(): array
     {
-        /* ⚠️ §37 — **საბაზისო და საკუთარი** აქტიური მოდულები: `where('is_active')`
+        /* ⚠️ **საბაზისო და საკუთარი** აქტიური მოდულები: `where('is_active')`
            მარტო სუპერადმინს ყველა ანგარიშის პირად მოდულს ავტომატურად მისცემდა,
            და მისი ჩანაწერები 404-ის ნაცვლად გაიხსნებოდა. */
         return $this->activeModuleKeys ??= Module::where('is_active', true)->visibleTo($this)->pluck('key')->all();
@@ -258,10 +258,10 @@ class User extends Authenticatable
     /**
      * ჩართული აქვს თუ არა მოდული. super_admin-ს ყველა აქტიური მოდული აქვს.
      *
-     * K13: pivot-ის `is_hidden` ნიშნავს „მე თვითონ გამოვრთე" — უფლება რჩება,
+     * pivot-ის `is_hidden` ნიშნავს „მე თვითონ გამოვრთე" — უფლება რჩება,
      * მაგრამ მოდული ჩემთვის ჩაკეტილია (UI-შიც და API-შიც).
      *
-     * ⚠️ **პასუხი მეხსიერებიდან მოდის** (Tasks PERF-01). `$this->modules()`
+     * ⚠️ **პასუხი მეხსიერებიდან მოდის**. `$this->modules()`
      * query-builder-ია, ე.ი. **eager-loaded რელაციას იგნორირებდა** და ყოველ
      * გამოძახებაზე ბაზას ეკითხებოდა — ეს კი `foreach ($modules as $m) { if (!
      * $user->hasModule($m->key)) … }` შაბლონშია Dashboard-ში, `GalleryController`-ში,
@@ -271,7 +271,7 @@ class User extends Authenticatable
      *
      * ⚠️ **`loadMissing()` და არა საკუთარი მემო**: ეს Eloquent-ის საკუთარი
      * რელაციის ქეშია, ე.ი. `with('modules')`-ით წამოღებული სია ავტომატურად
-     * იკითხება (PERF-04), და გაუქმებაც ჩვეულებრივი `refresh()`/`unsetRelation()`-ია.
+     * იკითხება, და გაუქმებაც ჩვეულებრივი `refresh()`/`unsetRelation()`-ია.
      * ⚠️ თუ იმავე ინსტანციაზე წევრობას ან `is_hidden`-ს შეცვლი და მერე
      * ხელახლა ეკითხები — `unsetRelation('modules')` საჭიროა. დღეს ასეთი გზა
      * არ არსებობს: `setEnabled()`/`syncModules()` ჯერ ამოწმებენ და მერე წერენ,
@@ -293,7 +293,7 @@ class User extends Authenticatable
     }
 
     /**
-     * **§37.6 — პირადი მოდული მხოლოდ მფლობელისაა, პივოტის რიგის მიუხედავად.**
+     * **პირადი მოდული მხოლოდ მფლობელისაა, პივოტის რიგის მიუხედავად.**
      *
      * ⚠️ პივოტი წვდომის ერთადერთი საბუთი იყო, ე.ი. ნებისმიერი გზა, რომელიც
      * სხვის პირად მოდულს მიაბამდა (ადმინის მინიჭება, `--promote`, დემო-სიდერი,
@@ -328,14 +328,14 @@ class User extends Authenticatable
 
     /**
      * ჩართული მოდულები დალაგებული — super_admin-ს ყველა აქტიური.
-     * თვითონ გამორთული (`is_hidden`) აქ არ ხვდება (K13).
+     * თვითონ გამორთული (`is_hidden`) აქ არ ხვდება.
      */
     public function enabledModules()
     {
         $pivots = $this->modules()->get()->keyBy('id');
 
         if ($this->isSuperAdmin()) {
-            // ⚠️ §37 — სხვისი პირადი მოდული სუპერადმინსაც არ ერგება (იხ. `activeModuleKeys()`)
+            // ⚠️ სხვისი პირადი მოდული სუპერადმინსაც არ ერგება (იხ. `activeModuleKeys()`)
             return Module::where('is_active', true)
                 ->visibleTo($this)
                 ->orderBy('sort_order')->orderBy('id')
@@ -350,7 +350,7 @@ class User extends Authenticatable
             ->values();
     }
 
-    /* ---------- ორფაქტორიანი შესვლა (FEAT-16) ---------- */
+    /* ---------- ორფაქტორიანი შესვლა ---------- */
 
     /**
      * მოქმედებს თუ არა მეორე ფაქტორი.

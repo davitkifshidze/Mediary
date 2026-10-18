@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * **ტარიფი — სამსახური × ტიპი (Tasks §34, Q8)**: „კლინიკა A · 24 სთ = 220 ₾“.
+ * **ტარიფი — სამსახური × ტიპი**: „კლინიკა A · 24 სთ = 220 ₾“.
  *
  * ⚠️ **`user_id` განზრახ არ აქვს** — ტარიფი სამსახურის ნაწილია: იკითხება და
  * იწერება მხოლოდ მისით (`PUT /duty/workplaces/{id}` → `rates`), ე.ი. მფლობელობას

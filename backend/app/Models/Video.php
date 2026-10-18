@@ -12,20 +12,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * ვიდეო (I5) — ნებისმიერი წყაროდან შენახული ბმული.
+ * ვიდეო — ნებისმიერი წყაროდან შენახული ბმული.
  */
 class Video extends Model
 {
     use BelongsToUser;
 
-    /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
+    /** მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
-    /** Tasks §6.4 — სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
+    /** სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
     use HasStatus;
 
     /**
-     * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
+     * ⚠️ **კალათა** — `destroy()` `moveToTrash()`-ს იძახის და არა
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
@@ -36,7 +36,7 @@ class Video extends Model
        ყველგან სჭირდება, ცალკე `with()` კი ოცამდე ადგილას დაგვავიწყდებოდა. */
     protected $with = ['status'];
 
-    /** §7.1 — ჩამოწერის მდგომარეობები (`null` = არასდროს გვიცდია) */
+    /** ჩამოწერის მდგომარეობები (`null` = არასდროს გვიცდია) */
     public const DOWNLOAD_RUNNING = 'running';
 
     public const DOWNLOAD_READY = 'ready';
@@ -49,7 +49,7 @@ class Video extends Model
         'is_favorite' => 'boolean',
         'watch_count' => 'integer',
         'watched_at' => 'datetime',
-        // Q52 — კალენდარული დღე და არა მომენტი (მიგრაციის docblock-ი)
+        // კალენდარული დღე და არა მომენტი (მიგრაციის docblock-ი)
         'published_at' => 'date',
         'sort_order' => 'integer',
         'download_size' => 'integer',
@@ -72,7 +72,7 @@ class Video extends Model
      * კვოტა არ თავისუფლდებოდა. ამიტომ ფაილებს მაინც სათითაოდ ვშლით.
      *
      * ⚠️ **თამბნეილიც აქ იშლება და არა კონტროლერში.** `DELETE /api/videos/{id}`
-     * მას ისედაც იძახებდა, მაგრამ `PurgeService` (Tasks 20) პირდაპირ
+     * მას ისედაც იძახებდა, მაგრამ `PurgeService` პირდაპირ
      * `$record->delete()`-ს აკეთებს — ე.ი. მასობრივი წაშლა თამბნეილს დისკზე
      * ტოვებდა და კვოტას არ ათავისუფლებდა.
      */
@@ -83,7 +83,7 @@ class Video extends Model
                 $file->delete();
             }
             $video->deleteThumbnail();
-            // §7.1 — ლოკალური ასლიც: ის ყველაზე დიდი ფაილია მთელ კვოტაში
+            // ლოკალური ასლიც: ის ყველაზე დიდი ფაილია მთელ კვოტაში
             $video->deleteDownload();
         });
     }
@@ -94,7 +94,7 @@ class Video extends Model
         return null;
     }
 
-    /** მართვადი ტიპი (Tasks 5.1) — ადრე `kind` enum იყო */
+    /** მართვადი ტიპი — ადრე `kind` enum იყო */
     public function type(): BelongsTo
     {
         return $this->belongsTo(VideoType::class, 'type_id');
@@ -123,7 +123,7 @@ class Video extends Model
     }
 
     /**
-     * ატვირთული თამბნეილის წაშლა დისკიდან. 17.1 — ზომა კვოტიდან აქვე
+     * ატვირთული თამბნეილის წაშლა დისკიდან — ზომა კვოტიდან აქვე
      * მოიხსნება, ე.ი. ყველა გზა (ჩანაცვლება, „მოშორება", ვიდეოს წაშლა)
      * მრიცხველს სწორად ტოვებს.
      */
@@ -133,7 +133,7 @@ class Video extends Model
     }
 
     /**
-     * **ლოკალურად ჩამოწერილი ასლის მოშორება (§7.1).**
+     * **ლოკალურად ჩამოწერილი ასლის მოშორება.**
      *
      * ⚠️ კვოტიდან **ჩაწერილი `download_size`** თავისუფლდება და არა დისკიდან
      * წაკითხული ზომა — იგივე წესი, რაც `StoredFile`-სა და ჩატის მიმაგრებას
@@ -144,8 +144,8 @@ class Video extends Model
      */
     public function deleteDownload(): void
     {
-        /* ⚠️ **ფაილის გათავისუფლება პირობითია, სვეტების გასუფთავება — არა**
-           (აუდიტი 2026-09-14, §B1). ადრე მთელი მეთოდი აქ ბრუნდებოდა, ე.ი.
+        /* ⚠️ **ფაილის გათავისუფლება პირობითია, სვეტების გასუფთავება — არა**.
+           ადრე მთელი მეთოდი აქ ბრუნდებოდა, ე.ი.
            გაჭედილ `running`-ს (რომელსაც ბილიკი არ აქვს) **ვერაფერი ასუფთავებდა**:
            `DELETE /videos/{id}/download` ჩუმად არაფერს აკეთებდა. */
         if ($this->download_path) {
@@ -167,7 +167,7 @@ class Video extends Model
     }
 
     /**
-     * **მიმდინარე ჩამოწერა მკვდარია?** (აუდიტი §B1)
+     * **მიმდინარე ჩამოწერა მკვდარია?**
      *
      * ⚠️ **ერთადერთი ადგილი, სადაც ეს წყდება** — მას `VideoDownloader::start()`
      * ეკითხება (გაშვების დაშვებისთვის) და `VideoResource` (ღილაკის
@@ -200,7 +200,7 @@ class Video extends Model
     }
 
     /**
-     * ტეგის შედარების გასაღები (Tasks 5.3) — რეგისტრისა და ზედმეტი
+     * ტეგის შედარების გასაღები — რეგისტრისა და ზედმეტი
      * სივრცის მიუხედავად. ერთი წყარო ფორმისთვისაც და bulk-ისთვისაც (4).
      */
     public static function tagKey(string $tag): string

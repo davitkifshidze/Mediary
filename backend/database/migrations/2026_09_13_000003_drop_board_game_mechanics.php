@@ -6,9 +6,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * ეტაპი 8 — **მექანიკების სრული მოხსნა** (`board_games.mechanics`).
+ * **მექანიკების სრული მოხსნა** (`board_games.mechanics`).
  *
- * მექანიკა §14-ში BGG-დან მოსული JSON-სია იყო („Hand Management",
+ * მექანიკა BGG-დან მოსული JSON-სია იყო („Hand Management",
  * „Worker Placement"…). user-ის გადაწყვეტილებით ის მთლიანად იხსნება:
  * ⚠️ „ამიღე" = **წაშალე** და არა დამალე, ე.ი. სვეტიც მიდის და არა მხოლოდ UI.
  *

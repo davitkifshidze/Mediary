@@ -56,13 +56,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   ჩატი (Tasks §16.3 → §10) — `/chat` და `/chat/:id`.
+   ჩატი — `/chat` და `/chat/:id`.
 
-   ⚠️ **რეალურ დროში მიწოდება polling-ია და არა WebSocket** — §16.3-ის
-   ცხადი გადაწყვეტილება: worker-ს არ ითხოვს. ღია საუბარი 5 წამში ერთხელ
+   ⚠️ **რეალურ დროში მიწოდება polling-ია და არა WebSocket** — ცხადი
+   გადაწყვეტილება: worker-ს არ ითხოვს. ღია საუბარი 5 წამში ერთხელ
    ახლდება, სია — 15 წამში.
 
-   **§10 — Messenger-ის დონე.** ხუთი წესი, რომელიც ადვილად იშლება ჩუმად:
+   **Messenger-ის დონე.** ხუთი წესი, რომელიც ადვილად იშლება ჩუმად:
 
    ⚠️ **სქროლი „ბოლოშია?"-ზე დგას და არა სიის სიგრძეზე.** ძველი ეფექტი
    `data.length`-ზე იყო მიბმული, ე.ი. (ა) სხვა საუბარზე გადასვლისას,
@@ -70,7 +70,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
    აღმოჩნდებოდი; (ბ) 5-წამიანი გამოკითხვა სიგრძეს ზრდიდა, ე.ი. ისტორიის
    კითხვისას ახალი წერილი ქვემოთ გადაგაგდებდა.
 
-   ⚠️ **ისტორია კურსორითაა** (§10.8): SPA ბოლო 50 წერილზე მეტს ვერ
+   ⚠️ **ისტორია კურსორითაა**: SPA ბოლო 50 წერილზე მეტს ვერ
    კითხულობდა — `meta.last_page` არსად გამოიყენებოდა და „ძველის ჩატვირთვის"
    ღილაკი არ არსებობდა.
 
@@ -102,7 +102,7 @@ export function ChatPage() {
 
   return (
     <PageContainer>
-      {/* §23 — ჰედერი საერთო კომპონენტისაა: ხელით აწყობილი სათაური სექციის
+      {/* ჰედერი საერთო კომპონენტისაა: ხელით აწყობილი სათაური სექციის
           ფერს ვერასდროს მიიღებდა, და თან ერთი სექცია დანარჩენებისგან
           განსხვავებულად გამოიყურებოდა. */}
       <PageHeader
@@ -146,7 +146,7 @@ export function ChatPage() {
 
 function ConversationRow({ conversation: c, active }: { conversation: ChatConversation; active: boolean }) {
   const { t } = useTranslation()
-  // §10.11 — ნიკნეიმი ჩემი ხედია; ნამდვილი სახელი `profile`-შია და არ იკარგება
+  // ნიკნეიმი ჩემი ხედია; ნამდვილი სახელი `profile`-შია და არ იკარგება
   const name = c.nickname ?? c.profile?.display_name ?? '—'
   const avatar = c.profile?.avatar_path ? storageUrl(c.profile.avatar_path) : null
 
@@ -170,7 +170,7 @@ function ConversationRow({ conversation: c, active }: { conversation: ChatConver
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
             <span className="min-w-0 truncate text-sm font-medium">{name}</span>
-            {/* §10.5 — გაჩუმებული საუბარი ბეჯს არ ანთებს; ნიშანი ამას ამბობს */}
+            {/* გაჩუმებული საუბარი ბეჯს არ ანთებს; ნიშანი ამას ამბობს */}
             {c.muted && <BellOff className="size-3.5 shrink-0 text-muted-foreground" />}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
@@ -208,19 +208,19 @@ function Thread({ id }: { id: number }) {
 
   const [body, setBody] = useState('')
   const [file, setFile] = useState<File | null>(null)
-  // §4.6 — რომელ წერილს ვშლით (დიალოგი კითხულობს, ვისთან)
+  // რომელ წერილს ვშლით (დიალოგი კითხულობს, ვისთან)
   const [removing, setRemoving] = useState<ChatMessage | null>(null)
   const [panel, setPanel] = useState<'none' | 'search' | 'pins' | 'settings'>('none')
-  /** §10.8 — ჩატვირთული ძველი წერილები (უახლესი გვერდის წინ) */
+  /** ჩატვირთული ძველი წერილები (უახლესი გვერდის წინ) */
   const [older, setOlder] = useState<ChatMessage[]>([])
-  /** §10.8 — ნახტომის ხედი: ცალკე სია + „ბოლოზე დაბრუნება" */
+  /** ნახტომის ხედი: ცალკე სია + „ბოლოზე დაბრუნება" */
   const [jump, setJump] = useState<{ at: number; items: ChatMessage[] } | null>(null)
   const [newBelow, setNewBelow] = useState(false)
 
   const scroller = useRef<HTMLDivElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
   const picker = useRef<HTMLInputElement>(null)
-  /** „ბოლოშია?" — სქროლის ერთადერთი კრიტერიუმი (§10.1) */
+  /** „ბოლოშია?" — სქროლის ერთადერთი კრიტერიუმი */
   const atBottom = useRef(true)
   const lastSeenId = useRef<number | null>(null)
 
@@ -284,7 +284,7 @@ function Thread({ id }: { id: number }) {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['chat'] })
     qc.invalidateQueries({ queryKey: ['chat-unread'] })
-    // §16.4 — ატვირთვა კვოტას ხარჯავს, ე.ი. ჰედერისა და `/settings`-ის ციფრიც
+    // ატვირთვა კვოტას ხარჯავს, ე.ი. ჰედერისა და `/settings`-ის ციფრიც
     qc.invalidateQueries({ queryKey: ['storage'] })
     qc.invalidateQueries({ queryKey: ['me'] })
   }
@@ -316,7 +316,7 @@ function Thread({ id }: { id: number }) {
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  /** §10.8 — ნახტომი ძებნიდან ან პინიდან; **წაკითხულად არ ნიშნავს** */
+  /** ნახტომი ძებნიდან ან პინიდან; **წაკითხულად არ ნიშნავს** */
   const goTo = useMutation({
     mutationFn: (messageId: number) => fetchThread(id, { around_id: messageId }),
     onSuccess: (page, messageId) => {
@@ -349,7 +349,7 @@ function Thread({ id }: { id: number }) {
     if (ok) removeFile.mutate(messageId)
   }
 
-  /* §4.6 — წერილის წაშლა. ⚠️ **სკოუპი ცხადად ეკითხება** და არ იგულისხმება;
+  /* წერილის წაშლა. ⚠️ **სკოუპი ცხადად ეკითხება** და არ იგულისხმება;
      რიგი ბაზაში რჩება, ე.ი. ეს დამალვაა და არა შეუქცევადი წაშლა. */
   const removeMessage = useMutation({
     mutationFn: ({ id: messageId, scope }: { id: number; scope: RemovalScope }) =>
@@ -365,7 +365,7 @@ function Thread({ id }: { id: number }) {
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  /** §10.10 — რეაქცია; იმავე ემოჯის ხელახლა დაჭერა backend-ზე მოხსნაა */
+  /** რეაქცია; იმავე ემოჯის ხელახლა დაჭერა backend-ზე მოხსნაა */
   const react = useMutation({
     mutationFn: ({ messageId, emoji }: { messageId: number; emoji: string | null }) =>
       reactToMessage(messageId, emoji),
@@ -373,7 +373,7 @@ function Thread({ id }: { id: number }) {
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  /** §10.7 — დაპინვა; **ორივე მონაწილეს შეუძლია** */
+  /** დაპინვა; **ორივე მონაწილეს შეუძლია** */
   const pin = useMutation({
     mutationFn: ({ messageId, pinned }: { messageId: number; pinned: boolean }) =>
       pinMessage(messageId, pinned),
@@ -397,10 +397,10 @@ function Thread({ id }: { id: number }) {
 
   const data = thread.data
   const { profile, blocked, blocked_by_me: mine } = data
-  // §10.11 — ჩემი ნიკნეიმი; ბმული მაინც ნამდვილ პროფილზე მიდის
+  // ჩემი ნიკნეიმი; ბმული მაინც ნამდვილ პროფილზე მიდის
   const name = data.nickname ?? profile?.display_name
 
-  /* §10.3 — „ნანახია": მეორე მხარემ წაიკითხა ყველაფერი ჩემი ბოლო წერილის
+  /* „ნანახია": მეორე მხარემ წაიკითხა ყველაფერი ჩემი ბოლო წერილის
      ჩათვლით. ⚠️ ნიშანი **მხოლოდ ბოლო ჩემს ბუშტზე** — თითოზე რომ გვეხატა,
      ძაფი ნიშნების კედელი გახდებოდა. */
   const lastMine = [...messages].reverse().find((m) => m.mine)
@@ -424,7 +424,7 @@ function Thread({ id }: { id: number }) {
           onUnpin={(m) => pin.mutate({ messageId: m, pinned: false })}
         />
       )}
-      {/* §4.6 — „მხოლოდ შენთან წავშალო თუ ორივესთან?" */}
+      {/* „მხოლოდ შენთან წავშალო თუ ორივესთან?" */}
       {removing && (
         <ModalShell title={t('chat.deleteTitle')} destructive onClose={() => setRemoving(null)}>
           <div className="mt-4 space-y-4 text-sm">
@@ -459,7 +459,7 @@ function Thread({ id }: { id: number }) {
   )
 
   return (
-    /* §10.6 — თემა inline ცვლადებით; „ღია თუ მუქი" CSS წყვეტს (`index.css`) */
+    /* თემა inline ცვლადებით; „ღია თუ მუქი" CSS წყვეტს (`index.css`) */
     <div
       className="fb-chat flex h-[70vh] flex-col rounded-xl border border-border bg-card"
       style={chatThemeStyle(data.theme)}
@@ -469,7 +469,7 @@ function Thread({ id }: { id: number }) {
         <Link to="/chat" className="lg:hidden">
           <ArrowLeft className="size-4 text-muted-foreground" />
         </Link>
-        {/* ⚠️ §34.5 — სუპერადმინთან საუბარში მეორე მხარე შეიძლება არასაჯარო იყოს:
+        {/* ⚠️ სუპერადმინთან საუბარში მეორე მხარე შეიძლება არასაჯარო იყოს:
             მისი პროფილი 404-ია, ე.ი. სახელი ბმული აღარაა */}
         {data.profile_public === false ? (
           <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
@@ -493,7 +493,7 @@ function Thread({ id }: { id: number }) {
         </Button>
       </div>
 
-      {/* §10.8 — ნახტომის ხედი ცხადად ამბობს, რომ ისტორიაში ვართ */}
+      {/* ნახტომის ხედი ცხადად ამბობს, რომ ისტორიაში ვართ */}
       {jump && (
         <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-2 text-xs">
           <span className="min-w-0 flex-1 truncate text-muted-foreground">{t('chat.jumpNotice')}</span>
@@ -520,7 +520,7 @@ function Thread({ id }: { id: number }) {
         }}
         className="relative min-h-0 flex-1 space-y-2 overflow-y-auto bg-[var(--chat-surface)] p-4"
       >
-        {/* §10.8 — „ძველის ჩატვირთვა"; ღილაკი მხოლოდ მაშინ, თუ მართლა არის */}
+        {/* „ძველის ჩატვირთვა"; ღილაკი მხოლოდ მაშინ, თუ მართლა არის */}
         {(jump || data.meta.has_more) && messages.length > 0 && (
           <div className="flex justify-center pb-1">
             <Button variant="outline" size="sm" disabled={loadOlder.isPending} onClick={() => loadOlder.mutate()}>
@@ -544,7 +544,7 @@ function Thread({ id }: { id: number }) {
               jump?.at === m.id && 'rounded-lg bg-primary/10',
             )}
           >
-            {/* §4.6 — წაშლა ორივე მხარეს შეუძლია; **სკოუპს დიალოგი ეკითხება** */}
+            {/* წაშლა ორივე მხარეს შეუძლია; **სკოუპს დიალოგი ეკითხება** */}
             {m.mine && <MessageTools message={m} onDelete={() => setRemoving(m)} onPin={pin.mutate} onReact={react.mutate} />}
             <div className="max-w-[75%]">
               <div
@@ -564,7 +564,7 @@ function Thread({ id }: { id: number }) {
                 <Bubble message={m} onDeleteFile={m.mine ? askDeleteFile : undefined} />
               </div>
 
-              {/* §10.10 — რეაქციები ბუშტის ქვეშ; დაჭერა ჩემსას ხსნის/ცვლის */}
+              {/* რეაქციები ბუშტის ქვეშ; დაჭერა ჩემსას ხსნის/ცვლის */}
               {Object.keys(m.reactions).length > 0 && (
                 <div className={cn('mt-1 flex flex-wrap gap-1', m.mine && 'justify-end')}>
                   {Object.entries(m.reactions).map(([emoji, count]) => (
@@ -583,7 +583,7 @@ function Thread({ id }: { id: number }) {
                 </div>
               )}
 
-              {/* §10.3 — „ნანახია" მხოლოდ ბოლო ჩემს ბუშტზე */}
+              {/* „ნანახია" მხოლოდ ბოლო ჩემს ბუშტზე */}
               {m.mine && lastMine?.id === m.id && (
                 <p className="mt-0.5 text-right text-[11px] text-muted-foreground">
                   {seen ? t('chat.seen') : t('chat.sent')}
@@ -597,7 +597,7 @@ function Thread({ id }: { id: number }) {
         <div ref={bottom} />
       </div>
 
-      {/* §10.1 — „ახალი წერილები ↓": ისტორიას ვკითხულობდი და ქვემოთ არ გადამაგდო */}
+      {/* „ახალი წერილები ↓": ისტორიას ვკითხულობდი და ქვემოთ არ გადამაგდო */}
       {newBelow && (
         <div className="relative">
           <Button
@@ -660,7 +660,7 @@ function Thread({ id }: { id: number }) {
                 <Paperclip className="size-4" />
               </Button>
 
-              {/* §10.2 — ემოჯი კომპოზიტორში, დამოკიდებულების გარეშე */}
+              {/* ემოჯი კომპოზიტორში, დამოკიდებულების გარეშე */}
               <EmojiPicker
                 onPick={(emoji) => setBody((b) => b + emoji)}
                 trigger={
@@ -767,7 +767,7 @@ function MessageTools({
   )
 }
 
-/** §10.9 — ძებნა ერთ საუბარში; ნაჭერს სერვერი ჭრის, ხაზგასმას კლიენტი */
+/** ძებნა ერთ საუბარში; ნაჭერს სერვერი ჭრის, ხაზგასმას კლიენტი */
 function SearchPanel({
   id,
   onClose,
@@ -839,7 +839,7 @@ function SearchPanel({
   )
 }
 
-/** §10.7 — პინების სია; წაშლილი წერილი თავისით ცვივა (`scopeVisibleTo`) */
+/** პინების სია; წაშლილი წერილი თავისით ცვივა (`scopeVisibleTo`) */
 function PinsPanel({
   id,
   onClose,
@@ -901,7 +901,7 @@ function Bubble({
 }) {
   const { t } = useTranslation()
 
-  /* FEAT-13 — გაზიარებული ჩანაწერი.
+  /* გაზიარებული ჩანაწერი.
      ⚠️ **დანართზე მაღლა მოწმდება**: `record`-ტიპის წერილს `attachment`
      არასდროს აქვს, ე.ი. ქვემოთა `if (!m.attachment) return <>{m.body}</>`
      მას ჩუმად ცარიელ ბუშტად დახატავდა. */

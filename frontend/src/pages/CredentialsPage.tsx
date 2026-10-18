@@ -65,19 +65,19 @@ import {
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   **„მონაცემები" — ჩემი გასაღებები და ლიმიტები (Tasks §21 → §30).**
+   **„მონაცემები" — ჩემი გასაღებები და ლიმიტები.**
 
-   §30: რვა სრულსიგანიანი, ერთფეროვანი ბარათი ერთმანეთის ქვეშ **ბადედ**
+   რვა სრულსიგანიანი, ერთფეროვანი ბარათი ერთმანეთის ქვეშ **ბადედ**
    იქცა — ჯგუფებად („რისთვის მჭირდება"), თითო წყაროს თავისი ფერითა და
    აიქონით, მდგომარეობის ფერადი ნიშნით, ბოლო შემოწმებითა და ლიმიტის
    ზოლით. რედაქტირება ბარათზე დაჭერით, მოდალში იხსნება.
 
-   ⚠️ **გასაღები მხოლოდ ჩემია (Q38)** — „საერთო" მდგომარეობა, მისი ნიღაბი
+   ⚠️ **გასაღები მხოლოდ ჩემია** — „საერთო" მდგომარეობა, მისი ნიღაბი
    და „საერთო გასაღებით" placeholder აღარ არსებობს. ვისაც გასაღები არ
    აქვს, მისთვის წყარო არ მუშაობს — ბარათი ამას ცხადად ამბობს და
    დამატებისკენ მიუთითებს.
 
-   ⚠️ **ყველა ძველი წესი რჩება** (§30.2): საიდუმლო სიაში არასდროს მოდის
+   ⚠️ **ყველა ძველი წესი რჩება**: საიდუმლო სიაში არასდროს მოდის
    (მხოლოდ ნიღაბი), „ნახვა" ცალკე მოთხოვნაა, ცარიელი ველი არ იგზავნება
    (= „უცვლელი"), Serper-ის შემოწმება კრედიტს ხარჯავს და დასტურს ითხოვს.
    ============================================================ */
@@ -91,7 +91,7 @@ const LOOK: Record<CredentialProvider, { icon: LucideIcon; color: string }> = {
   serpapi: { icon: ScanSearch, color: 'var(--cred-serpapi)' },
   serper: { icon: Images, color: 'var(--cred-serper)' },
   youtube: { icon: SquarePlay, color: 'var(--cred-youtube)' },
-  // Tasks §57.2 — ადგილები
+  // ადგილები
   google_maps: { icon: MapPinned, color: 'var(--cred-places)' },
   telegram: { icon: Send, color: 'var(--cred-telegram)' },
 }
@@ -170,7 +170,7 @@ export function CredentialsPage() {
             .map((p) => byProvider.get(p))
             .filter((c): c is Credential => c !== undefined)
 
-          /* §27.2 — „შეტყობინებების" ჯგუფს ბრაუზერის ბარათიც აქვს, ე.ი. წყაროების გარეშეც იხატება */
+          /* „შეტყობინებების" ჯგუფს ბრაუზერის ბარათიც აქვს, ე.ი. წყაროების გარეშეც იხატება */
           if (!items.length && group.key !== 'notify') return null
 
           const Icon = GROUP_ICON[group.key]
@@ -201,11 +201,11 @@ export function CredentialsPage() {
         })}
       </div>
 
-      {/* §21.9 → §30.10 — რაც `.env`-შია, მაგრამ გასაღები არაა (მხოლოდ სუპერ-ადმინს).
+      {/* რაც `.env`-შია, მაგრამ გასაღები არაა (მხოლოდ სუპერ-ადმინს).
           ⚠️ **წასაკითხია და არა ფორმა**: `yt-dlp`-ის ბილიკი ამ *კომპიუტერის*
           ფაქტია და per-user ვერ გახდება; ღია რეგისტრაცია — მთელი
           ინსტალაციისა. ⚠️ წყაროს გასაღები აქ **არასდროს** ჩნდება — ის
-          ადამიანისაა (Q38). ბოლოსაა და ცალკე, რომ ბარათებს არ ერეოდეს. */}
+          ადამიანისაა. ბოლოსაა და ცალკე, რომ ბარათებს არ ერეოდეს. */}
       {(data?.installation.length ?? 0) > 0 && (
         <section className="mt-10 rounded-2xl border border-border bg-card p-5">
           <h2 className="flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
@@ -231,7 +231,7 @@ export function CredentialsPage() {
   )
 }
 
-/* ---------- Tasks §44.6 — „რა აპები და საიდან გასაღები" ----------
+/* ---------- „რა აპები და საიდან გასაღები" ----------
    ერთი სია გვერდის `i`-ში: რომელი წყარო რას ავსებს და გასაღები საიდან მოდის (ან რომ არ სჭირდება).
    ⚠️ მხოლოდ **მიერთებული** წყაროები — `CredentialProviders` და გასაღების გარეშე მომუშავენი (yt-dlp,
    Open Library, BGG, OpenStreetMap); ახალი წყარო სიაში მხოლოდ `CredentialProviders`-ში დამატების შემდეგ
@@ -263,7 +263,7 @@ function SourceGuide() {
   )
 }
 
-/* ---------- ბარათი (§30.1) ---------- */
+/* ---------- ბარათი ---------- */
 
 function ProviderTile({
   credential,
@@ -308,7 +308,7 @@ function ProviderTile({
   )
 }
 
-/* ---------- ბრაუზერის არხი (Tasks §27.2) ----------
+/* ---------- ბრაუზერის არხი ----------
    ⚠️ **გასაღები არაა და სერვერზე არაფერი იწერება**: ნებართვა ბრაუზერისაა და ამ
    კომპიუტერზე ცხოვრობს. ბარათი აქ იმიტომაა, რომ შეხსენების ორივე არხი — ბრაუზერი
    და ტელეგრამი — ერთ ადგილას მოწმდებოდეს და ჩანაწერების გვერდი პარამეტრებისგან
@@ -462,7 +462,7 @@ function CheckLine({ credential, state }: { credential: Credential; state: Crede
   )
 }
 
-/* ---------- რედაქტირების მოდალი (§30.2) ---------- */
+/* ---------- რედაქტირების მოდალი ---------- */
 
 function ProviderDialog({ credential, onClose }: { credential: Credential; onClose: () => void }) {
   const { t } = useTranslation()
@@ -564,7 +564,7 @@ function ProviderDialog({ credential, onClose }: { credential: Credential; onClo
       aside={<Badge className={STATE_TONE[state]}>{t(`credentials.state.${state}`)}</Badge>}
     >
       <div className="mt-2 space-y-5">
-        {/* ⚠️ **გაუშიფრავი გასაღები ცხადად უნდა ითქვას (Tasks GAP-11).** ტექსტი
+        {/* ⚠️ **გაუშიფრავი გასაღები ცხადად უნდა ითქვას.** ტექსტი
             პროზაა და არა ხატულა: ის **მდგომარეობითია** (გამოჩნდა ამჟამინდელი
             მდგომარეობის გამო) — სწორედ ის შემთხვევა, რომელსაც `InfoHint`-ის
             წესი პროზად ტოვებს. */}
@@ -587,7 +587,7 @@ function ProviderDialog({ credential, onClose }: { credential: Credential; onClo
                   value={fields[f.name] ?? ''}
                   onChange={(value) => setFields((s) => ({ ...s, [f.name]: value }))}
                   /* ⚠️ ნიღაბი ველის **შიგთავსია** და არა `placeholder` — მისი
-                     არსებობა თვითონ ამბობს, რომ გასაღები შენახულია. §30-იდან
+                     არსებობა თვითონ ამბობს, რომ გასაღები შენახულია.
                      მხოლოდ **ჩემი** ნიღაბი არსებობს. */
                   masked={f.masked}
                   placeholder={t('credentials.empty')}
@@ -654,7 +654,7 @@ function ProviderDialog({ credential, onClose }: { credential: Credential; onClo
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* ⚠️ **ბმულის ნაცვლად ინსტრუქცია** (§21.8): „გახსენი დოკუმენტაცია და
+          {/* ⚠️ **ბმულის ნაცვლად ინსტრუქცია**: „გახსენი დოკუმენტაცია და
               გაერკვიე" ზუსტად ის ადგილია, სადაც ადამიანი ჩერდება. */}
           <Button variant="outline" size="sm" onClick={() => setHelpOpen(true)}>
             <HelpCircle className="size-4" />

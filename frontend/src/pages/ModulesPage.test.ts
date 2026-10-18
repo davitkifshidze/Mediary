@@ -9,7 +9,7 @@ import type { ModuleInfo } from '@/api/account'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **მოდულების რიგი `/modules`-ზე** (Tasks §36).
+   **მოდულების რიგი `/modules`-ზე**.
 
    ⚠️ რასაც backend-ის ტესტი ვერ იტყვის: რომ **UI მთელ რიგს ერთი `PUT`-ით
    აგზავნის** (ისრითაც და ჩამოგდებითაც), ბარათი **მაშინვე** ინაცვლებს
@@ -53,7 +53,7 @@ const mocks = vi.hoisted(() => ({
   saveOrder: vi.fn(),
   resetOrder: vi.fn(),
   saveDefault: vi.fn(),
-  // §32 — პირადი მოდულის წაშლა ბარათის მენიუდან
+  // პირადი მოდულის წაშლა ბარათის მენიუდან
   deleteModule: vi.fn(async () => ({ trashed: true, records: 3, trash_id: 9 })),
 }))
 
@@ -62,7 +62,7 @@ vi.mock('@/api/account', async (original) => ({
   fetchModules: async () => mocks.server.list,
   fetchAdminModules: async () => mocks.server.admin,
   fetchMyRequests: async () => [],
-  // §37.8 — სუპერადმინს „მომხმარებლების მოდულები“-ც ეხატება
+  // სუპერადმინს „მომხმარებლების მოდულები“-ც ეხატება
   fetchCustomModulesOverview: async () => [],
   saveModuleOrder: mocks.saveOrder,
   resetModuleOrder: mocks.resetOrder,
@@ -159,7 +159,7 @@ async function click(el: Element) {
   await flush()
 }
 
-/** Tasks §11 — jsdom-ს განლაგება არ აქვს: ბარათების მართკუთხედები რიგიდან ითვლება (3 სვეტი),
+/** jsdom-ს განლაგება არ აქვს: ბარათების მართკუთხედები რიგიდან ითვლება (3 სვეტი),
     რომ dnd-kit-ის კლავიატურის სენსორმა მარცხენა მეზობელი იპოვოს; მაუსთან ასლს იმ ბარათის ზომა აქვს, რომლის ასლიცაა */
 function mockGridRects(cols = 3) {
   Element.prototype.getBoundingClientRect = function (this: Element) {
@@ -177,7 +177,7 @@ const card = (key: string) => container!.querySelector(`a[href="/modules/${key}"
 describe('ModulesPage — order', () => {
   it('the keyboard on the handle carries the card two places left, at once, and sends the whole order in one PUT', async () => {
     serve([MOVIE, SERIES, VIDEO])
-    // ⚠️ პასუხი არ მოდის — ბარათი მხოლოდ ოპტიმისტურმა ქეშმა შეიძლება გადაწიოს (Tasks §12 — ისრები აღარ არის)
+    // ⚠️ პასუხი არ მოდის — ბარათი მხოლოდ ოპტიმისტურმა ქეშმა შეიძლება გადაწიოს (ისრები აღარ არის)
     mocks.saveOrder.mockImplementation(() => new Promise(() => {}))
     await mount()
     expect(shown()).toEqual(['movie', 'series', 'video'])
@@ -246,7 +246,7 @@ describe('ModulesPage — order', () => {
 })
 
 /* ============================================================
-   **პირადი მოდულის წაშლა ბარათიდან** (Tasks §32.1/§32.4).
+   **პირადი მოდულის წაშლა ბარათიდან**.
 
    ⚠️ წაშლის პუნქტი **მხოლოდ პირად** მოდულზეა (`c{owner}-{slug}`); ჩაშენებულზე მენიუში
    არ ჩანს (იშლება მხოლოდ გამორთვით). დადასტურება იგივეა, რაც მოდულის გვერდზე —
@@ -263,7 +263,7 @@ async function openMenu(key: string) {
   return [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')]
 }
 
-/** Tasks §58.3 — „ჩემი მოდულები (N)" */
+/** „ჩემი მოდულები (N)" */
 async function openMine(count: number) {
   await click(buttons(i18n.t('customModules.mine', { count }))[0])
   await flush()
@@ -271,7 +271,7 @@ async function openMine(count: number) {
   return document.body.querySelector<HTMLElement>('[data-testid="my-modules"]')
 }
 
-describe('ModulesPage — delete (§32 → §58.3)', () => {
+describe('ModulesPage — delete', () => {
   it('a built-in card has no delete; a personal module is deleted from “my modules” after the confirmation', async () => {
     serve([MOVIE, WORK])
     await mount()
@@ -304,11 +304,11 @@ describe('ModulesPage — delete (§32 → §58.3)', () => {
 })
 
 /* ============================================================
-   **Tasks §58 — ბადეში მხოლოდ ჩაშენებულები, პირადები — ფანჯარაში.**
+   **ბადეში მხოლოდ ჩაშენებულები, პირადები — ფანჯარაში.**
    ============================================================ */
 const HOBBY = moduleRow('c1-hobby', 50, 17)
 
-describe('ModulesPage — my modules (§58)', () => {
+describe('ModulesPage — my modules', () => {
   it('the grid shows only the built-in modules and moves slowly', async () => {
     serve([MOVIE, WORK, SERIES, HOBBY])
     await mount()

@@ -10,7 +10,7 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * **ატვირთული ფაილის უსაფრთხო გაცემა (Tasks SEC-04, 2026-09-17).**
+ * **ატვირთული ფაილის უსაფრთხო გაცემა (2026-09-17).**
  *
  * ⚠️ **ხვრელი**: ჩატის ფაილი `Content-Type`-ად **კლიენტის** multipart-ჰედერს
  * აბრუნებდა, `inline`-ით. A აგზავნიდა `.html`-ს `text/html`-ით, B დააჭერდა
@@ -97,7 +97,7 @@ final class SafeMime
     }
 
     /**
-     * **იგივე წესები, ოღონდ HTTP Range-ით** (Tasks §6.4) — ვიდეოსა და აუდიოსთვის.
+     * **იგივე წესები, ოღონდ HTTP Range-ით** — ვიდეოსა და აუდიოსთვის.
      *
      * ⚠️ `StreamedResponse` (ზემოთა `response()`) Range-ს არ იცნობს: ბრაუზერი
      * `<video>`-ში გადახვევას `Range: bytes=…`-ით ითხოვს და მთელი ფაილის

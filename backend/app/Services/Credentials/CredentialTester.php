@@ -8,7 +8,7 @@ use Illuminate\Http\Client\Response;
 use Throwable;
 
 /**
- * **„ეს გასაღები მართლა მუშაობს?"** (Tasks §21.6).
+ * **„ეს გასაღები მართლა მუშაობს?"**.
  *
  * ⚠️ **„ჩავწერე" და „მუშაობს" ორი სხვადასხვა ფაქტია.** გასაღების შენახვა
  * მხოლოდ იმას ნიშნავს, რომ ველი ცარიელი აღარაა — შეცდომით ჩასმული ან ვადა
@@ -29,7 +29,7 @@ use Throwable;
  */
 class CredentialTester
 {
-    /** Telegram-ის სატესტო შეტყობინება — ქართულად, რადგან მომხმარებელი ჩატში ამას ხედავს (§27.3) */
+    /** Telegram-ის სატესტო შეტყობინება — ქართულად, რადგან მომხმარებელი ჩატში ამას ხედავს */
     public const TELEGRAM_TEST_TEXT = 'სატესტო შეტყობინება Mediary-დან';
 
     /** რომელი წყაროს შემოწმება ხარჯავს კვოტას */
@@ -88,7 +88,7 @@ class CredentialTester
                         ->post('https://google.serper.dev/images', ['q' => 'test', 'num' => 1])
                 ),
 
-                /* Tasks §57.2 — Text Search მხოლოდ `places.id`-ით („IDs Only" — უფასო
+                /* Text Search მხოლოდ `places.id`-ით („IDs Only" — უფასო
                    SKU): გასაღებს, ჩართულ API-სა და ბილინგს ერთად ამოწმებს და არ ხარჯავს */
                 CredentialProviders::GOOGLE_MAPS => $this->check(
                     SourceLog::request(15)
@@ -104,7 +104,7 @@ class CredentialTester
                     ])
                 ),
 
-                /* Tasks §27.3 — `getMe` მხოლოდ ტოკენს ამოწმებს, chat id-ს კი მხოლოდ
+                /* `getMe` მხოლოდ ტოკენს ამოწმებს, chat id-ს კი მხოლოდ
                    ნამდვილი `sendMessage`: ამიტომ შემოწმება ჩატში სატესტო
                    შეტყობინებას აგზავნის და „შემოწმდა" ორივეს ნიშნავს (აქამდე
                    მხოლოდ `getMe` იყო — არასწორი id „მუშაობს"-ად ითვლებოდა).

@@ -20,7 +20,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * **Tasks §6, ფაზა 3 — მორგებული ველები** (`DECISIONS.md` §2: ცალკე ცხრილი).
+ * **მორგებული ველები** (ცალკე ცხრილი).
  *
  * ჩამაგრებულია ის, რაც ადვილად იშლება ჩუმად:
  *  · განსაზღვრება მოდულზეა, მნიშვნელობა — ჩანაწერზე;
@@ -174,7 +174,7 @@ class CustomFieldTest extends TestCase
             ->putJson("/api/custom-fields/video/{$video->id}", ['values' => ['mood' => 'კარგი']])
             ->assertOk();
 
-        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+        /* ⚠️ **კალათა** — `DELETE /api/<module>/{id}` ჩანაწერს
            აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
            როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/videos/{$video->id}")->assertNoContent();
@@ -213,7 +213,7 @@ class CustomFieldTest extends TestCase
             ->assertStatus(404);
     }
 
-    /* ---------- ფაზა 4b — `ფაილი` ტიპი (🔗 §17) ---------- */
+    /* ---------- `ფაილი` ტიპი ---------- */
 
     private function defineFileField(): void
     {
@@ -239,7 +239,7 @@ class CustomFieldTest extends TestCase
             ->assertCreated()
             ->json('value');
 
-        /* §7.3 — ⚠️ **მნიშვნელობა სიაა და ერთ ფაილზეც**: ცვალებადი ფორმა
+        /* ⚠️ **მნიშვნელობა სიაა და ერთ ფაილზეც**: ცვალებადი ფორმა
            („ერთზე ობიექტი, ორზე მასივი") ფრონტს ყოველ გამოყენებაზე
            `Array.isArray()`-ს მოსთხოვდა. */
         $this->assertCount(1, $value);
@@ -247,7 +247,7 @@ class CustomFieldTest extends TestCase
 
         $row = DB::table('video_field_values')->where('field_key', 'ticket')->first();
         $this->assertSame("/custom-fields/video/{$video->id}/file/ticket/{$row->id}", $value[0]['url']);
-        // ⚠️ ფესვი მოდულისაა (`videos/`), თორემ §17.2-ის ლიმიტი სხვა მოდულს დაეთვლებოდა
+        // ⚠️ ფესვი მოდულისაა (`videos/`), თორემ მოდულის ლიმიტი სხვა მოდულს დაეთვლებოდა
         $this->assertStringStartsWith('videos/fields/', $row->value_path);
         $this->assertSame($value[0]['size'], (int) $row->value_size);
 
@@ -279,7 +279,7 @@ class CustomFieldTest extends TestCase
     }
 
     /**
-     * **ფაილის წაშლა ურნაში მიდის** (Tasks §29): რიგი ქრება (`file` ველზე ფაილი
+     * **ფაილის წაშლა ურნაში მიდის**: რიგი ქრება (`file` ველზე ფაილი
      * *არის* მნიშვნელობა), ფაილი და კვოტა კი ადგილზე რჩება — ადგილი მხოლოდ
      * ურნიდან საბოლოო წაშლისას თავისუფლდება.
      */
@@ -321,7 +321,7 @@ class CustomFieldTest extends TestCase
     }
 
     /**
-     * **ურნიდან ფაილი თავის ველში ბრუნდება** (Tasks §29) — ბოლოში, რადგან
+     * **ურნიდან ფაილი თავის ველში ბრუნდება** — ბოლოში, რადგან
      * ძველი `sort_order` შეიძლება უკვე დაკავებულია; ფაილი და კვოტა არ იცვლება.
      */
     public function test_a_trashed_file_comes_back_into_its_field(): void
@@ -384,7 +384,7 @@ class CustomFieldTest extends TestCase
     }
 
     /**
-     * **ველის სიიდან ამოღება ფაილს ურნაში აგზავნის** (Tasks §29). აღდგენა
+     * **ველის სიიდან ამოღება ფაილს ურნაში აგზავნის**. აღდგენა
      * მხოლოდ მაშინ მუშაობს, თუ იმავე key-ით `file` ველი კვლავ არსებობს —
      * სხვაგვარად 409 `field_missing` (ფაილი არსად დაბრუნდებოდა).
      */
@@ -444,7 +444,7 @@ class CustomFieldTest extends TestCase
             ['key' => 'ticket', 'type' => 'text', 'label_ka' => 'ბილეთი', 'label_en' => 'Ticket'],
         ]);
 
-        // Tasks §29 — ფაილი ურნაშია: ველიდან ქრება, დისკზე და კვოტაში რჩება
+        // ფაილი ურნაშია: ველიდან ქრება, დისკზე და კვოტაში რჩება
         $this->assertNull(DB::table('video_field_values')->value('value_path'));
         $this->assertTrue(Storage::disk('public')->exists($path));
         $this->assertSame($used, (int) $this->user->fresh()->storage_used_bytes);
@@ -455,7 +455,7 @@ class CustomFieldTest extends TestCase
         $this->assertSame(0, (int) $this->user->fresh()->storage_used_bytes);
     }
 
-    /** კვოტის ამოწურვა — **413** და არა 422 (§17-ის წესი) */
+    /** კვოტის ამოწურვა — **413** და არა 422 */
     public function test_upload_over_the_quota_is_rejected(): void
     {
         Storage::fake('public');
@@ -476,7 +476,7 @@ class CustomFieldTest extends TestCase
     }
 
     /**
-     * ⚠️ **SEC-05 (High, 2026-09-17).** SVG `<module>/fields`-ში — **საჯარო**
+     * ⚠️ SVG `<module>/fields`-ში — **საჯარო**
      * დისკზე — ხვდებოდა და `/storage/*`-იდან აპის origin-ზე სკრიპტს
      * ასრულებდა. ⚠️ მეორე შემთხვევა — `.png`-ად და `image/png`-ად
      * შენიღბული SVG — ამტკიცებს, რომ წესი ფორმატს **შიგთავსიდან** ადგენს.
@@ -511,12 +511,12 @@ class CustomFieldTest extends TestCase
     }
 
     /**
-     * SEC-05 — ⚠️ **აპის არც ერთი ატვირთვის წესი აქტიურ კონტენტს არ იღებს.**
+     * ⚠️ **აპის არც ერთი ატვირთვის წესი აქტიურ კონტენტს არ იღებს.**
      * ფორმატი, რომელსაც ბრაუზერი დოკუმენტად ხატავს და სკრიპტს ასრულებს,
      * საჯარო დისკზე stored XSS-ია. სია ზოგადია და **ტესტისაა** (და არა აპის
      * `UploadLimits::NEVER` — ის აქ დამოუკიდებელ მოწმედ არ გამოდგებოდა).
      *
-     * ⚠️ **Tasks §34-იდან ლიმიტი სამ წყაროდან მოდის** (კოდის ნაგულისხმევი,
+     * ⚠️ **ლიმიტი სამ წყაროდან მოდის** (კოდის ნაგულისხმევი,
      * სუპერადმინის ინსტალაციის მნიშვნელობა, პირადი გამონაკლისი) და სამივე
      * მოწმდება — ბაზაში **ხელით ჩაწერილი** აქტიური შიგთავსითაც, რომელიც
      * რედაქტორის ვალიდაციას გვერდს უვლის. ყოველი წესი `mimes:`-ის **საბოლოო**
@@ -647,11 +647,11 @@ class CustomFieldTest extends TestCase
         $this->assertArrayHasKey($path, $referenced);
     }
 
-    /* ---------- §7.3 — ერთ ველზე რამდენიმე ფაილი ---------- */
+    /* ---------- ერთ ველზე რამდენიმე ფაილი ---------- */
 
     /**
-     * ⚠️ **მეორე ატვირთვა პირველს აღარ შლის.** სწორედ ეს იყო ფაზა 4b-ის ქცევა
-     * (`unique(record_id, field_key)`), და §7.3 სწორედ მას ცვლის.
+     * ⚠️ **მეორე ატვირთვა პირველს აღარ შლის.** სწორედ ეს იყო ძველი ქცევა
+     * (`unique(record_id, field_key)`), და მრავალფაილიანი ველი სწორედ მას ცვლის.
      */
     public function test_a_second_upload_is_added_not_substituted(): void
     {
@@ -733,7 +733,7 @@ class CustomFieldTest extends TestCase
             ->deleteJson("/api/custom-fields/video/{$video->id}/file/ticket/{$first->id}")
             ->assertNoContent();
 
-        // Tasks §29 — ურნაში: რიგი ქრება, ადგილი კი საბოლოო წაშლამდე რჩება
+        // ურნაში: რიგი ქრება, ადგილი კი საბოლოო წაშლამდე რჩება
         $this->assertSame(1, DB::table('video_field_values')->count());
         $this->assertSame($used, (int) $this->user->fresh()->storage_used_bytes);
 
@@ -772,7 +772,7 @@ class CustomFieldTest extends TestCase
             ->deleteJson("/api/custom-fields/video/{$video->id}/file/ticket")
             ->assertNoContent();
 
-        // Tasks §29 — ორივე ურნაშია; ადგილი ურნის დაცლისას თავისუფლდება
+        // ორივე ურნაშია; ადგილი ურნის დაცლისას თავისუფლდება
         $this->assertSame(0, DB::table('video_field_values')->count());
         $this->assertSame(2, TrashedFile::withoutGlobalScope('owner')->count());
         $this->assertSame($used, (int) $this->user->fresh()->storage_used_bytes);
@@ -838,7 +838,7 @@ class CustomFieldTest extends TestCase
             ['key' => 'ticket', 'type' => 'text', 'label_ka' => 'ბილეთი', 'label_en' => 'Ticket'],
         ]);
 
-        // Tasks §29 — სამივე ფაილი ურნაშია (დისკზე და კვოტაში), ველის რიგები კი აღარ არის
+        // სამივე ფაილი ურნაშია (დისკზე და კვოტაში), ველის რიგები კი აღარ არის
         foreach ($paths as $path) {
             Storage::disk('public')->assertExists($path);
         }
@@ -854,10 +854,10 @@ class CustomFieldTest extends TestCase
     }
 
     /**
-     * **ძველი SVG/HTML ფაილი `attachment`-ით ბრუნდება** (Tasks SEC-08).
+     * **ძველი SVG/HTML ფაილი `attachment`-ით ბრუნდება**.
      *
-     * ⚠️ **რიგი ხელით იწერება და არა endpoint-ით, და ეს განზრახია**: SEC-05-მა
-     * `svg` `FILE_MIMES`-იდან ამოიღო (ახლა `UploadLimits::KINDS['field']` + `NEVER`),
+     * ⚠️ **რიგი ხელით იწერება და არა endpoint-ით, და ეს განზრახია**:
+     * `svg` `FILE_MIMES`-იდან ამოღებულია (ახლა `UploadLimits::KINDS['field']` + `NEVER`),
      * ე.ი. **ახალი** ატვირთვა უკვე 422-ია.
      * ხვრელი ძველ რიგებზეა — ისინი დისკზე დარჩნენ და `value_mime`-ად კლიენტის
      * ნათქვამს ატარებენ, `showFile()` კი სწორედ იმ სვეტს აბრუნებდა
@@ -866,7 +866,7 @@ class CustomFieldTest extends TestCase
      *
      * ⚠️ **მფლობელობის შემოწმება ამას არ ხსნიდა**: იგივე რიგი ადმინის
      * ფაილ-ბიბლიოთეკაშიც ჩანს (`StorageMeter::files()`), ე.ი. დაბალი უფლების
-     * მომხმარებელი დებდა, ადმინი ხსნიდა — SEC-04-ის იგივე შაბლონი.
+     * მომხმარებელი დებდა, ადმინი ხსნიდა — ჩატის ფაილის იგივე შაბლონი.
      */
     #[DataProvider('activeContentProvider')]
     public function test_a_stored_file_is_never_served_with_the_clients_type(string $name, string $body, string $claimed): void
@@ -934,7 +934,7 @@ class CustomFieldTest extends TestCase
     }
 
     /**
-     * **მეორე ჩაწერა `created_at`-ს არ ცვლის** (Tasks BUG-12).
+     * **მეორე ჩაწერა `created_at`-ს არ ცვლის**.
      *
      * ⚠️ `updateOrInsert()`-ის მეორე მასივი **UPDATE-ის payload-იც არის**, ე.ი.
      * ფიქსირებული `'created_at' => now()` არსებული მნიშვნელობის ყოველ

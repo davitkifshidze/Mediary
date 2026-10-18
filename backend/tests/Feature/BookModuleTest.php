@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * წიგნების მოდული (`book`, Tasks §12).
+ * წიგნების მოდული (`book`).
  *
  * ამოწმებს იმას, რაც ამ მოდულში ადვილად შეიძლება გატყდეს: მოდულის gate,
  * per-user ჟანრების ლექსიკონი, პროგრესის ორი ერთეულის სინქრონი, ISBN-ის
@@ -74,7 +74,7 @@ class BookModuleTest extends TestCase
     }
 
     /**
-     * ქართული შეკითხვა ხელით შევსებას ნიშნავს და არა ცარიელ სიას (§5.7).
+     * ქართული შეკითხვა ხელით შევსებას ნიშნავს და არა ცარიელ სიას.
      *
      * ⚠️ მთავარი ის არის, რომ **გარე გამოძახება საერთოდ არ ხდება**: Open
      * Library ქართულს ვერ პასუხობს, ე.ი. რექვესთი ისედაც ფუჭი იქნებოდა და
@@ -121,7 +121,7 @@ class BookModuleTest extends TestCase
             ->assertJsonCount(0, 'results');
     }
 
-    /** მოდულის gate + §12-ის ველების ნაკრები */
+    /** მოდულის gate + ველების ნაკრები */
     public function test_module_gate_and_field_set(): void
     {
         $outsider = $this->makeUser('nomodule', []);
@@ -156,7 +156,7 @@ class BookModuleTest extends TestCase
             ->assertJsonPath('data.status', 'reading')
             ->assertJsonPath('data.rating', 10)
             ->assertJsonPath('data.links.0.url', 'https://biblusi.ge/book/1')
-            // 16.5 — ხილვადობა default-ად პირადია
+            // ხილვადობა default-ად პირადია
             ->assertJsonPath('data.visibility', 'private')
             // ტეგების დუბლი რეგისტრისა და სივრცის მიუხედავად იჭრება
             ->assertJsonPath('data.tags', ['კლასიკა', 'პოემა']);
@@ -321,7 +321,7 @@ class BookModuleTest extends TestCase
             ->assertOk()
             ->assertJsonPath('modules.book', $used);
 
-        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+        /* ⚠️ **კალათა** — `DELETE /api/<module>/{id}` ჩანაწერს
            აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
            როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/books/{$id}")->assertNoContent();

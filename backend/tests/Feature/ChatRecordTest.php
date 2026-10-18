@@ -11,7 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **ჩანაწერის გაზიარება ჩატში (FEAT-13).**
+ * **ჩანაწერის გაზიარება ჩატში.**
  *
  * ⚠️ **ორი ურთიერთსაპირისპირო ფაქტი იცავს ამ ფუნქციას:** გაზიარება
  * ხილვადობას **არ** ცვლის (პირადი ჩანაწერიდან მხოლოდ სათაური მიდის) —
@@ -42,7 +42,7 @@ class ChatRecordTest extends TestCase
             'email' => "{$name}@example.com", 'password' => 'password',
         ]);
 
-        // ⚠️ ჩატში წერა ორივე პროფილის საჯაროობას ითხოვს (§16.3).
+        // ⚠️ ჩატში წერა ორივე პროფილის საჯაროობას ითხოვს.
         // `create()`-ში ის არ გადის — სვეტი `fillable`-ში არაა.
         $user->forceFill(['profile_visibility' => 'public'])->save();
         $user->modules()->sync(Module::pluck('id')->all());
@@ -153,7 +153,7 @@ class ChatRecordTest extends TestCase
 
     /**
      * ⚠️ **მეორედ დამატება ახალ რიგს არ ქმნის.** დუბლიკატი უნიკალურობას
-     * არ არღვევს (`imdb_id` per-user-ია), სამაგიეროდ მატჩინგი (§16.2)
+     * არ არღვევს (`imdb_id` per-user-ია), სამაგიეროდ მატჩინგი
      * ერთსა და იმავე ფილმს ორჯერ დაითვლიდა.
      */
     public function test_saving_twice_does_not_duplicate(): void
@@ -188,7 +188,7 @@ class ChatRecordTest extends TestCase
     }
 
     /**
-     * ⚠️ **ჩანიშვნა ვერ გაიზიარება** (§16.5) — მოდული პირად დოკუმენტებს
+     * ⚠️ **ჩანიშვნა ვერ გაიზიარება** — მოდული პირად დოკუმენტებს
      * ინახავს და `PublicDomain::MATCH`-ში არასდროს ყოფილა; ვალიდაცია
      * ამიტომ თვითონვე კეტავს კარს.
      */

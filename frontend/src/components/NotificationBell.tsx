@@ -28,7 +28,7 @@ import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/ui/feedback'
 
 /**
- * **შეტყობინებების ცენტრი (FEAT-19) — ჰედერის ზარი.**
+ * **შეტყობინებების ცენტრი — ჰედერის ზარი.**
  *
  * ⚠️ **ორი query და არა ერთი.** ბეჯი ყოველ 30 წამში მხოლოდ **რიცხვს**
  * ეკითხება (ჩატის წაუკითხავის ზუსტი ფორმა), სრული სია კი მხოლოდ მაშინ
@@ -50,7 +50,7 @@ const ICONS: Record<string, typeof Bell> = {
   storage_warning: HardDrive,
   backup_failed: DatabaseBackup,
   batch_done: ListChecks,
-  // Tasks §37 — ინტერფეისიდან შექმნილი მოდული
+  // ინტერფეისიდან შექმნილი მოდული
   module_created: Blocks,
   module_deleted: Trash2,
   module_disabled: Ban,
@@ -99,7 +99,7 @@ export function NotificationBell() {
     if (n.type === 'batch_done') {
       return t('notifications.detail.batch', { total: d.total ?? 0, failed: d.failed ?? 0 })
     }
-    /* Tasks §40.8 — ვინ და რომელი ბმულიდან (შეტყობინება ერთი მიმღებზე დღეშია,
+    /* ვინ და რომელი ბმულიდან (შეტყობინება ერთი მიმღებზე დღეშია,
        ამიტომ რიცხვი აქ არ წერია — ის პირველ ჩანაწერზე იბადება და მოატყუებდა) */
     if (n.type === 'share_imported') {
       return t('notifications.detail.share', {
@@ -107,7 +107,7 @@ export function NotificationBell() {
         link: d.link_name || t('share.unnamed'),
       })
     }
-    /* §34.5 — ატვირთვის მოთხოვნა: რა ჩაირთო და **ვისზე** (Q42 — შეტყობინებამ
+    /* ატვირთვის მოთხოვნა: რა ჩაირთო და **ვისზე** (შეტყობინებამ
        უნდა თქვას, მხოლოდ მისთვის გავრცელდა თუ ყველასთვის) */
     if (d.request_type === 'upload_limit' && d.upload_kind) {
       const formats = Array.isArray(n.data.upload_formats) ? (n.data.upload_formats as string[]) : []
@@ -121,8 +121,8 @@ export function NotificationBell() {
 
       return d.upload_scope ? `${line} · ${t(`uploads.scope.${d.upload_scope}`)}` : line
     }
-    /* §37 — პირადი მოდული: სახელი ორივე ენაზე და (სუპერადმინისთვის) მფლობელი.
-       ⚠️ ტექსტი ბაზაში არ ინახება (FEAT-19) — მხოლოდ ფაქტები და აქ იწყობა. */
+    /* პირადი მოდული: სახელი ორივე ენაზე და (სუპერადმინისთვის) მფლობელი.
+       ⚠️ ტექსტი ბაზაში არ ინახება — მხოლოდ ფაქტები და აქ იწყობა. */
     if (n.type === 'module_created' || n.type === 'module_deleted' || n.type === 'module_disabled') {
       const moduleName = (i18n.language === 'en' ? d.module_name_en : d.module_name_ka) ?? d.module_key
       return d.owner_name && n.type !== 'module_disabled'

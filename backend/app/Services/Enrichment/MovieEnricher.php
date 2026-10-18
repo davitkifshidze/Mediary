@@ -104,7 +104,7 @@ class MovieEnricher
     }
 
     /**
-     * TMDB-ის ქართული პასუხი (Tasks BUG-17).
+     * TMDB-ის ქართული პასუხი.
      *
      * ⚠️ **ქართული TMDB-დან მოდის და არა Gemini-დან.** აქამდე `draftFromId()`
      * და `enrichMovie()` თითო ჩანაწერზე **ორ** Gemini-გამოძახებას ხარჯავდნენ
@@ -146,7 +146,7 @@ class MovieEnricher
     }
 
     /**
-     * ოფიციალური ტრეილერი TMDB-დან, ka→en კასკადით (Tasks 9).
+     * ოფიციალური ტრეილერი TMDB-დან, ka→en კასკადით.
      * ჩავარდნაზე `null` — ტრეილერის უქონლობა გამდიდრებას არ უნდა შეაჩეროს.
      */
     private function trailer(int $id): ?string
@@ -195,7 +195,7 @@ class MovieEnricher
             $movie->imdb_url = "https://www.imdb.com/title/{$movie->imdb_id}/";
         }
         $movie->rating = $movie->rating ?: (isset($d['vote_average']) ? round((float) $d['vote_average'], 1) : null);
-        // ტრეილერი (Tasks 9) — მხოლოდ ცარიელზე, ე.ი. ხელით ჩასმულს არ ვაბათილებთ
+        // ტრეილერი — მხოლოდ ცარიელზე, ე.ი. ხელით ჩასმულს არ ვაბათილებთ
         $movie->trailer_url = $movie->trailer_url ?: $this->trailer($id);
         if (! empty($d['belongs_to_collection'])) {
             $movie->tmdb_collection_id = $d['belongs_to_collection']['id'] ?? null;
@@ -249,7 +249,7 @@ class MovieEnricher
             }
             if ($isNew) {
                 $genre->setTranslation('en', $g['name']);
-                /* ⚠️ **`ka` განზრახ არ იწერება** (BUG-23). TMDB-ის ჟანრის
+                /* ⚠️ **`ka` განზრახ არ იწერება**. TMDB-ის ჟანრის
                    ობიექტში მხოლოდ ინგლისური სახელია და მისი `name_ka`-ში
                    ჩაწერა ჟანრს „ნათარგმნად" აქცევდა:
                    `TranslationScanner::genreMissing()` ველს შევსებულად
@@ -271,7 +271,7 @@ class MovieEnricher
         foreach (array_slice($credits['cast'] ?? [], 0, 12) as $i => $c) {
             $member = CastMember::firstOrNew(['tmdb_person_id' => $c['id']]);
             $member->name = $c['name'];
-            // Tasks 10 — სქესი გალერეის „ქალი/კაცი მსახიობები" ფილტრს სჭირდება
+            // სქესი გალერეის „ქალი/კაცი მსახიობები" ფილტრს სჭირდება
             if (isset($c['gender'])) {
                 $member->gender = (int) $c['gender'];
             }

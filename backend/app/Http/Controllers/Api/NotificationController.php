@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
 
 /**
- * **შეტყობინებების ცენტრი (FEAT-19).**
+ * **შეტყობინებების ცენტრი.**
  *
  * ⚠️ **მოდულის ჯგუფის გარეთ განზრახ**: შეტყობინება მოდული არ არის —
  * ის ანგარიშის ფაქტია, ისევე როგორც საცავი და კვოტა. `module:`/`permission:`
@@ -16,7 +16,7 @@ use Illuminate\Notifications\DatabaseNotification;
  *
  * ⚠️ **წვდომა `$request->user()->notifications()`-ითაა და არა id-ით**:
  * `DatabaseNotification` `BelongsToUser`-ს არ იყენებს და `EnsureRecordOwnership`
- * მას ვერ ხედავს (`Illuminate\Bus\Batch`-ის იგივე ხაფანგი, SEC-09), ე.ი.
+ * მას ვერ ხედავს (`Illuminate\Bus\Batch`-ის იგივე ხაფანგი), ე.ი.
  * მფლობელობა **ცხადად** უნდა შემოწმდეს. სხვისი შეტყობინება **404-ია**.
  *
  * ⚠️ **ორი endpoint და არა ერთი**: ბეჯი ყოველ 30 წამში მხოლოდ **რიცხვს**

@@ -45,7 +45,7 @@ describe('dedupeTags', () => {
   })
 })
 
-describe('addTag (Tasks §13)', () => {
+describe('addTag', () => {
   it('დუბლს არ ამატებს და არსებულ ფორმას აბრუნებს', () => {
     expect(addTag(['Rock'], ' rock ')).toEqual({ tags: ['Rock'], duplicate: 'Rock', added: null })
   })

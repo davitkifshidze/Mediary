@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
 /**
- * **მსახიობის ჩაკეტვა პაროლით (Tasks §35.4–35.5).**
+ * **მსახიობის ჩაკეტვა პაროლით.**
  *
  * სამი კარი `ManagesRecordLock`-იდან: `PUT /cast/{id}/lock` (დადება/შეცვლა/
  * მოხსნა), `POST /cast/{id}/unlock` (გახსნა ამ სესიაში) და `POST /cast/{id}/lock`

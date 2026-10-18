@@ -22,7 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * კურსების მოდული (`course`, FEAT-25).
+ * კურსების მოდული (`course`).
  *
  * მფლობელობა — `BelongsToUser` global scope (სხვისი ჩანაწერი 404), უფლებები —
  * `permission:course` middleware.
@@ -39,7 +39,7 @@ class CourseController extends Controller
     public function index(Request $request)
     {
         $query = Course::query()->with('category')->withCount('files');
-        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'course', $request);
 
         foreach ($this->slugList($request->string('status')->toString()) as $key) {
@@ -65,7 +65,7 @@ class CourseController extends Controller
         if ($q = $request->string('q')->toString()) {
             $query->where(fn (Builder $inner) => $inner
                 ->where('title', 'like', Like::contains($q))
-                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // §47 — ფორმატის გარეშე
+                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // ფორმატის გარეშე
                 ->orWhere('platform', 'like', Like::contains($q))
                 ->orWhere('tags', 'like', Like::contains($q)));
         }
@@ -90,7 +90,7 @@ class CourseController extends Controller
      * ⚠️ ჩავარდნა 200-ია ცარიელი ველებით და არა 5xx: კურსის გვერდი ბოტს
      * ხშირად 403-ს აძლევს და ეს ხელით შევსებას არ უნდა უშლიდეს (ბუკმარკის წესი).
      */
-    /** Tasks §15.3 — კურსის ბმული ხშირად YouTube-ია („პოდკასტი“): `LinkResolver` oEmbed-ის ესკიზსაც აბრუნებს */
+    /** კურსის ბმული ხშირად YouTube-ია („პოდკასტი“): `LinkResolver` oEmbed-ის ესკიზსაც აბრუნებს */
     public function metadata(Request $request, LinkResolver $resolver)
     {
         $data = $request->validate(['url' => ['required', 'string', 'max:1000', 'url']]);
@@ -99,7 +99,7 @@ class CourseController extends Controller
     }
 
     /**
-     * **Tasks §55.3 — ფლეილისტის ვიდეოები** კურსის ფანჯრისთვის (ჩვენება; ჩანაწერებად
+     * **ფლეილისტის ვიდეოები** კურსის ფანჯრისთვის (ჩვენება; ჩანაწერებად
      * არ ინახება — „გაკვეთილები" დახურულია). `?refresh=1` — 24-საათიან ქეშს გვერდს
      * უვლის („განახლება").
      *
@@ -145,7 +145,7 @@ class CourseController extends Controller
 
     public function destroy(Course $course)
     {
-        // ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`
+        // ⚠️ **კალათა** — `delete()` კი არა, `moveToTrash()`
         $course->moveToTrash();
 
         return response()->noContent();
@@ -236,7 +236,7 @@ class CourseController extends Controller
             $course->applyUrl($data['url']);
 
             if ($changed && $course->url) {
-                /* Tasks §29.3 — ვიდეო-პლატფორმის ბმულზე ესკიზი **ქსელის გარეშე** (`VideoUrl`, §15.1):
+                /* ვიდეო-პლატფორმის ბმულზე ესკიზი **ქსელის გარეშე** (`VideoUrl`):
                    YouTube-ის გვერდი ბოტს თანხმობის ეკრანს აძლევს და og:image არ მოდის,
                    `i.ytimg.com`-ის ესკიზი კი ყოველთვის არსებობს. ატვირთულს ან უკვე მოტანილს არ გადააწერს. */
                 if (! $course->thumbnail_path && ! $course->image_url) {
@@ -248,14 +248,14 @@ class CourseController extends Controller
         }
 
         if ($request->boolean('remove_thumbnail')) {
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($course, 'thumbnail_path');
             $course->thumbnail_path = null;
         }
 
         if ($request->hasFile('thumbnail')) {
-            // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($course, 'thumbnail_path');
             $course->thumbnail_path = $this->meter
                 ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::COURSE_THUMBNAILS);
@@ -273,7 +273,7 @@ class CourseController extends Controller
     /**
      * ცარიელი ველების შევსება გვერდიდან. არასდროს გადააწერს იმას, რაც
      * user-მა შეავსო; ჩავარდნაზე ჩუმად გადის. `autofill=0`-ით გამორთვადია
-     * (ბუკმარკის იგივე ქცევა და იგივე სერვისი — `LinkResolver`, Tasks §44.1).
+     * (ბუკმარკის იგივე ქცევა და იგივე სერვისი — `LinkResolver`).
      */
     private function autofill(Course $course, Request $request): void
     {
@@ -285,7 +285,7 @@ class CourseController extends Controller
             return;
         }
 
-        // §44.1 — ფორმის probe-ის იგივე წყარო და ქეში
+        // ფორმის probe-ის იგივე წყარო და ქეში
         $meta = app(LinkResolver::class)->resolve((string) $course->url);
 
         if (! $course->title) {

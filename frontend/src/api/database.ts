@@ -3,7 +3,7 @@ import { api } from '@/lib/api'
 import { formatDate } from '@/lib/dates'
 
 /* ============================================================
-   **„ბაზა" — ცხრილების რუკა და ექსპორტი** (Tasks §59.3/§59.4, სუპერადმინი).
+   **„ბაზა" — ცხრილების რუკა და ექსპორტი** (სუპერადმინი).
 
    ⚠️ ჩამოტვირთვა `blob`-ია, ე.ი. შეცდომის სხეულიც ბლობად მოდის — მანქანური
    კოდი (`unknown_table`, `mysqldump_unavailable`) JSON-ად გადაიკითხება, თორემ
@@ -62,7 +62,7 @@ export async function downloadDatabase(tables: string[], format: DatabaseFormat)
   URL.revokeObjectURL(url)
 }
 
-/* ---------- Tasks §59.6ბ — JSON-ის ZIP-ით ცხრილების ჩანაცვლება ---------- */
+/* ---------- JSON-ის ZIP-ით ცხრილების ჩანაცვლება ---------- */
 
 /** არქივის ერთი ცხრილი */
 export interface DatabaseImportTable {

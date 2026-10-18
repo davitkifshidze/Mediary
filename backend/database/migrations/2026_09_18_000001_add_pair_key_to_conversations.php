@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **ერთი წყვილი — ერთი საუბარი, და ამას სქემა იცავს (Tasks BUG-07).**
+ * **ერთი წყვილი — ერთი საუბარი, და ამას სქემა იცავს.**
  *
  * `ChatService::between()` არსებულ საუბარს **მხოლოდ კითხვით** ეძებდა და
  * ვერპოვნაზე ახალს ქმნიდა. ორი ტაბი (ან polling + ხელით გახსნა) ერთსა და

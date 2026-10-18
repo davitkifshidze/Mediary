@@ -129,7 +129,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **ყოველ მოდულს ფერი უნდა ჰქონდეს (ეტაპი 6).**
+     * ⚠️ **ყოველ მოდულს ფერი უნდა ჰქონდეს.**
      *
      * ფერი მხოლოდ ჰედერის ფონი აღარაა — საიდბარის ხაზი, ხატულა და აქტიური
      * ქვე-პუნქტის ფონიც მისგან იგება. ფერის გარეშე ახალი მოდული **ჩუმად**
@@ -157,13 +157,13 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * **Tasks §40.10 — ყოველი საბაზისო მოდული ან ბმულით ზიარდება, ან მიზეზით არა.**
+     * **ყოველი საბაზისო მოდული ან ბმულით ზიარდება, ან მიზეზით არა.**
      *
      * ⚠️ ხვალინდელი მოდული ტესტს თავისით აწითლებს: მისი გამოტოვება
      * გადაწყვეტილება უნდა იყოს (`ShareDomain::NOT_SHARED`-ში, მიზეზით) და არა
      * დავიწყება. და პირიქით — მკვდარი ან ორჯერ ჩაწერილი გასაღებიც წითელია.
      * ⚠️ გაზიარებულ დომენს **იდენტობა** სჭირდება (`PublicDomain::MATCH`):
-     * „უკვე გაქვს ✓" და (40.8) დამატება სწორედ მისით პოულობს „იმავე ფილმს".
+     * „უკვე გაქვს ✓" და დამატება სწორედ მისით პოულობს „იმავე ფილმს".
      */
     public function test_every_module_is_shareable_or_has_a_reason(): void
     {
@@ -184,7 +184,7 @@ class RegistryConsistencyTest extends TestCase
         foreach (ShareDomain::keys() as $domain) {
             $this->assertTrue(PublicDomain::has($domain), "{$domain}: ბარათი (`PublicDomain::card()`) არ აქვს");
 
-            // ⚠️ სიას (§40.13 — პლეილისტი) გლობალური იდენტობა არ აქვს: ის ასლის წყაროთი იცნობა (`copied_from_id`)
+            // ⚠️ სიას (პლეილისტი) გლობალური იდენტობა არ აქვს: ის ასლის წყაროთი იცნობა (`copied_from_id`)
             if (ShareDomain::isList($domain)) {
                 continue;
             }
@@ -198,13 +198,13 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * **გაზიარების რეესტრის ყოველი რიგი ცოცხალ სქემასა და კატალოგზე დგას** (§40.10).
+     * **გაზიარების რეესტრის ყოველი რიგი ცოცხალ სქემასა და კატალოგზე დგას**.
      *
      * ⚠️ აქ ყველაფერი ჩუმად ტყდება: არარსებული სვეტი რეცეპტში — ფაქტი ჩუმად არ
      * გადმოდის (ან SQL 500 დამატებისას); არასწორი რელაცია — ჟანრი ჩუმად ცარიელია;
      * კატალოგის ველის შეცდომა — მფლობელის „საჯაროდ არ გამოჩნდეს" ჩუმად არაფერს
      * აკეთებს; enum-ის ნაგულისხმევი სიაში თუ არ არის — `invalid_status` საკუთარ ჩანაწერზე;
-     * „რჩეული" სვეტის გარეშე — SQL-ის შეცდომა ბმულის გახსნისას (§40.13).
+     * „რჩეული" სვეტის გარეშე — SQL-ის შეცდომა ბმულის გახსნისას.
      */
     public function test_every_share_domain_is_wired_to_real_columns(): void
     {
@@ -217,7 +217,7 @@ class RegistryConsistencyTest extends TestCase
                 fn (string $domain) => ! ShareDomain::isList($domain),
             )),
             $recipes,
-            'ეტაპი 2-ის ყოველ ჩანაწერიან დომენს დამატების რეცეპტი უნდა ჰქონდეს (და სხვას — არა)'
+            'ყოველ ჩანაწერიან დომენს დამატების რეცეპტი უნდა ჰქონდეს (და სხვას — არა)'
         );
 
         foreach (ShareDomain::keys() as $domain) {
@@ -229,7 +229,7 @@ class RegistryConsistencyTest extends TestCase
             // „რჩეული" — ფარგალი მხოლოდ იქ, სადაც სვეტი არსებობს
             $this->assertSame(Schema::hasColumn($table, 'is_favorite'), ShareDomain::supportsFavorite($domain), "{$domain}: `favorite` სქემას არ ემთხვევა");
 
-            // §40.13 — სია (პლეილისტი): კლასიფიკატორი და ფოტო არ აქვს, „უკვე გაქვს" ასლის წყაროთი იცნობა
+            // სია (პლეილისტი): კლასიფიკატორი და ფოტო არ აქვს, „უკვე გაქვს" ასლის წყაროთი იცნობა
             if (ShareDomain::isList($domain)) {
                 $this->assertFalse(ShareDomain::hasClassifier($domain), "{$domain}: სიას კლასიფიკატორი არ აქვს");
                 $this->assertNull(ShareDomain::photoField($domain), "{$domain}: სიას მთავარი ფოტო არ აქვს");
@@ -266,13 +266,13 @@ class RegistryConsistencyTest extends TestCase
         }
     }
 
-    /** Tasks §10 → §43 — SPA-ს `OPEN_TYPES` `Openable::TYPES`-ის სარკეა (URL-ის სეგმენტი და morph-ალიასი ერთი სიტყვაა) */
+    /** SPA-ს `OPEN_TYPES` `Openable::TYPES`-ის სარკეა (URL-ის სეგმენტი და morph-ალიასი ერთი სიტყვაა) */
     public function test_the_spa_open_types_mirror_the_backend(): void
     {
         $this->assertSame(Openable::keys(), $this->tsConstList('api/audit.ts', 'OPEN_TYPES'));
     }
 
-    /** Tasks §43.3 — SPA-ს `AUDIT_ACTIONS` `AuditLog::ACTIONS`-ის სარკეა (სახელი და ფერი ყველა ტიპს აქვს) */
+    /** SPA-ს `AUDIT_ACTIONS` `AuditLog::ACTIONS`-ის სარკეა (სახელი და ფერი ყველა ტიპს აქვს) */
     public function test_the_spa_audit_actions_mirror_the_backend(): void
     {
         $this->assertSame(AuditLog::ACTIONS, $this->tsConstList('api/audit.ts', 'AUDIT_ACTIONS'));
@@ -295,7 +295,7 @@ class RegistryConsistencyTest extends TestCase
      */
     public function test_the_spa_rich_text_limits_mirror_the_backend(): void
     {
-        /* Tasks §47 — რედაქტორის მთვლელი ზღვარს SPA-ში ითვლის; დაშორებისას
+        /* რედაქტორის მთვლელი ზღვარს SPA-ში ითვლის; დაშორებისას
            „ზღვრამდე" ტექსტი სერვერზე 422-ით დაბრუნდებოდა, ან მთვლელი ტყუილად
            გააფრთხილებდა. */
         $source = (string) file_get_contents(base_path('../frontend/src/lib/richText.ts'));
@@ -353,7 +353,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **`tag` სკოუპიან სამიზნეს `tags` სვეტი უნდა ჰქონდეს** (BUG-16).
+     * ⚠️ **`tag` სკოუპიან სამიზნეს `tags` სვეტი უნდა ჰქონდეს**.
      *
      * `recordIds()`-ის `match`-ში `'tag' => null` წერია, ე.ი. ტეგის სკოუპი
      * ჯერ **მთელი ბიბლიოთეკაა** და ჭრა მერე, PHP-ში ხდება. ამიტომ აქ შეცდომა
@@ -389,7 +389,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **ორი ნაგულისხმევი სია არ უნდა დაშორდეს** (§6.4).
+     * ⚠️ **ორი ნაგულისხმევი სია არ უნდა დაშორდეს**.
      *
      * `StatusDomain::DOMAINS` ქმნის ლექსიკონს, `PurgeService::TARGET_STATUSES`
      * კი იმავე ნაგულისხმევებს აღწერს (ფრონტს მოთხოვნამდე რაღაც უნდა დახატოს).
@@ -442,13 +442,13 @@ class RegistryConsistencyTest extends TestCase
      * უნდა ჰქონდეს** — თორემ სვეტი არსებობს, გადამრთველიც ჩანს, საჯარო
      * პროფილზე კი ჩანაწერი მაინც არასდროს გამოჩნდება.
      *
-     * ერთადერთი გამონაკლისი `note_entries`-ია და ის **განზრახაა** (§16.5:
-     * ჩანაწერების მოდული პირად დოკუმენტებს ინახავს და არასდროს საჯაროვდება).
+     * ერთადერთი გამონაკლისი `note_entries`-ია და ის **განზრახაა**:
+     * ჩანაწერების მოდული პირად დოკუმენტებს ინახავს და არასდროს საჯაროვდება.
      */
     public function test_every_visibility_table_is_a_public_domain_or_deliberately_excluded(): void
     {
         /* ცხრილს **მოდელს** ვეკითხებით — რუკაში მხოლოდ კლასი წერია.
-           ⚠️ §37.4 — `tables()` პირადი მოდულების ცხრილსაც შეიცავს (`custom_records`):
+           ⚠️ `tables()` პირადი მოდულების ცხრილსაც შეიცავს (`custom_records`):
            მისი დომენები ინტერფეისიდან იქმნება და რუკაში ვერ ჩაიწერება. */
         $tables = PublicDomain::tables();
 
@@ -469,7 +469,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **ყოველ საჯარო დომენს `card()`-ში შტო უნდა ჰქონდეს** (Tasks §2).
+     * ⚠️ **ყოველ საჯარო დომენს `card()`-ში შტო უნდა ჰქონდეს**.
      *
      * `match`-ს `default` არ აქვს და ეს განზრახაა — უცნობი დომენისთვის
      * „ცარიელი ბარათი" ჩუმად გაჟონავდა. სამაგიეროდ გამორჩენა **500**-ია
@@ -493,7 +493,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **SPA-ის `PUBLIC_DOMAINS` `PublicDomain::DOMAINS`-ის სარკეა** (Tasks §2).
+     * ⚠️ **SPA-ის `PUBLIC_DOMAINS` `PublicDomain::DOMAINS`-ის სარკეა**.
      *
      * ტიპისთვის სია ფრონტში უნდა ეწეროს (`PublicDomainKey` ათეულ ადგილას
      * იკითხება), მაგრამ ხელით დაწერილმა სარკემ კურსი და ადგილი ჩამოიტოვა —
@@ -507,11 +507,11 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **SPA-ის `MATCH_DOMAINS` `PublicDomain::matchable()`-ის სარკეა** (ნაპოვნია §37.4-ზე).
+     * ⚠️ **SPA-ის `MATCH_DOMAINS` `PublicDomain::matchable()`-ის სარკეა**.
      *
-     * კურსი და ადგილი backend-ის დამთხვევაში FEAT-25/26-იდან იდგა, SPA-ის
+     * კურსი და ადგილი backend-ის დამთხვევაში თავიდანვე იდგა, SPA-ის
      * სიაში კი არა — ტიპი ამბობდა, რომ ასეთი დომენი არ არსებობს, სერვერი
-     * კი მათ რიგებს აბრუნებდა. §37.4-მა `custom` ფსევდო-დომენი დაამატა.
+     * კი მათ რიგებს აბრუნებდა. პირადმა მოდულებმა `custom` ფსევდო-დომენი დაამატა.
      */
     public function test_the_spa_match_domain_list_mirrors_the_backend(): void
     {
@@ -519,7 +519,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **დამატებითი ველების მოდულების სარკე SPA-ში** (ნაპოვნია Tasks §37-ზე).
+     * ⚠️ **დამატებითი ველების მოდულების სარკე SPA-ში**.
      *
      * `CUSTOM_FIELD_MODULES`-ს ანიმე, კურსი და ადგილი აკლდა, ე.ი. მათ
      * `/modules/{key}`-ზე დამატებითი ველების რედაქტორი **საერთოდ არ იხატებოდა**
@@ -532,7 +532,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **გალერეის მშობლების ორი სარკე SPA-ში** (Tasks §4.10) — §2-ის ტყუპი:
+     * ⚠️ **გალერეის მშობლების ორი სარკე SPA-ში** — წინა ხარვეზის ტყუპი:
      * `GALLERY_PARENTS`-ს ადგილი აკლდა, ამიტომ „ბიბლიოთეკის" ჩანართი არ
      * ჩანდა და ფოტოს ადგილზე ვერ გადაიტანდი; `SERP_IMPORT_TARGETS`-ს —
      * იგივე, ვებიდან ძებნის დიალოგისთვის.
@@ -544,7 +544,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * **ბუკმარკის დამატებითი ბმულის ტიპები SPA-შიც წერია** (Tasks §36.3).
+     * **ბუკმარკის დამატებითი ბმულის ტიპები SPA-შიც წერია**.
      *
      * ⚠️ ახალი ტიპი, რომელიც მხოლოდ backend-შია, ფორმაში არ გამოჩნდებოდა, ხოლო
      * ფასიანი ტიპების სხვაობა ფორმას ფასის ველს დაახატინებდა, რომელსაც სერვერი
@@ -557,7 +557,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **თამაშის ბმულის ორი ღერძი და ჰოსტების რუკა SPA-შიც წერია** (Tasks §22.3).
+     * ⚠️ **თამაშის ბმულის ორი ღერძი და ჰოსტების რუკა SPA-შიც წერია**.
      *
      * ფორმა ტიპს სიიდან ხატავს და Steam-ის ბმულს ჰოსტით ცნობს — backend-ის
      * ახალი ტიპი SPA-ში რომ არ იყოს, ის ფორმაში უბრალოდ არ გამოჩნდებოდა, ხოლო
@@ -581,7 +581,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **იმპორტის წყაროების სარკე SPA-ში** (Tasks §31).
+     * ⚠️ **იმპორტის წყაროების სარკე SPA-ში**.
      *
      * თითო წყაროს ბარათს თავისი ფერი, ხატულა და „როგორ მივიღო ფაილი" აქვს —
      * ეს SPA-ის ცოდნაა (`SOURCE_STYLE` `satisfies`-ით და `transfer.how.*`).
@@ -594,7 +594,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * Tasks §34 — **ატვირთვის სახეობები SPA-ში სერვერის რიგითაა.** სახეობის
+     * **ატვირთვის სახეობები SPA-ში სერვერის რიგითაა.** სახეობის
      * სახელი, „სად გამოიყენება" და ოჯახი i18n-ში `uploads.kind.*` /
      * `uploads.where.*` / `uploads.family.*`-ია; ახალი სახეობა (ან ოჯახი)
      * სარკის გარეშე ნედლ გასაღებს დახატავდა, ამიტომ ორივე ლოკალიც მოწმდება.
@@ -642,7 +642,7 @@ class RegistryConsistencyTest extends TestCase
      *
      * `DashboardController::COUNTERS`-ის გამორჩენა **ჩუმია**: ბარათი ჩვეულებრივ
      * იხატება, უბრალოდ რიცხვის ნაცვლად `null` მოდის. ზუსტად ასე გამოგვეპარა
-     * `note` (§13-იდან 2026-09-07-მდე) და `bookmark`-იც იმავე გზას გაჰყვებოდა.
+     * `note` (2026-09-07-მდე) და `bookmark`-იც იმავე გზას გაჰყვებოდა.
      *
      * წყაროდ `TARGET_MODES` ვიღებთ, რადგან სწორედ ის ნიშნავს „ამ მოდულს
      * თავისი ცხრილი აქვს".
@@ -674,8 +674,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **ყოველი ჩანაწერიანი მოდული ან ექსპორტში უნდა იყოს, ან `NOT_EXPORTED`-ში**
-     * (FEAT-06).
+     * ⚠️ **ყოველი ჩანაწერიანი მოდული ან ექსპორტში უნდა იყოს, ან `NOT_EXPORTED`-ში**.
      *
      * გამორჩენა ისეთივე **ჩუმია**, როგორც დეშბორდის მთვლელისა: ახალი მოდული
      * ჩვეულებრივ მუშაობს, უბრალოდ „ჩემი მონაცემების" სიაში არასდროს ჩნდება —
@@ -700,7 +699,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **ყოველ ჩანაწერიან მოდულს კალათა უნდა ჰქონდეს** (FEAT-11).
+     * ⚠️ **ყოველ ჩანაწერიან მოდულს კალათა უნდა ჰქონდეს**.
      *
      * გამორჩენა აქაც **ჩუმია და უფრო ძვირი**: მოდული ჩვეულებრივ იმუშავებს,
      * უბრალოდ მისი წაშლა ისევ მყისიერი და შეუქცევადი იქნება — და ამას
@@ -729,12 +728,9 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * **მომხმარებლის ცხრილები, რომლებიც ურნაში (ჯერ) არ მიდის — მიზეზით**
-     * (Tasks §29.3).
+     * **მომხმარებლის ცხრილები, რომლებიც ურნაში (ჯერ) არ მიდის — მიზეზით**.
      *
-     * ⚠️ „ეტაპი N" ჩანაწერები **დროებითია** — §29.10-ის ეტაპები მათ სათითაოდ
-     * ამოიღებენ აქედან. დანარჩენი ტექნიკური ოპერაციაა (29.9) ან სხვა
-     * მექანიზმით იფარება.
+     * თითოეული ტექნიკური ოპერაციაა ან სხვა მექანიზმით იფარება.
      */
     private const NOT_TRASHED = [
         // ფაილი `trashed_files`-ში მიდის (`field_file`); ტექსტური მნიშვნელობის „წაშლა" ჩანაწერის რედაქტირებაა
@@ -752,31 +748,31 @@ class RegistryConsistencyTest extends TestCase
         'place_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         'personal_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         'duty_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
-        // Tasks §37 — ყველა პირადი მოდულის ველების საერთო ცხრილი; იგივე წესი
+        // ყველა პირადი მოდულის ველების საერთო ცხრილი; იგივე წესი
         'custom_record_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
 
-        // §29.10 ეტაპი 5 — წერილი არასდროს იშლება (§4.6); ურნა მის წაშლას `trashed_messages`-ით აჩვენებს
-        'messages' => 'წერილი ბაზაში რჩება (§4.6) — მისი წაშლა ურნაში `trashed_messages`-ითაა, მიმაგრება `trashed_files`-ით',
+        // წერილი არასდროს იშლება; ურნა მის წაშლას `trashed_messages`-ით აჩვენებს
+        'messages' => 'წერილი ბაზაში რჩება — მისი წაშლა ურნაში `trashed_messages`-ითაა, მიმაგრება `trashed_files`-ით',
 
-        // §29.8 — გასუფთავება ურნაში ერთ ელემენტად მიდის (`AuditLogTrash`)
+        // გასუფთავება ურნაში ერთ ელემენტად მიდის (`AuditLogTrash`)
         'audit_logs' => 'გასუფთავება ურნაში ერთ ელემენტადაა (`trash_entries` · `audit_log`, რიგებს `trash_entry_id` აბამს)',
 
-        // 29.9 — ტექნიკური ოპერაცია და არა შიგთავსის წაშლა
+        // ტექნიკური ოპერაცია და არა შიგთავსის წაშლა
         'user_credentials' => 'API-გასაღები ხშირად იმიტომ იშლება, რომ გაჟონა — 30 დღით შენახვა ამას გააბათილებდა',
-        // Tasks §40 — ბმული გასაღებია და არა შიგთავსი; გაუქმება (`revoked_at`) მისი შექცევადი მდგომარეობაა
+        // ბმული გასაღებია და არა შიგთავსი; გაუქმება (`revoked_at`) მისი შექცევადი მდგომარეობაა
         'share_links' => 'ბმული გასაღებია და არა შიგთავსი — წაშლილის აღდგენა წვდომას ხელახლა გახსნიდა, რისი შეწყვეტაც წაშლის აზრია; შექცევადი ნაბიჯი გაუქმებაა',
-        // Tasks §31.3 — „აღარ განაახლო" მსახიობზე: პარამეტრია და არა შიგთავსი, მოხსნა თვითონ შექცევადია
+        // „აღარ განაახლო" მსახიობზე: პარამეტრია და არა შიგთავსი, მოხსნა თვითონ შექცევადია
         'cast_member_sync_prefs' => 'გადამრთველია და არა შიგთავსი — მოხსნა თვითონ შექცევადი ნაბიჯია',
-        // Tasks §33.7 — ლოკის მოხსნა ანგარიშის პაროლით ხდება; ურნიდან აღდგენა მას უკითხავად დააბრუნებდა
+        // ლოკის მოხსნა ანგარიშის პაროლით ხდება; ურნიდან აღდგენა მას უკითხავად დააბრუნებდა
         'record_locks' => 'პაროლი გასაღებია და არა შიგთავსი — მოხსნა განზრახი ნაბიჯია, ჩანაწერის საბოლოო წაშლა კი რიგს თვითონ შლის (`HasRecordLock`)',
-        // Tasks §40.8 — „ვინ დაიმატა ბმულიდან“ (ბმულის სტატისტიკა); ბმულთან ერთად იშლება
+        // „ვინ დაიმატა ბმულიდან“ (ბმულის სტატისტიკა); ბმულთან ერთად იშლება
         'share_link_imports' => 'ბმულის სტატისტიკა (ვინ, რამდენი, როდის) — შიგთავსი არაა და ბმულთან ერთად ქრება',
         'approval_requests' => 'გაუქმებული მოთხოვნა ტექნიკური ოპერაციაა',
         'sessions' => 'სესია — არა შიგთავსი',
         'module_user' => 'მოდულზე წვდომა — პარამეტრი და არა შიგთავსი',
         'conversation_user' => 'საუბრის მონაწილეობა — სტრუქტურა',
         'conversation_nicknames' => 'საუბრის პარამეტრი',
-        'message_hides' => '„ჩემთვის დამალვა" თვითონ რიგია — ურნა მას `trashed_messages`-ით აჩვენებს (ეტაპი 5)',
+        'message_hides' => '„ჩემთვის დამალვა" თვითონ რიგია — ურნა მას `trashed_messages`-ით აჩვენებს',
         'message_reactions' => 'რეაქცია გადართვაა (ხელახლა დაჭერა ხსნის)',
         'user_blocks' => 'პარამეტრი — ბლოკის მოხსნა ცალკე მოქმედებაა',
         'cast_member_tags' => 'ძებნის ტეგები — ველის რედაქტირება',
@@ -785,13 +781,12 @@ class RegistryConsistencyTest extends TestCase
         'serp_searches' => 'ძებნის მრიცხველი',
         'translation_usages' => 'თარგმანის მრიცხველი',
         'batch_items' => 'რიგის ტექნიკური ჩანაწერი',
-        // §4.5 — თემები წაიშალა; ცხრილი მხოლოდ MySQL-ზე ჩამოიშალა, sqlite-ზე მკვდარი რჩება
-        'gallery_themes' => 'მკვდარი ცხრილი (sqlite) — ფუნქცია §4.5-ით წაიშალა',
+        // თემები წაიშალა; ცხრილი მხოლოდ MySQL-ზე ჩამოიშალა, sqlite-ზე მკვდარი რჩება
+        'gallery_themes' => 'მკვდარი ცხრილი (sqlite) — ფუნქცია წაიშალა',
     ];
 
     /**
-     * ⚠️ **მომხმარებლის ყოველი ცხრილი ან ურნაშია, ან გამონაკლისია — მიზეზით**
-     * (Tasks §29.3).
+     * ⚠️ **მომხმარებლის ყოველი ცხრილი ან ურნაშია, ან გამონაკლისია — მიზეზით**.
      *
      * სიას **სქემა** იძლევა (`user_id`-იანი ცხრილები) და არა ხელით დაწერილი
      * ჩამონათვალი — ხვალინდელი მოდულის ცხრილი ტესტს თავისით აწითლებს, თორემ
@@ -817,7 +812,7 @@ class RegistryConsistencyTest extends TestCase
         $missing = array_values(array_diff($withUser, $covered, array_keys(self::NOT_TRASHED)));
         $this->assertSame([], $missing, implode(PHP_EOL, [
             'ცხრილს `user_id` აქვს, მაგრამ არც `TrashDomain`-შია და არც `NOT_TRASHED`-ში.',
-            'შედეგი: მისი წაშლა ჩუმად „სამუდამოდ" დარჩება (Tasks §29.3).',
+            'შედეგი: მისი წაშლა ჩუმად „სამუდამოდ" დარჩება.',
             'გამორჩენილი: '.implode(', ', $missing),
         ]));
 
@@ -857,7 +852,7 @@ class RegistryConsistencyTest extends TestCase
             'bookmark' => ['title' => 'bm', 'url' => 'https://example.com/b', 'domain' => 'example.com'],
             'course' => ['title' => 'c'],
             'place' => ['name' => 'p'],
-            // Tasks §34 — მორიგეობას თარიღი და საათები სჭირდება
+            // მორიგეობას თარიღი და საათები სჭირდება
             'duty' => ['date' => '2026-10-01', 'hours' => 12],
         ];
 
@@ -888,7 +883,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * ⚠️ **ყოველი მოდული აუდიტ-ლოგში უნდა იწერებოდეს (Tasks §4)** —
+     * ⚠️ **ყოველი მოდული აუდიტ-ლოგში უნდა იწერებოდეს** —
      * მოთხოვნა სიტყვასიტყვით „ყველგან, აბსოლუტურად ყველა მოდულში".
      *
      * გამორჩენა **ჩუმია**: მოდული ჩვეულებრივ მუშაობს, უბრალოდ მისი
@@ -918,11 +913,11 @@ class RegistryConsistencyTest extends TestCase
             $table = CustomFields::table($module);
 
             $this->assertTrue(Schema::hasTable($table), "ცხრილი `{$table}` არ არსებობს");
-            // ფაზა 4b — ფაილის სვეტების გარეშე `ფაილი` ტიპი ჩუმად ჩავარდებოდა
+            // ფაილის სვეტების გარეშე `ფაილი` ტიპი ჩუმად ჩავარდებოდა
             foreach (['value_path', 'value_name', 'value_mime', 'value_size'] as $column) {
                 $this->assertTrue(
                     Schema::hasColumn($table, $column),
-                    "`{$table}.{$column}` აკლია (§6 ფაზა 4b)"
+                    "`{$table}.{$column}` აკლია"
                 );
             }
 
@@ -933,7 +928,7 @@ class RegistryConsistencyTest extends TestCase
 
     /**
      * ⚠️ **მორგებული ველის საქაღალდე მოდულის თავის ფესვში უნდა იყოს.**
-     * სხვაგვარად §17.2-ის ლიმიტი სხვა მოდულს დაეთვლებოდა, ხოლო `note`
+     * სხვაგვარად მოდულის ლიმიტი სხვა მოდულს დაეთვლებოდა, ხოლო `note`
      * პრივატული დისკიდან public-ზე გადავიდოდა.
      */
     public function test_custom_field_folders_map_back_to_their_module(): void
@@ -949,7 +944,7 @@ class RegistryConsistencyTest extends TestCase
             );
         }
 
-        // ჩანაწერების მოდული პირად დოკუმენტებს ინახავს (§17.5)
+        // ჩანაწერების მოდული პირად დოკუმენტებს ინახავს
         $this->assertSame('private', StorageFolder::diskFor(StorageFolder::customFields('note')));
         $this->assertSame('public', StorageFolder::diskFor(StorageFolder::customFields('movie')));
     }
@@ -972,7 +967,7 @@ class RegistryConsistencyTest extends TestCase
             $method->getEndLine() - $method->getStartLine() + 1,
         ));
 
-        /* ⚠️ სია §7.1-ის შემდეგ **`ცხრილი.სვეტი`** სტრიქონებია (ერთ ცხრილს ორი
+        /* ⚠️ სია ახლა **`ცხრილი.სვეტი`** სტრიქონებია (ერთ ცხრილს ორი
            გზის სვეტი შეიძლება ჰქონდეს), ე.ი. ძველი `'a' => 'b'` regex აღარ
            გამოდგება. ქვემოთ სამი წამყვანი სწორედ იმას იჭერს, თუ ეს კვლავ
            შეიცვალა და წაკითხვა ჩუმად დაცარიელდა. */
@@ -1026,7 +1021,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * **ყველა მოდული, რომელსაც სურათი აქვს, გალერეის „მოდულების" ჭრილშია (§8.3).**
+     * **ყველა მოდული, რომელსაც სურათი აქვს, გალერეის „მოდულების" ჭრილშია.**
      *
      * ⚠️ ეს იგივე ჩუმი ხვრელია, რაც `referencedPaths()`-ს ჰქონდა: ახალი
      * მოდულის `ModuleImages`-ში ჩაუწერლობა არაფერს ტეხს — მისი ფოტოები
@@ -1039,8 +1034,8 @@ class RegistryConsistencyTest extends TestCase
     public function test_every_module_with_images_is_in_the_gallery_module_cut(): void
     {
         /* ⚠️ `gallery` განზრახ არ არის: **ის თვითონაა გალერეა** — მისი
-           ფოტოები `gallery_images`-ია და საკუთარი ჭრილები აქვს. ⚠️ Tasks §33 —
-           `personal` იგივე მიზეზით: თვითონ გალერეაა (პირად დისკზე), და შენი
+           ფოტოები `gallery_images`-ია და საკუთარი ჭრილები აქვს.
+           ⚠️ `personal` იგივე მიზეზით: თვითონ გალერეაა (პირად დისკზე), და შენი
            სიტყვით მისი ფოტოები „მხოლოდ ამ გალერეაში" ცხოვრობს. */
         $excluded = ['gallery', 'personal'];
 
@@ -1100,7 +1095,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * **ყველა `HasGallery` მოდელი `GalleryParent`-შია (§8.3).**
+     * **ყველა `HasGallery` მოდელი `GalleryParent`-შია.**
      *
      * ⚠️ სიის გამორჩენა ჩუმია: ვებიდან ჩამოწერილი ფოტო ბაზაში ჩაჯდებოდა,
      * მაგრამ გალერეის ჯგუფებში აღარ გამოჩნდებოდა და მშობლის სახელიც
@@ -1119,11 +1114,11 @@ class RegistryConsistencyTest extends TestCase
             );
             $this->assertTrue(
                 method_exists($model, 'galleryVideos'),
-                "{$model}-ს `galleryVideos()` აკლია (§8.1)",
+                "{$model}-ს `galleryVideos()` აკლია",
             );
         }
     }
-    /* ---------- გარე ქსელი (აუდიტი 2026-09-14) ---------- */
+    /* ---------- გარე ქსელი ---------- */
 
     /**
      * **მომხმარებლის URL-ის ჩამოტვირთვა მხოლოდ `SafeHttp`-ით.**
@@ -1186,7 +1181,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * **Tasks §30.8 — წყაროს გასაღები `.env`-იდან აღარ იკითხება, არსად.**
+     * **წყაროს გასაღები `.env`-იდან აღარ იკითხება, არსად.**
      *
      * ⚠️ წესი სამ ადგილას შეიძლება ჩუმად დაბრუნდეს და სამივე მოწმდება:
      * `config/services.php` (ხელახლა ჩაწერილი `env('TMDB_API_KEY')`),
@@ -1231,7 +1226,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * **ყოველი ნაგულისხმევი ხატულა ჩანქის ჩამოტვირთვის გარეშე უნდა დაიხატოს (Tasks §1.2).**
+     * **ყოველი ნაგულისხმევი ხატულა ჩანქის ჩამოტვირთვის გარეშე უნდა დაიხატოს.**
      *
      * ⚠️ ეს ცოცხალი ხარვეზი იყო და **სრულიად ჩუმი**: `ModuleIcon`-ის რუკაში
      * 21 სახელი ეწერა, უცნობი კი `LayoutGrid`-ად იხატებოდა. შედეგად `note`
@@ -1314,7 +1309,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * **ყოველი მოდელი ან ლოგირდება, ან ცხადად არ ლოგირდება** (Tasks DEBT-11).
+     * **ყოველი მოდელი ან ლოგირდება, ან ცხადად არ ლოგირდება**.
      *
      * ⚠️ აქამდე `UserCredential` და `DatabaseBackup` რუკაში უბრალოდ **არ
      * იყვნენ** და არსად ეწერა რატომ — მაშინ, როცა ორივე ცხადად ლოგირდება
@@ -1361,7 +1356,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * **ყოველი მოდულის ჩანაწერი morph-რუკაშია** (Tasks §6.1).
+     * **ყოველი მოდულის ჩანაწერი morph-რუკაშია**.
      *
      * ⚠️ `enforceMorphMap()` რუკის გარეთ მდგომ მოდელზე `getMorphClass()`-ს
      * **გამონაკლისით** აწყვეტს — და `ColumnTrash::capture()` სწორედ მას იძახებს
@@ -1404,8 +1399,7 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * **ყოველ ლოგირებულ მოდელს სუბიექტის ლეიბლი აქვს ორივე ენაზე**
-     * (Tasks GAP-13).
+     * **ყოველ ლოგირებულ მოდელს სუბიექტის ლეიბლი აქვს ორივე ენაზე**.
      *
      * ⚠️ `AuditPage`-ის გასაღები **დინამიურია** (`audit.subjects.<type>`),
      * ე.ი. i18n-ის აუდიტი მას ვერ ხედავს, `tsc`-საც და lint-საც ის უბრალოდ
@@ -1414,7 +1408,7 @@ class RegistryConsistencyTest extends TestCase
      * `status`…). ეს კავშირი მხოლოდ აქ, რეპოს ორ ნახევარს შორის, მოწმდება.
      *
      * ⚠️ **პირიქითაც**: ლეიბლი, რომელსაც მოდელი აღარ შეესაბამება, მკვდარია
-     * (`gallery_theme` §4.5-ში წაშლილი ფუნქციიდან იყო).
+     * (`gallery_theme` წაშლილი ფუნქციიდან იყო).
      */
     public function test_every_logged_model_has_a_subject_label(): void
     {

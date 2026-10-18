@@ -43,16 +43,16 @@ import { cn } from '@/lib/utils'
 /* ============================================================
    Queue — ფონური, არაბლოკირებადი რიგი სამი სახის სამუშაოსთვის:
      • `add`     — TMDB id-ით ჩანაწერის დამატება (აღმოაჩინე / მსახიობის გვერდი);
-     • `sync`    — არსებული ჩანაწერის სინქრონი (Tasks J3) — თითო ჩანაწერი = თითო
+     • `sync`    — არსებული ჩანაწერის სინქრონი — თითო ჩანაწერი = თითო
        მოკლე რექვესთი, ამიტომ სერვერი არ იბლოკება და გაჩერებაც შესაძლებელია;
-     • `gallery` — ფოტოების ჩამოტვირთვა (Tasks 10), იმავე per-item მოდელით;
-     • `translate` — ნაკლული თარგმანების შევსება (Tasks 7). ჟანრების ლექსიკონი
+     • `gallery` — ფოტოების ჩამოტვირთვა, იმავე per-item მოდელით;
+     • `translate` — ნაკლული თარგმანების შევსება. ჟანრების ლექსიკონი
        აქ **ერთი ერთეულია** (`genresDict`) — ის გლობალურია და ერთ რექვესთში მუშავდება.
-     • `purge`   — მასობრივი წაშლა (Tasks 20.2). ⚠️ დესტრუქციულია, ამიტომ
+     • `purge`   — მასობრივი წაშლა. ⚠️ დესტრუქციულია, ამიტომ
        რიგში მხოლოდ `/purge`-ის ცხადი დადასტურების შემდეგ ჯდება.
-     • `import`  — გარე სერვისის CSV-ის რიგები (FEAT-07). ერთეული **ჩანაწერი
+     • `import`  — გარე სერვისის CSV-ის რიგები. ერთეული **ჩანაწერი
        ჯერ არ არის**, ე.ი. `itemId` არ აქვს — რიგში ფაილის რიგი ზის.
-     • `cast`    — მსახიობების მონაცემები TMDB-დან (Tasks §39). ერთეული
+     • `cast`    — მსახიობების მონაცემები TMDB-დან. ერთეული
        **მსახიობია** (გლობალური ლექსიკონის რიგი) და არა ჩანაწერი.
    ნავიგაცია არ იბლოკება (რიგი გლობალურია); refresh/close კი აფრთხილებს.
    ============================================================ */
@@ -60,13 +60,13 @@ import { cn } from '@/lib/utils'
 type QStatus = 'pending' | 'running' | 'done' | 'error'
 type QKind = 'add' | 'sync' | 'gallery' | 'translate' | 'purge' | 'import' | 'cast' | 'share'
 
-/** `purge`-ის ერთეულის კონტექსტი — რას ვშლით და ვისთან (20.2) */
+/** `purge`-ის ერთეულის კონტექსტი — რას ვშლით და ვისთან */
 export interface PurgeQueueOptions {
-  // §37.5 — სამიზნე ანგარიშის პირადი მოდულიც
+  // სამიზნე ანგარიშის პირადი მოდულიც
   target: PurgeTargetKey
   media_type?: 'movie' | 'series'
   user_id?: number
-  /** §25.5 — ფოტოები უკატეგორიოში გადავიდეს და არა წაიშალოს */
+  /** ფოტოები უკატეგორიოში გადავიდეს და არა წაიშალოს */
   keep_gallery?: boolean
 }
 
@@ -82,21 +82,21 @@ interface QItem {
   /** add — TMDB id */
   tmdbId?: number
   /**
-   * add — Tasks §18.3: ფრანჩაიზის პოპაპიდან ახალი ნაწილი არჩეული სტატუსით და
+   * add — ფრანჩაიზის პოპაპიდან ახალი ნაწილი არჩეული სტატუსით და
    * რჩეულად ემატება. ⚠️ ერთეულს მიჰყვება და არა რიგს — თითო ჩანაწერი ცალკე
    * რექვესთია, და შერეულ რიგში მეორე ფილმს სხვა არჩევანი შეიძლება ჰქონდეს.
    */
   addStatus?: string
   addFavorite?: boolean
   /**
-   * add/import — იგივე ჩანაწერი მომხმარებლის **ურნაშია** (409 `record_in_trash`,
-   * Tasks §40.1ა): მწკრივი „აღდგენას" სთავაზობს ახალი რიგის ნაცვლად.
+   * add/import — იგივე ჩანაწერი მომხმარებლის **ურნაშია** (409 `record_in_trash`):
+   * მწკრივი „აღდგენას" სთავაზობს ახალი რიგის ნაცვლად.
    */
   trashedId?: number
   /** sync/gallery — ლოკალური ჩანაწერის id + პარამეტრები */
   itemId?: number
   opts?: SyncOptions
-  /** gallery — რა ჩამოვიდეს (Tasks 10) */
+  /** gallery — რა ჩამოვიდეს */
   galleryOpts?: GalleryOptions
   /**
    * gallery — ერთეული **მსახიობია** და არა ჩანაწერი.
@@ -126,10 +126,10 @@ interface QItem {
    * ჩართვაც" და „ჩუმად ჩაქრობაც" ერთნაირად ცუდია.
    */
   review?: boolean
-  /** purge — რა სამიზნეზე და ვისთან იშლება (20.2) */
+  /** purge — რა სამიზნეზე და ვისთან იშლება */
   purgeOpts?: PurgeQueueOptions
   /**
-   * import — Tasks §59.6: დროებითი ასლის გასაღები, ფაილის მოდული და რიგის ნომერი.
+   * import — დროებითი ასლის გასაღები, ფაილის მოდული და რიგის ნომერი.
    *
    * ⚠️ **რიგი სერვერზეა** (დროებითი ასლი) და არა ერთეულზე — ZIP-ის ფაილებს
    * (პოსტერი, დოკუმენტები) ბრაუზერი ყოველ ჩანაწერზე ვერ გამოგზავნიდა.
@@ -137,10 +137,10 @@ interface QItem {
   importToken?: string
   importSource?: string
   importIndex?: number
-  /** cast — რა განახლდეს (§39.2); ერთეულზეა იმავე მიზეზით, რაც `sources` */
+  /** cast — რა განახლდეს; ერთეულზეა იმავე მიზეზით, რაც `sources` */
   castOpts?: CastSyncOptions
   /**
-   * share — გაზიარების ბმულის ტოკენი და სტატუსის რეჟიმი (Tasks §40.9).
+   * share — გაზიარების ბმულის ტოკენი და სტატუსის რეჟიმი.
    * ⚠️ ერთეულზეა და არა დიალოგზე (`sources`-ის მიზეზი): რიგი თითო ჩანაწერს
    * ცალკე აგზავნის, ე.ი. აქ რომ არ ეწეროს, მეორე ჩანაწერიდან სტატუსი
    * ჩუმად ნაგულისხმევზე დაბრუნდებოდა. `itemId` — **გამზიარებლის** ჩანაწერია.
@@ -148,33 +148,33 @@ interface QItem {
   shareToken?: string
   shareStatusMode?: ShareStatusMode
   /**
-   * share — **რომელ სექციაში** ემატება (§40.10). ⚠️ ცალკე ველი და არა
+   * share — **რომელ სექციაში** ემატება. ⚠️ ცალკე ველი და არა
    * `mediaType`: ის მედია-დომენია და ქეშის გასუფთავებას ემსახურება, ბმული კი
    * თამაშსაც, წიგნსაც და ადგილსაც აზიარებს (`galleryActor`-ის მიზეზი).
    */
   shareDomain?: ShareDomainKey
   /**
    * cast — ნაბიჯის შედეგი. ⚠️ „უცვლელი" და „TMDB-ზე არაფერია" ორივე
-   * `skipped`-ია, მაგრამ მომხმარებლისთვის სხვადასხვა ფაქტია (§39.6).
+   * `skipped`-ია, მაგრამ მომხმარებლისთვის სხვადასხვა ფაქტია.
    */
   castResult?: CastSyncResult
-  /** ჩავარდნის მიზეზი (J5) ან 'cancelled' */
+  /** ჩავარდნის მიზეზი ან 'cancelled' */
   error?: string
   /** შესრულების დრო — დარჩენილი დროის შესაფასებლად */
   ms?: number
   /** ჩანაწერზე არაფერი შეიცვალა (მაგ. მედია უკვე ადგილზე იყო) */
   skipped?: boolean
   /**
-   * sync/translate — Tasks §31.4: ოთხი შედეგი ცალკე (განახლდა · უცვლელი · ცარიელი ·
+   * sync/translate — ოთხი შედეგი ცალკე (განახლდა · უცვლელი · ცარიელი ·
    * ჩავარდა) და რა შეიცვალა (`changed` — `sync.changed.*`).
    */
   result?: SyncOutcome | null
   changed?: string[]
-  /** Tasks §31.3 — „აღარ განაახლო" უკვე დაჭერილია ამ რიგზე */
+  /** „აღარ განაახლო" უკვე დაჭერილია ამ რიგზე */
   paused?: boolean
 }
 
-/** რიგში დასამატებელი TMDB ჩანაწერი; `status`/`favorite` — §18.3 (არჩევითი) */
+/** რიგში დასამატებელი TMDB ჩანაწერი; `status`/`favorite` — არჩევითი */
 export interface AddQueueItem {
   tmdbId: number
   title: string
@@ -186,22 +186,22 @@ interface QueueApi {
   enqueue: (items: AddQueueItem[], mediaType?: MediaType) => void
   /** სინქრონის რიგში ჩაყრა — `plan`-ის ჩანაწერები + ერთი და იგივე პარამეტრები */
   enqueueSync: (items: SyncPlanItem[], opts: SyncOptions) => void
-  /** გალერეის ჩამოტვირთვა (Tasks 10) — იგივე მოდელი, რაც სინქრონზე */
+  /** გალერეის ჩამოტვირთვა — იგივე მოდელი, რაც სინქრონზე */
   enqueueGallery: (items: GalleryPlanItem[], opts: GalleryOptions) => void
-  /** თარგმანების შევსება (Tasks 7); `genres` — ლექსიკონიც ერთ ერთეულად */
+  /** თარგმანების შევსება; `genres` — ლექსიკონიც ერთ ერთეულად */
   enqueueTranslate: (
     items: TranslationPlanItem[],
     genres?: boolean,
     sources?: TranslationSource[],
     review?: boolean,
   ) => void
-  /** ⚠️ მასობრივი წაშლა (20.2) — მხოლოდ დადასტურებული სკოუპით */
+  /** ⚠️ მასობრივი წაშლა — მხოლოდ დადასტურებული სკოუპით */
   enqueuePurge: (items: PurgePlanItem[], opts: PurgeQueueOptions) => void
-  /** იმპორტი (Tasks §59.6) — დროებითი ასლი, ფაილის მოდული, ჩემი მოდული და გეგმის ახალი რიგები */
+  /** იმპორტი — დროებითი ასლი, ფაილის მოდული, ჩემი მოდული და გეგმის ახალი რიგები */
   enqueueImport: (token: string, source: string, module: string, items: ImportPlanItem[]) => void
-  /** მსახიობების მონაცემები (§39) — გეგმის მსახიობები + ველები */
+  /** მსახიობების მონაცემები — გეგმის მსახიობები + ველები */
   enqueueCast: (items: CastSyncPlanItem[], opts: CastSyncOptions) => void
-  /** Tasks §40.9 — ბმულიდან საკუთარ ბიბლიოთეკაში დამატება */
+  /** ბმულიდან საკუთარ ბიბლიოთეკაში დამატება */
   enqueueShare: (
     token: string,
     domain: ShareDomainKey,
@@ -254,13 +254,13 @@ const HEADLINES: Record<QKind, { busy: string; done: string }> = {
 /**
  * რომელი სახეობის სათაური გამოჩნდეს შერეულ რიგზე.
  *
- * ⚠️ **სია `HEADLINES`-იდან გამოდის და არა ხელით** (Tasks §40.1ბ) — ხელით
+ * ⚠️ **სია `HEADLINES`-იდან გამოდის და არა ხელით** — ხელით
  * ჩამოწერილს `import` გამორჩა, ე.ი. იმპორტის რიგი „ემატება…"-ს წერდა. ახალი
  * სახეობა `HEADLINES`-ში უნდა ჩაჯდეს (ტიპი აიძულებს), და აქაც თავისით
  * მოხვდება. `add` სარეზერვოა — ის ყველაზე ზოგადი სათაურია.
  */
 /**
- * **იმპორტის მოდული → მისი სიის ქეშის გასაღებები** (Tasks §59.6).
+ * **იმპორტის მოდული → მისი სიის ქეშის გასაღებები**.
  * ⚠️ პირადი მოდულის ჩანაწერები ერთ სიაშია (`custom-records`).
  */
 const IMPORT_LIST_KEYS: Record<string, string[]> = {
@@ -299,10 +299,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const abortRef = React.useRef<AbortController | null>(null)
 
   /**
-   * პაუზა ერთეულის **სახეობის** მიხედვით (Tasks 7):
+   * პაუზა ერთეულის **სახეობის** მიხედვით:
    * `add`/`purge` — ჩვენივე ბაზაა, ლოდინი არ სჭირდება; `translate` — Gemini-ის
    * ლიმიტი, ამიტომ ცალკე პარამეტრი; `sync`/`gallery`/`cast` — TMDB.
-   * ⚠️ `import` (Tasks §59.6) გარე წყაროს აღარ ეკითხება, მაგრამ იმავე ტემპზე
+   * ⚠️ `import` გარე წყაროს აღარ ეკითხება, მაგრამ იმავე ტემპზე
    * რჩება: ფაილიდან ჩაწერა სწრაფია და პაუზის გარეშე `api`-ის 600/წთ ჭერს
    * (`AppServiceProvider`) გადააჭარბებდა — რიგი 429-ზე შუაში გაწყდებოდა.
    */
@@ -454,7 +454,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   }, [t])
 
   /**
-   * ⚠️ მასობრივი წაშლა (20.2). დადასტურება `/purge`-ზე უკვე მოხდა, აქ
+   * ⚠️ მასობრივი წაშლა. დადასტურება `/purge`-ზე უკვე მოხდა, აქ
    * მხოლოდ ციკლს ვატარებთ — id-ები `plan`-იდან მოვიდა და აღარ გადაითვლება.
    */
   const enqueuePurge = React.useCallback((toPurge: PurgePlanItem[], opts: PurgeQueueOptions) => {
@@ -485,7 +485,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   /**
-   * იმპორტის რიგები რიგში (Tasks §59.6).
+   * იმპორტის რიგები რიგში.
    *
    * ⚠️ **დუბლის გასაღები ასლი + მოდული + რიგის ნომერია** და არა ჩანაწერის id —
    * ჩანაწერი ჯერ არ არსებობს, ერთი და იგივე სათაური კი ფაილში ორჯერაც შეიძლება
@@ -519,7 +519,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   /**
-   * მსახიობების მონაცემები რიგში (Tasks §39).
+   * მსახიობების მონაცემები რიგში.
    *
    * ⚠️ **დუბლის გასაღები `actor:{id}`-ია** — მსახიობის id-ს და ფილმის id-ს
    * ერთი და იგივე რიცხვი შეიძლება ჰქონდეს (`galleryActor`-ის იგივე მიზეზი).
@@ -550,7 +550,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   /**
-   * ბმულიდან დამატება რიგში (Tasks §40.9).
+   * ბმულიდან დამატება რიგში.
    *
    * ⚠️ **დუბლის გასაღები `share:{token}:{domain}:{id}`-ია** — ერთი და იგივე
    * ფილმი ორ სხვადასხვა ბმულში შეიძლება იყოს (სხვადასხვა id-ით, სხვადასხვა
@@ -633,11 +633,11 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   next.itemId!,
                   {
                     per_actor: next.galleryOpts?.per_actor,
-                    // ⚠️ პორტრეტს თავისი ზომა აქვს (§3.2) — უამისოდ რიგი
+                    // ⚠️ პორტრეტს თავისი ზომა აქვს — უამისოდ რიგი
                     // ყოველთვის ნაგულისხმევს ჩამოწერდა და ტაბის არჩევანი
                     // ჩუმად იკარგებოდა
                     cast_size: next.galleryOpts?.cast_size,
-                    /* §8.2 — წყაროც არჩევანია (პორტრეტები · კადრები ფილმებიდან);
+                    /* წყაროც არჩევანია (პორტრეტები · კადრები ფილმებიდან);
                        მისი გამოტოვება ტაბის არჩევანს ჩუმად კარგავდა, ზუსტად
                        ისე, როგორც ადრე `cast_size`-ს კარგავდა */
                     cast_source: next.galleryOpts?.cast_source,
@@ -670,7 +670,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   error: r.error ?? undefined,
                   skipped: r.skipped,
                 }))
-            /* ⚠️ **ეს შტოც `syncItem`-ის ზოგად შტომდე დგას** (§40.9) — თორემ
+            /* ⚠️ **ეს შტოც `syncItem`-ის ზოგად შტომდე დგას** — თორემ
                გამზიარებლის ჩანაწერის id ჩუმად **ჩემი** ფილმის სინქრონად წავიდოდა */
             : next.kind === 'share'
               ? addShareItem(
@@ -686,7 +686,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                     skipped: r.result === 'have',
                   }),
                 )
-            /* ⚠️ **ეს შტო `syncItem`-ის ზოგად შტომდე დგას** (§39.3) — თორემ
+            /* ⚠️ **ეს შტო `syncItem`-ის ზოგად შტომდე დგას** — თორემ
                მსახიობის id ჩუმად ფილმის სინქრონად წავიდოდა */
             : next.kind === 'cast'
               ? syncActor(next.itemId!, next.castOpts ?? { fields: [] }, ctrl.signal).then((r) => ({
@@ -699,7 +699,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   ok: r.ok,
                   error: r.error ?? undefined,
                   skipped: r.skipped,
-                  // Tasks §31.4 — შედეგი და „რა შეიცვალა" რიგამდე აღწევს (აქამდე იკარგებოდა)
+                  // შედეგი და „რა შეიცვალა" რიგამდე აღწევს (აქამდე იკარგებოდა)
                   result: r.result ?? null,
                   changed: r.changed,
                 }))
@@ -716,29 +716,29 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           'gallery',
           'storage',
           'translations',
-          // წაშლა ყველა მოდულს ეხება და დეშბორდის მრიცხველებსაც (20.2)
+          // წაშლა ყველა მოდულს ეხება და დეშბორდის მრიცხველებსაც
           ...(next.kind === 'purge'
             ? ['video', 'videos', 'songs', 'books', 'board-games', 'playlists', 'dashboard', 'purge-plan', 'custom-records']
             : []),
-          /* იმპორტი ახალ ჩანაწერს ქმნის — რომელ მოდულში, ფაილი წყვეტს (Tasks §59.6):
+          /* იმპორტი ახალ ჩანაწერს ქმნის — რომელ მოდულში, ფაილი წყვეტს:
              იმ მოდულის სია, დეშბორდი, ექსპორტის რიცხვები, საცავი (ZIP-ის ფაილები) */
           ...(next.kind === 'import' ? [...importListKeys(next.mediaType), 'dashboard', 'export', 'storage-files'] : []),
           // მსახიობის გვერდი (`actor`) ზემოთაა; გეგმის რიცხვები კი იცვლება
           ...(next.kind === 'cast' ? ['cast-sync-plan'] : []),
-          /* §40.9 — ახალი ჩანაწერი: დეშბორდის მთვლელი და ბმულის გვერდის „უკვე გაქვს ✓";
-             §40.10 — და იმ მოდულის სია, სადაც დაემატა (თამაშები, წიგნები…) */
+          /* ახალი ჩანაწერი: დეშბორდის მთვლელი და ბმულის გვერდის „უკვე გაქვს ✓";
+             და იმ მოდულის სია, სადაც დაემატა (თამაშები, წიგნები…) */
           ...(next.kind === 'share'
             ? [
                 'dashboard',
                 'public-share-items',
-                // §40.13 — პლეილისტის ფანჯრის „უკვე გაქვს" სიმღერებზეც
+                // პლეილისტის ფანჯრის „უკვე გაქვს" სიმღერებზეც
                 'public-share-playlist',
                 'trash',
                 ...(next.shareDomain ? shareMeta(next.shareDomain).listKeys : []),
               ]
             : []),
         ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
-        /* Tasks §30.6 — ⚠️ **გასაღების არქონა ჩანაწერის ფაქტი არ არის.**
+        /* ⚠️ **გასაღების არქონა ჩანაწერის ფაქტი არ არის.**
            ერთეულის პასუხმაც (`ok:false, error:'credential_missing'` — თარგმანი,
            იმპორტი) შეიძლება თქვას, და მაშინ იგივე სახეობის დანარჩენი ერთეულიც
            ზუსტად ასე ჩავარდებოდა — ამიტომ ისინი რიგიდან იშლება (413-ის წესი). */
@@ -765,15 +765,15 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       })
       .catch((e: { code?: string; message?: string; response?: { status?: number; data?: { id?: number } } }) => {
         const cancelled = ctrl.signal.aborted || e?.code === 'ERR_CANCELED'
-        // 17.3 — კვოტა გავსდა: ნაკადი **ჩერდება** და არ აგრძელებს ცდას
+        // კვოტა გავსდა: ნაკადი **ჩერდება** და არ აგრძელებს ცდას
         const quotaFull = e?.response?.status === 413
         if (quotaFull) qc.invalidateQueries({ queryKey: ['storage'] })
-        /* Tasks §30.6 — **ჩემი გასაღები არ მაქვს** (409 `credential_missing`):
+        /* **ჩემი გასაღები არ მაქვს** (409 `credential_missing`):
            იგივე სახეობის ყოველი მომდევნო ერთეული ზუსტად ასე ჩავარდებოდა, ე.ი.
            ისინი იშლება, მიზეზი კი წყაროს სახელით იწერება („TMDB-ის გასაღები
            არ გაქვს") — `errorMessage()` მას პასუხის `provider`-იდან აწყობს. */
         const noKey = isApiCode(e, 'credential_missing')
-        // Tasks §40.1ა — იგივე ჩანაწერი ურნაშია: ჩავარდნა კი არა, „აღდგენის" შეთავაზება
+        // იგივე ჩანაწერი ურნაშია: ჩავარდნა კი არა, „აღდგენის" შეთავაზება
         const inTrash = isApiCode(e, 'record_in_trash')
         setItems((cur) =>
           cur
@@ -805,7 +805,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       })
       .finally(() => {
         abortRef.current = null
-        // rate-limit — პაუზა ჩანაწერებს შორის (პარამეტრებიდან, J5 / Tasks 7)
+        // rate-limit — პაუზა ჩანაწერებს შორის (პარამეტრებიდან)
         const delay = paceRef.current(next.kind)
         if (delay > 0) {
           window.setTimeout(() => {
@@ -829,7 +829,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   }, [items])
 
   /**
-   * **სერვერზე გადაცემული პარტია** (Tasks FEAT-03).
+   * **სერვერზე გადაცემული პარტია**.
    *
    * ⚠️ აქამდე გადაცემა „გაუშვი და დაივიწყე" იყო: toast ამბობდა „N გადაეცა"
    * და მერე **არაფერი** — ე.ი. „300/300"-ის შემდეგ მომხმარებელი ვერ
@@ -878,7 +878,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
      და დარჩენილი დროის შეფასება, რომლებიც სერვერულზე არ მოქმედებს. */
   const isBusy = active > 0 || serverBusy
 
-  /* §D1 — რიგის სერვერზე გადაცემა.
+  /* რიგის სერვერზე გადაცემა.
 
      ⚠️ **მხოლოდ ერთგვაროვანი ნარჩენი გადადის.** პარტიას ერთი `kind` აქვს,
      ე.ი. შერეული რიგი (სინქრონი + თარგმანი ერთად) ორ პარტიად უნდა
@@ -887,7 +887,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
      მეორე კი დესტრუქციულია და ცხად დადასტურებაზე დგას. */
   const { toast } = useToast()
 
-  /* Tasks §31.3 — „აღარ განაახლო" რიგის სტრიქონიდან: შემდეგ გეგმებში ეს ჩანაწერი აღარ ჩანს.
+  /* „აღარ განაახლო" რიგის სტრიქონიდან: შემდეგ გეგმებში ეს ჩანაწერი აღარ ჩანს.
      ⚠️ მსახიობზე **ჩემი** პარამეტრია (`cast_member_sync_prefs`), ჩანაწერზე — სვეტი. */
   const pauseOne = React.useCallback(
     async (it: QItem) => {
@@ -911,10 +911,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const [handingOff, setHandingOff] = React.useState(false)
 
   /**
-   * Tasks §40.1ა — ურნაში მყოფის აღდგენა რიგის მწკრივიდან. ⚠️ ურნის სახეობა
+   * ურნაში მყოფის აღდგენა რიგის მწკრივიდან. ⚠️ ურნის სახეობა
    * დომენის გასაღებია (`TrashDomain::MODELS`): დამატებასა და იმპორტზე —
    * მედია (`mediaType`), ბმულიდან კი ნებისმიერი სექცია (`shareDomain` — `game`,
-   * `book`…, §40.10). ახალი ჩანაწერი არ იქმნება.
+   * `book`…). ახალი ჩანაწერი არ იქმნება.
    */
   const restoreTrashed = React.useCallback(
     (item: QItem) => {
@@ -959,7 +959,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       const first = pendingItems[0]
       const batch = await startBatch(
         handoffKind,
-        // ⚠️ მსახიობის ერთეულს დომენი არ აქვს — სერვერი `type: 'actor'`-ს ელის (§39.3)
+        // ⚠️ მსახიობის ერთეულს დომენი არ აქვს — სერვერი `type: 'actor'`-ს ელის
         pendingItems.map((i) => ({ type: i.kind === 'cast' ? 'actor' : i.mediaType, id: i.itemId! })),
         /* ⚠️ პარამეტრები **პირველი ერთეულიდან** მოდის: რიგი ერთი დიალოგიდან
            იბადება, ე.ი. ისინი მთელ პარტიაზე ერთი და იგივეა. */
@@ -974,7 +974,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
       // გადაცემულები კლიენტის რიგიდან ქრება — ორჯერ დამუშავება არ გვინდა
       setItems((cur) => cur.filter((i) => i.status !== 'pending'))
-      // ⚠️ თვალყური აქედან იწყება — თორემ პანელი ცარიელი დარჩებოდა (FEAT-03)
+      // ⚠️ თვალყური აქედან იწყება — თორემ პანელი ცარიელი დარჩებოდა
       setServerBusy(true)
       setBatchId(batch.id)
       toast({ title: t('queue.handedOff', { count: pendingItems.length }) })
@@ -1042,7 +1042,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   )
 
   /**
-   * **ერთი სია ორივე რიგისთვის** (Tasks FEAT-03).
+   * **ერთი სია ორივე რიგისთვის**.
    *
    * ⚠️ სერვერული ერთეულები `items`-ში **არ ერევა**: იქ ისინი `isBusy`-ს,
    * გაჩერებასა და ხელახლა ცდას ჩაებმებოდნენ — ვერც ერთი მათგანი ვერ
@@ -1092,7 +1092,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const fmt = (s: number) => (s < 60 ? `${s}${t('queue.sec')}` : `${Math.round(s / 60)}${t('queue.min')}`)
 
   /**
-   * მსახიობის ნაბიჯის გამოტოვების მიზეზი (Tasks §39.6).
+   * მსახიობის ნაბიჯის გამოტოვების მიზეზი.
    *
    * ⚠️ **სამი სხვადასხვა „გამოტოვება"** — „უცვლელია", „TMDB-ზე არაფერია",
    * „TMDB-ის id არ აქვს" — და ერთი საერთო „გამოტოვდა" (`queue.itemSkipped`
@@ -1105,7 +1105,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         ? t('castSync.result.tmdbEmpty')
         : code === 'no_tmdb_id'
           ? t('castSync.result.noTmdbId')
-          // Tasks §31.4 — ჩანაწერის სერვერული გამოტოვების მიზეზები (`RunBatchItem`)
+          // ჩანაწერის სერვერული გამოტოვების მიზეზები (`RunBatchItem`)
           : code === 'empty'
             ? t('queue.result.empty')
             : code === 'sync_paused'
@@ -1113,7 +1113,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
               : null
 
   /**
-   * Tasks §31.4 — სინქრონის/თარგმანის შედეგი სტრიქონზე: „განახლდა: პოსტერი, აღწერა (ka)" ·
+   * სინქრონის/თარგმანის შედეგი სტრიქონზე: „განახლდა: პოსტერი, აღწერა (ka)" ·
    * „უცვლელი" · „ცარიელი პასუხი" (ქარვისფერი — დამუშავებულად არ ჩაითვალა). ჩავარდნა
    * `error`-ის გზით ჩანს.
    */
@@ -1130,7 +1130,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   }
 
   /**
-   * **მსახიობების გაშვების შეჯამება** (Tasks §39.6) — „განახლდა N ·
+   * **მსახიობების გაშვების შეჯამება** — „განახლდა N ·
    * უცვლელი U · TMDB-ზე არაფერია M". ⚠️ სერვერზე გადაცემულიც ითვლება:
    * იქ „განახლდა" `ok`-ია, გამოტოვების მიზეზი კი `error`-ში ზის.
    */
@@ -1154,7 +1154,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   }, [items, serverItems, t])
 
   /**
-   * **სინქრონის/თარგმანის შეჯამება** (Tasks §31.4) — „განახლდა N · უცვლელი U ·
+   * **სინქრონის/თარგმანის შეჯამება** — „განახლდა N · უცვლელი U ·
    * ცარიელი E · ჩავარდა F". ⚠️ სერვერულიც ითვლება: იქ `ok` განახლებაა, გამოტოვების
    * მიზეზი (`unchanged`/`empty`) `error`-ში ზის, `failed` — ჩავარდნა.
    */
@@ -1181,7 +1181,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   }, [items, serverItems, t])
 
   /**
-   * **ბმულიდან დამატების შეჯამება** (Tasks §40.9) — „დაემატა N · უკვე გქონდა M ·
+   * **ბმულიდან დამატების შეჯამება** — „დაემატა N · უკვე გქონდა M ·
    * ურნაშია K · ვერ დაემატა L". ⚠️ „ურნაშია" ცალკე ითვლება და არა ჩავარდნად:
    * მწკრივს „აღდგენის" ღილაკი აქვს და ის სხვა ქმედებას ითხოვს.
    */
@@ -1204,7 +1204,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       .join(' · ')
   }, [items, t])
 
-  /* სათაურის ქვეშ — სახეობის შეჯამება: მსახიობები (§39.6), ბმული (§40.9), სინქრონი/თარგმანი (§31.4) */
+  /* სათაურის ქვეშ — სახეობის შეჯამება: მსახიობები, ბმული, სინქრონი/თარგმანი */
   const summary =
     headlineKind === 'cast'
       ? castSummary
@@ -1218,8 +1218,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     <QueueContext.Provider value={api}>
       {children}
 
-      {/* ⚠️ `--player-h` — დამკვრელის ზოლი (§7.2) ქვემოთ დგას, `--player-w` —
-          მისი გვერდითა პანელი მარჯვნივ (§35); ცვლადი მხოლოდ მაშინ არსებობს,
+      {/* ⚠️ `--player-h` — დამკვრელის ზოლი ქვემოთ დგას, `--player-w` —
+          მისი გვერდითა პანელი მარჯვნივ; ცვლადი მხოლოდ მაშინ არსებობს,
           როცა რამე უკრავს (და მხოლოდ ერთი — ან ზოლი, ან პანელი), სხვა დროს
           `bottom-4`/`right-4` რჩება. */}
       {total > 0 && (
@@ -1251,7 +1251,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                     {remaining != null && ` · ~${fmt(remaining)}`}
                   </span>
                 </p>
-                {/* მიმდინარე ჩანაწერის სახელი (J3) */}
+                {/* მიმდინარე ჩანაწერის სახელი */}
                 {running ? (
                   <p className="truncate text-xs text-muted-foreground">{running.title}</p>
                 ) : (
@@ -1303,7 +1303,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                     >
                       {it.title}
                     </span>
-                    {/* ჩავარდნის მიზეზი — რომ ბრმად არ ვცადოთ ხელახლა (J5) */}
+                    {/* ჩავარდნის მიზეზი — რომ ბრმად არ ვცადოთ ხელახლა */}
                     {it.status === 'error' && (
                       <span className="block truncate text-xs text-destructive">
                         {it.error === 'cancelled'
@@ -1313,13 +1313,13 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                             : translateCode(it.error) || t('toast.error')}
                       </span>
                     )}
-                    {/* §39.6 — მსახიობის გამოტოვებას თავისი მიზეზი აქვს */}
+                    {/* მსახიობის გამოტოვებას თავისი მიზეზი აქვს */}
                     {it.status === 'done' && it.skipped && castSkipLabel(it.castResult) && (
                       <span className="block truncate text-xs text-muted-foreground">
                         {castSkipLabel(it.castResult)}
                       </span>
                     )}
-                    {/* Tasks §31.4 — სინქრონის/თარგმანის შედეგი სამფერად; ცარიელი ქარვისფერია */}
+                    {/* სინქრონის/თარგმანის შედეგი სამფერად; ცარიელი ქარვისფერია */}
                     {it.status === 'done' && outcomeLabel(it) && (
                       <span
                         className={cn('block truncate text-xs', it.result === 'empty' ? 'text-status-towatch' : 'text-muted-foreground')}
@@ -1329,7 +1329,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                       </span>
                     )}
                   </span>
-                  {/* Tasks §31.3 — „აღარ განაახლო": შემდეგ გეგმებში ეს ჩანაწერი აღარ ჩანს */}
+                  {/* „აღარ განაახლო": შემდეგ გეგმებში ეს ჩანაწერი აღარ ჩანს */}
                   {canPause(it) && (
                     <button
                       type="button"
@@ -1363,7 +1363,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                 </div>
               ))}
 
-              {/* FEAT-03 — **სერვერზე გადაცემული ერთეულების შედეგი.**
+              {/* **სერვერზე გადაცემული ერთეულების შედეგი.**
                   ⚠️ იგივე მარკირება, რაც კლიენტურ რიგს: ორ რეჟიმს ერთი
                   ვიზუალური ენა უნდა ჰქონდეს, თორემ „სერვერზე გადავეცი"
                   ინფორმაციის დაკარგვას ნიშნავდა. გაჩერების ჯვარი აქ არაა —
@@ -1409,7 +1409,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                 </div>
               ))}
 
-              {/* §D1 — **სერვერზე გადაცემა.** კლიენტის რიგი ტაბის დახურვაზე
+              {/* **სერვერზე გადაცემა.** კლიენტის რიგი ტაბის დახურვაზე
                   ჩერდება; ეს ღილაკი დარჩენილ ერთეულებს სერვერს აბარებს და
                   ბრაუზერი აღარაფერს წყვეტს. ⚠️ ჩანს მხოლოდ მაშინ, როცა
                   დარჩენილში **გადასატანი სახის** სამუშაოა: `add` და `purge`
@@ -1456,7 +1456,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Tasks §31.4 — დასრულებულის ნიშანი: ✓ განახლდა · − უცვლელი · ⚠ ცარიელი · ⏭ გამოტოვდა */
+/** დასრულებულის ნიშანი: ✓ განახლდა · − უცვლელი · ⚠ ცარიელი · ⏭ გამოტოვდა */
 function OutcomeIcon({ result, skipped }: { result?: SyncOutcome | null; skipped?: boolean }) {
   if (result === 'unchanged') return <Minus className="size-3.5 text-muted-foreground" />
   if (result === 'empty') return <AlertTriangle className="size-3.5 text-status-towatch" />

@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils'
 import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
-   თარგმანების დიალოგი (Tasks 7):
+   თარგმანების დიალოგი:
    სკოუპი → რამდენ ჩანაწერს შეეხება → გაშვება რიგში.
 
    „რა ითარგმნოს" არჩევანი განზრახ **არ არის**: ვსებავთ მხოლოდ იმას, რაც აკლია.
@@ -68,7 +68,7 @@ export function TranslateDialog({
 
   const [types, setTypes] = useState<MediaType[]>(available)
   const lang = useContentLang(i18n.language)
-  // §6.4 — სტატუსების სია არჩეულ დომენებს მიჰყვება
+  // სტატუსების სია არჩეულ დომენებს მიჰყვება
   const statuses = useMergedStatuses(types)
   const [scope, setScope] = useState<Scope>('all')
   const [status, setStatus] = useState<string>('')
@@ -80,7 +80,7 @@ export function TranslateDialog({
      ტექსტს გადაწერს — ჩართული ნაგულისხმევი ზუსტად „თავისით არ უნდა
      ხდებოდეს"-ს არღვევდა. */
   const [review, setReview] = useState(false)
-  // Tasks §31.2 — ბოლო გაშვებაზე ნათარგმნი აღარ ჩანს (ნაგულისხმევად ჩართული)
+  // ბოლო გაშვებაზე ნათარგმნი აღარ ჩანს (ნაგულისხმევად ჩართული)
   const [hideProcessed, setHideProcessed] = useState(true)
 
   const summaryQ = useQuery({
@@ -131,7 +131,7 @@ export function TranslateDialog({
     onOpenChange(false)
   }
 
-  /* Tasks §37.6 — საერთო `ModalShell` (`DialogContent` წაიშალა) */
+  /* საერთო `ModalShell` (`DialogContent` წაიშალა) */
   if (!open) return null
 
   return (
@@ -140,7 +140,7 @@ export function TranslateDialog({
         {/* ---------- რითი ითარგმნება ---------- */}
 
         {/* გასაღები არ არის — ვამბობთ პირდაპირ, რომ მხოლოდ TMDB-ის ტექსტი მოვა.
-            ⚠️ Tasks §30.6 — გასაღები ანგარიშისაა, ე.ი. „მონაცემების" ბმულიც აქვეა */}
+            ⚠️ გასაღები ანგარიშისაა, ე.ი. „მონაცემების" ბმულიც აქვეა */}
         {summaryQ.data && !summaryQ.data.translator_configured && (
           <CredentialMissingNotice provider="gemini">{t('translate.noKey')}</CredentialMissingNotice>
         )}
@@ -225,7 +225,7 @@ export function TranslateDialog({
           )}
         </div>
 
-        {/* Tasks §31.2 — დამუშავებულების დამალვა */}
+        {/* დამუშავებულების დამალვა */}
         <label
           className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm"
           data-testid="hide-processed"
@@ -238,7 +238,7 @@ export function TranslateDialog({
         </label>
 
         {/* ---------- დომენი ----------
-            Tasks §20.1 — იგივე ბარათები, რაც სინქრონიზაციაში (ერთი კითხვა —
+            იგივე ბარათები, რაც სინქრონიზაციაში (ერთი კითხვა —
             ერთი სახე); ერთი დომენის შემთხვევაში არჩევანი არ არსებობს */}
         {available.length > 1 && (
           <div>
@@ -259,7 +259,7 @@ export function TranslateDialog({
                     <SelectValue placeholder={t('sync.statusPick')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* §6.4 — სია არჩეული დომენების ლექსიკონების გაერთიანებაა */}
+                    {/* სია არჩეული დომენების ლექსიკონების გაერთიანებაა */}
                     {statuses.map((s) => (
                       <SelectItem key={s.key} value={s.key}>
                         {statusName(s, lang)}

@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /* ============================================================
-   `<input type="datetime-local">` ↔ ISO (Tasks §13 — ვადა და შეხსენება).
+   `<input type="datetime-local">` ↔ ISO (ვადა და შეხსენება).
 
    ⚠️ `datetime-local` **ლოკალურ** დროს კითხულობს და წერს, backend კი UTC-ზეა.
    ორივე გარდაქმნა აქ ერთხელაა ჩაწერილი, რომ ფორმასა და შეხსენების რედაქტორს
@@ -28,7 +28,7 @@ export function fromDateTimeLocal(value: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
-/** ბაიტები წასაკითხ ფორმაში — ადმინის „დაკავებული ადგილი" (K14/L4) */
+/** ბაიტები წასაკითხ ფორმაში — ადმინის „დაკავებული ადგილი" */
 export function formatBytes(bytes: number): string {
   if (bytes <= 0) return '0 KB'
   const units = ['B', 'KB', 'MB', 'GB']

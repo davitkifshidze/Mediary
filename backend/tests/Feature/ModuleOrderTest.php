@@ -12,12 +12,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **მოდულების რიგი — თითო მომხმარებელზე** (Tasks §36, Q27).
+ * **მოდულების რიგი — თითო მომხმარებელზე**.
  *
  * პირადი რიგი `users.settings.module_order`-შია, საერთო (სუპერადმინის)
  * `modules.sort_order`-ში; ვისაც პირადი არ აქვს, საერთოს მიჰყვება. ტესტი
  * სამ ადგილს ერთად ამოწმებს — `GET /modules` (საიდბარი და `/modules`),
- * `GET /dashboard` (ბარათები) და ადმინის სია — რადგან §36.2-ის ხარვეზი
+ * `GET /dashboard` (ბარათები) და ადმინის სია — რადგან ხარვეზი
  * სწორედ ისაა, რომ ერთი სია სხვა რიგით იხატებოდა.
  */
 class ModuleOrderTest extends TestCase
@@ -34,9 +34,9 @@ class ModuleOrderTest extends TestCase
     private const SEEDED = [
         'movie', 'series', 'anime', 'video', 'song', 'book', 'board_game',
         'game', 'gallery', 'note', 'bookmark', 'course', 'place',
-        // Tasks §33 — პირადი გალერეა (`sort_order` 45)
+        // პირადი გალერეა (`sort_order` 45)
         'personal',
-        // Tasks §34 — მორიგეობა (`sort_order` 46)
+        // მორიგეობა (`sort_order` 46)
         'duty',
     ];
 
@@ -96,7 +96,7 @@ class ModuleOrderTest extends TestCase
 
     /**
      * ⚠️ **რიგში არმყოფი მოდული ბოლოს ემატება და არ იკარგება** — მოგვიანებით
-     * გააქტიურებული ან §37-ით შექმნილი; მათ შორის კი საერთო რიგი მოქმედებს.
+     * გააქტიურებული ან ინტერფეისიდან შექმნილი; მათ შორის კი საერთო რიგი მოქმედებს.
      */
     public function test_a_module_missing_from_the_order_goes_last_and_is_not_lost(): void
     {

@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **შეფასების ჩამოსაშლელი** (Tasks §42).
+   **შეფასების ჩამოსაშლელი**.
 
    შენი სიტყვები: „სელექთი, სადაც იქნებოდა 1…10 ვარსკვლავები: წინ ვარსკვლავი და
    მერე რიცხვი; და ბოლოში ვარსკვლავი და მერე ინფუთი, და შეგეძლებოდა წილადი".
@@ -62,7 +62,7 @@ function type(input: HTMLInputElement, value: string) {
   })
 }
 
-describe('RatingSelect (§42)', () => {
+describe('RatingSelect', () => {
   it('lists “no rating” and ★ 1 … ★ 10 with a star first and a muted “/ 10”, plus a fraction row at the end', async () => {
     await mount(null)
     expect(trigger().textContent).toContain(i18n.t('form.ratingNone'))
@@ -118,7 +118,7 @@ describe('RatingSelect (§42)', () => {
     expect(trigger().textContent).toContain(i18n.t('form.ratingNone'))
   })
 
-  it('a saved score outside the list (7.3) shows on the button and waits in the fraction field', async () => {
+  it('a saved score outside the list shows on the button and waits in the fraction field', async () => {
     await mount(7.3)
     expect(trigger().textContent).toBe('7.3/ 10')
 

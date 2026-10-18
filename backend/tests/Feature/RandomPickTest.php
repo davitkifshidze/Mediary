@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **„რა ვნახო დღეს" — `?pick=random` (FEAT-20).**
+ * **„რა ვნახო დღეს" — `?pick=random`.**
  */
 class RandomPickTest extends TestCase
 {
@@ -47,7 +47,7 @@ class RandomPickTest extends TestCase
     /**
      * **ნაგულისხმევად მხოლოდ `todo` როლი.**
      *
-     * ⚠️ როლი და არა გასაღები (§6.4): სტატუსი per-user ლექსიკონია, ე.ი.
+     * ⚠️ როლი და არა გასაღები: სტატუსი per-user ლექსიკონია, ე.ი.
      * ტესტი სახელს გადაარქმევს და მაინც უნდა მუშაობდეს.
      */
     public function test_by_default_only_what_has_not_been_started(): void
@@ -87,7 +87,7 @@ class RandomPickTest extends TestCase
             ->assertJsonPath('data.0.title_en', 'New');
     }
 
-    /** ⚠️ ცარიელი შედეგი ცარიელი სიაა და არა 404 — მდგომარეობაა და არა შეცდომა (§17.5: `data: []`) */
+    /** ⚠️ ცარიელი შედეგი ცარიელი სიაა და არა 404 — მდგომარეობაა და არა შეცდომა (`data: []`) */
     public function test_an_empty_scope_answers_an_empty_list(): void
     {
         $this->movie('Seen', 'watched');
@@ -114,7 +114,7 @@ class RandomPickTest extends TestCase
     }
 
     /**
-     * Tasks §6.5 — **„სხვა" უკვე ნაჩვენებს არ იმეორებს**: `exclude[]` სიიდან
+     * **„სხვა" უკვე ნაჩვენებს არ იმეორებს**: `exclude[]` სიიდან
      * გამორიცხავს; როცა ყველა ამოიწურა — `null`.
      */
     public function test_excluded_records_are_never_picked(): void
@@ -134,7 +134,7 @@ class RandomPickTest extends TestCase
     }
 
     /**
-     * Tasks §17.5 → §52.1 — **`count` რამდენიმე ბარათს აბრუნებს** (1–20), განმეორების
+     * **`count` რამდენიმე ბარათს აბრუნებს** (1–20), განმეორების
      * გარეშე; ზღვარზე მეტი ჭერზე იჭრება, ნაკლული სია იმდენია, რამდენიც არის.
      */
     public function test_count_returns_a_batch_without_repeats(): void
@@ -149,7 +149,7 @@ class RandomPickTest extends TestCase
         $ids = $this->getJson('/api/movies?pick=random&count=10')->assertOk()->assertJsonCount(10, 'data')->json('data.*.id');
         $this->assertCount(10, array_unique($ids));
 
-        // §52.1 — ჭერი 20-ია (ადრე 5)
+        // ჭერი 20-ია (ადრე 5)
         $this->getJson('/api/movies?pick=random&count=99')->assertOk()->assertJsonCount(20, 'data');
         $this->getJson('/api/movies?pick=random&count=0')->assertOk()->assertJsonCount(1, 'data');
 
@@ -158,7 +158,7 @@ class RandomPickTest extends TestCase
     }
 
     /**
-     * Tasks §17.5 — **რამდენიმე სტატუსი** `status[]` მასივით (დიალოგის ჩიპები);
+     * **რამდენიმე სტატუსი** `status[]` მასივით (დიალოგის ჩიპები);
      * მძიმით გამოყოფილი ფორმაც მუშაობს, ნაგულისხმევი `todo`-როლი კი იხსნება.
      */
     public function test_several_statuses_widen_the_scope(): void
@@ -179,7 +179,7 @@ class RandomPickTest extends TestCase
         $this->getJson('/api/movies?pick=random&count=5&status=watched,watching')->assertOk()->assertJsonCount(2, 'data');
     }
 
-    /** Tasks §17 (Q4) — **ვიდეოებზეც** იგივე `pick=random`, `count`, `exclude`, ნაგულისხმევი `todo` */
+    /** **ვიდეოებზეც** იგივე `pick=random`, `count`, `exclude`, ნაგულისხმევი `todo` */
     public function test_videos_answer_too(): void
     {
         Status::ensureDefaults($this->user->id, 'video');

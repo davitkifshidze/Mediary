@@ -9,7 +9,7 @@ import type { Credential, CredentialField } from '@/api/credentials'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **„მონაცემები" — ბარათები და რედაქტირების მოდალი (Tasks §30).**
+   **„მონაცემები" — ბარათები და რედაქტირების მოდალი.**
 
    ⚠️ მოწმდება ის, რასაც ტიპი ვერ ხედავს: წყაროები ჯგუფებშია, ყოველ
    ბარათს თავისი მდგომარეობა აქვს (ჩემი · შეუვსებელი · გამორთული · არ არის ·
@@ -224,7 +224,7 @@ describe('CredentialsPage', () => {
     expect(mocks.test).toHaveBeenCalledWith('serper', true)
   })
 
-  /* Tasks §44.6 — „რა აპები და საიდან გასაღები": ერთი სია გვერდის `i`-ში; yt-dlp-ს გასაღები არ სჭირდება */
+  /* „რა აპები და საიდან გასაღები": ერთი სია გვერდის `i`-ში; yt-dlp-ს გასაღები არ სჭირდება */
   it('lists which source fills what and where its key comes from in the page info', async () => {
     await mount()
     expect(document.querySelector('[data-testid="credentials-guide"]')).toBeNull()
@@ -257,10 +257,10 @@ describe('CredentialsPage', () => {
   })
 })
 
-/* Tasks §27.2 — ბრაუზერის არხი „მონაცემებშია": ნებართვის მდგომარეობა, მოთხოვნა
+/* ბრაუზერის არხი „მონაცემებშია": ნებართვის მდგომარეობა, მოთხოვნა
    დაჭერიდან, სატესტო შეტყობინება ნამდვილის გზით. ⚠️ jsdom-ს `Notification` არ
    აქვს — ყალბი კლასი ნებართვას „default"-იდან „granted"-ზე გადაჰყავს. */
-describe('CredentialsPage — browser channel (§27.2)', () => {
+describe('CredentialsPage — browser channel', () => {
   it('asks for the permission from the card and then fires a test notification', async () => {
     const created: string[] = []
     class FakeNotification {

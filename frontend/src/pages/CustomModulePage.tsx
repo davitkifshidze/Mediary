@@ -89,7 +89,7 @@ import { cn } from '@/lib/utils'
 import { StatusBadge, StatusLabel } from '@/components/StatusBadge'
 
 /* ============================================================
-   **ინტერფეისიდან შექმნილი მოდულის გვერდი (Tasks §37.3).**
+   **ინტერფეისიდან შექმნილი მოდულის გვერდი.**
 
    ერთი გვერდი ყველა პირად მოდულზე — `/c/:key`. სია, ფილტრი, ფორმა და
    დეტალი **აღწერიდან** იხატება: სტატუსები მოდულის ლექსიკონიდან,
@@ -98,7 +98,7 @@ import { StatusBadge, StatusLabel } from '@/components/StatusBadge'
 
    ⚠️ **ბუკმარკის გვერდის ყალიბი** (სიის რიგი, კონტექსტური მენიუ, ფილტრის
    პანელი, ფორმა): სექციები საიდბარშია (`?view=` — სტატუსი/რჩეული), პანელში
-   მხოლოდ კლასიფიკაცია და ტეგია (Tasks 3-ის წესი).
+   მხოლოდ კლასიფიკაცია და ტეგია.
 
    ⚠️ **სავალდებულოა, რაც არსებობს**: სტატუსი — თუ ლექსიკონი ცარიელი არაა,
    კლასიფიკაცია — თუ მოდულს აქვს და კლასიფიკატორში რამე წერია (backend-ის
@@ -128,7 +128,7 @@ export function CustomModulePage() {
   }
 
   if (!module) {
-    // ⚠️ ადმინმა გამორთო — მონაცემები ხელუხლებელია, მიზეზი ცხადად ჩანს (37.8)
+    // ⚠️ ადმინმა გამორთო — მონაცემები ხელუხლებელია, მიზეზი ცხადად ჩანს
     const known = all.find((m) => m.key === key)
 
     return (
@@ -162,7 +162,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
   const confirm = useConfirm()
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
   const [layout, setLayout] = useRecordLayout(module.key, 'rows')
 
   const search = params.toString()
@@ -200,11 +200,11 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
     status: isStatusView ? view : undefined,
     favorite: view === 'favorite' ? true : undefined,
     sort: sort === 'newest' ? undefined : sort,
-    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
   }
 
-  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['custom-records', module.key, filters],
     fetchPage: (page) => fetchCustomRecords(module.key, { ...filters, page, per_page: LIST_PAGE_SIZE }),
@@ -219,8 +219,8 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
   const allCategories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data])
 
   /* საიდბარის „დამატება" → `?new=1`; ძებნის შედეგი → `?open=<id>`. ⚠️ ჩანაწერი
-     **id-ით** იკითხება — ის შეიძლება მიმდინარე ფილტრის გარეთ იყოს (FEAT-17-ის
-     წესი), პარამეტრი კი მაშინვე იშლება, რომ „უკან" მას თავიდან არ ხსნიდეს. */
+     **id-ით** იკითხება — ის შეიძლება მიმდინარე ფილტრის გარეთ იყოს,
+     პარამეტრი კი მაშინვე იშლება, რომ „უკან" მას თავიდან არ ხსნიდეს. */
   useEffect(() => {
     const open = params.get('open')
 
@@ -242,8 +242,8 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
 
   const moduleTitle = (lang === 'ka' ? module.name_ka : module.name_en) || module.name_en || module.name_ka
 
-  /* **§37.5 — ბმულიდან დაკვრა გლობალურ ფლეერში.** ⚠️ რიგი **მთელი გაფილტრული
-     სიაა** და არა ჩატვირთული გვერდი (ვიდეოების წესი, §7.2) — მოთხოვნა მხოლოდ
+  /* **ბმულიდან დაკვრა გლობალურ ფლეერში.** ⚠️ რიგი **მთელი გაფილტრული
+     სიაა** და არა ჩატვირთული გვერდი (ვიდეოების წესი) — მოთხოვნა მხოლოდ
      ცხად დაჭერაზეა; დასაკრავად ამოცნობილი ბმულის გარეშე ჩანაწერი რიგში არ ჯდება.
      წყარო თუ არ მოვიდა, ჩატვირთულს ვუკრავთ. */
   const player = usePlayer()
@@ -350,7 +350,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
         subtitle={t('customModules.count', { count: total })}
         actions={
           <>
-            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -378,7 +378,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
               </SelectContent>
             </Select>
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
-            {/* §37.5 — მთელი (გაფილტრული) სიის დასაკრავი ბმულები რიგში */}
+            {/* მთელი (გაფილტრული) სიის დასაკრავი ბმულები რიგში */}
             {hasPlayable && (
               <Button variant="outline" onClick={() => playFrom()}>
                 <ListVideo className="size-4" />
@@ -429,7 +429,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
             {records.map((record) => {
               const image = storageUrl(record.image)
 
-              /* Tasks §7 — ერთი სია (`record-menu`): გახსნა · დაკვრა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+              /* ერთი სია (`record-menu`): გახსნა · დაკვრა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
                 { key: 'open', label: t('customModules.open'), icon: MENU_ICONS.open, run: () => setViewing(record) },
                 ...(isPlayableRecord(record)
@@ -447,7 +447,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
               ]
 
               return (
-                /* §45 — ერთი აღწერა სამ განლაგებაში */
+                /* ერთი აღწერა სამ განლაგებაში */
                 <RecordView
                   key={record.id}
                   title={record.title}
@@ -503,7 +503,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
                           label={t('customModules.statusChange')}
                           trigger={
                             <button type="button" className="cursor-pointer rounded-md">
-                              {/* Tasks §16.4 — ერთი სიგანის ჩამოსაშლელი: `StatusBadge` აიქონითა და ფერით */}
+                              {/* ერთი სიგანის ჩამოსაშლელი: `StatusBadge` აიქონითა და ფერით */}
                               {record.status ? (
                                 <StatusBadge
                                   status={record.status}
@@ -537,7 +537,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
 
                       <VisibilityBadge value={record.visibility} />
 
-                      {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
+                      {/* რჩეული ტექსტით და ფერით, ერთი ზომით */}
                       <FavoriteButton
                         active={record.is_favorite}
                         pending={favorite.isPending && favorite.variables === record.id}
@@ -610,7 +610,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
           module={module}
           record={viewing}
           onClose={() => setViewing(null)}
-          /* §37.5 → §48 — ფანჯარა ღია რჩება: ვიდეო მოტივტივე ჩარჩოშია, რომელიც
+          /* ფანჯარა ღია რჩება: ვიდეო მოტივტივე ჩარჩოშია, რომელიც
              ფანჯრის თავზე ჩანს (ადრე მოდალის ქვეშ დარჩებოდა და ფანჯარა იკეტებოდა) */
           onPlay={isPlayableRecord(viewing) ? () => void playFrom(viewing.id) : undefined}
           onEdit={() => {
@@ -687,7 +687,7 @@ function CustomRecordForm({
   const [metaLoading, setMetaLoading] = useState(false)
   const [newCategory, setNewCategory] = useState(false)
   const lastFetched = useRef<string>(record?.url ?? '')
-  // §26.5 — დამატებითი ველები ახალ ჩანაწერზე; ჩავარდნისას შექმნილი რჩება
+  // დამატებითი ველები ახალ ჩანაწერზე; ჩავარდნისას შექმნილი რჩება
   const extras = useRecordExtras(module.key, record)
 
   /**
@@ -736,7 +736,7 @@ function CustomRecordForm({
     },
   })
 
-  /* ⚠️ დამალულ ველზე წითელი ტექსტი არავის უნახავს (Tasks §4.1) — ასეთი ველი თოსტით სახელდება */
+  /* ⚠️ დამალულ ველზე წითელი ტექსტი არავის უნახავს — ასეთი ველი თოსტით სახელდება */
   const warnHidden = (missing: string[]) => {
     const hidden = hiddenPicks(missing, fields.shows)
 
@@ -810,7 +810,7 @@ function CustomRecordForm({
               value={form.url}
               onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
               onBlur={(e) => void loadMeta(e.target.value)}
-              // Tasks §44.1 — ჩასმისთანავე (ადრე მხოლოდ ველიდან გასვლაზე)
+              // ჩასმისთანავე (ადრე მხოლოდ ველიდან გასვლაზე)
               onPaste={(e) => {
                 const pasted = e.clipboardData.getData('text')
                 if (pasted) setTimeout(() => void loadMeta(pasted), 0)
@@ -943,7 +943,7 @@ function CustomRecordForm({
         </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ ჩანაწერზე მონახაზი */}
+      {/* დამატებითი ველები; ახალ ჩანაწერზე მონახაზი */}
       <CustomFieldsCard module={module.key} recordId={extras.current?.id ?? null} draft={extras.draft} className="mt-6" />
 
       <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />

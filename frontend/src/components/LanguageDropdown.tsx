@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { safeSet } from '@/lib/storage'
 
 /**
- * ⚠️ **ენის სახელი ენდონიმია** (Tasks DEBT-21): `lang.ka`/`lang.en` ორივე
+ * ⚠️ **ენის სახელი ენდონიმია**: `lang.ka`/`lang.en` ორივე
  * ლოკალში **ერთსა და იმავე** მნიშვნელობას ატარებს — ენა თავის ენაზე იწერება,
  * თორემ ინგლისურ ინტერფეისში ქართულს „Georgian" ერქმეოდა და პირიქით.
  * i18n-ში ის მაინც იმიტომ ზის, რომ ოთხივე ადგილმა ერთი წყარო კითხულობდეს.

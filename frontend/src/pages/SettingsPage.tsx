@@ -44,8 +44,8 @@ import { Switch } from '@/components/ui/switch'
 import { StatusLabel } from '@/components/StatusBadge'
 
 /* ============================================================
-   პარამეტრების გვერდი (Tasks E1) — per-user, `users.settings`-ში.
-   L2: სინქრონი მთლიანად `/sync`-ზე გავიდა — გაშვებაც და „პაუზა
+   პარამეტრების გვერდი — per-user, `users.settings`-ში.
+   სინქრონი მთლიანად `/sync`-ზე გავიდა — გაშვებაც და „პაუზა
    ჩანაწერებს შორის"-იც, რადგან პაუზა სწორედ სინქრონის ნაწილია.
    ============================================================ */
 
@@ -54,7 +54,7 @@ export function SettingsPage() {
   const { settings, set, reset, isDirty } = useSettings()
   const { mediaModules } = useModules()
 
-  /* §6.4 — ნაგულისხმევი სექციის ვარიანტები **სამივე მედია-დომენის
+  /* ნაგულისხმევი სექციის ვარიანტები **სამივე მედია-დომენის
      გაერთიანებაა**: პარამეტრი ერთია და სამივეზე მოქმედებს. დუბლი
      გასაღებით იჭრება (ნაგულისხმევი ნაკრები ხომ სამივეზე ერთნაირია). */
   const statusMap = useStatusMap(mediaModules.map((m) => m.key))
@@ -91,7 +91,7 @@ export function SettingsPage() {
         }
       />
 
-      {/* ---------- ნაგულისხმევები (E4) ---------- */}
+      {/* ---------- ნაგულისხმევები ---------- */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
         <h2 className="mb-2 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
           {t('settings.defaults')}
@@ -107,7 +107,7 @@ export function SettingsPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {/* §6.4 — „ყველა" · *ჩემი* სტატუსები · „რჩეული".
+              {/* „ყველა" · *ჩემი* სტატუსები · „რჩეული".
                   ⚠️ სია სამივე მედია-დომენის **გაერთიანებაა**: პარამეტრი
                   ერთია და ფილმზეც მოქმედებს, სერიალზეც, ანიმეზეც. */}
               <SelectItem value="all">{t('filter.all')}</SelectItem>
@@ -233,7 +233,7 @@ export function SettingsPage() {
         </Row>
       </section>
 
-      {/* ---------- სიები და გვერდები (E2) ---------- */}
+      {/* ---------- სიები და გვერდები ---------- */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
         <h2 className="mb-2 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
           {t('settings.lists')}
@@ -256,7 +256,7 @@ export function SettingsPage() {
         </Row>
       </section>
 
-      {/* ---------- „აღმოაჩინე" (E3) ---------- */}
+      {/* ---------- „აღმოაჩინე" ---------- */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
         <h2 className="mb-2 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
           {t('settings.discover')}
@@ -288,7 +288,7 @@ export function SettingsPage() {
         </Row>
       </section>
 
-      {/* ---------- მედია და TMDB (18) ---------- */}
+      {/* ---------- მედია და TMDB ---------- */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
         <h2 className="mb-2 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
           {t('settings.media')}
@@ -328,7 +328,7 @@ export function SettingsPage() {
         </Row>
       </section>
 
-      {/* ---------- დამკვრელი (Tasks §20.2) ----------
+      {/* ---------- დამკვრელი ----------
           ⚠️ მხოლოდ **ჭერი** ინახება აქ: ხელით გაწეული სიგანე მოწყობილობისაა
           (`localStorage`, `lib/player.tsx`) და პარამეტრების ზოლს არ ანთებს. */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
@@ -351,10 +351,10 @@ export function SettingsPage() {
         </Row>
       </section>
 
-      {/* ---------- ურნის ვადა (Tasks §29.6) ---------- */}
+      {/* ---------- ურნის ვადა ---------- */}
       <TrashRetentionSetting />
 
-      {/* ---------- საცავის ლიმიტები (Tasks §17.2 → ეტაპი 5) ----------
+      {/* ---------- საცავის ლიმიტები ----------
           ⚠️ **პარამეტრებს მხოლოდ ეს რჩება.** „რამდენი მაქვს", „რა ავტვირთე",
           გაზრდის მოთხოვნა და ობოლი ფაილები ანგარიშის ფაქტია და არა პარამეტრი —
           ისინი `/profile`-ის ერთ ბლოკშია (`components/StorageCard.tsx`). */}
@@ -368,7 +368,7 @@ export function SettingsPage() {
         <UploadLimitsCard />
       </div>
 
-      {/* ---------- სინქრონიზაცია: მხოლოდ პარამეტრი (L2) ----------
+      {/* ---------- სინქრონიზაცია: მხოლოდ პარამეტრი ----------
           თვითონ გაშვება ქმედებაა და `/sync`-ზე გადავიდა — პარამეტრებში
           მხოლოდ „პაუზა ჩანაწერებს შორის" რჩება. */}
 
@@ -379,7 +379,7 @@ export function SettingsPage() {
 }
 
 /**
- * მოდულებზე ლიმიტების გაწერა — **ერთადერთი საცავის პარამეტრი** (ეტაპი 5).
+ * მოდულებზე ლიმიტების გაწერა — **ერთადერთი საცავის პარამეტრი**.
  *
  * ⚠️ `null` ≠ `0`: `null` = გამოყოფილი ლიმიტი არაა (საერთო აუზიდან ხარჯავს),
  * `0` = ატვირთვა აკრძალულია. ჯამი ანგარიშის კვოტას ვერ გადააჭარბებს —

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * ბორდგეიმი — მოდული `board_game` (Tasks §14).
+ * ბორდგეიმი — მოდული `board_game`.
  *
  * ⚠️ **გალერეა `board_game_files`-შია** (`kind = 'image'`) და არა
  * `gallery_images`-ში. ეს არსებული წესია და არა გამონაკლისი: `gallery_images`
@@ -23,18 +23,18 @@ class BoardGame extends Model
 {
     use BelongsToUser;
 
-    /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
+    /** მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
     /**
-     * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
+     * ⚠️ **კალათა** — `destroy()` `moveToTrash()`-ს იძახის და არა
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
 
-    /* ⚠️ Tasks §12 — **სტატუსი არ აქვს** (შენი სიტყვები: „სტატუსიც საერთოდ
+    /* ⚠️ **სტატუსი არ აქვს** (შენი სიტყვები: „სტატუსიც საერთოდ
        ამოიღე, საჭირო არ არის"). კოლექციაში მყოფი თამაში ისედაც „მაქვს"-ია;
-       ამიტომ წავიდა შეძენის თარიღიც (`acquired_at`, Q10) და მისი
+       ამიტომ წავიდა შეძენის თარიღიც (`acquired_at`) და მისი
        `TracksCompletion`. ეს „სტატუსი ყველა მოდულში სავალდებულოა" წესის
        მეორე გამონაკლისია — პირველი სიმღერაა. */
 
@@ -64,7 +64,7 @@ class BoardGame extends Model
     {
         static::deleting(function (BoardGame $game) {
             $game->deleteImage();
-            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა** (Tasks BUG-21):
+            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა**:
                `<module>_files` `BelongsToUser`-ს იყენებს, ე.ი. `files()`
                მიმდინარე **ავტორიზებულ** მომხმარებელზე იჭრება. `/admin/purge`
                და ანგარიშის წაშლა სხვის ბიბლიოთეკას შლის ადმინის სესიიდან —
@@ -103,7 +103,7 @@ class BoardGame extends Model
      * ⚠️ **მხოლოდ ხელით ატვირთული ფოტო იშლება.** BGG-დან ჩამოტვირთულის
      * სახელი მისი `bgg_id`-ია, ე.ი. ერთი ფაილი რამდენიმე ანგარიშს ემსახურება —
      * წაშლა სხვისთვის სურათს გატეხავდა (TMDB პოსტერისა და წიგნის ყდის წესი).
-     * ჩამოტვირთული კვოტაშიც არ ითვლება (19.4/B).
+     * ჩამოტვირთული კვოტაშიც არ ითვლება.
      */
     public function deleteImage(): void
     {

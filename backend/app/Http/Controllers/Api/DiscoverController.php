@@ -33,7 +33,7 @@ class DiscoverController extends Controller
         'year_asc' => 'first_air_date.asc',
     ];
 
-    /** default სიღრმე; `max_pages`-ით იმართება (Tasks E3) */
+    /** default სიღრმე; `max_pages`-ით იმართება */
     private const MAX_PAGES = 100;
 
     /** TMDB-ის მყარი ლიმიტი — `page` > 500 შეცდომას აბრუნებს */
@@ -68,13 +68,13 @@ class DiscoverController extends Controller
             'sort' => ['nullable', 'string'],
             'page' => ['nullable', 'integer'],
             'refresh' => ['nullable', 'boolean'],
-            // E3 — სიღრმე და გვერდის ზომა პარამეტრებიდან
+            // სიღრმე და გვერდის ზომა პარამეტრებიდან
             'max_pages' => ['nullable', 'integer', 'min:1', 'max:'.self::TMDB_MAX_PAGE],
             'per_page' => ['nullable', 'integer', 'min:'.self::TMDB_PAGE_SIZE, 'max:100'],
         ]);
 
         $type = $data['type'] ?? 'movie';
-        // ⚠️ TMDB-ის `/tv/*`-ზე **ორი** დომენი ზის (§7.1): სერიალიც და ანიმეც,
+        // ⚠️ TMDB-ის `/tv/*`-ზე **ორი** დომენი ზის: სერიალიც და ანიმეც,
         // ე.ი. „სერიალია თუ არა" აღარაა იგივე, რაც „TV-ა თუ არა"
         $isSeries = MediaDomain::isTv($type);
         $page = max(1, (int) ($data['page'] ?? 1));
@@ -113,7 +113,7 @@ class DiscoverController extends Controller
                 fn () => $this->fetch($tmdb, $data, $query, $page, $isSeries, $chunk, $maxPages),
             );
         } catch (Throwable $e) {
-            // SEC-14 — გამონაკლისის ტექსტი კლიენტს არასდრობ პასუხში: Guzzle მას სრულ URL-ს
+            // გამონაკლისის ტექსტი კლიენტს არასდრობ პასუხში: Guzzle მას სრულ URL-ს
             // (`?api_key=…`) უწერს. მიზეზი `sources.log`-ში რ჉ება, პასუხში — მანქანური კოდი.
             SourceLog::threw('tmdb', $e);
 

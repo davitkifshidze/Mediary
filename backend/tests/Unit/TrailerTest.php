@@ -6,7 +6,7 @@ use App\Support\Trailer;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Tasks 9 — ტრეილერის შერჩევა TMDB-ის `/videos` პასუხიდან.
+ * ტრეილერის შერჩევა TMDB-ის `/videos` პასუხიდან.
  */
 class TrailerTest extends TestCase
 {

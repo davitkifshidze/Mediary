@@ -2,7 +2,7 @@ import { api } from '@/lib/api'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
-   **მორიგეობა — მოდული `duty` (Tasks §34).**
+   **მორიგეობა — მოდული `duty`.**
 
    სამსახური (ტარიფებით) · ტიპი (კლასიფიკატორი, `/dictionaries`) · მორიგეობა ·
    პერიოდი (შენი „თვე“ — `period_start_day`) · ჯამები.
@@ -46,7 +46,7 @@ export interface DutyShiftType {
 
 export interface DutyShift {
   id: number
-  /** `YYYY-MM-DD` — ღამის მორიგეობაზე დაწყების დღე (Q8) */
+  /** `YYYY-MM-DD` — ღამის მორიგეობაზე დაწყების დღე */
   date: string
   /** `HH:MM` */
   start_time: string | null
@@ -81,7 +81,7 @@ export interface DutySettingsData {
   /** მომავალი ცვლილება — „15-დან, 1 ნოემბრიდან“ */
   pending: { since: string; day: number } | null
   current: DutyPeriodInfo
-  /** §34.7 — შეხსენება წინა დღეს („20:00“); `null` — გამორთულია */
+  /** შეხსენება წინა დღეს („20:00“); `null` — გამორთულია */
   remind_at: string | null
   /** შეხსენება ტელეგრამითაც (ბოტი `/credentials`-შია) */
   remind_telegram: boolean
@@ -131,7 +131,7 @@ export interface DutySettingsInput {
 }
 
 /**
- * **ხვალინდელი შეხსენებული მორიგეობები (§34.7)** — ღია აპის polling. სერვერი ჯერ
+ * **ხვალინდელი შეხსენებული მორიგეობები** — ღია აპის polling. სერვერი ჯერ
  * თვითონ ასრულებს შეხსენებას (cron-ის გარეშეც), მერე აბრუნებს ხვალინდელებს;
  * ჩვენებას ბრაუზერი იმახსოვრებს (`lib/dutyReminders.ts`).
  */

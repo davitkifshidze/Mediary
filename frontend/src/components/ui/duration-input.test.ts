@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import '@/i18n'
 
 /* ============================================================
-   **ხანგრძლივობის ველი — ერთი ჩარჩო, ერთი ხაზი** (Tasks §39).
+   **ხანგრძლივობის ველი — ერთი ჩარჩო, ერთი ხაზი**.
 
    შენი სიტყვები: „საათებს რომ ვაწვები, ერთი ინფუთი რომ ემატება, საათების
    გარეშე ქვევით ხტება და რეალურად შეყვანილი დრო კი კიდევ უფრო ქვევით".
@@ -46,7 +46,7 @@ function type(input: HTMLInputElement, value: string) {
   })
 }
 
-describe('DurationInput (§39)', () => {
+describe('DurationInput', () => {
   it('is one h-10 frame with the hours segment always there — no toggle button', async () => {
     const el = await mount({ id: 'd' })
     const frames = el.querySelectorAll('[data-testid="duration-input"]')

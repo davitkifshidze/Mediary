@@ -6,31 +6,31 @@ import { errorMessage } from '@/lib/errors'
 import { safeGet, safeSet } from '@/lib/storage'
 
 /* ============================================================
-   აპლიკაციის პარამეტრები (Tasks E1).
+   აპლიკაციის პარამეტრები.
 
-   I7-ის შემდეგ შენახვა **per-user backend-შია** (`users.settings`),
+   შენახვა **per-user backend-შია** (`users.settings`),
    localStorage დარჩა როგორც ლოკალური ქეში (მყისიერი პირველი რენდერი)
    და ერთჯერადი მიგრაციის წყარო ძველი single-user მდგომარეობიდან.
    ============================================================ */
 
 export interface Settings {
-  /** მსახიობის გვერდი — ცალკე ფილმებზე, ცალკე სერიალებზე (E2) */
+  /** მსახიობის გვერდი — ცალკე ფილმებზე, ცალკე სერიალებზე */
   actorMoviesPerPage: number
   actorSeriesPerPage: number
-  /** „აღმოაჩინე" — რამდენ გვერდამდე მივყვეთ TMDB-ს (E3). TMDB-ს ლიმიტი 500-ია. */
+  /** „აღმოაჩინე" — რამდენ გვერდამდე მივყვეთ TMDB-ს. TMDB-ს ლიმიტი 500-ია. */
   discoverMaxPages: number
-  /** „აღმოაჩინე" — ჩანაწერი გვერდზე; TMDB თითო გვერდზე 20-ს აბრუნებს, ამიტომ ჯერადი (E3) */
+  /** „აღმოაჩინე" — ჩანაწერი გვერდზე; TMDB თითო გვერდზე 20-ს აბრუნებს, ამიტომ ჯერადი */
   discoverPerPage: number
-  /** პაუზა სინქრონის ჩანაწერებს შორის, ms — TMDB-ის rate-limit-ისთვის (J5) */
+  /** პაუზა სინქრონის ჩანაწერებს შორის, ms — TMDB-ის rate-limit-ისთვის */
   syncDelayMs: number
   /**
-   * პაუზა **თარგმანის** ჩანაწერებს შორის, ms (Tasks 7).
+   * პაუზა **თარგმანის** ჩანაწერებს შორის, ms.
    * განზრახ ცალკეა `syncDelayMs`-ისგან: თარგმანი Gemini-ს ურეკავს და
    * მისი rate-limit TMDB-ისას არ ემთხვევა.
    */
   translateDelayMs: number
 
-  /* ---------- E4 ---------- */
+  /* ---------- ბიბლიოთეკის ნაგულისხმევები და ენა ---------- */
   /** ბიბლიოთეკის ნაგულისხმევი სორტირება — გახსნისას აღარ ირჩევა ხელახლა */
   defaultSortField: SortField
   defaultSortDir: SortDir
@@ -42,7 +42,7 @@ export interface Settings {
    */
   contentLang: ContentLang
 
-  /* ---------- 18 (backlog, 2026-09-06) ---------- */
+  /* ---------- ბადე, მედია, თარიღი და დამკვრელი ---------- */
   /**
    * ბადის ნაგულისხმევი დაჯგუფება — ჟანრი / წელი / სტატუსი.
    * ⚠️ **ფრანჩაიზის დაჯგუფებას არ ცვლის:** ის backend-ის `group=`-ია
@@ -65,14 +65,14 @@ export interface Settings {
   /** თარიღის ფორმატი — `lib/dates.ts::useDateFormat()` კითხულობს */
   dateFormat: DateFormat
   /**
-   * Tasks §20.2 — დამკვრელის გვერდითა პანელის **მაქსიმალური** სიგანე (px).
+   * დამკვრელის გვერდითა პანელის **მაქსიმალური** სიგანე (px).
    * ⚠️ ეს ჭერია და არა თვითონ სიგანე: ხელით გაწეული სიგანე მოწყობილობისაა
    * (`localStorage['player.width']`, `lib/player.tsx`), ჭერი კი — ანგარიშის
    * პარამეტრი, რომელსაც ის ვერ გადააჭარბებს. ჭერის შემცირება სიგანეს ჭრის.
    */
   playerMaxWidth: number
 
-  /* ---------- FEAT-21 ---------- */
+  /* ---------- მიზნები ---------- */
   /**
    * **წლიური მიზნები** — `{ movie: { 2026: 50 } }`.
    *
@@ -86,7 +86,7 @@ export interface Settings {
    */
   goals: Record<string, Record<string, number>>
 
-  /* ---------- Tasks §29.6 ---------- */
+  /* ---------- ურნა ---------- */
   /**
    * **ურნის ვადა დღეებში** — რამდენ ხანს ინახება წაშლილი, სანამ ღამის
    * გასუფთავება მას საბოლოოდ წაშლის.
@@ -106,14 +106,14 @@ export type SortDir = 'asc' | 'desc'
 /**
  * ბიბლიოთეკის ნაგულისხმევი სექცია: `all` · `favorite` · **სტატუსის გასაღები**.
  *
- * ⚠️ §6.4-ის შემდეგ კონკრეტული სია აქ ვეღარ ჩაიწერება — სტატუსი per-user
+ * ⚠️ კონკრეტული სია აქ ვეღარ ჩაიწერება — სტატუსი per-user
  * ლექსიკონია, ე.ი. ვარიანტები `/settings`-ზე მისგან იგება.
  */
 export type LibraryView = string
 
 export type ContentLang = 'auto' | 'ka' | 'en'
 
-/** ბადის სექციებად დაშლა (18) — `off` = ერთი უწყვეტი ბადე */
+/** ბადის სექციებად დაშლა — `off` = ერთი უწყვეტი ბადე */
 export type GroupBy = 'off' | 'genre' | 'year' | 'status'
 export type CardSize = 'compact' | 'medium' | 'large'
 /** TMDB-ის სურათის ზომები; `w500` ისტორიული ნაგულისხმევია */
@@ -149,7 +149,7 @@ export const GROUP_BY_OPTIONS: GroupBy[] = ['off', 'genre', 'year', 'status']
 export const CARD_SIZE_OPTIONS: CardSize[] = ['compact', 'medium', 'large']
 export const POSTER_QUALITY_OPTIONS: PosterQuality[] = ['w342', 'w500', 'w780']
 export const DATE_FORMAT_OPTIONS: DateFormat[] = ['ka-GE', 'en-GB', 'iso']
-/** Tasks §20.2 — პანელის ჭერი; ქვედა ზღვარი პანელის უმცირესი სიგანეა (`PANEL_MIN_WIDTH`) */
+/** პანელის ჭერი; ქვედა ზღვარი პანელის უმცირესი სიგანეა (`PANEL_MIN_WIDTH`) */
 export const PLAYER_MAX_WIDTH_OPTIONS = [480, 560, 640, 720, 800]
 
 /** TMDB-ის მყარი ლიმიტი: `page` ≤ 500 (discover-იც და search-იც) */
@@ -184,7 +184,7 @@ function saveLocal(settings: Settings) {
 }
 
 interface SettingsApi {
-  /** მიმდინარე მნიშვნელობები — შესაძლოა ჯერ შეუნახავი (Tasks 3) */
+  /** მიმდინარე მნიშვნელობები — შესაძლოა ჯერ შეუნახავი */
   settings: Settings
   set: <K extends keyof Settings>(key: K, value: Settings[K]) => void
   /** ნაგულისხმევებზე დაბრუნება — ისიც შენახვას მოითხოვს */
@@ -194,7 +194,7 @@ interface SettingsApi {
   /**
    * backend-ზე შენახვა. ⚠️ `Promise<boolean>` — გამომძახებელმა (მიზნების მოდალი)
    * უნდა იცოდეს, შეინახა თუ არა: `void` ვერსიაზე `await save()` არაფერს ელოდებოდა
-   * და „შენახულია" ჩავარდნაზეც ჩანდა (Tasks §1.3). ჩავარდნის ტოსტი აქვე ჩანს,
+   * და „შენახულია" ჩავარდნაზეც ჩანდა. ჩავარდნის ტოსტი აქვე ჩანს,
    * ამიტომ `false`-ზე გამომძახებელი მხოლოდ ფანჯარას ტოვებს ღიად.
    */
   save: () => Promise<boolean>
@@ -225,7 +225,7 @@ export function useSettings() {
 }
 
 /**
- * კონტენტის (სახელი/აღწერა/ჟანრი) მოქმედი ენა — E4.
+ * კონტენტის (სახელი/აღწერა/ჟანრი) მოქმედი ენა.
  * `contentLang: 'auto'` ინტერფეისის ენას მიჰყვება; სხვა შემთხვევაში
  * კონტენტი ერთ ენაზე რჩება, თუნდაც ინტერფეისი გადაირთოს.
  *
@@ -241,7 +241,7 @@ export function useContentLang(uiLang: string): 'ka' | 'en' {
 }
 
 /**
- * Tasks 3 — შენახვა **აღარაა ავტომატური**.
+ * შენახვა **აღარაა ავტომატური**.
  *
  * `settings` მიმდინარე (სამუშაო) მდგომარეობაა, `persisted` — ბოლო შენახული.
  * `set()` მხოლოდ სამუშაოს ცვლის, `save()` აგზავნის backend-ზე და ლოკალურ
@@ -250,7 +250,7 @@ export function useContentLang(uiLang: string): 'ka' | 'en' {
  */
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  // ⚠️ ამიტომ დგას `FeedbackProvider` ამაზე გარეთ — იხ. `main.tsx` (GAP-03)
+  // ⚠️ ამიტომ დგას `FeedbackProvider` ამაზე გარეთ — იხ. `main.tsx`
   const { toast } = useToast()
   const initial = React.useMemo(() => loadLocal() ?? DEFAULT_SETTINGS, [])
   const [settings, setSettings] = React.useState<Settings>(initial)
@@ -307,7 +307,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setSavedAt(Date.now())
         return true
       })
-      /* ⚠️ **ჩავარდნა ცხადად ჩანს (Tasks GAP-03).** ეს `/settings`-ისა და
+      /* ⚠️ **ჩავარდნა ცხადად ჩანს.** ეს `/settings`-ისა და
          `/sync`-ის ერთადერთი შენახვის გზაა და `catch`-ი ცარიელი იყო: 500/419
          ან ქსელის გაწყვეტა უხმაუროდ იკარგებოდა, ზოლი კი „შეუნახავი
          ცვლილებებს" აჩვენებდა ახსნის გარეშე — მომხმარებელი Save-ს

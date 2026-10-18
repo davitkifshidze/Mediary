@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **ღია ბოტის ტოკენის ამოჭრა `module_user.settings`-იდან (Tasks SEC-12).**
+ * **ღია ბოტის ტოკენის ამოჭრა `module_user.settings`-იდან.**
  *
- * ⚠️ §21.9-ის მიგრაცია (`2026_09_15_000003_move_telegram_into_credentials`)
+ * ⚠️ წინა მიგრაცია (`2026_09_15_000003_move_telegram_into_credentials`)
  * ტოკენს `user_credentials`-ში **დააკოპირა** და ძველი გასაღებები „განზრახ"
  * დატოვა. ეს ნარჩენი არ იყო „წაუკითხავი": `GET /api/modules` pivot-ის JSON-ს
  * ფილტრის გარეშე აბრუნებდა, ე.ი. ღია ტოკენი ყოველ მოდულების სიაში
@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Schema;
  * მნიშვნელობას pivot-ისა არასდროს ცვლის — ის ახალია.
  *
  * ⚠️ **Eloquent განზრახ** — `credentials` `encrypted:array`-ია; `DB::table()`
- * ღია ტექსტს ჩაწერდა (§21.9-ის იგივე წესი). ⚠️ დანარჩენი JSON (ველები,
+ * ღია ტექსტს ჩაწერდა (წინა მიგრაციის იგივე წესი). ⚠️ დანარჩენი JSON (ველები,
  * გალერეა, `status_sections`) **უცვლელი** რჩება.
  */
 return new class extends Migration

@@ -14,14 +14,14 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * ბუკმარკის ფოტოები (Tasks §36.4) — „შოპინგის" სკრინშოტი, ჩემი გადაღებული ფოტო.
+ * ბუკმარკის ფოტოები — „შოპინგის" სკრინშოტი, ჩემი გადაღებული ფოტო.
  *
  * ⚠️ **ვებიდან მოტანილი ფოტო აქ არ ჯდება** — ის `gallery_images`-შია
  * (`Bookmark` `HasGallery`-ს იყენებს და `GalleryParent`-შია). ადგილისა და
  * კურსის იგივე განაწილება.
  *
  * ⚠️ **MIME სერვერის მხრიდან იკითხება** (`SafeMime::ofUpload()`) და არა
- * კლიენტის განაცხადიდან — SEC-04-ის გაკვეთილი.
+ * კლიენტის განაცხადიდან.
  */
 class BookmarkFileController extends Controller
 {
@@ -41,7 +41,7 @@ class BookmarkFileController extends Controller
             'files.*' => UploadLimits::rule('image', $request->user()),
         ]);
 
-        // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე: ნახევრად გასული ატვირთვა
+        // კვოტა **მთელ პაკეტზე** ჩაწერამდე: ნახევრად გასული ატვირთვა
         // ყველაზე მტკივნეული შედეგია
         $files = $request->file('files');
         $this->meter->guard($request->user(), array_sum(array_map(
@@ -69,7 +69,7 @@ class BookmarkFileController extends Controller
 
     public function destroy(BookmarkFile $bookmarkFile)
     {
-        /* ⚠️ **ურნა (Tasks §29)** — `delete()` კი არა, `moveToTrash()`: ფაილი
+        /* ⚠️ **ურნა** — `delete()` კი არა, `moveToTrash()`: ფაილი
            დისკზე და კვოტაში რჩება და ურნიდან ბრუნდება; ადგილი საბოლოო წაშლისას
            ან ვადის ამოწურვისას თავისუფლდება. სხვისი ფაილი global scope-ის
            გამო ისედაც 404-ია. */

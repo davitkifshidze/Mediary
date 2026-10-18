@@ -18,11 +18,11 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **ინტერფეისიდან შექმნილი მოდული (Tasks §37.1–37.2).**
+ * **ინტერფეისიდან შექმნილი მოდული.**
  *
  * ⚠️ ყველაზე მნიშვნელოვანი აქ **ის, რაც არ ჩანს**: სხვისი პირადი მოდული
- * 404-ია ყველა კარზე — მარშრუტზე, სტატუსებზე, ველებზე — სუპერადმინისთვისაც
- * (Q28/Q41). ამიტომ თითქმის ყოველი ტესტი „მფლობელი ხედავს — სხვა არა"
+ * 404-ია ყველა კარზე — მარშრუტზე, სტატუსებზე, ველებზე — სუპერადმინისთვისაც.
+ * ამიტომ თითქმის ყოველი ტესტი „მფლობელი ხედავს — სხვა არა"
  * წყვილია.
  */
 class CustomModuleTest extends TestCase
@@ -78,7 +78,7 @@ class CustomModuleTest extends TestCase
         return (int) CustomCategory::withoutGlobalScopes()->where('module', $key)->where('name_ka', $name)->value('id');
     }
 
-    /* ---------- შექმნა (37.2) ---------- */
+    /* ---------- შექმნა ---------- */
 
     public function test_a_user_creates_a_private_module_for_themselves(): void
     {
@@ -165,7 +165,7 @@ class CustomModuleTest extends TestCase
         $this->assertSame(2, $second->notifications()->where('type', NotificationType::MODULE_CREATED)->count());
     }
 
-    /* ---------- სხვისთვის უხილავი (Q28/Q41) ---------- */
+    /* ---------- სხვისთვის უხილავი ---------- */
 
     public function test_a_private_module_is_invisible_to_everyone_else(): void
     {
@@ -207,7 +207,7 @@ class CustomModuleTest extends TestCase
         $this->assertSame(['view', 'create', 'update', 'delete'], $permissions[$key] ?? null);
     }
 
-    /* ---------- ჩანაწერები (37.1/37.3) ---------- */
+    /* ---------- ჩანაწერები ---------- */
 
     public function test_the_owner_creates_and_edits_records(): void
     {
@@ -230,7 +230,7 @@ class CustomModuleTest extends TestCase
 
         $this->patchJson("/api/custom/{$key}/{$id}/status", ['status' => 'done'])
             ->assertOk()->assertJsonPath('data.status.key', 'done');
-        // ⚠️ `done` როლი დასრულების თარიღს წერს (FEAT-21-ის წესი)
+        // ⚠️ `done` როლი დასრულების თარიღს წერს (წლის მიზნის წესი)
         $this->assertNotNull(CustomRecord::find($id)->finished_at);
 
         $this->patchJson("/api/custom/{$key}/{$id}/favorite")->assertOk()->assertJsonPath('data.is_favorite', true);
@@ -396,7 +396,7 @@ class CustomModuleTest extends TestCase
         $this->getJson("/api/custom/{$bare}/categories")->assertNotFound();
     }
 
-    /* ---------- ველები (Q30 + §6) ---------- */
+    /* ---------- ველები ---------- */
 
     public function test_the_built_in_fields_follow_the_classification(): void
     {
@@ -411,7 +411,7 @@ class CustomModuleTest extends TestCase
         $keys = array_column($this->getJson("/api/modules/{$without}/fields")->json('fields'), 'key');
         $this->assertNotContains('category', $keys);
 
-        // კლასიფიკაციის სახელი ველების კონსტრუქტორის ლეიბლია (Q30)
+        // კლასიფიკაციის სახელი ველების კონსტრუქტორის ლეიბლია
         $this->putJson("/api/modules/{$with}/fields", ['fields' => ['category' => ['label_ka' => 'კერძის სახე']]])->assertOk();
         $category = collect($this->getJson("/api/modules/{$with}/fields")->json('fields'))->firstWhere('key', 'category');
         $this->assertSame('კერძის სახე', $category['label_ka']);
@@ -444,7 +444,7 @@ class CustomModuleTest extends TestCase
         $this->assertEquals(99, $this->getJson("/api/custom-fields/{$b}/{$rb}")->json('values.price'));
     }
 
-    /* ---------- ექსპორტი · ძებნა · მთავარი გვერდი (37.3) ---------- */
+    /* ---------- ექსპორტი · ძებნა · მთავარი გვერდი ---------- */
 
     public function test_records_are_exported_searched_and_counted_per_module(): void
     {

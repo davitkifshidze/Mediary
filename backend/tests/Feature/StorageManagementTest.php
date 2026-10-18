@@ -37,7 +37,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Tasks 17.5 — საცავის მართვა user-ისთვის: „ყველაზე დიდი ფაილები",
+ * საცავის მართვა user-ისთვის: „ყველაზე დიდი ფაილები",
  * ერთეულოვანი წაშლა და ობოლი ფაილების გასუფთავება.
  */
 class StorageManagementTest extends TestCase
@@ -136,7 +136,7 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * ⚠️ **ფაილის სია ამბობს, პრივატულ დისკზეა თუ არა** (§17.5).
+     * ⚠️ **ფაილის სია ამბობს, პრივატულ დისკზეა თუ არა**.
      *
      * უამისოდ საცავის გვერდი `/storage/<path>`-ს ხატავდა ყველაზე — ჩანაწერის
      * დოკუმენტზე და ჩატის მედიაზე ეს **გატეხილი `<img>` და 404 ბმულია**,
@@ -177,7 +177,7 @@ class StorageManagementTest extends TestCase
      * ⚠️ **ჩანაწერის წაშლა ატვირთვასაც იტანს — მოდელის დონეზე.**
      *
      * ეს განზრახ **მოდელს** ამოწმებს და არა `DELETE` endpoint-ს: ჩანაწერს
-     * კონტროლერის გარეშეც შლიან — `PurgeService` (Tasks 20) პირდაპირ
+     * კონტროლერის გარეშეც შლიან — `PurgeService` პირდაპირ
      * `$record->delete()`-ს აკეთებს, სწორედ იმიტომ, რომ ივენთები გაისროლოს.
      * აქამდე პოსტერის/თამბნეილის მოშორება **კონტროლერში** ეწერა, ე.ი.
      * მასობრივი წაშლა ფაილს დისკზე ტოვებდა და კვოტას არ ათავისუფლებდა
@@ -188,7 +188,7 @@ class StorageManagementTest extends TestCase
     {
         Storage::fake('public');
 
-        // ხელით ატვირთული პოსტერი — ითვლება კვოტაში (19.4/B)
+        // ხელით ატვირთული პოსტერი — ითვლება კვოტაში
         $movie = Movie::create([
             'user_id' => $this->user->id,
             'poster_path' => 'movies/posters/mine.jpg',
@@ -218,7 +218,7 @@ class StorageManagementTest extends TestCase
 
     /**
      * ⚠️ **TMDB-ის პოსტერი წაშლისას არ ქრება** — ის საერთო ფაილია (იმავე
-     * slug-ით სხვა ანგარიშსაც აქვს) და კვოტაშიც არ ითვლება (19.4/B).
+     * slug-ით სხვა ანგარიშსაც აქვს) და კვოტაშიც არ ითვლება.
      * წაშლა სხვისთვის სურათს გატეხავდა.
      */
     public function test_deleting_a_record_keeps_a_downloaded_poster(): void
@@ -238,7 +238,7 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * მთავარი ფოტოს წაშლა — სვეტი ცარიელდება, ფაილი **ურნაში** (Tasks §29, ეტაპი 4):
+     * მთავარი ფოტოს წაშლა — სვეტი ცარიელდება, ფაილი **ურნაში**:
      * ადგილს კვლავ იკავებს, აღდგენა სვეტში აბრუნებს, საბოლოო წაშლა ათავისუფლებს.
      */
     public function test_deleting_a_thumbnail_frees_the_quota(): void
@@ -281,7 +281,7 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * მიმაგრებული ფაილი იმავე endpoint-იდან იშლება — **ურნაში** (Tasks §29).
+     * მიმაგრებული ფაილი იმავე endpoint-იდან იშლება — **ურნაში**.
      *
      * ⚠️ ურნაში მყოფი ადგილს კვლავ იკავებს: `used` არ იცვლება, `freed` ნულია,
      * სია კი ფაილს აღარ აჩვენებს და მის ზომას `trash`-ში ამბობს. ადგილი
@@ -325,7 +325,7 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * **§6.2 — მონიშნულების და ყველას წაშლა.**
+     * **მონიშნულების და ყველას წაშლა.**
      *
      * ⚠️ სამი წესი ერთად: სკოუპი ცხადია (`paths` ან `all`), ცარიელი მონიშვნა
      * **422**-ია და არა „ყველაფერი", და ჯამი პასუხის ფესვშივე რჩება
@@ -352,7 +352,7 @@ class StorageManagementTest extends TestCase
             ->assertStatus(422);
         Storage::disk('public')->assertExists('videos/thumbnails/one.jpg');
 
-        // მონიშნულები — მიმაგრება ურნაში მიდის და ადგილს კვლავ იკავებს (Tasks §29)
+        // მონიშნულები — მიმაგრება ურნაში მიდის და ადგილს კვლავ იკავებს
         $this->actingAs($this->user->refresh())
             ->deleteJson('/api/storage/files', ['paths' => [$second->path]])
             ->assertOk()
@@ -361,7 +361,7 @@ class StorageManagementTest extends TestCase
             ->assertJsonPath('used', 3072);
 
         // ყველა დანარჩენი — „ყველა" სიაში ნაჩვენებია, ურნაში მყოფი არა;
-        // თამბნეილიც (სვეტის ფაილი) ურნაში მიდის — §29-ის მე-4 ეტაპი
+        // თამბნეილიც (სვეტის ფაილი) ურნაში მიდის
         $this->actingAs($this->user->refresh())
             ->deleteJson('/api/storage/files', ['all' => true])
             ->assertOk()
@@ -380,7 +380,7 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * **§6.2 — zip.** არქივში მხოლოდ **ჩემი** ფაილები ხვდება; სხვისი გზა
+     * **zip.** არქივში მხოლოდ **ჩემი** ფაილები ხვდება; სხვისი გზა
      * ჩუმად გამოტოვდება (და არა 500), ე.ი. მონიშვნის შერევა საშიში არაა.
      */
     public function test_bulk_download_only_packs_my_own_files(): void
@@ -434,7 +434,7 @@ class StorageManagementTest extends TestCase
         ]);
         $attachment = $this->attach($video, $this->other, 'videos/files/docs/theirs.pdf', 4096);
 
-        // TMDB-ის პოსტერი კვოტაში არ ითვლება (19.4/B) → სიაშიც არაა, ე.ი. არც იშლება
+        // TMDB-ის პოსტერი კვოტაში არ ითვლება → სიაშიც არაა, ე.ი. არც იშლება
         $tmdbPoster = 'movies/posters/shared.jpg';
         $this->putFile($tmdbPoster, 2048);
 
@@ -457,7 +457,7 @@ class StorageManagementTest extends TestCase
     public function test_orphan_scan_is_admin_only_and_skips_referenced_and_fresh_files(): void
     {
         Storage::fake('public');
-        /* ⚠️ **სკანერი ორივე დისკზე დადის** (§17.5): `notes/`, `chat/` და
+        /* ⚠️ **სკანერი ორივე დისკზე დადის**: `notes/`, `chat/` და
            `videos/downloads` პრივატულია. მისი გაუყალბებლობა ნიშნავს, რომ
            ტესტი ნამდვილ `storage/app/private-uploads`-ს კითხულობს და სხვისი
            დატოვებული ფაილები მის შედეგს ცვლის. */
@@ -504,7 +504,7 @@ class StorageManagementTest extends TestCase
         $disk->assertExists('videos/thumbnails/used.jpg');
     }
 
-    /* ---------- 17.4 — ლიმიტის გაზრდის მოთხოვნა ---------- */
+    /* ---------- ლიმიტის გაზრდის მოთხოვნა ---------- */
 
     /** მოთხოვნა იმავე `approval_requests`-ში ჯდება და ჩემს სიაში ჩანს */
     public function test_user_can_request_a_bigger_quota(): void
@@ -576,7 +576,7 @@ class StorageManagementTest extends TestCase
         $this->assertSame($quota * 2, (int) $this->user->refresh()->storage_quota_bytes);
     }
 
-    /* ---------- §17.2 — გადანაწილება მოდულებზე ---------- */
+    /* ---------- გადანაწილება მოდულებზე ---------- */
 
     /** ჯამი მთლიან კვოტას ვერ აღემატება — თორემ „გადანაწილება" კვოტას გვერდს აუვლიდა */
     public function test_allocations_cannot_exceed_the_total_quota(): void
@@ -637,8 +637,8 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * ⚠️ **ლიმიტის შემცირება უკვე დახარჯულზე ქვემოთ ფაილებს არ შლის**
-     * (§17.2-ის ცხადი წესი) — მხოლოდ ახალი ატვირთვა ჩერდება.
+     * ⚠️ **ლიმიტის შემცირება უკვე დახარჯულზე ქვემოთ ფაილებს არ შლის** —
+     * მხოლოდ ახალი ატვირთვა ჩერდება.
      */
     public function test_shrinking_a_limit_below_usage_keeps_the_files(): void
     {
@@ -678,7 +678,7 @@ class StorageManagementTest extends TestCase
 
         $this->assertSame([], app(StorageMeter::class)->allocations($this->user->refresh()));
     }
-    /* ---------- კვოტის ატომურობა (აუდიტი 2026-09-14) ---------- */
+    /* ---------- კვოტის ატომურობა ---------- */
 
     /**
      * **ჯავშანი ატომურია — ორი პარალელური ატვირთვა ლიმიტს ვერ გადალახავს.**
@@ -714,7 +714,7 @@ class StorageManagementTest extends TestCase
         $this->assertFalse($meter->reserve($user->refresh(), 1));
     }
 
-    /* ================= PERF-03 ================= */
+    /* ================= `files()` და მოდულის მინიშნება ================= */
 
     /**
      * ერთი ფაილი ყოველ ბლოკზე, რომელსაც `files()` კითხულობს — ქვედა ორი
@@ -739,14 +739,14 @@ class StorageManagementTest extends TestCase
         ]);
         $this->attach($video, $u, 'videos/files/docs/v.pdf', 512);
 
-        // Tasks §11 — სიმღერას „მასალა“ აღარ აქვს; მხოლოდ მთავარი ფოტო
+        // სიმღერას „მასალა“ აღარ აქვს; მხოლოდ მთავარი ფოტო
         Song::create(['user_id' => $u->id, 'title' => 's', 'url' => 'https://youtu.be/dQw4w9WgXcQ', 'thumbnail_path' => 'songs/thumbnails/s.jpg']);
 
         $bookmark = Bookmark::create([
             'user_id' => $u->id, 'title' => 'b', 'url' => 'https://example.com',
             'thumbnail_path' => 'bookmarks/thumbnails/b.jpg',
         ]);
-        // Tasks §36.4 — ბუკმარკის ჩემი ფოტო („შოპინგის" სკრინშოტი)
+        // ბუკმარკის ჩემი ფოტო („შოპინგის" სკრინშოტი)
         $bookmark->files()->create([
             'user_id' => $u->id, 'kind' => 'image',
             'path' => 'bookmarks/files/images/b.png', 'original_name' => 'b.png', 'size' => 24,
@@ -761,7 +761,7 @@ class StorageManagementTest extends TestCase
         $game = Game::create(['user_id' => $u->id, 'title_en' => 'g', 'cover_path' => 'games/covers/g.jpg', 'cover_source' => 'upload']);
         $game->files()->create(['user_id' => $u->id, 'kind' => 'doc', 'path' => 'games/files/docs/g.pdf', 'size' => 32]);
 
-        // FEAT-25 — კურსი: ესკიზი + დოკუმენტი (სერტიფიკატი §55.5-მა მოხსნა)
+        // კურსი: ესკიზი + დოკუმენტი (სერტიფიკატი მოიხსნა)
         $course = Course::create([
             'user_id' => $u->id, 'title' => 'c',
             'thumbnail_path' => 'courses/thumbnails/c.jpg',
@@ -771,7 +771,7 @@ class StorageManagementTest extends TestCase
             'path' => 'courses/files/docs/c.pdf', 'original_name' => 'c.pdf', 'size' => 48,
         ]);
 
-        // FEAT-26 — ადგილი: ფოტო + მიმაგრებული ფაილი
+        // ადგილი: ფოტო + მიმაგრებული ფაილი
         $place = Place::create([
             'user_id' => $u->id, 'name' => 'p',
             'photo_path' => 'places/photos/p.jpg',
@@ -782,7 +782,7 @@ class StorageManagementTest extends TestCase
             'original_name' => 'p.jpg',
         ]);
 
-        /* Tasks §33 — პირადი გალერეა: ადამიანის ფოტო (ესკიზით) და უადამიანო ვიდეო.
+        /* პირადი გალერეა: ადამიანის ფოტო (ესკიზით) და უადამიანო ვიდეო.
            ⚠️ ესკიზი ფაილის ნაწილია და ცალკე რიგად არ ჩანს — ზომა ჯამშია. */
         $person = Person::create(['user_id' => $u->id, 'name' => 'დედა']);
         PersonalMedia::create([
@@ -823,7 +823,7 @@ class StorageManagementTest extends TestCase
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        /* Tasks §37 — პირადი მოდული: ჩანაწერის მთავარი ფოტო და (§37.5) მიმაგრებული
+        /* პირადი მოდული: ჩანაწერის მთავარი ფოტო და მიმაგრებული
            ფაილი. ⚠️ მოდული `forceFill()`-ით — `fill()` ახალ სვეტებს ჩუმად აგდებდა. */
         (new Module)->forceFill([
             'key' => 'c'.$u->id.'-inv', 'name_ka' => 'ინვ', 'name_en' => 'Inv', 'icon' => 'Box',
@@ -839,7 +839,7 @@ class StorageManagementTest extends TestCase
             'path' => 'custom/c'.$u->id.'-inv/files/docs/cr.pdf', 'original_name' => 'cr.pdf', 'size' => 20,
         ]);
 
-        /* Tasks §29 — **ურნაში მყოფიც ინვენტარშია**: ის დისკზეა და კვოტაში
+        /* **ურნაში მყოფიც ინვენტარშია**: ის დისკზეა და კვოტაში
            ითვლება, ე.ი. გადათვლამ და ანგარიშის წაშლამ ორივემ უნდა იპოვოს —
            საკუთარი `trashed_at`-იანი ფოტოც და `trashed_files`-ის ორივე სახეც. */
         GalleryImage::create([
@@ -860,7 +860,7 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * **მოდულის მინიშნება პასუხს არ ცვლის** (Tasks PERF-03).
+     * **მოდულის მინიშნება პასუხს არ ცვლის**.
      *
      * ⚠️ ეს ტესტი ის ფასია, რომელსაც `files($user, $module)` იხდის. `usedByModule()`
      * განზრახ `files()`-ზე გადის, რომ „რა ითვლება" ერთადერთი განმარტება დარჩეს;
@@ -892,7 +892,7 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * **ჩანაწერის მთავარი ფოტო ყველა მოდულში ერთი `kind`-ია** (Tasks §9.4).
+     * **ჩანაწერის მთავარი ფოტო ყველა მოდულში ერთი `kind`-ია**.
      *
      * ⚠️ ინტერფეისი მას ერთ სახელს უწოდებს — „მთავარი ფოტო“. ცალ-ცალკე `thumbnail`
      * და `cover` ფაილების ბიბლიოთეკის ჭრილში ერთი და იმავე სახელის ორ ბარათს
@@ -920,7 +920,7 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * **ატვირთვა სხვა მოდულების ცხრილებს აღარ კითხულობს** (Tasks PERF-03).
+     * **ატვირთვა სხვა მოდულების ცხრილებს აღარ კითხულობს**.
      *
      * ⚠️ `guardModule()` → `usedByModule()` → `files()` ყოველ **ფაილზე** გარბოდა,
      * `files()` კი ~20 ცხრილის სრული ინვენტარია. გაზომილი 10-ფაილიან ატვირთვაზე
@@ -958,11 +958,10 @@ class StorageManagementTest extends TestCase
         $this->assertTrue($log->contains(fn (string $q) => str_contains($q, 'video_files')));
     }
 
-    /* ================= BUG-13 ================= */
+    /* ================= მორგებული ველის ფაილის ატომური წაშლა ================= */
 
     /**
-     * **მორგებული ველის ფაილის წაშლა ან მთლიანად ხდება, ან საერთოდ არა**
-     * (Tasks BUG-13).
+     * **მორგებული ველის ფაილის წაშლა ან მთლიანად ხდება, ან საერთოდ არა**.
      *
      * ⚠️ ძველად სამი ცალკე გვერდითი ეფექტი იყო და **ფაილი პირველი იშლებოდა**:
      * `deleteUpload()` → `addFor(-size)` → `DELETE`. შუაში ჩავარდნაზე ფაილი
@@ -1000,8 +999,8 @@ class StorageManagementTest extends TestCase
         $meter = $this->getMockBuilder(StorageMeter::class)->onlyMethods(['addFor'])->getMock();
         $meter->method('addFor')->willThrowException(new \RuntimeException('boom'));
 
-        /* ⚠️ **`permanent: true`** (Tasks §29): მომხმარებლის წაშლა ფაილს ახლა
-           ურნაში აგზავნის და კვოტას არ ეხება — BUG-13-ის რიგი ნამდვილი წაშლის
+        /* ⚠️ **`permanent: true`**: მომხმარებლის წაშლა ფაილს ახლა
+           ურნაში აგზავნის და კვოტას არ ეხება — ეს რიგი ნამდვილი წაშლის
            ბრანჩს ეხება, რომელსაც ანგარიშის წაშლა იყენებს. */
         try {
             $meter->deleteOwnFile($this->user->refresh(), 'videos/fields/ticket.pdf', permanent: true);
@@ -1027,7 +1026,7 @@ class StorageManagementTest extends TestCase
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
     }
 
-    /* ================= DEBT-04: `mediary:storage-recalc` ================= */
+    /* ================= `mediary:storage-recalc` ================= */
 
     /**
      * ინვენტარის ყოველ ბილიკს რეალურ ბაიტებს ვუწერთ დისკზე.
@@ -1069,7 +1068,7 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * **ბრძანება დრიფტირებულ მრიცხველს აღადგენს** (Tasks DEBT-04).
+     * **ბრძანება დრიფტირებულ მრიცხველს აღადგენს**.
      *
      * ⚠️ ეს ბრძანება ერთადერთი გზაა, რომლითაც `storage_used_bytes` შეიკეთება
      * (მიგრაციის, ბექაპიდან აღდგენის ან ხელით წაშლილი ფაილის შემდეგ) და
@@ -1115,7 +1114,7 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * **ყოველი `StoredFile` ცხრილი გადათვლაში ხვდება** (Tasks DEBT-04).
+     * **ყოველი `StoredFile` ცხრილი გადათვლაში ხვდება**.
      *
      * ⚠️ ესაა ამ წყვილის ნამდვილი მცველი. თუ ხვალინდელი `<module>_files`
      * `files()`-ში არ ჩაიწერა, გადათვლა **უხმოდ ამცირებს** ჯამს და
@@ -1165,7 +1164,7 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * **ანგარიშის წაშლა დისკზე არაფერს ტოვებს** (Tasks BUG-21).
+     * **ანგარიშის წაშლა დისკზე არაფერს ტოვებს**.
      *
      * ⚠️ აქამდე `destroy()` მხოლოდ ფილმებსა და სერიალებს შლიდა მოდელით —
      * დანარჩენი რვა მოდულის, ჩატის, ბაზის ასლისა და custom-field-ის ფაილები
@@ -1232,7 +1231,7 @@ class StorageManagementTest extends TestCase
     }
 
     /**
-     * **მეორე მონაწილეს მოჩვენება საუბარი არ რჩება** (Tasks BUG-21).
+     * **მეორე მონაწილეს მოჩვენება საუბარი არ რჩება**.
      *
      * ⚠️ საუბარი და წერილები **განზრახ არ იშლება** — ისინი მეორე მხარის
      * ისტორიაა; მხოლოდ სია აღარ ხატავს მას, რადგან თანამოსაუბრე აღარ
@@ -1243,7 +1242,7 @@ class StorageManagementTest extends TestCase
         Storage::fake('public');
         Storage::fake('private');
 
-        // ⚠️ ჩატი ორ **საჯარო** პროფილს შორისაა (§16.3-ის კარიბჭე)
+        // ⚠️ ჩატი ორ **საჯარო** პროფილს შორისაა (ჩატის კარიბჭე)
         $this->user->forceFill(['profile_visibility' => 'public'])->save();
         $this->other->forceFill(['profile_visibility' => 'public'])->save();
 

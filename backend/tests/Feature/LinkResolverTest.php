@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * **ბმულის მეტა-მონაცემი ერთი კარიდან** (Tasks §15).
+ * **ბმულის მეტა-მონაცემი ერთი კარიდან**.
  *
  * ⚠️ `Http::fake()` **ერთხელ**, ორი შაბლონით (პროექტის წესი: მეორე `fake()`
  * არაფერს ცვლის): oEmbed-ის მისამართი JSON-ს აბრუნებს, ყველა დანარჩენი —
@@ -118,7 +118,7 @@ class LinkResolverTest extends TestCase
             ->assertJsonPath('title', 'OG Title');
     }
 
-    /* ================= Tasks §44 — სრული ინფო ბმულიდან ================= */
+    /* ================= სრული ინფო ბმულიდან ================= */
 
     private function userWithModules(string $name, array $modules = ['video', 'song', 'bookmark']): User
     {
@@ -129,7 +129,7 @@ class LinkResolverTest extends TestCase
         return $user->refresh();
     }
 
-    /** §44.3 — გასაღებით: Data API-ის თარიღი და **საუკეთესო** ესკიზი (`maxres`), ტეგები, სრული აღწერა */
+    /** გასაღებით: Data API-ის თარიღი და **საუკეთესო** ესკიზი (`maxres`), ტეგები, სრული აღწერა */
     public function test_youtube_with_a_key_brings_the_date_and_the_best_thumbnail(): void
     {
         Http::fake([
@@ -162,11 +162,11 @@ class LinkResolverTest extends TestCase
         $this->assertSame('https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg', $meta['image_url']);
         $this->assertSame(['rick', 'astley'], $meta['tags']);
         $this->assertSame(213, $meta['duration']);
-        // §44.4 — აღწერა 500-ზე აღარ იჭრება
+        // აღწერა 500-ზე აღარ იჭრება
         $this->assertSame(1200, mb_strlen($meta['description']));
     }
 
-    /** §44.3 — გასაღების გარეშე: `yt-dlp -J` (ყალბი) — აღწერა, თარიღი, ესკიზი, ხანგრძლივობა, ტეგები */
+    /** გასაღების გარეშე: `yt-dlp -J` (ყალბი) — აღწერა, თარიღი, ესკიზი, ხანგრძლივობა, ტეგები */
     public function test_youtube_without_a_key_reads_yt_dlp(): void
     {
         $this->fake();
@@ -202,7 +202,7 @@ class LinkResolverTest extends TestCase
         $this->assertSame(['rick'], $meta['tags']);
     }
 
-    /** §44.1 — ვიდეოს, სიმღერის და ბუკმარკის probe ერთი წყაროდანაა (`LinkResolver`-ის ველებით) */
+    /** ვიდეოს, სიმღერის და ბუკმარკის probe ერთი წყაროდანაა (`LinkResolver`-ის ველებით) */
     public function test_the_module_probes_answer_with_the_resolver_fields(): void
     {
         $this->fake();
@@ -220,7 +220,7 @@ class LinkResolverTest extends TestCase
             ->assertOk()->assertJsonPath('kind', 'page');
     }
 
-    /** §44.2 — შენახვისას ინახება ის ფოტო, რაც ფორმის ჩარჩომ აჩვენა, და თარიღი ბმულიდან */
+    /** შენახვისას ინახება ის ფოტო, რაც ფორმის ჩარჩომ აჩვენა, და თარიღი ბმულიდან */
     public function test_saving_a_video_keeps_the_frame_photo_and_the_date(): void
     {
         $this->fake();

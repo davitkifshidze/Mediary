@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **პირადი მოდულის შიგთავსი (Tasks §37.5)** — ჩანაწერის საკუთარი ფაილები
+ * **პირადი მოდულის შიგთავსი** — ჩანაწერის საკუთარი ფაილები
  * და ჩანიშვნები, სტატისტიკა და წლის მიზანი, მასობრივი სტატუსი და წაშლა.
  *
  * ⚠️ ერთი ცხრილი ყველა პირად მოდულს ემსახურება, ამიტომ თითქმის ყოველი
@@ -98,7 +98,7 @@ class CustomModuleContentTest extends TestCase
         $this->assertCount(2, $this->getJson("/api/custom/{$key}/{$pasta->id}/files?kind=image")->assertOk()->json('data'));
         $this->assertCount(3, $this->getJson("/api/custom/{$key}/{$pasta->id}/files")->json('data'));
 
-        // ⚠️ საცავი ფაილს **მოდულს** აწერს — §17.2-ის ლიმიტი სწორედ ამას კითხულობს
+        // ⚠️ საცავი ფაილს **მოდულს** აწერს — მოდულის ლიმიტი სწორედ ამას კითხულობს
         $meter = app(StorageMeter::class);
         $this->assertSame(3, $meter->files($this->owner->fresh(), $key)->where('owner_type', 'custom_record_file')->count());
         $this->assertGreaterThan(0, $meter->usedByModule($this->owner->fresh(), $key));
@@ -317,7 +317,7 @@ class CustomModuleContentTest extends TestCase
             'target' => $key, 'id' => $soup->id, 'user_id' => $this->owner->id, 'confirm' => 'DELETE',
         ])->assertOk()->assertJsonPath('result.records', 1);
 
-        // ⚠️ ურნაში (Tasks §29.8) — მფლობელი თვითონ აღადგენს
+        // ⚠️ ურნაში — მფლობელი თვითონ აღადგენს
         $this->assertNotNull($soup->fresh()->trashed_at);
         $this->assertNull($pasta->fresh()->trashed_at);
         $this->assertNull($phone->fresh()->trashed_at);

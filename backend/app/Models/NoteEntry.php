@@ -12,32 +12,32 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * ჩანაწერი — მოდული `note` (Tasks §13).
+ * ჩანაწერი — მოდული `note`.
  *
  * ⚠️ **ცხრილს `note_entries` ჰქვია და არა `notes`.** 2026-09-03-ის წესით
  * უნივერსალური `notes` აღარ არსებობს და სახელი „ჩანიშვნას სხვა ჩანაწერზე"
  * ნიშნავს (`video_notes`, `book_notes`…). აქ კი ჩანაწერი **დამოუკიდებელი
  * ერთეულია**, ამიტომ `note_entries`.
  *
- * ⚠️ **ხილვადობა აქ მკაცრია** (§13.1): მოდული პირად დოკუმენტებს ინახავს,
+ * ⚠️ **ხილვადობა აქ მკაცრია**: მოდული პირად დოკუმენტებს ინახავს,
  * ე.ი. `private` არა მხოლოდ default-ია — საჯარო პროფილზე მოდული საერთოდ
- * არ ჩანს და „დამთხვევებში" (16.2) არასდროს მონაწილეობს.
+ * არ ჩანს და „დამთხვევებში" არასდროს მონაწილეობს.
  */
 class NoteEntry extends Model
 {
     use BelongsToUser;
 
-    /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
+    /** მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
-    /** Tasks §6.4 — სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
+    /** სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
     use HasStatus;
 
-    /** FEAT-18 — ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
+    /** ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
     use HasTags;
 
     /**
-     * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
+     * ⚠️ **კალათა** — `destroy()` `moveToTrash()`-ს იძახის და არა
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
@@ -65,7 +65,7 @@ class NoteEntry extends Model
     protected static function booted(): void
     {
         static::deleting(function (NoteEntry $entry) {
-            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა** (Tasks BUG-21):
+            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა**:
                `<module>_files` `BelongsToUser`-ს იყენებს, ე.ი. `files()`
                მიმდინარე **ავტორიზებულ** მომხმარებელზე იჭრება. `/admin/purge`
                და ანგარიშის წაშლა სხვის ბიბლიოთეკას შლის ადმინის სესიიდან —
@@ -76,7 +76,7 @@ class NoteEntry extends Model
     }
 
     /**
-     * **„როდის დავასრულე" — `finished_at` (FEAT-21).**
+     * **„როდის დავასრულე" — `finished_at`.**
      *
      * ⚠️ აქამდე `null` იყო და ეს **ვიდეოს მიზეზით** იყო გამართლებული:
      * მისი `watched_at` დაკვრის დროშტამპია (`POST /videos/{id}/watched`),
@@ -106,7 +106,7 @@ class NoteEntry extends Model
     }
 
     /**
-     * ⚠️ **ჩანაწერის აღდგენა მის შეხსენებებსაც ახლიდან ითვლის** (Tasks §29.3):
+     * ⚠️ **ჩანაწერის აღდგენა მის შეხსენებებსაც ახლიდან ითვლის**:
      * ურნაში ყოფნისას `ReminderDispatcher` მათ არ ისვრის (`whereHas('noteEntry')`),
      * ე.ი. `next_at` წარსულში რჩება და აღდგენისთანავე ყველა ერთად ამოვარდებოდა.
      */

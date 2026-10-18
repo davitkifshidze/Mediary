@@ -60,15 +60,15 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * **რომელი ჩანაწერი მიდის კალათაში (FEAT-11).**
+ * **რომელი ჩანაწერი მიდის კალათაში.**
  *
  * ⚠️ **ერთი რუკა და არა ათი ადგილას გამეორებული სია** — მიგრაცია,
  * კალათის კონტროლერი, გასუფთავების ბრძანება და `RegistryConsistencyTest`
  * ერთსა და იმავეს კითხულობენ. `MediaDomain`-ის იგივე წესი: `['movie',
  * 'series']` თოთხმეტ ადგილას ეწერა და ერთის გამორჩენა ჩუმი იყო.
  *
- * ⚠️ **ხუთი სახის ელემენტი, ხუთი რუკა** (Tasks §29): `MODELS` — მოდულის
- * ჩანაწერი (FEAT-11); `ITEMS` — რიგიანი ფაილი ან ბმული, რომელსაც თავისი
+ * ⚠️ **ხუთი სახის ელემენტი, ხუთი რუკა**: `MODELS` — მოდულის
+ * ჩანაწერი; `ITEMS` — რიგიანი ფაილი ან ბმული, რომელსაც თავისი
  * `trashed_at` აქვს (გალერეის ფოტო, ვიდეო-ბმული, მოდულების ფაილები, ბაზის
  * ასლი); `FILES` — `trashed_files`-ის რიგი, ე.ი. ფაილი, რომლის წყაროს რიგი
  * წაშლისას ქრება ან ცარიელდება (ჩატის მიმაგრება, დამატებითი ველის ფაილი).
@@ -80,7 +80,7 @@ use Illuminate\Database\Eloquent\Model;
  * რჩება და ჩანაწერთან ერთად ბრუნდება; ცალკე წაშლილი ფაილი კი ურნაში
  * თავისი ელემენტია. ⚠️ მოდულის ფაილის ცხრილი მშობლის `booted()`-ში
  * **`trash` scope-ის გარეშე** უნდა იშლებოდეს, თორემ ჩანაწერის საბოლოო
- * წაშლა ურნაში მყოფ ფაილს დისკზე ობლად დატოვებდა (BUG-21-ის გაკვეთილი).
+ * წაშლა ურნაში მყოფ ფაილს დისკზე ობლად დატოვებდა.
  */
 final class TrashDomain
 {
@@ -102,14 +102,14 @@ final class TrashDomain
         'bookmark' => Bookmark::class,
         'course' => Course::class,
         'place' => Place::class,
-        // Tasks §33 — პირადი გალერეის ჩანაწერი ადამიანია (ალბომი და ფოტო — მისი ნაწილები)
+        // პირადი გალერეის ჩანაწერი ადამიანია (ალბომი და ფოტო — მისი ნაწილები)
         'personal' => Person::class,
-        // Tasks §34 — მორიგეობის ჩანაწერი
+        // მორიგეობის ჩანაწერი
         'duty' => DutyShift::class,
     ];
 
     /**
-     * **რიგიანი ფაილები და ბმულები (Tasks §29, ეტაპი 1)** — `kind` → მოდელი,
+     * **რიგიანი ფაილები და ბმულები** — `kind` → მოდელი,
      * მოდული (უფლება და ფერი მისია) და მშობლის ურთიერთობა.
      *
      * ⚠️ `kind` **`StorageMeter::files()`-ის `owner_type`-ია** — ერთი სახელი
@@ -135,18 +135,18 @@ final class TrashDomain
         'note_entry_file' => ['model' => NoteEntryFile::class, 'module' => 'note', 'parent' => 'noteEntry', 'size' => true],
         'course_file' => ['model' => CourseFile::class, 'module' => 'course', 'parent' => 'course', 'size' => true],
         'place_file' => ['model' => PlaceFile::class, 'module' => 'place', 'parent' => 'place', 'size' => true],
-        // Tasks §36.4 — ბუკმარკის ჩემი ფოტოები
+        // ბუკმარკის ჩემი ფოტოები
         'bookmark_file' => ['model' => BookmarkFile::class, 'module' => 'bookmark', 'parent' => 'bookmark', 'size' => true],
-        // Tasks §30.4 — შენახული მარშრუტი: ფაილი არ აქვს, ზომა არ ითვლება
+        // შენახული მარშრუტი: ფაილი არ აქვს, ზომა არ ითვლება
         'place_route' => ['model' => PlaceRoute::class, 'module' => 'place', 'parent' => 'place', 'size' => false],
         'database_backup' => ['model' => DatabaseBackup::class, 'module' => null, 'parent' => null, 'size' => true],
-        /* Tasks §33 — პირადი გალერეის ფოტო/ვიდეო და ალბომი; მშობელი ადამიანია
+        /* პირადი გალერეის ფოტო/ვიდეო და ალბომი; მშობელი ადამიანია
            (`person`, ჩანაწერი `personal`). ⚠️ ფოტოს ესკიზი პირად დისკზეა —
            ურნის გადახედვა მას თავისი მარშრუტით კითხულობს (`TrashBin::PREVIEW_PATH`). */
         'personal_media' => ['model' => PersonalMedia::class, 'module' => 'personal', 'parent' => 'person', 'size' => true],
         'personal_album' => ['model' => PersonalAlbum::class, 'module' => 'personal', 'parent' => 'person', 'size' => false],
 
-        // Tasks §29, ეტაპი 2 — ჩანაწერის ნაწილები
+        // ჩანაწერის ნაწილები
         'video_note' => ['model' => VideoNote::class, 'module' => 'video', 'parent' => 'video', 'size' => false],
         'book_note' => ['model' => BookNote::class, 'module' => 'book', 'parent' => 'book', 'size' => false],
         'game_note' => ['model' => GameNote::class, 'module' => 'game', 'parent' => 'game', 'size' => false],
@@ -157,7 +157,7 @@ final class TrashDomain
         'media_watch' => ['model' => MediaWatch::class, 'module' => null, 'module_column' => 'watchable_type', 'parent' => 'watchable', 'size' => false],
         'gallery_album' => ['model' => GalleryAlbum::class, 'module' => 'gallery', 'parent' => null, 'size' => false],
 
-        // Tasks §29, ეტაპი 3 — კლასიფიკატორის რიგი (`DictionaryTrash`)
+        // კლასიფიკატორის რიგი (`DictionaryTrash`)
         'status' => ['model' => Status::class, 'module' => null, 'module_column' => 'module', 'parent' => null, 'size' => false],
         'video_type' => ['model' => VideoType::class, 'module' => 'video', 'parent' => null, 'size' => false],
         'song_genre' => ['model' => SongGenre::class, 'module' => 'song', 'parent' => null, 'size' => false],
@@ -168,14 +168,14 @@ final class TrashDomain
         'bookmark_category' => ['model' => BookmarkCategory::class, 'module' => 'bookmark', 'parent' => null, 'size' => false],
         'course_category' => ['model' => CourseCategory::class, 'module' => 'course', 'parent' => null, 'size' => false],
         'place_category' => ['model' => PlaceCategory::class, 'module' => 'place', 'parent' => null, 'size' => false],
-        /* Tasks §34 — მორიგეობის სამსახური და ტიპი: კლასიფიკატორის წესით (`DictionaryTrash`),
+        /* მორიგეობის სამსახური და ტიპი: კლასიფიკატორის წესით (`DictionaryTrash`),
            აღდგენა გადატანილი მორიგეობების დაბრუნებას გთავაზობს */
         'duty_workplace' => ['model' => DutyWorkplace::class, 'module' => 'duty', 'parent' => null, 'size' => false],
         'duty_type' => ['model' => DutyShiftType::class, 'module' => 'duty', 'parent' => null, 'size' => false],
-        /* Tasks §37 — პირადი მოდულის კლასიფიკატორი; მოდული რიგშია (`module`),
+        /* პირადი მოდულის კლასიფიკატორი; მოდული რიგშია (`module`),
            ერთი სახე ყველა პირად მოდულზე (სტატუსის იგივე ფორმა). */
         'custom_category' => ['model' => CustomCategory::class, 'module' => null, 'module_column' => 'module', 'parent' => null, 'size' => false],
-        /* Tasks §37.5 — პირადი მოდულის ჩანაწერის ფაილი და ჩანიშვნა. ⚠️ მოდული
+        /* პირადი მოდულის ჩანაწერის ფაილი და ჩანიშვნა. ⚠️ მოდული
            რიგშია და მშობელიც მისი გასაღებით იკითხება (`TrashBin::parentRef()`). */
         'custom_record_file' => ['model' => CustomRecordFile::class, 'module' => null, 'module_column' => 'module', 'parent' => 'record', 'size' => true],
         'custom_record_note' => ['model' => CustomRecordNote::class, 'module' => null, 'module_column' => 'module', 'parent' => 'record', 'size' => false],
@@ -193,13 +193,13 @@ final class TrashDomain
     public const FILES = [
         'chat_file' => ['module' => null],
         'field_file' => ['module' => null],
-        // ეტაპი 4 — სვეტის ფაილი (`ColumnTrash`); მოდული ჩანაწერისაა, უფლება — `update`
+        // სვეტის ფაილი (`ColumnTrash`); მოდული ჩანაწერისაა, უფლება — `update`
         'record_photo' => ['module' => null],
         'avatar' => ['module' => null],
     ];
 
     /**
-     * **`trash_entries`-ის სახეები (Tasks §29, ეტაპი 2)** — ელემენტი, რომელსაც
+     * **`trash_entries`-ის სახეები** — ელემენტი, რომელსაც
      * არც საკუთარი რიგი აქვს და არც ფაილი: ჩანაწერიდან მოხსნილი მსახიობის
      * ბმული (`castables`-ს `id` არ აქვს). მოდული ჩანაწერისაა (`record_type`).
      *
@@ -208,22 +208,22 @@ final class TrashDomain
     public const ENTRIES = [
         // ⚠️ `update` და არა `delete`: მსახიობის მოხსნა ჩანაწერის რედაქტირებაა (`RecordCastController`)
         'cast_link' => ['permission' => 'update'],
-        /* Tasks §29.8 — აუდიტის ლოგის გასუფთავება ერთ ელემენტად (`AuditLogTrash`).
+        /* აუდიტის ლოგის გასუფთავება ერთ ელემენტად (`AuditLogTrash`).
            ⚠️ მოდულის უფლება აქ არაფერს ნიშნავს (`null`): ელემენტი გამწმენდისაა
            და ყოველთვის ჩანს, აღდგენას კი `admin:audit` სჭირდება. */
         'audit_log' => ['permission' => null],
-        /* Tasks §37.7 — პირადი მოდული ჩანაწერებთან ერთად, ერთ ელემენტად
+        /* პირადი მოდული ჩანაწერებთან ერთად, ერთ ელემენტად
            (`CustomModuleTrash`). ⚠️ უფლება მფლობელობაა და არა როლი: მოდული
            პირადია და მისი ელემენტი მხოლოდ მფლობელის ურნაშია. */
         'custom_module' => ['permission' => null],
-        /* Tasks §35.9 (Q17) — ხელით შექმნილი მსახიობი ბმულებთან და ფოტოებთან ერთად,
+        /* ხელით შექმნილი მსახიობი ბმულებთან და ფოტოებთან ერთად,
            ერთ ელემენტად (`CastMemberTrash`). ⚠️ უფლება მფლობელობაა: მსახიობი
            შემქმნელისაა და მოდული არ აქვს (`cast_members` გლობალური ლექსიკონია). */
         'cast_member' => ['permission' => null],
     ];
 
     /**
-     * **ჩატის წერილი (Tasks §29, ეტაპი 5)** — `trashed_messages`-ის რიგი.
+     * **ჩატის წერილი** — `trashed_messages`-ის რიგი.
      *
      * ⚠️ **წერილი ისედაც რჩება** (`removed_at` · `message_hides`), ე.ი. ეს სახე
      * მხოლოდ „ჯერ კიდევ აღდგება"-ს ამბობს: საბოლოო წაშლა და ვადის გასვლა
@@ -237,7 +237,7 @@ final class TrashDomain
     /**
      * რამდენ დღეს ინახება წაშლილი — **ნაგულისხმევი** ვადა.
      *
-     * ⚠️ Tasks §29.6-ის შემდეგ ვადა თითო ანგარიშისაა (`UserSettings::trashDays()`);
+     * ⚠️ ვადა თითო ანგარიშისაა (`UserSettings::trashDays()`);
      * ეს მხოლოდ მისი ნაგულისხმევია და ზედა ზღვრით იკვეცება (`defaultDays()`).
      */
     public const KEEP_DAYS = 30;
@@ -248,11 +248,11 @@ final class TrashDomain
     /** ზედა ზღვრის ჭერი — სუპერადმინი მეტს ვერ დააწესებს (ათი წელი) */
     public const MAX_DAYS_CEILING = 3650;
 
-    /** `app_settings`-ის გასაღები (Tasks §34.1) */
+    /** `app_settings`-ის გასაღები */
     public const MAX_DAYS_SETTING = 'trash.max_days';
 
     /**
-     * **ზედა ზღვარი — ინსტალაციისაა** (Tasks §29.6 → §34.1): სუპერადმინი
+     * **ზედა ზღვარი — ინსტალაციისაა**: სუპერადმინი
      * `/settings`-ზე ცვლის (`app_settings`), ნაგულისხმევი კი ისევ
      * `config('mediary.trash.max_days')`-ია (`TRASH_MAX_DAYS`, 365).
      */
@@ -282,7 +282,7 @@ final class TrashDomain
     }
 
     /**
-     * ჩანაწერის სახეები — საბაზისო მოდულები **და პირადი მოდულები** (Tasks §37).
+     * ჩანაწერის სახეები — საბაზისო მოდულები **და პირადი მოდულები**.
      *
      * ⚠️ პირადი მოდული **თავისი გასაღებით** არის სახე: ურნაში ის ცალკე ჯგუფად
      * ჩანს თავისი სახელით, ფერით და აიქონით — ზუსტად ისე, როგორც ფილმი ან
@@ -387,7 +387,7 @@ final class TrashDomain
                 fn (string $model) => (new $model)->getTable(),
                 self::MODELS,
             )),
-            // Tasks §37 — პირადი მოდულის ჩანაწერები (სახე = მოდულის გასაღები, `domains()`)
+            // პირადი მოდულის ჩანაწერები (სახე = მოდულის გასაღები, `domains()`)
             CustomModules::TABLE,
         ];
     }

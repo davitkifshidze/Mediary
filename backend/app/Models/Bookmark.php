@@ -15,20 +15,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * ბუკმარკი — მოდული `bookmark` (Tasks §18, `DECISIONS.md` §10).
+ * ბუკმარკი — მოდული `bookmark`.
  *
  * ⚠️ **გარე წყარო არ არსებობს.** TMDB/RAWG/BGG-ის ანალოგი ბმულებზე არ არის;
  * მეტამონაცემი თვითონ გვერდიდან მოდის (`Services\Bookmarks\LinkMetadata`),
  * ე.ი. „lookup კანდიდატების" ნაკადიც არ გვჭირდება — ერთი probe ჰყოფნის.
  *
  * ⚠️ **კატეგორია ერთია** (`category_id`), განსხვავებით სიმღერისა და თამაშისგან:
- * კატეგორია აქ საქაღალდეა, დანარჩენ ჭრილს `tags` ფარავს (§13-ის ჩანაწერის წესი).
+ * კატეგორია აქ საქაღალდეა, დანარჩენ ჭრილს `tags` ფარავს.
  *
  * ⚠️ **`domain` სვეტია და არა აქსესორი** — მასზე ხდება ფილტრი და დაჯგუფება,
  * რასაც SQL-ში სვეტის გარეშე ვერ მოვახერხებდით. ერთადერთი ადგილი, სადაც
  * ივსება, `applyUrl()`-ია (იგივე წესი, რაც `GameVideo::applyUrl()`-ზე).
  *
- * ⚠️ **Tasks §36 — გალერეის მშობელია** (`HasGallery` + `GalleryParent`):
+ * ⚠️ **გალერეის მშობელია** (`HasGallery` + `GalleryParent`):
  * ვებიდან მოტანილი ფოტო `gallery_images`-შია, ჩემი ატვირთული („შოპინგის"
  * სკრინშოტი) — `bookmark_files`-ში, დამატებითი ბმულები კი `links` სვეტში.
  * მთავარი ფოტოს წყაროს სვეტი განზრახ არ არსებობს (ადგილის წესი): გალერეიდან
@@ -39,26 +39,26 @@ class Bookmark extends Model
 {
     use BelongsToUser;
 
-    /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
+    /** მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
-    /** Tasks §36.4 — `gallery_images` + `gallery_videos` ამ ჩანაწერზე */
+    /** `gallery_images` + `gallery_videos` ამ ჩანაწერზე */
     use HasGallery;
 
-    /** Tasks §6.4 — სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
+    /** სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
     use HasStatus;
 
-    /** FEAT-18 — ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
+    /** ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
     use HasTags;
 
     /**
-     * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
+     * ⚠️ **კალათა** — `destroy()` `moveToTrash()`-ს იძახის და არა
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
 
     /**
-     * **დამატებითი ბმულის „რა არის"** (Tasks §36.3) — `links[].kind`.
+     * **დამატებითი ბმულის „რა არის"** — `links[].kind`.
      * ⚠️ SPA-ს `BOOKMARK_LINK_KINDS` ამის სარკეა (`RegistryConsistencyTest`).
      */
     public const LINK_KINDS = ['shop', 'price', 'review', 'video', 'docs', 'other'];
@@ -72,7 +72,7 @@ class Bookmark extends Model
     /** ერთ ბუკმარკზე მაქსიმუმ რამდენი დამატებითი ბმული */
     public const MAX_LINKS = 20;
 
-    /** მიმაგრებული ფაილის სახეები — ჯერ მხოლოდ ფოტო (§36.4) */
+    /** მიმაგრებული ფაილის სახეები — ჯერ მხოლოდ ფოტო */
     public const FILE_KINDS = ['image'];
 
     protected $guarded = ['id'];
@@ -83,7 +83,7 @@ class Bookmark extends Model
 
     protected $casts = [
         'tags' => 'array',
-        // Tasks §36.3 — `[{label, url, kind, price, favicon_url}]` (`normalizeLinks()`)
+        // `[{label, url, kind, price, favicon_url}]` (`normalizeLinks()`)
         'links' => 'array',
         'is_favorite' => 'boolean',
         'visit_count' => 'integer',
@@ -92,7 +92,7 @@ class Bookmark extends Model
     ];
 
     /**
-     * ⚠️ **თამბნეილი აქ იშლება და არა კონტროლერში**: `PurgeService` (Tasks 20)
+     * ⚠️ **თამბნეილი აქ იშლება და არა კონტროლერში**: `PurgeService`
      * პირდაპირ `$record->delete()`-ს აკეთებს, ე.ი. მასობრივი წაშლა ფაილს
      * დისკზე დატოვებდა და კვოტას სამუდამოდ დაკავებულს (იგივე წესი, რაც `Song`-ზე).
      */
@@ -101,8 +101,8 @@ class Bookmark extends Model
         static::deleting(function (Bookmark $bookmark) {
             $bookmark->deleteThumbnail();
 
-            /* ⚠️ Tasks §36.4 — **ფაილები სათითაოდ და `trash` scope-ის გარეშე**
-               (BUG-21-ის გაკვეთილი): SQL-ის კასკადი მოდელის ივენთს არ ისვრის,
+            /* ⚠️ **ფაილები სათითაოდ და `trash` scope-ის გარეშე**:
+               SQL-ის კასკადი მოდელის ივენთს არ ისვრის,
                ე.ი. ფაილი დისკზე და კვოტა მრიცხველში დარჩებოდა; ურნაში მყოფი
                ფაილი კი scope-ით ვერც მოიძებნებოდა. */
             $bookmark->files()->withoutGlobalScopes(['owner', 'trash'])->get()->each->delete();
@@ -125,7 +125,7 @@ class Bookmark extends Model
         return $this->belongsTo(BookmarkCategory::class, 'category_id');
     }
 
-    /** Tasks §36.4 — ჩემი ატვირთული ფოტოები */
+    /** ჩემი ატვირთული ფოტოები */
     public function files(): HasMany
     {
         return $this->hasMany(BookmarkFile::class)->orderByDesc('id');
@@ -147,7 +147,7 @@ class Bookmark extends Model
     }
 
     /**
-     * **დამატებითი ბმულების ნორმალიზება — ერთადერთი ადგილი** (Tasks §36.3).
+     * **დამატებითი ბმულების ნორმალიზება — ერთადერთი ადგილი**.
      *
      * ცარიელი წარწერა `null`-ია, უცნობი ტიპი — `other`, ფასი მხოლოდ
      * `PRICED_LINK_KINDS`-ზე რჩება, ცარიელმისამართიანი რიგი ქრება.
@@ -199,11 +199,11 @@ class Bookmark extends Model
     }
 
     /**
-     * ატვირთული ფოტოს წაშლა დისკიდან. 17.1 — ზომა კვოტიდან აქვე მოიხსნება,
+     * ატვირთული ფოტოს წაშლა დისკიდან — ზომა კვოტიდან აქვე მოიხსნება,
      * ე.ი. ყველა გზა (ჩანაცვლება, „მოშორება", ჩანაწერის წაშლა) მრიცხველს
      * სწორად ტოვებს.
      *
-     * ⚠️ **გალერეის ფოტო აქ არ იშლება** (Tasks §36.4, ადგილის წესი) —
+     * ⚠️ **გალერეის ფოტო აქ არ იშლება** (ადგილის წესი) —
      * „მთავარად დაყენებული" გალერეის ფოტოს გზაც ამავე სვეტშია. მისი წაშლა
      * გალერეის რიგს გატეხილ ფოტოდ დატოვებდა და კვოტას ორჯერ დააბრუნებდა;
      * ფაილი გალერეის რიგთან ერთად იშლება (`deleteGalleryMedia()`).

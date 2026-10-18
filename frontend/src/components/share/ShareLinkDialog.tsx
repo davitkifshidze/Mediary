@@ -31,7 +31,7 @@ import { ShareScopeFields } from '@/components/share/ShareScopeFields'
 import { ShareQr } from '@/components/share/ShareQr'
 
 /* ============================================================
-   **გაზიარების ბმულის შექმნა და რედაქტირება (Tasks §40.4).**
+   **გაზიარების ბმულის შექმნა და რედაქტირება.**
 
    ნაბიჯები: 1) რომელი სექციები · 2) თითო სექციის ფარგლები ცოცხალი რიცხვით
    · 3) რას ხედავს მიმღები, სახელი, ვადა · 4) შედეგი — ბმული, კოპირება, QR.
@@ -44,14 +44,14 @@ import { ShareQr } from '@/components/share/ShareQr'
    გამონაკლისია და „ვისაც ეს ბმული ექნება, შენს პირად ჩანაწერებსაც დაინახავს"
    სწორედ ის ფაქტია, რომლის გამოტოვებაც არ შეიძლება.
 
-   ⚠️ **ახალ ბმულზე არცერთი სექცია არ არის წინასწარ მონიშნული** (§40.10):
-   ეტაპ 1-ში „ყველა" სამ მედიას ნიშნავდა; თერთმეტ სექციაზე ერთი დაჭერა კი
+   ⚠️ **ახალ ბმულზე არცერთი სექცია არ არის წინასწარ მონიშნული**:
+   ადრე „ყველა" სამ მედიას ნიშნავდა; თერთმეტ სექციაზე ერთი დაჭერა კი
    ბუკმარკებს, ადგილებსა და კურსებს — პირადებიანად — ერთ ბმულში ჩაყრიდა.
    ⚠️ **ბმულის სექცია, რომლის მოდულიც აღარ გაქვს, რედაქტირებისას ცხადად
    ითქმის და შენახვისას ამოვარდება** — სერვერი მას `share_domain_unavailable`-ით
    დააბრუნებდა, ბარათი კი, რომლითაც მისი მოხსნა შეიძლებოდა, აღარ იხატება.
 
-   ⚠️ **ერთი შესასვლელია — „გაზიარების ბმულების" გვერდი** (§40.14): მოდულების
+   ⚠️ **ერთი შესასვლელია — „გაზიარების ბმულების" გვერდი**: მოდულების
    სათაურის „ამ სიის გაზიარება" მოიხსნა (შენი მითითება), და მასთან ერთად
    წინასწარი შევსებაც (`initial`) — ფანჯარა ახლა ყოველთვის ცარიელი იხსნება
    (ან რედაქტირებისას — ბმულის ფარგლებით).
@@ -94,7 +94,7 @@ export function ShareLinkDialog({
   const [result, setResult] = useState<ShareLink | null>(null)
   const [copied, setCopied] = useState(false)
 
-  // გლობალური ჟანრები მხოლოდ მედიას სჭირდება (ეტაპი 2-ს თავისი ლექსიკონი აქვს)
+  // გლობალური ჟანრები მხოლოდ მედიას სჭირდება (დანარჩენ დომენებს თავისი ლექსიკონი აქვს)
   const genresQ = useQuery({
     queryKey: ['genres'],
     queryFn: () => fetchGenres(),
@@ -103,7 +103,7 @@ export function ShareLinkDialog({
 
   const domains = useMemo(() => buildDomains(selected, specs), [selected, specs])
   const complete = selected.length > 0 && selected.every((d) => specComplete(domains[d] ?? { scope: 'all' }, d))
-  // სექციები ბარათების რიგით (საიდბარის რიგი, §36)
+  // სექციები ბარათების რიგით (საიდბარის რიგი)
   const ordered = useMemo(
     () => [...available, ...SHARE_DOMAINS.filter((d) => !available.includes(d))].filter((d) => selected.includes(d)),
     [available, selected],
@@ -280,8 +280,8 @@ export function ShareLinkDialog({
                 <span className="block text-xs text-muted-foreground">{t('share.showStatusHint')}</span>
               </span>
             </label>
-            {/* ⚠️ „ჩემი შეფასება" — `ShareDomain::personal_rating`: მედიაზე ეს `my_rating`-ია
-                (Tasks §9), ბარათის `rating` კი TMDB-ის ქულაა და გადამრთველი მას არ ეხება;
+            {/* ⚠️ „ჩემი შეფასება" — `ShareDomain::personal_rating`: მედიაზე ეს `my_rating`-ია,
+                ბარათის `rating` კი TMDB-ის ქულაა და გადამრთველი მას არ ეხება;
                 პლეილისტს, ვიდეოს, ბუკმარკსა და კურსს საკუთარი ქულა არ აქვს. */}
             {ratingRelevant && (
               <label className="flex cursor-pointer items-start gap-2.5 text-sm">

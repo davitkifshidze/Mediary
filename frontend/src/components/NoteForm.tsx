@@ -40,19 +40,19 @@ import { fromDateTimeLocal, toDateTimeLocal } from '@/lib/utils'
 import { LinkField } from '@/components/ui/link-field'
 
 /* ============================================================
-   ჩანაწერის ფორმა (Tasks §13.1).
+   ჩანაწერის ფორმა.
 
    გარე წყარო არ არსებობს, ე.ი. „სწრაფი შევსება" აქ არაა — ეს user-ის
    საკუთარი ინფორმაციაა და არა კატალოგის ჩანაწერი.
 
-   ⚠️ **ფაილები ახალ ჩანაწერზეც ემატება** (Tasks §23.4): შენახვამდე ისინი
+   ⚠️ **ფაილები ახალ ჩანაწერზეც ემატება**: შენახვამდე ისინი
    ბრაუზერშია, შენახვისას კი ჩანაწერის შემდეგ სათითაოდ ადის. ⚠️ **შეხსენება
-   კი შექმნის შემდეგ რჩება** (§23.5, შენი სიტყვით) — მას `note_entry_id`
+   კი შექმნის შემდეგ რჩება** (შენი სიტყვით) — მას `note_entry_id`
    სჭირდება და ფანჯარა ამას i-ით ამბობს.
 
-   Tasks §26 — ფორმის საერთო ჩონჩხი (`ui/form-layout.tsx`): სექციები
+   ფორმის საერთო ჩონჩხი (`ui/form-layout.tsx`): სექციები
    სათაურით, 12-სვეტიანი ბადე და მიმაგრებული ქვედა ზოლი; დამატებითი
-   ველებიც ახალ ჩანაწერზე ივსება (§26.5 — იგივე მექანიზმი, რაც ფაილებს).
+   ველებიც ახალ ჩანაწერზე ივსება (იგივე მექანიზმი, რაც ფაილებს).
    ============================================================ */
 
 /** ⚠️ `form="…"`-ს სჭირდება id; ერთი მოდალი ერთ ფორმას შეიცავს, ე.ი. მუდმივია */
@@ -75,7 +75,7 @@ export function NoteForm({
   const lang = useContentLang(i18n.language)
   const { data: statuses = [] } = useStatuses('note')
   const { toast } = useToast()
-  // §6 — რომელი არჩევითი ველი ჩანს ამ ფორმაზე
+  // რომელი არჩევითი ველი ჩანს ამ ფორმაზე
   const fields = useModuleFields('note')
 
   const [form, setForm] = useState({
@@ -83,11 +83,11 @@ export function NoteForm({
     description: note?.description ?? '',
     categoryId: note?.category_id ? String(note.category_id) : '',
     tags: note?.tags ?? [],
-    // §6.4 — გასაღები; ცარიელი = ნაგულისხმევი (backend დაადებს)
+    // გასაღები; ცარიელი = ნაგულისხმევი (backend დაადებს)
     status: note?.status?.key ?? '',
     dueAt: toDateTimeLocal(note?.due_at),
   })
-  /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი (Tasks BUG-11):
+  /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი:
      ინდექსზე შუა სტრიქონის წაშლა ფოკუსსა და კარეტს მეზობელ ბმულზე გადაიტანდა.
      `unkeyRows()` გასაღებს payload-ში ჭრის. */
   const [links, setLinks] = useState<Keyed<NoteLink>[]>(() => keyRows(note?.links ?? []))
@@ -96,13 +96,13 @@ export function NoteForm({
   const [reminders, setReminders] = useState(false)
   const qc = useQueryClient()
 
-  /* ---------- §23.4 — ფაილები ახალ ჩანაწერზე ----------
+  /* ---------- ფაილები ახალ ჩანაწერზე ----------
      ⚠️ შენახვამდე ფაილი ბრაუზერშია (`pending`); შენახვისას ჯერ ჩანაწერი
      იქმნება, მერე ფაილები **სათითაოდ**, პროგრესით. ⚠️ ჩავარდნა ჩანაწერს არ
      აუქმებს: ფანჯარა ღია რჩება და **შექმნილის რედაქტირებად** გადადის
      (`created`), ჩავარდნილი ფაილი კი მიზეზით რჩება — „შენახვა" მას ხელახლა ცდის. */
   const pending = usePendingUploads<NoteFile['kind']>()
-  // §26.5 — დამატებითი ველები ახალ ჩანაწერზე (იგივე წესი, რაც ფაილებს)
+  // დამატებითი ველები ახალ ჩანაწერზე (იგივე წესი, რაც ფაილებს)
   const customDraft = useCustomFieldDraft('note')
   const [created, setCreated] = useState<NoteEntry | null>(null)
   const current = note ?? created
@@ -152,7 +152,7 @@ export function NoteForm({
   })
 
 
-  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს**: ბლოკი
      `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
      ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
   const warnHidden = (missing: string[]) => {
@@ -218,11 +218,11 @@ export function NoteForm({
 
   return (
     <ModalShell title={t(note ? 'notes.edit' : 'notes.add')} onClose={onClose} wide>
-      {/* ⚠️ **მოქმედებების რიგი `<form>`-ის გარეთაა და ეკრანის ბოლოშია**
-          (2026-09-14 → §26.1): ატვირთვები, შეხსენება და დამატებითი ველები
+      {/* ⚠️ **მოქმედებების რიგი `<form>`-ის გარეთაა და ეკრანის ბოლოშია**:
+          ატვირთვები, შეხსენება და დამატებითი ველები
           ღილაკების ზემოთ დგას და არა მათ ქვემოთ. HTML5-ის `form="…"` სწორედ
           ამისთვისაა: ღილაკი ფორმის გარეთ დგას და მაინც მას უშვებს. */}
-      {/* Tasks §26.3 — **შემხსენებლების ზოლი თავშია, სათაურის ზემოთ** (შენი ახალი
+      {/* **შემხსენებლების ზოლი თავშია, სათაურის ზემოთ** (შენი ახალი
           მითითება, 2026-10-02; ის 2026-09-14-ის „`</form>`-ის შემდეგ დარჩეს"-ს ცვლის).
           ⚠️ `<form>`-ის **გარეთ** ისევ: შეხსენებას საკუთარი endpoint აქვს და ჩანაწერის
           `PUT`-ში არ მოგზაურობს. ახალ ჩანაწერზე ზოლი თავშივე დგას, გამორთული, `i`-ით
@@ -233,8 +233,8 @@ export function NoteForm({
 
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
         <FormSection title={t('form.sections.basic')}>
-          {/* ⚠️ სახელი `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება;
-              ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
+          {/* ⚠️ სახელი `locked`-ია — მისი გარეშე ჩანაწერი არ ჩაიწერება;
+              ჩაკეტვის მოხსნა ცხადი ქმედებაა, ამიტომ `shows()` აქაც ისმის. */}
           <FormField
             show={fields.shows('title')}
             label={fields.label('title')}
@@ -301,7 +301,7 @@ export function NoteForm({
                 <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
-                {/* §6.4 — სტატუსები per-user ლექსიკონიდან */}
+                {/* სტატუსები per-user ლექსიკონიდან */}
                 {statuses.map((s) => (
                   <SelectItem key={s.id} value={s.key}>
                     {statusName(s, lang)}
@@ -311,7 +311,7 @@ export function NoteForm({
             </Select>
           </FormField>
 
-          {/* „როდისთვის მჭირდება" (§13.1); §2.8 — ნორმალური პიქერი, ფორმატი
+          {/* „როდისთვის მჭირდება" — ნორმალური პიქერი, ფორმატი
               იგივეა, რაც `datetime-local`-ს ჰქონდა, ე.ი. `fromDateTimeLocal` უცვლელია */}
           <FormField size="third" {...fields.field('due_at')} htmlFor="note-due">
             <DatePicker
@@ -336,7 +336,7 @@ export function NoteForm({
           </FormField>
         </FormSection>
 
-        {/* რამდენიმე ბმული (§13.1) */}
+        {/* რამდენიმე ბმული */}
         <FormSection title={t('form.sections.details')} className={fields.shows('links') ? undefined : 'hidden'}>
           <FormField {...fields.field('links')}>
             <div className="space-y-1.5">
@@ -350,7 +350,7 @@ export function NoteForm({
                       setLinks((all) => all.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))
                     }
                   />
-                  {/* Tasks §15.3 — ცარიელი წარწერა გვერდის სათაურით ივსება */}
+                  {/* ცარიელი წარწერა გვერდის სათაურით ივსება */}
                   <LinkField
                     className="min-w-0 flex-1"
                     value={link.url}
@@ -395,7 +395,7 @@ export function NoteForm({
         <NoteUploads noteId={current?.id ?? null} pending={pending} />
       </FormSection>
 
-      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ ჩანაწერზე მონახაზი */}
+      {/* დამატებითი ველები; ახალ ჩანაწერზე მონახაზი */}
       <CustomFieldsCard
         module="note"
         recordId={current?.id ?? null}

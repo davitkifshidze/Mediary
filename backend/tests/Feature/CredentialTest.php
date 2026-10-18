@@ -21,9 +21,9 @@ use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
- * Tasks §21 → §30 — „მონაცემები": გასაღები და ლიმიტი **მხოლოდ** თითო მომხმარებელზე.
+ * „მონაცემები": გასაღები და ლიმიტი **მხოლოდ** თითო მომხმარებელზე.
  *
- * ⚠️ §30-იდან (Q38) საერთო `.env` ფენა აღარ არსებობს — ტესტები, რომლებიც მას
+ * ⚠️ საერთო `.env` ფენა აღარ არსებობს — ტესტები, რომლებიც მას
  * იცავდნენ, **შებრუნებულია**: `config('services.*')`-ში ჩაწერილი გასაღები
  * იგნორირდება, ხოლო ვისაც თავისი არ აქვს, მისთვის წყარო არ მუშაობს.
  *
@@ -71,7 +71,7 @@ class CredentialTest extends TestCase
     }
 
     /**
-     * ⚠️ **`config`/`.env`-ში ჩაწერილი გასაღები იგნორირდება** (Tasks §30.9) —
+     * ⚠️ **`config`/`.env`-ში ჩაწერილი გასაღები იგნორირდება** —
      * აქამდე ეს „საერთო გასაღები" იყო; ახლა ის არაფერს ნიშნავს.
      */
     public function test_a_key_in_config_is_ignored(): void
@@ -104,7 +104,7 @@ class CredentialTest extends TestCase
 
     /**
      * ⚠️ IGDB-ს ორი სავალდებულო ველი აქვს: ერთი ჩაწერილი „ჩემს გასაღებს"
-     * არ ნიშნავს — და §30-იდან ნახევრად შევსებულ წყაროს სარეზერვოც აღარ აქვს.
+     * არ ნიშნავს — და ნახევრად შევსებულ წყაროს სარეზერვოც აღარ აქვს.
      */
     public function test_a_half_filled_provider_is_not_treated_as_own(): void
     {
@@ -146,7 +146,7 @@ class CredentialTest extends TestCase
     }
 
     /**
-     * **ეს თასქის არსია (§21.4 → §30).** მრიცხველი მხოლოდ ჩემს რიგებს ითვლის —
+     * **ეს ტესტის არსია.** მრიცხველი მხოლოდ ჩემს რიგებს ითვლის —
      * სხვისი თარგმანი ჩემს კვოტას არ ხარჯავს, რადგან Google-ს ჩემი გასაღები
      * საერთოდ არ უნახავს.
      */
@@ -176,7 +176,7 @@ class CredentialTest extends TestCase
     }
 
     /**
-     * ⚠️ **„მთელი ინსტალაციის ჯამი" აღარ არსებობს** (Tasks §30) — გასაღების
+     * ⚠️ **„მთელი ინსტალაციის ჯამი" აღარ არსებობს** — გასაღების
      * გარეშეც მრიცხველი მხოლოდ ჩემს რიგებს ითვლის, და არა ყველასას.
      */
     public function test_the_counter_never_counts_the_whole_installation(): void
@@ -258,7 +258,7 @@ class CredentialTest extends TestCase
     }
 
     /**
-     * ⚠️ **პასუხში საერთო ფენის კვალი აღარაა** (Tasks §30.10): არც `has_shared`,
+     * ⚠️ **პასუხში საერთო ფენის კვალი აღარაა**: არც `has_shared`,
      * არც `shared_hint`, ლიმიტზე კი `default` — კოდის ნაგულისხმევი.
      */
     public function test_the_payload_carries_code_defaults_not_shared_values(): void
@@ -310,7 +310,7 @@ class CredentialTest extends TestCase
         $this->assertSame(['key'], $log->new_values['fields']);
     }
 
-    /* ---------- ნახვა და კოპირება (§21.8) ---------- */
+    /* ---------- ნახვა და კოპირება ---------- */
 
     /** ⚠️ სწორედ ამისთვისაა ცალკე endpoint: სია მას არ აბრუნებს, ეს — აბრუნებს */
     public function test_reveal_returns_my_own_key(): void
@@ -377,10 +377,10 @@ class CredentialTest extends TestCase
         $this->assertStringNotContainsString('my-real-key', json_encode($log->new_values));
     }
 
-    /* ---------- სუპერ-ადმინი და ტელეგრამი (§21.9 → §30) ---------- */
+    /* ---------- სუპერ-ადმინი და ტელეგრამი ---------- */
 
     /**
-     * ⚠️ **სუპერ-ადმინიც მხოლოდ თავის გასაღებს ხედავს** (Tasks §30): §21.9-ის
+     * ⚠️ **სუპერ-ადმინიც მხოლოდ თავის გასაღებს ხედავს**:
      * „ინსტალაციის გასაღების ნახვა" საერთო ფენასთან ერთად გაქრა.
      */
     public function test_even_a_super_admin_cannot_reveal_a_config_key(): void
@@ -424,12 +424,12 @@ class CredentialTest extends TestCase
     }
 
     /**
-     * Tasks §30 — ⚠️ **ბოტის შემოწმება `getMe`-ია**: უფასოა და ჩატში არაფერს
+     * ⚠️ **ბოტის შემოწმება `getMe`-ია**: უფასოა და ჩატში არაფერს
      * აგზავნის. აქამდე ტელეგრამის ბარათის „შემოწმება" `unknown_provider`-ს
      * აბრუნებდა — ბარათების ბადეზე ეს ღილაკი ყოველთვის ჩავარდებოდა.
      */
     /**
-     * Tasks §27.3 — `getMe` ტოკენს ამოწმებს, `sendMessage` chat id-ს: ორივე
+     * `getMe` ტოკენს ამოწმებს, `sendMessage` chat id-ს: ორივე
      * მოწმდება და `verified_at` ივსება.
      */
     public function test_the_telegram_check_sends_a_test_message_to_the_chat(): void
@@ -498,7 +498,7 @@ class CredentialTest extends TestCase
         $this->assertSame('987654', $settings['telegram_chat_id']);
     }
 
-    /* ---------- SEC-12 — ღია ტოკენი `module_user.settings`-ში ---------- */
+    /* ---------- ღია ტოკენი `module_user.settings`-ში ---------- */
 
     /** `note` მოდული ჩართული, pivot-ის settings — ზუსტად `$settings` */
     private function notePivot(User $user, array $settings): int
@@ -521,7 +521,7 @@ class CredentialTest extends TestCase
     }
 
     /**
-     * ⚠️ **SEC-12 (High, 2026-09-17).** §21.9-ის მიგრაცია ტოკენს pivot-ში
+     * ⚠️ ტელეგრამის ტოკენის მიგრაცია ტოკენს pivot-ში
      * ტოვებდა, `GET /api/modules` კი pivot-ის JSON-ს ფილტრის გარეშე
      * აბრუნებდა — ღია ტოკენი ყოველ მოდულების სიაში ბრაუზერს ეგზავნებოდა.
      */
@@ -545,7 +545,7 @@ class CredentialTest extends TestCase
         $this->assertSame(['hidden' => ['done']], $note['user_settings']['status_sections']);
     }
 
-    /** SEC-12 — ⚠️ settings-ის `PUT` ღია ასლს **ხელახლა** არ შქმნის */
+    /** ⚠️ settings-ის `PUT` ღია ასლს **ხელახლა** არ შქმნის */
     public function test_module_settings_never_write_the_bot_token_back(): void
     {
         $this->seed(ModulesSeeder::class);
@@ -563,7 +563,7 @@ class CredentialTest extends TestCase
     }
 
     /**
-     * SEC-12 — მიგრაცია: ⚠️ **ჯერ ავსება, მერე წაშლა, და ველ-ველ.**
+     * მიგრაცია: ⚠️ **ჯერ ავსება, მერე წაშლა, და ველ-ველ.**
      * `kate`-ს `user_credentials`-ში არაფერი აქვს → ორივე ველი pivot-იდან
      * გადადის; `nino`-ს ტოკენი უკვე აქვს, `chat_id` — არა → **თავისი** ტოკენი
      * რჩება, `chat_id` pivot-იდან ივსება. ორივეს pivot-იდან ღია გასაღებები
@@ -612,7 +612,7 @@ class CredentialTest extends TestCase
     }
 
     /**
-     * SEC-12 — ⚠️ **სხვა `APP_KEY`-ით დაშიფრული რიგი** (ცოცხალ ბაზაზე ზუსტად ასე
+     * ⚠️ **სხვა `APP_KEY`-ით დაშიფრული რიგი** (ცოცხალ ბაზაზე ზუსტად ასე
      * ჩავარდა პირველი გაშვება): `fields()` მას ცარიელად თვლის, ე.ი. აპი
      * pivot-ის ღია ასლზე მუშაობდა. მიგრაცია არ ცვივა — რიგს pivot-ის
      * მნიშვნელობით ხელახლა შიფრავს და მერე pivot-ს ასუფთავებს.
@@ -729,7 +729,7 @@ class CredentialTest extends TestCase
         $this->assertDatabaseHas('user_credentials', ['id' => $theirs->id]);
     }
 
-    /** ⚠️ ბაზაში გასაღები ღიად არ დევს (დამპი ხელიდან ხელში გადადის, §22) */
+    /** ⚠️ ბაზაში გასაღები ღიად არ დევს (დამპი ხელიდან ხელში გადადის) */
     public function test_the_key_is_encrypted_at_rest(): void
     {
         $this->own($this->user, CredentialProviders::TMDB, ['key' => 'plain-text-key']);
@@ -739,7 +739,7 @@ class CredentialTest extends TestCase
         $this->assertStringNotContainsString('plain-text-key', (string) $raw);
     }
 
-    /* ---------- სხვა `APP_KEY` (Tasks GAP-11) ---------- */
+    /* ---------- სხვა `APP_KEY` ---------- */
 
     /** სხვა მანქანის გასაღებით დაშიფრული რიგი */
     private function foreignRow(string $provider, array $fields): void
@@ -761,7 +761,7 @@ class CredentialTest extends TestCase
     /**
      * **გაუშიფრავი რიგი პასუხში ცხადად წერია და ჩუმად „არაფერი" აღარაა.**
      *
-     * ⚠️ ეს ცოცხალ ბაზაზე მოხდა (SEC-12, 2026-09-17): ერთადერთი
+     * ⚠️ ეს ცოცხალ ბაზაზე მოხდა (2026-09-17): ერთადერთი
      * `user_credentials` რიგი ძველ მანქანაზე სხვა `APP_KEY`-ით დაიშიფრა.
      * `fields()` შეცდომას ყლაპავდა, ე.ი. აპი რიგს „გასაღები არ არის"-ად
      * კითხულობდა: `CredentialStore` საერთო `.env`-ზე ვარდებოდა (და პირადი
@@ -811,7 +811,7 @@ class CredentialTest extends TestCase
         $this->assertSame('999:FRESH', CredentialStore::value(CredentialProviders::TELEGRAM, 'bot_token', $this->user->id));
     }
 
-    /* ---------- `.env` → პირადი ჩანაწერები (Tasks §30.5) ---------- */
+    /* ---------- `.env` → პირადი ჩანაწერები ---------- */
 
     /** დროებითი `.env` — მიგრაცია დეველოპერის ნამდვილ ფაილს არ კითხულობს */
     private function withEnvFile(string $contents): string

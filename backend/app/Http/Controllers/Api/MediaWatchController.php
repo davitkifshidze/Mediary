@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 /**
- * **ხელახლა ნახვის ჟურნალი (FEAT-14).**
+ * **ხელახლა ნახვის ჟურნალი.**
  *
  * `GET|POST /api/media/watches/{type}/{id}` · `DELETE /api/media-watches/{watch}`
  *
@@ -73,7 +73,7 @@ class MediaWatchController extends Controller
         // აქ იაფია და კონტროლერს თვითმყოფადს ტოვებს
         abort_unless((int) $mediaWatch->user_id === (int) $request->user()->getKey(), 404);
 
-        /* ⚠️ ურნა (Tasks §29, ეტაპი 2) — „ბოლო ნახვას" `MediaWatch::afterTrashChange()`
+        /* ⚠️ ურნა — „ბოლო ნახვას" `MediaWatch::afterTrashChange()`
            თვითონ გადაითვლის: ურნაში მყოფი ჟურნალში აღარ ითვლება. */
         $mediaWatch->moveToTrash();
 

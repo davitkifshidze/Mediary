@@ -3,7 +3,7 @@ import type { StorageUsage } from '@/api/account'
 import { cn, formatBytes } from '@/lib/utils'
 
 /* ============================================================
-   საცავის ინდიკატორი (Tasks 17.3).
+   საცავის ინდიკატორი.
    ზღვრები **backend-იდან** მოდის (`warn_at`/`critical_at`), ე.ი. ერთ
    ადგილას იცვლება — ფრონტზე კონსტანტა არ დევს.
    ============================================================ */
@@ -65,7 +65,7 @@ export function StorageBar({
           style={{ width: `${Math.max(usage.percent, usage.used > 0 ? 2 : 0)}%` }}
         />
       </div>
-      {/* გაფრთხილება ცხადია და არა ჩუმი (17.3) */}
+      {/* გაფრთხილება ცხადია და არა ჩუმი */}
       {level !== 'ok' && (
         <p className={cn('mt-1.5 text-xs', TEXT[level])}>
           {t(level === 'full' ? 'storage.warnFull' : 'storage.warnNear', {

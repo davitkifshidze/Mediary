@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **Tasks SEC-10 — `roles.permissions = NULL` აღარ ნიშნავს „ყველაფერს".**
+ * **`roles.permissions = NULL` აღარ ნიშნავს „ყველაფერს".**
  *
  * `Role::allows()`/`allowsAdmin()` ცარიელ მნიშვნელობას სრულ წვდომად
  * კითხულობდა **ყველა მოდულსა და ადმინის სექციაზე** — ყველაზე არასაიმედო

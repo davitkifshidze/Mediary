@@ -15,11 +15,11 @@ import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   „საჯარო პროფილი" — `/profile`-ის ბარათი (Tasks §16.1).
+   „საჯარო პროფილი" — `/profile`-ის ბარათი.
 
    ორივე ზედა ფენა ერთ ადგილასაა განზრახ: „ვინ მხედავს" და „რას ხედავს"
    ერთი გადაწყვეტილებაა და მოდულების გვერდზე გატანა მას გაფანტავდა.
-   §6.1-ის შემდეგ **მესამე ფენაც აქვეა** (`VisibilityManager`) — ჩანაწერის
+   **მესამე ფენაც აქვეა** (`VisibilityManager`) — ჩანაწერის
    გვერდიდან გადამრთველი მოხსნილია, რომ ერთი ფაქტი ორ ადგილას არ იმართებოდეს.
 
    ⚠️ ორივე გადამრთველი **მაშინვე ინახება** (და არა „შენახვა" ღილაკით):
@@ -34,13 +34,13 @@ export function PublicProfileCard() {
   const { toast } = useToast()
 
   const [busy, setBusy] = useState<string | null>(null)
-  /** რომელი ფანჯარაა ღია — `null` არცერთი (Tasks §7.2/§7.3) */
+  /** რომელი ფანჯარაა ღია — `null` არცერთი */
   const [open, setOpen] = useState<'modules' | 'records' | null>(null)
 
   if (!user) return null
 
   const isPublic = user.profile_visibility === 'public'
-  // მოდულები, რომელთა გასაჯაროებაც საერთოდ შეიძლება (`note` — არასდროს, 16.5)
+  // მოდულები, რომელთა გასაჯაროებაც საერთოდ შეიძლება (`note` — არასდროს)
   const shareable = enabled.filter((m) => m.shareable)
   const publicModules = shareable.filter((m) => m.is_public).length
 
@@ -99,7 +99,7 @@ export function PublicProfileCard() {
         </div>
       )}
 
-      {/* ---------- ფენა 2: მოდულები (Tasks §7.2) ----------
+      {/* ---------- ფენა 2: მოდულები ----------
           ⚠️ ჩამრთველების სია **მოდალშია**: ბარათზე ის თერთმეტ რიგად იშლებოდა
           და მესამე ფენას ეკრანს ქვემოთ აგდებდა. აქ მხოლოდ შემაჯამებელი
           რიგი და ღილაკი რჩება. */}
@@ -121,7 +121,7 @@ export function PublicProfileCard() {
         </Button>
       </div>
 
-      {/* ---------- ფენა 3: ჩანაწერები (§6.1 → §7.3) ----------
+      {/* ---------- ფენა 3: ჩანაწერები ----------
           ⚠️ იგივე მიზეზი: მმართველს ძებნა, მასობრივი ზოლი და გვერდები აქვს,
           ე.ი. ბარათის შიგნით ის ცალკე გვერდად იკითხებოდა. */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-3.5">

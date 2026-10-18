@@ -30,7 +30,7 @@ use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * **სხვა მოდულების ფოტოები გალერეაში (Tasks §8.3).**
+ * **სხვა მოდულების ფოტოები გალერეაში.**
  *
  * მოთხოვნა სიტყვასიტყვით: „სხვა რამეებზეც, სადაც ნებისმიერი ფოტო დაემატება
  * … ყველაფერი გალერეაში დაყავი ჯგუფებად, გვერდებად, სექციებად".
@@ -99,7 +99,7 @@ class ModuleImages
         'game' => [GameFile::class, 'game_id', Game::class, null],
         'course' => [CourseFile::class, 'course_id', Course::class, null],
         'place' => [PlaceFile::class, 'place_id', Place::class, null],
-        // Tasks §36.4 — ბუკმარკის ჩემი ფოტოები
+        // ბუკმარკის ჩემი ფოტოები
         'bookmark' => [BookmarkFile::class, 'bookmark_id', Bookmark::class, null],
         // ⚠️ ჩანაწერების ფაილი პრივატულ დისკზეა და მხოლოდ ამ მარშრუტით გამოდის
         'note' => [NoteEntryFile::class, 'note_entry_id', NoteEntry::class, '/note-files/'],
@@ -117,7 +117,7 @@ class ModuleImages
     /**
      * ჯგუფები — თითო მოდული ერთი ბარათი (რაოდენობა, მოცულობა, ესკიზები).
      *
-     * ⚠️ §37.4 — **ამ ანგარიშის პირადი მოდულებიც** (ჩანაწერის მთავარი ფოტო):
+     * ⚠️ **ამ ანგარიშის პირადი მოდულებიც** (ჩანაწერის მთავარი ფოტო):
      * ისინი რუკაში ვერ ჩაიწერება (გასაღები ინტერფეისიდან იქმნება), ე.ი.
      * ჩამოთვლას მფლობელის სია ავსებს.
      *
@@ -186,7 +186,7 @@ class ModuleImages
     {
         $rows = [];
 
-        // §37.4 — პირადი მოდული: ერთი ცხრილი ყველასთვის, ე.ი. მოდულითაც იჭრება
+        // პირადი მოდული: ერთი ცხრილი ყველასთვის, ე.ი. მოდულითაც იჭრება
         $custom = CustomModules::isKey($module);
         $source = self::RECORD_SOURCES[$module] ?? ($custom ? [CustomRecord::class, 'photo_path'] : null);
 
@@ -217,7 +217,7 @@ class ModuleImages
             }
         }
 
-        // §37.5 — პირადი მოდულის ატვირთული ფოტოები (`custom_record_files`, მოდულით ჭრილი)
+        // პირადი მოდულის ატვირთული ფოტოები (`custom_record_files`, მოდულით ჭრილი)
         $fileSource = self::FILE_SOURCES[$module]
             ?? ($custom ? [CustomRecordFile::class, 'custom_record_id', CustomRecord::class, null] : null);
 

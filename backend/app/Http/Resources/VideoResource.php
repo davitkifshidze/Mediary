@@ -13,15 +13,15 @@ class VideoResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'description' => $this->description,
-            // Q52 — არხი და გამოქვეყნების დღე (`Y-m-d`, დრო არ აქვს)
+            // არხი და გამოქვეყნების დღე (`Y-m-d`, დრო არ აქვს)
             'channel' => $this->channel,
             'published_at' => $this->published_at?->toDateString(),
-            // მართვადი ტიპი (5.1) — `kind` enum-ი აღარ არსებობს
+            // მართვადი ტიპი — `kind` enum-ი აღარ არსებობს
             'type_id' => $this->type_id,
             'type' => $this->whenLoaded('type', fn () => new VideoTypeResource($this->type)),
-            // §6.4 — ვიდეოს სტატუსი: ამ მოდულს ის აქამდე საერთოდ არ ჰქონდა
+            // ვიდეოს სტატუსი: ამ მოდულს ის აქამდე საერთოდ არ ჰქონდა
             'status' => StatusResource::brief($this->status),
-            // 5.6/16.5 — საჯარო პროფილის წინაპირობა; default `private`
+            // საჯარო პროფილის წინაპირობა; default `private`
             'visibility' => $this->visibility,
             'url' => $this->url,
             'platform' => $this->platform,
@@ -35,7 +35,7 @@ class VideoResource extends JsonResource
             'watch_count' => $this->watch_count,
             'watched_at' => $this->watched_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
-            /* §7.1 — ლოკალური ასლი.
+            /* ლოკალური ასლი.
                ⚠️ **გზა გარეთ არ გადის**: ფაილი პრივატულ დისკზეა და მხოლოდ
                `GET /api/videos/{id}/download`-ით იხსნება. აქედან მხოლოდ
                „აქვს/მიმდინარეობს/ჩავარდა" და ადამიანისთვის საჭირო დეტალები. */
@@ -45,13 +45,13 @@ class VideoResource extends JsonResource
             'download_name' => $this->download_name,
             'download_error' => $this->download_error,
             'downloaded_at' => $this->downloaded_at?->toIso8601String(),
-            /* ⚠️ **„გაჭედილია" backend-ის სათქმელია** (აუდიტი 2026-09-14, §B1) —
+            /* ⚠️ **„გაჭედილია" backend-ის სათქმელია** —
                იგივე წესი, რაც საცავის `private` დროშას აქვს. SPA-ს ჭერისა და
                საწყისი დროის მეორე ასლი დასჭირდებოდა, ე.ი. ერთ დღეს ღილაკი
                „მიმდინარეობს"-ს აჩვენებდა, სერვერი კი უკვე დაუშვებდა ხელახლა
                გაშვებას (ან პირიქით). ერთი ფორმულა — `Video::downloadStale()`. */
             'download_stale' => $this->downloadStale(),
-            // მიმაგრებული შიგთავსი (K3)
+            // მიმაგრებული შიგთავსი
             'images_count' => $this->whenCounted('images'),
             'documents_count' => $this->whenCounted('documents'),
             'notes_count' => $this->whenCounted('notes'),

@@ -20,9 +20,9 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   როლების სექცია (Tasks 1.6 → UI/UX 2026-09-15).
+   როლების სექცია.
 
-   უფლება = **მოდულის შიდა** CRUD (გადაწყდა 19.8) და იმართება როლის შიდა
+   უფლება = **მოდულის შიდა** CRUD და იმართება როლის შიდა
    გვერდზე (`/roles/{id}`). აქ სია, დამატება და წაშლაა.
    მოდულზე **წვდომა** ცალკე მექანიზმია (`/modules`).
 
@@ -78,7 +78,7 @@ export function RolesPage() {
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  // Tasks 1.6 — წვდომა როლიდანაც შეიძლება მოვიდეს
+  // წვდომა როლიდანაც შეიძლება მოვიდეს
   if (!canAdmin('roles')) return null
 
   const name = (r: Role) => (i18n.language === 'ka' ? r.name_ka : r.name_en)

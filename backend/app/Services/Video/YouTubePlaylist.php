@@ -9,7 +9,7 @@ use App\Support\SourceLog;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * **YouTube-ის ფლეილისტი — სია და მისი ვიდეოები** (Tasks §55.2).
+ * **YouTube-ის ფლეილისტი — სია და მისი ვიდეოები**.
  *
  * შენი სიტყვები: „YouTube-ის ფლეილისტი მაქვს დამატებული და მინდა, როგორმე ინფო
  * წამოიღო ქვე-ვიდეოების, ფლეილისტში რაც შედის". 15 კურსიდან 14 ფლეილისტი იყო და
@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Cache;
  * წყარო რიგით: **YouTube Data API** (შენი გასაღებით — `playlists` → სათაური,
  * აღწერა, არხი, ესკიზი; `playlistItems` 50-ობით → ვიდეოები რიგით; `videos`
  * 50-ობით → ხანგრძლივობა) → გასაღების გარეშე ან API-ის ჩავარდნაზე **`yt-dlp
- * --flat-playlist`** (§44.3-ის წესი; ერთი გაშვება, თითო ვიდეოს გახსნის გარეშე).
+ * --flat-playlist`** (ერთი გაშვება, თითო ვიდეოს გახსნის გარეშე).
  *
  * ⚠️ **ქეში 24 სთ** (ფლეილისტის სიის id-ით — მონაცემი საჯაროა და ყველასთვის
  * ერთია); „განახლება" (`$fresh`) ქეშს გვერდს უვლის. ⚠️ ჩავარდნა არ ქეშირდება —
@@ -81,7 +81,7 @@ class YouTubePlaylist
 
     private function fromApi(string $id): ?array
     {
-        // ⚠️ გასაღები ჰედერშია და არა query-ში (Tasks SEC-14 — `VideoMetadata`-ის წესი)
+        // ⚠️ გასაღები ჰედერშია და არა query-ში (`VideoMetadata`-ის წესი)
         $http = fn () => SourceLog::request(15)->acceptJson()->withHeaders(['X-goog-api-key' => (string) $this->key()]);
 
         $res = $http()->get('https://www.googleapis.com/youtube/v3/playlists', ['id' => $id, 'part' => 'snippet']);

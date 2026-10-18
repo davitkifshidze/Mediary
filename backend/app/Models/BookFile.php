@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class BookFile extends Model
 {
     /**
-     * ⚠️ **ურნა (Tasks §29)** — `destroy()` `moveToTrash()`-ს იძახის: რიგი,
+     * ⚠️ **ურნა** — `destroy()` `moveToTrash()`-ს იძახის: რიგი,
      * ფაილი და კვოტა ადგილზე რჩება, სანამ ურნიდან საბოლოოდ არ წაიშლება.
      * მშობლის საბოლოო წაშლა მას `trash` scope-ის გარეშე პოულობს.
      */

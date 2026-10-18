@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **კურსების მოდული (FEAT-25).**
+ * **კურსების მოდული.**
  *
  * ⚠️ `Http::fake()` აუცილებელია: ბმულის probe (`LinkMetadata`) გარე
  * მისამართს ხსნის — ტესტი ოფლაინ უნდა მუშაობდეს.
@@ -70,7 +70,7 @@ class CourseModuleTest extends TestCase
     }
 
     /**
-     * Tasks §29.3 — YouTube-ის ბმულზე ესკიზი გვერდის გარეშე მოდის (`VideoUrl`):
+     * YouTube-ის ბმულზე ესკიზი გვერდის გარეშე მოდის (`VideoUrl`):
      * probe აქ 404-ს აბრუნებს (setUp), ესკიზი მაინც ივსება.
      */
     public function test_a_youtube_link_gets_its_thumbnail_without_the_page(): void
@@ -105,7 +105,7 @@ class CourseModuleTest extends TestCase
      * (`Course::syncStatusDates()`).
      *
      * ⚠️ უკან დაბრუნებაზე თარიღი უნდა წავიდეს — თორემ სტატისტიკა
-     * დაუსრულებელ კურსს სამუდამოდ ჩათვლიდა (FEAT-08/FEAT-21).
+     * დაუსრულებელ კურსს სამუდამოდ ჩათვლიდა.
      */
     public function test_the_status_sets_and_clears_its_dates(): void
     {
@@ -127,7 +127,7 @@ class CourseModuleTest extends TestCase
     }
 
     /**
-     * Tasks §14 — ლექტორი, შეფასება, გაკვეთილები და ხანგრძლივობა ამოვიდა:
+     * ლექტორი, შეფასება, გაკვეთილები და ხანგრძლივობა ამოვიდა:
      * პასუხში აღარ ჩანს, გამოგზავნილი მნიშვნელობა ჩუმად იგნორირდება და
      * პროგრესის endpoint აღარ არსებობს.
      */
@@ -200,7 +200,7 @@ class CourseModuleTest extends TestCase
     }
 
     /**
-     * Tasks §55.5 — **სერტიფიკატი აღარ არის**: ახალი `kind: certificate` 422-ია, ძველი
+     * **სერტიფიკატი აღარ არის**: ახალი `kind: certificate` 422-ია, ძველი
      * რიგი მიგრაციით დოკუმენტად (`doc`) გადადის — ფაილი ადგილზე რჩება; მოდულის აღწერა
      * სერტიფიკატს აღარ ახსენებს.
      */
@@ -231,7 +231,7 @@ class CourseModuleTest extends TestCase
         $this->assertStringNotContainsString('certificate', (string) $module->description_en);
     }
 
-    /** `DELETE /courses/{id}` კალათაში აგზავნის და არაფერს ათავისუფლებს (FEAT-11) */
+    /** `DELETE /courses/{id}` კალათაში აგზავნის და არაფერს ათავისუფლებს */
     public function test_deleting_moves_the_course_to_the_trash(): void
     {
         Storage::fake('public');

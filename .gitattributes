@@ -1,6 +1,6 @@
 graphify-out/graph.json merge=graphify
 
-# ⚠️ **წყაროს ფაილი ტექსტია და არა „data" (Tasks DEBT-02).**
+# ⚠️ **წყაროს ფაილი ტექსტია და არა „data".**
 # `ActorWebPhotos.tsx`-ში `'\x00'` escape-ის ნაცვლად **ნამდვილი** NUL ბაიტი
 # ეწერა, ე.ი. git-ის ინდექსში ფაილი `-text`-ად ჩაჯდა და `grep -rn`-ს
 # „Binary file matches" ეწერა — კომპონენტი ყველა აუდიტისთვის უხილავი იყო.
@@ -10,7 +10,7 @@ graphify-out/graph.json merge=graphify
 *.ts text
 *.tsx text
 
-# ⚠️ **ჰანსპელის ლექსიკონი ყოველთვის LF-ით (Tasks DEBT-26).**
+# ⚠️ **ჰანსპელის ლექსიკონი ყოველთვის LF-ით.**
 # `ka_GE.dic`-ის პირველი ხაზი სიტყვების რიცხვია, `.aff` კი აფიქსების
 # წესებია — ორივეს `hunspell` ხაზ-ხაზ კითხულობს. `core.autocrlf`-ის
 # იმედად დატოვებული ფაილი Windows-ზე CRLF-ად გადმოვიდოდა და გაშლის

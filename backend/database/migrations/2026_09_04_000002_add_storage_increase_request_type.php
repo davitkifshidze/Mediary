@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Tasks 17.4 — **ლიმიტის გაზრდის მოთხოვნა**.
+ * **ლიმიტის გაზრდის მოთხოვნა**.
  *
  * ახალი ნაკადი არ იქმნება: მოთხოვნა იმავე `approval_requests`-ში ჯდება
  * ახალი ტიპით `storage_increase`, ე.ი. `/requests`-ის სია, badge-ის

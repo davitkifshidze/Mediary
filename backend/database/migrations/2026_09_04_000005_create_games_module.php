@@ -7,25 +7,25 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **თამაშების მოდული** (Tasks §11; ველების სია დამტკიცდა 19.1-ში, 2026-09-04).
+ * **თამაშების მოდული**.
  *
- * ექვსი ცხრილი, იმავე რეცეპტით, რითიც წიგნები და ბორდგეიმები (`docs/I7…` §7.3):
+ * ექვსი ცხრილი, იმავე რეცეპტით, რითიც წიგნები და ბორდგეიმები:
  *  · `game_genres` — **per-user ლექსიკონი**;
- *  · `games` — ჩანაწერი; `visibility` თავიდანვე (16.5);
+ *  · `games` — ჩანაწერი; `visibility` თავიდანვე;
  *  · `game_genre_game` — ჟანრების pivot (**მრავალჟანრიანი**);
- *  · `game_videos` — §11.2, თითო თამაშზე რამდენიმე ვიდეო ტიპით;
+ *  · `game_videos` — თითო თამაშზე რამდენიმე ვიდეო ტიპით;
  *  · `game_files` — ატვირთული ფოტოები/დოკუმენტები;
  *  · `game_notes` — ჩანიშვნები.
  *
  * ⚠️ **ჟანრი per-user ლექსიკონია და არა გლობალური polymorphic `genres`,
- * თუმცა 11.1 ასე წერდა.** 11.1 2026-09-02-ითაა დათარიღებული, per-user
+ * თუმცა თავდაპირველი გეგმა ასე წერდა.** გეგმა 2026-09-02-ითაა დათარიღებული, per-user
  * ლექსიკონის წესი კი 2026-09-03-ზე დაწესდა (სიმღერები) და მას შემდეგ წიგნმაც
  * და ბორდგეიმმაც გაიარა. მიზეზი აქ განსაკუთრებით მძაფრია: RAWG-ის ჟანრებია
  * `Shooter`, `RPG`, `Platformer`, `Massively Multiplayer` — გლობალურ `genres`-ში
  * ჩაწერისას ისინი **ფილმის ჟანრების არჩევანში** გამოჩნდებოდა.
  *
  * ⚠️ **მაგრამ მრავალჟანრიანობა შენარჩუნდა** (pivot `game_genre_game`), და არა
- * ერთი `genre_id`, როგორც წიგნზე/ბორდგეიმზე: 11.1 „ჟანრებს" მრავლობითში წერს
+ * ერთი `genre_id`, როგორც წიგნზე/ბორდგეიმზე: გეგმა „ჟანრებს" მრავლობითში წერს
  * და თამაში მართლაც ერთდროულად Action + RPG + Adventure-ია. ტეგები აქ არ არის —
  * მათ ჟანრები და პლატფორმები ფარავს.
  *
@@ -34,11 +34,11 @@ use Illuminate\Support\Facades\Schema;
  * რასაც `Book::syncProgress()` ებრძვის), ე.ი. წყარო ერთი უნდა იყოს.
  *
  * ⚠️ **სქრინშოტები ორ ადგილას ცხოვრობს და ეს არსებული წესია:** RAWG-იდან
- * **ჩამოტვირთული** კადრი `gallery_images`-შია (morph alias `game`, §11.3 →
- * §10-ის მექანიზმი), user-ის **ატვირთული** კი `game_files.kind = 'image'`-ში —
+ * **ჩამოტვირთული** კადრი `gallery_images`-შია (morph alias `game`, გალერეის
+ * საერთო მექანიზმი), user-ის **ატვირთული** კი `game_files.kind = 'image'`-ში —
  * ზუსტად ისე, როგორც ვიდეოსა და ბორდგეიმზე.
  *
- * ⚠️ **HowLongToBeat საათები ხელით ივსება** (11.4): ოფიციალური API არ არსებობს,
+ * ⚠️ **HowLongToBeat საათები ხელით ივსება**: ოფიციალური API არ არსებობს,
  * unofficial endpoint კი მყიფეა — ცალკე გადაწყვეტილებას ითხოვს.
  */
 return new class extends Migration
@@ -100,7 +100,7 @@ return new class extends Migration
             // რეჟიმები: single | multiplayer | coop_local | coop_online | pvp
             $table->json('modes')->nullable();
 
-            // HowLongToBeat — საათები, ხელით (11.4)
+            // HowLongToBeat — საათები, ხელით
             $table->decimal('hltb_main', 5, 1)->nullable();
             $table->decimal('hltb_main_extra', 5, 1)->nullable();
             $table->decimal('hltb_complete', 5, 1)->nullable();
@@ -123,7 +123,7 @@ return new class extends Migration
             $table->string('status', 20)->default('undecided');
             $table->boolean('is_favorite')->default(false);
 
-            // დამატებითი (11.1): ასაკობრივი რეიტინგი, ენები, ზომა დისკზე, DLC-ები
+            // დამატებითი: ასაკობრივი რეიტინგი, ენები, ზომა დისკზე, DLC-ები
             $table->string('age_rating', 20)->nullable();     // PEGI 18 / ESRB M …
             $table->json('languages')->nullable();            // {interface:[], audio:[], subtitles:[]}
             $table->decimal('size_gb', 7, 2)->nullable();
@@ -142,7 +142,7 @@ return new class extends Migration
             $table->index('visibility');
         });
 
-        // ⚠️ pivot — თამაში მრავალჟანრიანია (11.1 „ჟანრები", მრავლობითში)
+        // ⚠️ pivot — თამაში მრავალჟანრიანია („ჟანრები", მრავლობითში)
         Schema::create('game_genre_game', function (Blueprint $table) {
             $table->id();
             $table->foreignId('game_id')->constrained()->cascadeOnDelete();
@@ -156,7 +156,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('game_id')->constrained()->cascadeOnDelete();
 
-            // 11.2 — „სრული დახურვა/გეიმფლეი" მთავარია, ამიტომ default
+            // „სრული დახურვა/გეიმფლეი" მთავარია, ამიტომ default
             $table->string('kind', 20)->default('walkthrough');
             $table->string('title')->nullable();
 

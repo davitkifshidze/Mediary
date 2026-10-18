@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 /**
- * **მორიგეობის პერიოდი, პარამეტრები და ჯამები (Tasks §34.3–34.5ა).**
+ * **მორიგეობის პერიოდი, პარამეტრები და ჯამები.**
  *
  *  · `GET /duty/period?date=` — პერიოდი თარიღით + წინა და შემდეგი (ნავიგაცია);
  *  · `GET|PUT /duty/settings` — პერიოდის დღე, ვალუტა, ნაგულისხმევები;
@@ -24,7 +24,7 @@ use Illuminate\Validation\Rule;
  *
  * ⚠️ **ჯამი SQL-ში ჯგუფდება და PHP-ში იკეცება** — ერთი `group by` სამივე ჭრილს
  * იძლევა; თითო სამსახურზე ცალკე query ზუსტად ის შეცდომაა, რასაც დეშბორდმა
- * (PERF-05) თავი დააღწია. ⚠️ **თანხის გარეშე მორიგეობა ჯამში 0 არ არის** —
+ * თავი დააღწია. ⚠️ **თანხის გარეშე მორიგეობა ჯამში 0 არ არის** —
  * ის ცალკე ითვლება (`unpaid`), რომ „₾ 1 200“ ტყუილად სრულ ჯამად არ იკითხებოდეს.
  */
 class DutyController extends Controller
@@ -62,7 +62,7 @@ class DutyController extends Controller
                 'sometimes', 'nullable', 'integer',
                 Rule::exists('duty_shift_types', 'id')->whereNull('trashed_at')->where('user_id', $userId),
             ],
-            // §34.7 — შეხსენება წინა დღეს; `null` — გამორთულია
+            // შეხსენება წინა დღეს; `null` — გამორთულია
             'remind_at' => ['sometimes', 'nullable', 'date_format:H:i'],
             'remind_telegram' => ['sometimes', 'boolean'],
         ]);
@@ -120,7 +120,7 @@ class DutyController extends Controller
     }
 
     /**
-     * **ბოლო N პერიოდი სამსახურებით** — გრაფიკი „თვეებით“ (§34.4).
+     * **ბოლო N პერიოდი სამსახურებით** — გრაფიკი „თვეებით“.
      *
      * ⚠️ ერთი query მთელ შუალედზე (დღე × სამსახური) და PHP-ში პერიოდებად დაყოფა —
      * პერიოდის საზღვრები წესების ისტორიაზეა დამოკიდებული და SQL-ში არ ითვლება.
@@ -168,7 +168,7 @@ class DutyController extends Controller
     }
 
     /**
-     * **ხვალინდელი მორიგეობების შეხსენება ღია აპისთვის (§34.7)** — `GET /duty/reminders/due`.
+     * **ხვალინდელი მორიგეობების შეხსენება ღია აპისთვის** — `GET /duty/reminders/due`.
      *
      * ⚠️ ჯერ თვითონ ასრულებს შეხსენებას ამ ანგარიშზე (`DutyReminder::run()` —
      * cron-ის გარეშეც, ტელეგრამიც), მერე აბრუნებს **ყველა** უკვე შეხსენებულ ხვალინდელს —

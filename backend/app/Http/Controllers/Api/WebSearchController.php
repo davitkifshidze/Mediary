@@ -21,16 +21,16 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * **ძებნა ვებში და კვოტა (Tasks §7.5/§7.6)**.
+ * **ძებნა ვებში და კვოტა**.
  *
  * ⚠️ **წყარო ერთი არ არის და კონტროლერიც ამიტომ არ ჰქვია `SerpController`.**
- * §7.5 ცხადად ითხოვს არჩევანს და **ნაგულისხმევად უფასო კატალოგებს** ასახელებს:
+ * არჩევანი განზრახაა, **ნაგულისხმევად კი უფასო კატალოგებია**:
  *  · **Wikimedia Commons** — უფასო, გასაღების გარეშე, ლიმიტის გარეშე,
  *    ლიცენზირებული. სამაგიეროდ ტეგით ძებნა სუსტია (ფაილის სახელზე ეძებს).
  *  · **SerpApi-ის engine-ები** — ნამდვილი ტეგით ძებნა, `safe=off`, ოთხი
  *    სურათის წყარო. სამაგიეროდ **250 ძებნა თვეში მთელ ანგარიშზე**.
  * ე.ი. ერთი სია, ორი ფასი — და ღილაკის გვერდით ცხადად წერია, რომელი რას
- * დაჯდება (§7.6.4).
+ * დაჯდება.
  *
  * ⚠️ **მოდულის middleware-ის გარეთაა განზრახ.** ვებძებნა მოდული არ არის —
  * წყაროა (TMDB/RAWG/BGG-ის რიგში), ე.ი. არც `modules` რიგი აქვს და არც
@@ -53,7 +53,7 @@ use Illuminate\Validation\Rule;
 class WebSearchController extends Controller
 {
     /**
-     * სად ეკიდება ვებიდან ჩამოტვირთული ფოტო (§7.6.5/§7.6.6 → §8.4).
+     * სად ეკიდება ვებიდან ჩამოტვირთული ფოტო.
      *
      * ⚠️ **სია აქ აღარ წერია** — ის `App\Support\GalleryParent`-შია, ე.ი.
      * ერთი და იგივე „ვისაც `HasGallery` აქვს" სამ ადგილას აღარ მეორდება
@@ -68,11 +68,11 @@ class WebSearchController extends Controller
     ) {}
 
     /**
-     * უფასო კატალოგები (§7.5-ის წყარო „დ").
+     * უფასო კატალოგები.
      *
      * ⚠️ **სია პირველია და ესეც განზრახაა** — ნაგულისხმევად სწორედ უფასო
      * წყარო უნდა აირჩეოდეს, თორემ ერთი მსახიობის ფოტოძებნა 250-იან ბიუჯეტს
-     * ერთ საღამოში შეჭამს (§7.5-ის პირდაპირი გაფრთხილება).
+     * ერთ საღამოში შეჭამს.
      *
      * @return array<string, array{name: string, safe: bool}>
      */
@@ -94,7 +94,7 @@ class WebSearchController extends Controller
     ];
 
     /**
-     * **ვის შეუძლია „კიდევ ჩამოიტანე"** (Tasks §19.4) — წყაროები, რომლებსაც
+     * **ვის შეუძლია „კიდევ ჩამოიტანე"** — წყაროები, რომლებსაც
      * საკუთარი გაგრძელება აქვთ: Commons-ს `gsroffset`, Serper-ს გვერდი.
      *
      * ⚠️ **SerpApi-ის engine-ები აქ არ არის და ეს განზრახაა**: ოთხივეს
@@ -106,7 +106,7 @@ class WebSearchController extends Controller
     private const CONTINUABLE = [WikimediaImages::KEY, SerperImages::KEY];
 
     /**
-     * კვოტისა და წყაროების მდგომარეობა (§7.6.1).
+     * კვოტისა და წყაროების მდგომარეობა.
      *
      * ⚠️ **უფასოა** — `GET /account` ძებნას არ ხარჯავს, ე.ი. ამ სიის გახსნა
      * ბიუჯეტს არ ეხება.
@@ -124,7 +124,7 @@ class WebSearchController extends Controller
                 'images' => $this->imageSources(),
                 'videos' => $this->sourceList($this->serp::VIDEO_ENGINES, false),
             ],
-            /* Tasks §30.6 — **რომელ ფასიან წყაროს აკლია ჩემი გასაღები.** სიიდან
+            /* **რომელ ფასიან წყაროს აკლია ჩემი გასაღები.** სიიდან
                ისინი უბრალოდ ქრებიან (RAWG-ის წესი), ე.ი. მის გარეშე ფანჯარა ვერ
                იტყოდა, რატომ ჩანს მხოლოდ Wikimedia და სად უნდა ჩაიწეროს გასაღები. */
             'missing' => array_values(array_filter([
@@ -134,20 +134,20 @@ class WebSearchController extends Controller
         ]);
     }
 
-    /** სურათების ძებნა — უფასო კატალოგები + SerpApi (§7.5 „დ"/„ე", §7.6.2) */
+    /** სურათების ძებნა — უფასო კატალოგები + SerpApi */
     public function images(Request $request): JsonResponse
     {
         return $this->search($request, array_keys($this->imageSourceMap()), 'images');
     }
 
-    /** ვიდეოების ძებნა (§7.6.3) */
+    /** ვიდეოების ძებნა */
     public function videos(Request $request): JsonResponse
     {
         return $this->search($request, array_keys(SerpApiClient::VIDEO_ENGINES), 'videos');
     }
 
     /**
-     * ერთი ვიდეოს დეტალები (§7.6.3) — YouTube-ის გასაღების გარეშე.
+     * ერთი ვიდეოს დეტალები — YouTube-ის გასაღების გარეშე.
      *
      * ⚠️ **ეს ღილაკია და არა ავტომატური probe:** თითო გამოძახება ერთ ძებნას
      * ხარჯავს 250-იდან, ე.ი. URL-ის ჩასმაზე ისევ უფასო oEmbed მუშაობს
@@ -159,7 +159,7 @@ class WebSearchController extends Controller
             'url' => ['required', 'string', 'max:2000'],
         ]);
 
-        // §30.6 — გასაღების არქონა ≠ მკვდარი წყარო: აქ სწორი ქმედება ჩაწერაა
+        // გასაღების არქონა ≠ მკვდარი წყარო: აქ სწორი ქმედება ჩაწერაა
         if (! $this->serp->configured()) {
             return MissingCredential::response(CredentialProviders::SERPAPI);
         }
@@ -189,7 +189,7 @@ class WebSearchController extends Controller
     }
 
     /**
-     * მონიშნული ფოტოების ჩამოტვირთვა და მიმაგრება (§7.6.5 → **§8.4**).
+     * მონიშნული ფოტოების ჩამოტვირთვა და მიმაგრება.
      *
      * ⚠️ **`POST`-ია და ეს გამონაკლისი არაა** — აქ მართლა ჩანაწერი იქმნება
      * (`gallery_images`-ის რიგი), ე.ი. `create` სწორედ ის მოქმედებაა, რაც
@@ -201,7 +201,7 @@ class WebSearchController extends Controller
      * ამიტომ URL-ები აქ ისევ მოწმდება (`http(s)` და ზომის ჭერი), წყარო კი
      * მხოლოდ ჩვენი ცნობილი engine-ებიდან იწერება.
      *
-     * ## განაწილება მსახიობებზე (§8.4)
+     * ## განაწილება მსახიობებზე
      *
      * მოთხოვნა სიტყვასიტყვით: „თუ ფილმზე ხარ შესული და კონკრეტულ მსახიობს
      * მონიშნავ ან რამდენიმეს, ამ მსახიობებზე დაანაწილოს შესაბამისი ფოტოები;
@@ -226,7 +226,7 @@ class WebSearchController extends Controller
         $data = $request->validate([
             'target' => ['required', Rule::in(GalleryParent::keys())],
             'id' => ['required', 'integer', 'min:1'],
-            // §8.4 — რომელ მსახიობებზე შეიძლება დანაწილება (ლოკალური id-ები)
+            // რომელ მსახიობებზე შეიძლება დანაწილება (ლოკალური id-ები)
             'distribute' => ['nullable', 'array', 'max:50'],
             'distribute.*' => ['integer', 'min:1'],
             'images' => ['required', 'array', 'min:1', 'max:50'],
@@ -249,7 +249,7 @@ class WebSearchController extends Controller
         abort_unless($user->hasModule(GalleryParent::module($targetKey)), 403, 'module_disabled');
         abort_unless($user->hasPermission(GalleryParent::module($targetKey), 'update'), 403, 'forbidden');
 
-        // §37.4 — `query()`: პირადი მოდულის ჩანაწერი მოდულითაც იჭრება
+        // `query()`: პირადი მოდულის ჩანაწერი მოდულითაც იჭრება
         $parent = GalleryParent::query($targetKey)->findOrFail($data['id']);
 
         // ⚠️ `cast_member` **გლობალური ლექსიკონია** (მფლობელი არ აქვს) — ფოტო
@@ -426,7 +426,7 @@ class WebSearchController extends Controller
     /* ---------- შიგნეული ---------- */
 
     /**
-     * ერთი ან რამდენიმე engine ერთ რექვესთში (§7.6.4).
+     * ერთი ან რამდენიმე engine ერთ რექვესთში.
      *
      * ⚠️ **ყოველი მონიშნული engine +1 ძებნაა** — „ყველა ერთად" ოთხ სურათის
      * წყაროზე ოთხს ხარჯავს. ამიტომ პასუხი ცხადად წერს, **რამდენი დაიხარჯა
@@ -453,10 +453,10 @@ class WebSearchController extends Controller
             'limit' => ['sometimes', 'integer', 'min:1', 'max:'.SerperImages::MAX_LIMIT],
             // ⚠️ **თითო გვერდი = ერთი credit** — ამიტომ ხელით შეიყვანება
             'pages' => ['sometimes', 'integer', 'min:1', 'max:'.SerperImages::MAX_PAGES],
-            // ⚠️ ცენზურა **გამორთულია ნაგულისხმევად** (§7.5-ის პირდაპირი პირობა):
+            // ⚠️ ცენზურა **გამორთულია ნაგულისხმევად**:
             // „რასაც ტეგში დაწერს, ის ჩამოიწეროს".
             'safe' => ['sometimes', 'boolean'],
-            /* §19.4 — „კიდევ ჩამოიტანე": engine → წინა პასუხის `next`.
+            /* „კიდევ ჩამოიტანე": engine → წინა პასუხის `next`.
                ⚠️ გასაღებები მხოლოდ გაგრძელების მქონე წყაროებია; ვიდეოზე ასეთი
                არ არსებობს, ე.ი. იქ პარამეტრი საერთოდ აკრძალულია — უცნობი
                გასაღების ჩუმად გადაგდება ცარიელ „ახალ" პასუხს დააბრუნებდა. */
@@ -468,7 +468,7 @@ class WebSearchController extends Controller
         $cursor = array_map('intval', $data['cursor'] ?? []);
 
         // ცარიელი არჩევანი = **პირველი** წყარო და არა „ყველა". სიაში პირველი
-        // უფასოა, ე.ი. ნაგულისხმევი ქცევა ბიუჯეტს არ ეხება (§7.5).
+        // უფასოა, ე.ი. ნაგულისხმევი ქცევა ბიუჯეტს არ ეხება.
         // ⚠️ გაგრძელებაზე წყაროები **cursor-იდან** მოდის: მხოლოდ მათ, ვისაც
         // `next` ჰქონდა — დანარჩენის ხელახლა გაშვება იგივე შედეგს და
         // (SerpApi-ზე) იგივე ხარჯს მოიტანდა.
@@ -482,7 +482,7 @@ class WebSearchController extends Controller
 
         /* ⚠️ **უფასო წყარო ყოველთვის გამოსადეგია**, ე.ი. ცარიელი `$usable` ერთ
            რამეს ნიშნავს: არჩეულია მხოლოდ ფასიანი წყარო და მისი გასაღები არ მაქვს
-           (Tasks §30.6) — „წყარო არ პასუხობს" აქ ტყუილი იქნებოდა. */
+          — „წყარო არ პასუხობს" აქ ტყუილი იქნებოდა. */
         if (! $usable) {
             return MissingCredential::response(
                 in_array(SerperImages::KEY, $engines, true) ? CredentialProviders::SERPER : CredentialProviders::SERPAPI,
@@ -554,7 +554,7 @@ class WebSearchController extends Controller
                 // ⚠️ Serper-ის ხარჯი ცალკე იწერება: ის SerpApi-ის 250-ში არ ჯდება,
                 // მაგრამ ფული მაინც არის და ეკრანზე უნდა ჩანდეს
                 'credits' => (int) ($result['spent'] ?? 0),
-                // §19.4 — გაგრძელება; `null` = ამ წყაროდან მეტი არაფერი მოვა
+                // გაგრძელება; `null` = ამ წყაროდან მეტი არაფერი მოვა
                 'next' => isset($result['next']) ? (int) $result['next'] : null,
             ];
         }
@@ -574,7 +574,7 @@ class WebSearchController extends Controller
     }
 
     /**
-     * **„უკვე ვიდეოებშია"** (Tasks §19.6, FEAT-17-ის `DuplicateLink`).
+     * **„უკვე ვიდეოებშია"** (`DuplicateLink`).
      *
      * ⚠️ **ძებნის პასუხშივეა და არა ცალკე მოთხოვნაში** — „რა არის ამ ბმულის
      * უკან და ხომ არ მაქვს უკვე" ერთი კითხვის ორი ნახევარია (`POST
@@ -656,7 +656,7 @@ class WebSearchController extends Controller
     }
 
     /**
-     * სურათების წყაროები — **ჯერ უფასო, მერე ფასიანი** (§7.5-ის რიგი).
+     * სურათების წყაროები — **ჯერ უფასო, მერე ფასიანი**.
      *
      * @return array<string, array{name: string, safe: bool}>
      */
@@ -669,7 +669,7 @@ class WebSearchController extends Controller
         }
 
         // ⚠️ რიგი: უფასო → საკუთარი გასაღები → SerpApi. ნაგულისხმევად
-        // პირველი ირჩევა, ე.ი. ბიუჯეტი ისევ ხელუხლებელი რჩება (§7.5).
+        // პირველი ირჩევა, ე.ი. ბიუჯეტი ისევ ხელუხლებელი რჩება.
         return self::FREE_IMAGE_SOURCES + self::EXTRA_IMAGE_SOURCES + $paid;
     }
 
@@ -720,7 +720,7 @@ class WebSearchController extends Controller
                 'name' => $spec['name'],
                 'safe_search' => (bool) $spec['safe'],
                 'free' => $free,
-                /* ⚠️ §19.2 — ინტერფეისი ხარჯს **`uses_quota`-ით** ითვლის და არა
+                /* ⚠️ ინტერფეისი ხარჯს **`uses_quota`-ით** ითვლის და არა
                    `!free`-ით (Serper არც უფასოა და არც 250-ს ხარჯავს). ვიდეოს
                    ორივე წყარო SerpApi-ისაა, ე.ი. ორივე ბიუჯეტიდან იხარჯება. */
                 'uses_quota' => ! $free,

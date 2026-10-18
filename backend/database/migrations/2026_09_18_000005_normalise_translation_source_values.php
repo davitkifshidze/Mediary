@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **`<domain>_translations.source` არასდროს არის `'translated'`** (Tasks BUG-17).
+ * **`<domain>_translations.source` არასდროს არის `'translated'`**.
  *
  * ⚠️ **ორი სახელი ერთ ფაქტზე — და ერთი მათგანი არსად არ იკითხებოდა.**
  * `MovieEnricher`/`TvEnricher` მანქანურ თარგმანს `'translated'`-ს უწერდნენ,

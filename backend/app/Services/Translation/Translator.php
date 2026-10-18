@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\Auth;
 use Throwable;
 
 /**
- * ორმხრივი თარგმანი EN↔KA (Tasks 7).
+ * ორმხრივი თარგმანი EN↔KA.
  *
  * ერთი წყარო — **Google Gemini** (უფასო დონე, ბარათის გარეშე). ⚠️ გასაღები
- * **მომხმარებლისაა** („მონაცემები", Tasks §30) და არა `.env`-ისა.
+ * **მომხმარებლისაა** („მონაცემები") და არა `.env`-ისა.
  *
  * ⚠️ **Claude აქედან ამოღებულია 2026-09-14-ს** (მომხმარებლის მითითებით):
  * `ANTHROPIC_API_KEY` მხოლოდ Console-ის კრედიტებზე მუშაობს — Claude Code-ის
@@ -36,7 +36,7 @@ class Translator
     private const NAMES = ['ka' => 'Georgian', 'en' => 'English'];
 
     /**
-     * Tasks §47 — აღწერები Markdown-ია: სქელი, სიები და ბმულები თარგმანში უნდა
+     * აღწერები Markdown-ია: სქელი, სიები და ბმულები თარგმანში უნდა
      * გადარჩეს, მისამართი კი არ ითარგმნება. მოკლე უფორმატო ტექსტზე (სათაური,
      * ჟანრი) ეს წინადადება არაფერს ცვლის.
      */
@@ -78,7 +78,7 @@ class Translator
     }
 
     /**
-     * მოქმედი მოდელი — **ერთი გამოთვლა** (Tasks §21).
+     * მოქმედი მოდელი — **ერთი გამოთვლა**.
      *
      * ⚠️ სამ ადგილს სჭირდება (გამოძახება, აღრიცხვა, `usage()`), და სამი
      * ასლი იმ დღეს აცდებოდა, როცა მომხმარებელი თავის მოდელს ჩაწერდა:
@@ -109,7 +109,7 @@ class Translator
     {
         $limit = (int) CredentialStore::limit(CredentialProviders::GEMINI, 'daily');
         $rpm = (int) CredentialStore::limit(CredentialProviders::GEMINI, 'rpm');
-        /* §30 — გასაღები ყოველთვის მომხმარებლისაა, ე.ი. მრიცხველიც: სხვისი
+        /* გასაღები ყოველთვის მომხმარებლისაა, ე.ი. მრიცხველიც: სხვისი
            თარგმანი ჩემს კვოტას არ ეხება (`null` — CLI, სადაც გასაღებიც არაა). */
         $owner = CredentialStore::quotaOwner();
         $used = TranslationUsage::usedToday($owner);
@@ -125,7 +125,7 @@ class Translator
             'rpm_used' => TranslationUsage::usedThisMinute($owner),
             'rpm_limit' => $rpm,
             'exhausted' => $limit > 0 && $used >= $limit,
-            // §30 — `user` | `none`; ფანჯარა კი დღეა (Google-ის Pacific-ის შუაღამე)
+            // `user` | `none`; ფანჯარა კი დღეა (Google-ის Pacific-ის შუაღამე)
             'source' => CredentialStore::source(CredentialProviders::GEMINI),
             'period' => 'day',
         ];

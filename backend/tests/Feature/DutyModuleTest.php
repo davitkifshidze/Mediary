@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **მორიგეობა (Tasks §34)** — სამსახურები და ტარიფები, ტიპები, მორიგეობები,
+ * **მორიგეობა** — სამსახურები და ტარიფები, ტიპები, მორიგეობები,
  * ერთიანი მონიშვნა, მასობრივი შეცვლა, ჯამები, წაშლა და რეესტრები.
  */
 class DutyModuleTest extends TestCase

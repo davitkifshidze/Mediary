@@ -61,7 +61,7 @@ describe('catalogueKey', () => {
 
 describe('hiddenPicks', () => {
   it('keeps only what the form does not draw', () => {
-    /* ⚠️ ეს ცოცხალი ხარვეზია (Tasks §4.1): დამალული ველის შეცდომა
+    /* ⚠️ ეს ცოცხალი ხარვეზია: დამალული ველის შეცდომა
        `hidden` ელემენტზე იხატება, ე.ი. ღილაკი „შენახვა" ვიზუალურად
        არაფერს აკეთებს — ერთადერთი პასუხი ველის სახელით თქმაა. */
     const shows = (key: string) => key !== 'status'

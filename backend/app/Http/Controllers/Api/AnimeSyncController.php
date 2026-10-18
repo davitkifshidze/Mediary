@@ -23,7 +23,7 @@ class AnimeSyncController extends Controller
         try {
             $ok = $enricher->enrichAnime($anime);
         } catch (Throwable $e) {
-            // SEC-14 — გამონაკლისის ტექსტი კლიენტს არასდრობ პასუხში: Guzzle მას სრულ URL-ს
+            // გამონაკლისის ტექსტი კლიენტს არასდრობ პასუხში: Guzzle მას სრულ URL-ს
             // (`?api_key=…`) უწერს. მიზეზი `sources.log`-ში რ჉ება, პასუხში — მანქანური კოდი.
             SourceLog::threw('tmdb', $e);
 

@@ -8,13 +8,13 @@ import type { StatModule, StatsPayload } from '@/api/stats'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **სტატისტიკის გვერდი — ჩანართებად** (Tasks §28 → §49).
+   **სტატისტიკის გვერდი — ჩანართებად**.
 
    ⚠️ მოწმდება ის, რასაც ტიპი ვერ ხედავს: კალენდარი და საერთო „მედია"
-   აღარ არის (Q13) — ფილმი, სერიალი და ანიმე ცალკე ჩანართებია, პირველი
-   ნაგულისხმევია; მედია-ჩანართი Q20-ის სამ კითხვას ამ რიგით პასუხობს;
+   აღარ არის — ფილმი, სერიალი და ანიმე ცალკე ჩანართებია, პირველი
+   ნაგულისხმევია; მედია-ჩანართი სამ კითხვას ამ რიგით პასუხობს (ჟანრები · მსახიობები · თვეები);
    ცარიელ მოდულს ჩანართი არ აქვს, უცნობი `?tab=` პირველზე ბრუნდება;
-   სტატუსი და მსახიობი ბმულებია (§49.3/§49.5).
+   სტატუსი და მსახიობი ბმულებია.
    ⚠️ recharts-ის ზოლები jsdom-ში არ იხატება (ზომა არ აქვს) — მათი ბმულები
    `lib/statsLinks.test.ts`-შია.
    ============================================================ */
@@ -175,12 +175,12 @@ describe('StatsPage', () => {
     expect(genres).toBeLessThan(actors)
     expect(actors).toBeLessThan(months)
 
-    // §49.5 — მსახიობი ქართული სახელით და მისი გვერდის ბმულით
+    // მსახიობი ქართული სახელით და მისი გვერდის ბმულით
     const link = document.querySelector<HTMLAnchorElement>('a[href="/actors/42"]')
     expect(link?.textContent).toContain('ნინო ქასრაძე')
   })
 
-  it('a status opens its list with the matching filter (§49.3)', async () => {
+  it('a status opens its list with the matching filter', async () => {
     await mount('/stats?tab=movie')
     const movies = document.querySelector<HTMLAnchorElement>('ul a[href="/movies?view=watched"]')
     expect(movies?.textContent).toContain('ნანახი')
@@ -196,7 +196,7 @@ describe('StatsPage', () => {
   })
 
   /**
-   * ⚠️ „წელს/შარშან" მხოლოდ მიმდინარე წელზე ითქმის (§28.3) — არჩეულ წარსულ
+   * ⚠️ „წელს/შარშან" მხოლოდ მიმდინარე წელზე ითქმის — არჩეულ წარსულ
    * წელზე იგივე სიტყვა ტყუილი იქნებოდა, ამიტომ იქ წლები პირდაპირ იწერება.
    */
   it('says this year only about the current year', async () => {

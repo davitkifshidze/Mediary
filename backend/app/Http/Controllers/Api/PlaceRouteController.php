@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * ადგილის მარშრუტები (Tasks §30.3/§30.4).
+ * ადგილის მარშრუტები.
  *
  * `POST /places/{place}/route` — **გამოთვლა** ჩემი მიმდინარე მდებარეობიდან,
  * ჩანაწერს არ ქმნის (Nominatim-ის `candidates`-ის იგივე ფორმა). დანარჩენი —
@@ -20,7 +20,7 @@ use Illuminate\Validation\Rule;
  * ⚠️ საწყისი წერტილი მოთხოვნაშია და არა ბაზაში: მომხმარებლის მდებარეობა
  * სერვერზე მხოლოდ შენახულ მარშრუტში რჩება და მხოლოდ მისი ნებით.
  *
- * ⚠️ **Tasks §56** — საწყისი აღარ არის მხოლოდ გეოლოკაცია (სახლი, მისამართი, ჩემი
+ * ⚠️ **** — საწყისი აღარ არის მხოლოდ გეოლოკაცია (სახლი, მისამართი, ჩემი
  * ადგილი, რუკაზე დაჭერა — ყველა კლიენტში წყდება, აქ ისევ რიცხვებად მოდის);
  * `count` — რამდენი გზა (1–`RouteClient::MAX_ROUTES`); შენახულს `from_label`-იც
  * აქვს („სახლი", მისამართი…), რომ სიაში „საიდან" ეწეროს და არა კოორდინატები.
@@ -60,7 +60,7 @@ class PlaceRouteController extends Controller
 
         return response()->json(['data' => [
             'profile' => $profile,
-            // §56.3 — რამდენი ითხოვე; `routes` შეიძლება ნაკლები იყოს (OSRM მეტი ვერ იპოვა)
+            // რამდენი ითხოვე; `routes` შეიძლება ნაკლები იყოს (OSRM მეტი ვერ იპოვა)
             'requested' => (int) ($data['count'] ?? 3),
             'from' => ['lat' => (float) $data['from_lat'], 'lng' => (float) $data['from_lng']],
             'to' => ['lat' => (float) $place->lat, 'lng' => (float) $place->lng],
@@ -84,7 +84,7 @@ class PlaceRouteController extends Controller
             'from_lng' => ['required', 'numeric', 'between:-180,180'],
             // polyline5 — 100 000 სიმბოლო ≈ 20 000 წერტილი; მეტი რუკისთვის უაზროა
             'geometry' => ['required', 'string', 'max:100000'],
-            // §56.4 — „საიდან": სახლი, მისამართი, ადგილის სახელი (უსახელო — კოორდინატები)
+            // „საიდან": სახლი, მისამართი, ადგილის სახელი (უსახელო — კოორდინატები)
             'from_label' => ['nullable', 'string', 'max:160'],
         ]);
 
@@ -108,7 +108,7 @@ class PlaceRouteController extends Controller
 
     public function destroy(PlaceRoute $placeRoute)
     {
-        // ⚠️ ურნა (Tasks §29) — `delete()` კი არა, `moveToTrash()`
+        // ⚠️ ურნა — `delete()` კი არა, `moveToTrash()`
         $placeRoute->moveToTrash();
 
         return response()->noContent();

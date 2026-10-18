@@ -7,7 +7,7 @@ import type { Book } from '@/api/books'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **„გვერდის განახლება" — ღილაკები ქვედა ზოლში** (Tasks §40.6).
+   **„გვერდის განახლება" — ღილაკები ქვედა ზოლში**.
 
    შენი სიტყვები: „წიგნებში გვერდის ანალიზში „დავასრულე" ღილაკი ძალიან ცუდადაა".
    ფანჯარაში (`max-w-xl`) საფეხურები, ველი, სლაიდერი და ორი ღილაკი ერთ რიგში არ
@@ -45,7 +45,7 @@ const book = {
   progress_percent: 24,
 } as unknown as Book
 
-describe('ProgressDialog (§40.6)', () => {
+describe('ProgressDialog', () => {
   it('keeps the controls on top and puts Save and Finished together in the footer', async () => {
     mocks.setBookProgress.mockResolvedValue({ ...book, progress_percent: 100, progress_page: 412, status: 'read' })
     const { ProgressDialog } = await import('@/components/BookProgress')

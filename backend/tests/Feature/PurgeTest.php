@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Tasks 20 — მასობრივი წაშლა: გეგმა, დადასტურება, სკოუპები
+ * მასობრივი წაშლა: გეგმა, დადასტურება, სკოუპები
  * (ყველა · კონკრეტული · ჟანრი · სტატუსი · ვიდეოს ტიპი/ტეგი),
  * მხოლოდ გალერეის გასუფთავება და კვოტის განთავისუფლება.
  */
@@ -106,7 +106,7 @@ class PurgeTest extends TestCase
             ->assertJsonPath('plan.records', 1)
             ->assertJsonPath('plan.photos', 1)
             ->assertJsonPath('plan.bytes', 1000)
-            // ⚠️ Tasks §29.8 — სამიზნის ურნაში, მისი ვადით
+            // ⚠️ სამიზნის ურნაში, მისი ვადით
             ->assertJsonPath('plan.to_trash', true)
             ->assertJsonPath('plan.trash_days', 30);
 
@@ -121,7 +121,7 @@ class PurgeTest extends TestCase
             ->postJson('/api/admin/purge', ['target' => 'movie', 'mode' => 'all', 'confirm' => 'DELETE'])
             ->assertOk()
             ->assertJsonPath('result.records', 1)
-            // ⚠️ Tasks §29.8 — ჩანაწერი ურნაშია, ე.ი. ადგილი ჯერ არ თავისუფლდება (29.4)
+            // ⚠️ ჩანაწერი ურნაშია, ე.ი. ადგილი ჯერ არ თავისუფლდება
             ->assertJsonPath('storage.used', 1000);
 
         $this->assertSame(0, Movie::withoutGlobalScope('owner')->count());
@@ -224,7 +224,7 @@ class PurgeTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('result.photos', 2)
-            // ⚠️ Tasks §29.8 — ფოტოები ურნაშია და ადგილს ჯერ იკავებს
+            // ⚠️ ფოტოები ურნაშია და ადგილს ჯერ იკავებს
             ->assertJsonPath('storage.used', 800);
 
         $this->assertSame(1, Movie::withoutGlobalScope('owner')->count());
@@ -288,7 +288,7 @@ class PurgeTest extends TestCase
     /**
      * სიმღერები: „ტიპი" = მუსიკის ჟანრი, ტეგიც იმავე წესით.
      *
-     * ⚠️ ჟანრი **pivot-ია** 2026-09-06-იდან (`DECISIONS.md` §5), ე.ი. სკოუპი
+     * ⚠️ ჟანრი **pivot-ია** 2026-09-06-იდან, ე.ი. სკოუპი
      * `whereHas`-ზე გადის (`PurgeService::GENRE_PIVOTS`) და არა სვეტზე.
      */
     public function test_songs_by_genre_and_tag(): void
@@ -341,7 +341,7 @@ class PurgeTest extends TestCase
     }
 
     /**
-     * წიგნები (§12): „ტიპი" = per-user ჟანრის ლექსიკონი, სტატუსი კი **თავისი**
+     * წიგნები: „ტიპი" = per-user ჟანრის ლექსიკონი, სტატუსი კი **თავისი**
      * აქვს (`read`, და არა `watched`). ჩანიშვნები/ციტატები ჩანაწერთან ერთად ქრება.
      */
     public function test_books_by_genre_and_status(): void
@@ -392,13 +392,13 @@ class PurgeTest extends TestCase
             ->assertJsonPath('result.records', 1);
 
         $this->assertSame([$keep->id], Book::withoutGlobalScope('owner')->pluck('id')->all());
-        // ⚠️ Tasks §29.8 — ჩანიშვნა წიგნთან ერთად ურნაშია და მასთან ერთად ბრუნდება
+        // ⚠️ ჩანიშვნა წიგნთან ერთად ურნაშია და მასთან ერთად ბრუნდება
         $this->assertSame(1, BookNote::withoutGlobalScope('owner')->where('book_id', $gone->id)->count());
         // ლექსიკონი ხელუხლებელი რჩება
         $this->assertSame(count(BookGenre::DEFAULTS), BookGenre::withoutGlobalScope('owner')->count());
     }
 
-    /** ბორდგეიმები (§14): ჟანრი; ტეგი და (Tasks §12) სტატუსი მათ არ აქვთ — 422 */
+    /** ბორდგეიმები: ჟანრი; ტეგი და სტატუსი მათ არ აქვთ — 422 */
     public function test_board_games_by_genre_and_status(): void
     {
         BoardGameGenre::ensureDefaults($this->admin->id);
@@ -447,7 +447,7 @@ class PurgeTest extends TestCase
     }
 
     /**
-     * თამაშები (§11): ⚠️ ჟანრი **pivot-ია** და არა სვეტი, ე.ი. „ტიპით" წაშლა
+     * თამაშები: ⚠️ ჟანრი **pivot-ია** და არა სვეტი, ე.ი. „ტიპით" წაშლა
      * `whereHas`-ზე უნდა გადიოდეს; სტატუსებიც თავისი აქვს (`finished`).
      */
     public function test_games_by_genre_pivot_and_status(): void
@@ -501,7 +501,7 @@ class PurgeTest extends TestCase
     /**
      * ჟანრი ვიდეოზე და ტიპი მედიაზე — აზრი არ აქვს, 422.
      *
-     * ⚠️ **`tag` მედიაზე ისევ შეცდომაა** (Tasks §10 — FEAT-18-ის ტეგები
+     * ⚠️ **`tag` მედიაზე ისევ შეცდომაა** (მედიის ტეგები
      * ამოღებულია), `type` კი მედიაზე ყოველთვის უაზრო იყო — ლექსიკონი არ აქვს.
      */
     public function test_mode_must_match_the_target(): void
@@ -573,7 +573,7 @@ class PurgeTest extends TestCase
     }
 
     /**
-     * §25.1 — „კონკრეტული" სკოუპი **ყველა** დომენს აქვს.
+     * „კონკრეტული" სკოუპი **ყველა** დომენს აქვს.
      *
      * ⚠️ აქამდე ბუკმარკიდან/ჩანაწერიდან/თამაშიდან ერთი ჩანაწერის წაშლა
      * `/purge`-ით შეუძლებელი იყო: `mode: ids` **422**-ს იძლეოდა
@@ -608,7 +608,7 @@ class PurgeTest extends TestCase
     }
 
     /**
-     * §25.2 — ამრჩევის სია **სამიზნე ანგარიშისაა**.
+     * ამრჩევის სია **სამიზნე ანგარიშისაა**.
      *
      * ⚠️ ეს ცოცხალი ხარვეზი იყო: ფრონტი სიას მოდულის თავისი `index()`-იდან
      * კითხულობდა, რომელსაც `owner` სკოუპი **ჩემს** ჩანაწერებზე ჭრის — ე.ი.
@@ -662,7 +662,7 @@ class PurgeTest extends TestCase
             ->assertJsonPath('result.records', 1)
             ->assertJsonPath('result.title', 'Goner')
             ->assertJsonPath('result.bytes', 700)
-            // ⚠️ Tasks §29.8 — ურნაშია: `bytes` დაცლის შემდეგ გათავისუფლდება
+            // ⚠️ ურნაშია: `bytes` დაცლის შემდეგ გათავისუფლდება
             ->assertJsonPath('storage.used', 700);
 
         $this->assertSame([$keep->id], Movie::withoutGlobalScope('owner')->pluck('id')->all());
@@ -781,7 +781,7 @@ class PurgeTest extends TestCase
     }
 
     /**
-     * **სკოუპი ერთხელ ითვლება** (Tasks PERF-10).
+     * **სკოუპი ერთხელ ითვლება**.
      *
      * ⚠️ `run()` ჯერ `plan()`-ს იძახებდა (რომელიც `recordIds()`-ს აკეთებს),
      * მერე `recordIds()`-ს **თავიდან**. ორმაგი ხარჯი ერთი ნახევარია; მეორე
@@ -820,7 +820,7 @@ class PurgeTest extends TestCase
     }
 
     /**
-     * BUG-16 — ბუკმარკზე `mode=tag` **მხოლოდ ტეგიანს** გეგმავს და შლის.
+     * ბუკმარკზე `mode=tag` **მხოლოდ ტეგიანს** გეგმავს და შლის.
      *
      * ⚠️ ცოცხალი ხარვეზი იყო და არა თეორიული: `TARGET_MODES['bookmark']`-ს
      * `tag` ეწერა (ე.ი. ვალიდაცია გადიოდა), `recordIds()`-ის ფილტრი კი
@@ -875,7 +875,7 @@ class PurgeTest extends TestCase
     }
 
     /**
-     * **ბუკმარკს, კურსსა და ადგილს „ტიპი" `category_id`-ია** (ნაპოვნია §37.5-ზე).
+     * **ბუკმარკს, კურსსა და ადგილს „ტიპი" `category_id`-ია**.
      *
      * ⚠️ `recordIds()` მათზე `genre_id`-ს ეძებდა. MySQL-ზე ეს `Unknown column`
      * — 500 — იყო, sqlite-ზე კი **ჩუმად ცარიელი** სკოუპი: ორმაგ ბრჭყალებში
@@ -903,7 +903,7 @@ class PurgeTest extends TestCase
     }
 
     /**
-     * ⚠️ **ერთი ტესტი ხუთივე სამიზნეზე და არა ხუთი ცალკე** (BUG-16): გატეხილი
+     * ⚠️ **ერთი ტესტი ხუთივე სამიზნეზე და არა ხუთი ცალკე**: გატეხილი
      * სწორედ სიის ორად ჩაწერა იყო, ე.ი. შემოწმებაც `TARGET_MODES`-იდან უნდა
      * წაიკითხოს, ვის ეხება — თორემ მეექვსე დომენის დამატებისას ტესტიც ისევე
      * დარჩებოდა უკან, როგორც ფილტრი დარჩა.
@@ -915,7 +915,7 @@ class PurgeTest extends TestCase
             fn (array $modes) => in_array('tag', $modes, true),
         ));
 
-        // Tasks §10 — მედიის ტეგები ამოღებულია, ე.ი. სამი მედია-დომენი სიიდან გავიდა
+        // მედიის ტეგები ამოღებულია, ე.ი. სამი მედია-დომენი სიიდან გავიდა
         $this->assertSame(
             ['video', 'song', 'book', 'note', 'bookmark', 'course', 'place'],
             $targets,
@@ -968,12 +968,12 @@ class PurgeTest extends TestCase
                 Bookmark::create(['user_id' => $user, 'title' => 'ტეგიანი ბმული', 'url' => 'https://b.example/1', 'tags' => ['ტეგი']]),
                 Bookmark::create(['user_id' => $user, 'title' => 'უტეგო ბმული', 'url' => 'https://b.example/2']),
             ],
-            // FEAT-25 — კურსებს ტეგები აქვს
+            // კურსებს ტეგები აქვს
             'course' => [
                 Course::create(['user_id' => $user, 'title' => 'ტეგიანი კურსი', 'tags' => ['ტეგი']]),
                 Course::create(['user_id' => $user, 'title' => 'უტეგო კურსი']),
             ],
-            // FEAT-26 — ადგილსაც
+            // ადგილსაც
             default => [
                 Place::create(['user_id' => $user, 'name' => 'ტეგიანი ადგილი', 'tags' => ['ტეგი']]),
                 Place::create(['user_id' => $user, 'name' => 'უტეგო ადგილი']),
@@ -982,9 +982,9 @@ class PurgeTest extends TestCase
     }
 
     /**
-     * **ყველა სამიზნე × ყველა რეჟიმი — რეგისტრის ორივე მხარე** (Tasks DEBT-14).
+     * **ყველა სამიზნე × ყველა რეჟიმი — რეგისტრის ორივე მხარე**.
      *
-     * ⚠️ `TARGET_MODES` ერთადერთი წყაროა და მისი დაშორება **ჩუმია**: BUG-16-ში
+     * ⚠️ `TARGET_MODES` ერთადერთი წყაროა და მისი დაშორება **ჩუმია**: ერთხელ
      * ბუკმარკს `tag` ეწერა, ფილტრს კი ის არ ჰქონდა — ე.ი. „ტეგით წაშლა"
      * მთელ ბიბლიოთეკას შლიდა და გეგმაც იმავე რიცხვს აჩვენებდა. ერთი წყვილის
      * შემოწმება ამას ვერ იჭერს, ამიტომ მატრიცა სრულია.

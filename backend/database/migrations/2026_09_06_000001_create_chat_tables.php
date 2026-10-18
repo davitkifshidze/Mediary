@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **ჩატი (Tasks §16.3)** — პირადი მიმოწერა ორ მომხმარებელს შორის.
+ * **ჩატი** — პირადი მიმოწერა ორ მომხმარებელს შორის.
  *
  * სამი ცხრილი:
  *  · `conversations` — თვითონ საუბარი;
@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Schema;
  * შეძლოს დაწყება.
  *
  * ⚠️ **მედიის ველები თავიდანვე დგას** (`attachment_*`), თუმცა ატვირთვა ჯერ
- * არ იწერება: §19.5-ის პასუხი წაშლის **ქცევას** ცვლის და არა სქემას, ე.ი.
+ * არ იწერება: წაშლის შესახებ გადაწყვეტილება **ქცევას** ცვლის და არა სქემას, ე.ი.
  * ცხრილს მოგვიანებით მიგრაცია არ დასჭირდება.
  */
 return new class extends Migration
@@ -62,12 +62,12 @@ return new class extends Migration
             $table->foreignId('conversation_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
 
-            // text | emoji | gif | image | video | file (§16.3)
+            // text | emoji | gif | image | video | file
             $table->string('type', 20)->default('text');
             $table->text('body')->nullable();
 
             /* მედია — ველები დგას, ჩაწერა ჯერ არ ხდება (იხ. კლასის შენიშვნა).
-               `attachment_path` პრივატულ დისკზე იქნება (§17.5). */
+               `attachment_path` პრივატულ დისკზე იქნება. */
             $table->string('attachment_path')->nullable();
             $table->string('attachment_name')->nullable();
             $table->string('attachment_mime', 120)->nullable();

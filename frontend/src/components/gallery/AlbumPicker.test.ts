@@ -7,7 +7,7 @@ import type { GalleryAlbum } from '@/api/gallery'
 import '@/i18n'
 
 /* ============================================================
-   ალბომის ამრჩევი — **ლოკი იქვე (Tasks §17.2)**.
+   ალბომის ამრჩევი — **ლოკი იქვე**.
 
    შენი სიტყვები: „ალბომის ჩაკეტვაც — სრული ფუნქციონალი". ამრჩევი
    გადატანის ფანჯარაშია — მსახიობის გვერდიდანაც —, ე.ი. აქ მოწმდება
@@ -154,7 +154,7 @@ async function openDraft(node: HTMLElement, name: string) {
   return i18n
 }
 
-describe('AlbumPicker — ადგილზე შექმნა პაროლით (§17.2)', () => {
+describe('AlbumPicker — ადგილზე შექმნა პაროლით', () => {
   it('ჩართული ლოკი პაროლს სერვერამდე მიიტანს და ახალ ალბომს მაშინვე ირჩევს', async () => {
     const node = await mount()
     const i18n = await openDraft(node, 'ახალი')

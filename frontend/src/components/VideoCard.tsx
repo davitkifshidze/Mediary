@@ -25,13 +25,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { VideoBadges } from '@/components/VideoBadges'
 
 /* ============================================================
-   **ვიდეოს ბარათი** (Tasks §19) — `VideosPage`-დან ცალკე გამოვიდა (§19.7).
+   **ვიდეოს ბარათი** — `VideosPage`-დან ცალკე გამოვიდა.
 
    შენი სიტყვები: „თუ აქვს ტეგები, მერე ქვედა რედაქტირება და წყაროები ზოგგან
    მაღლაა, ზოგგან დაბლა — ცარიელი ადგილიც გაითვალისწინეთ, რომ ყველაფერი
    სიმეტრიული იყოს“.
 
-   ⚠️ **სიმეტრია სლოტებითაა და არა პირობებით** (§14.2/§19.4): ბარათი
+   ⚠️ **სიმეტრია სლოტებითაა და არა პირობებით**: ბარათი
    `flex h-full flex-col`-ია, ბეჯების სტრიქონი ყოველთვის სამია (`VideoBadges`),
    მეტა-ხაზი ყოველთვის ერთი სტრიქონია (`truncate`, ცარიელზეც ადგილს იკავებს),
    ტეგების სლოტი `min-h-7`-ია ტეგების გარეშეც, მოქმედებების ზოლი `mt-auto`-თი
@@ -39,13 +39,13 @@ import { VideoBadges } from '@/components/VideoBadges'
    ღილაკია (ზომა და ფორმატი თულთიპში), რომ ზოლის სიგრძე არ იცვლებოდეს;
    ლოკალური ასლის წაშლა კონტექსტურ მენიუშია.
 
-   ⚠️ ჩამოტვირთვის ბეჯი ესკიზზე თემის ფერებზეა (§19.5): მზა — `--status-watched`,
+   ⚠️ ჩამოტვირთვის ბეჯი ესკიზზე თემის ფერებზეა: მზა — `--status-watched`,
    გაჩერებული — `--status-towatch`, ჩავარდნილი — `--destructive`; `rounded-md`.
 
-   ⚠️ **Tasks §53 (Q14) — ზოლში ოთხი ღილაკია: რჩეული · ჩამოტვირთვა ·
+   ⚠️ **ზოლში ოთხი ღილაკია: რჩეული · ჩამოტვირთვა ·
    რედაქტირება · წაშლა.** ადრე იქ „წყარო“ და „აქედან დაკვრაც“ იდგა და
    ვიწრო ბარათზე ზოლი ბოლოში იჭრებოდა. ესკიზი და სათაური ფანჯარას ხსნის —
-   დაკვრა იქაა (§48), ბმული — ფანჯრის „ბმულის გახსნა“ და კონტექსტური მენიუ
+   დაკვრა იქაა, ბმული — ფანჯრის „ბმულის გახსნა“ და კონტექსტური მენიუ
    (იქვეა „აქედან დაკვრაც“). რჩეული სათაურის ხაზიდან ზოლში ჩამოვიდა (`h-9`).
    ზოლი არასოდეს იჭრება: ღილაკები `shrink-0`-ია და უკიდურესად ვიწროზე ზოლი
    მეორე ხაზზე გადადის (`flex-wrap`); ბადის სვეტი კი ბარათს ~340 px-ზე ნაკლებს
@@ -71,7 +71,7 @@ export interface VideoCardProps {
   onToggleFavorite: () => void
   favoritePending?: boolean
   download: VideoCardDownload
-  /** Tasks §21.2 — მზა ლოკალური ასლი ცალკე ფლეერში იხსნება (არა ბრაუზერის მნახველში) */
+  /** მზა ლოკალური ასლი ცალკე ფლეერში იხსნება (არა ბრაუზერის მნახველში) */
   onPlayLocal: () => void
 }
 
@@ -95,7 +95,7 @@ export function VideoCard({
   return (
     <RecordContextMenu actions={actions}>
       <article className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card" data-testid="video-card">
-        {/* ⚠️ §35.6 — ფანჯრის გახსნა **ნახვად აღარ ითვლება**: ნახვას დამკვრელი ითვლის ჩართვაზე */}
+        {/* ⚠️ ფანჯრის გახსნა **ნახვად აღარ ითვლება**: ნახვას დამკვრელი ითვლის ჩართვაზე */}
         <button
           type="button"
           onClick={onOpen}
@@ -117,7 +117,7 @@ export function VideoCard({
               {formatDuration(v.duration)}
             </span>
           )}
-          {/* §7.1 — „ეს ლოკალურად მაქვს“ საერთო სიაშიც ჩანს; ფერები თემიდან (§19.5) */}
+          {/* „ეს ლოკალურად მაქვს“ საერთო სიაშიც ჩანს; ფერები თემიდან */}
           {v.download_status && (
             <span
               title={download.hint}
@@ -145,7 +145,7 @@ export function VideoCard({
         </button>
 
         <div className="flex flex-1 flex-col p-3">
-          {/* §53 (Q14) — სათაურიც ფანჯარას ხსნის, როგორც ესკიზი */}
+          {/* სათაურიც ფანჯარას ხსნის, როგორც ესკიზი */}
           <h3 className="min-w-0 text-sm font-medium">
             <button
               type="button"
@@ -158,7 +158,7 @@ export function VideoCard({
             </button>
           </h3>
 
-          {/* §19.3 — სამი ბეჯი ერთი ზომით, ზევით-ქვევით მეტი დაშორებით */}
+          {/* სამი ბეჯი ერთი ზომით, ზევით-ქვევით მეტი დაშორებით */}
           <VideoBadges video={v} lang={lang} className="my-3" />
 
           {/* მეტა-ხაზი — ყოველთვის ერთი სტრიქონი; ცარიელიც ადგილს იკავებს */}
@@ -191,7 +191,7 @@ export function VideoCard({
             )}
           </p>
 
-          {/* ტეგების სლოტი — ტეგების გარეშეც ადგილზეა (§19.4) */}
+          {/* ტეგების სლოტი — ტეგების გარეშეც ადგილზეა */}
           <div
             className="mt-2 flex min-h-7 flex-wrap items-center gap-1"
             data-testid="video-tags"
@@ -204,15 +204,15 @@ export function VideoCard({
             ))}
           </div>
 
-          {/* §53.2 — ოთხი ღილაკი; `min-w-0` + `shrink-0` + `flex-wrap`: ჭრის ნაცვლად მეორე ხაზი */}
+          {/* ოთხი ღილაკი; `min-w-0` + `shrink-0` + `flex-wrap`: ჭრის ნაცვლად მეორე ხაზი */}
           <div
             className="mt-auto flex min-w-0 flex-wrap items-center gap-1 border-t border-border pt-2 [&>*]:shrink-0"
             data-testid="video-actions"
           >
-            {/* Tasks §8 — რჩეული ტექსტით და ფერით (§53 — სათაურის ხაზიდან აქ ჩამოვიდა, `h-9`) */}
+            {/* რჩეული ტექსტით და ფერით (სათაურის ხაზიდან აქ ჩამოვიდა, `h-9`) */}
             <FavoriteButton active={v.is_favorite} pending={favoritePending} onToggle={onToggleFavorite} />
 
-            {/* §7.1/§19.4 — ლოკალური ასლი ერთ ღილაკში; მზაზე — ლოკალური ფლეერი (§21.2), თორემ — ჩამოტვირთვა */}
+            {/* ლოკალური ასლი ერთ ღილაკში; მზაზე — ლოკალური ფლეერი, თორემ — ჩამოტვირთვა */}
             {v.download_status === 'ready' ? (
               <Tooltip>
                 <TooltipTrigger asChild>

@@ -6,13 +6,13 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **მიზნები — ზოლი ბარათების ზემოთ და მოდალი** (Tasks §27.2/§27.3, §1).
+   **მიზნები — ზოლი ბარათების ზემოთ და მოდალი**.
 
    ⚠️ მოწმდება: ზოლი მიზნის გარეშეც ჩანს („მიზანი ჯერ არ დაგისახავს") და
    „მიზნის დაყენება" მოდალს ხსნის, მოდულის ჩართვა საწყის 12-ს სვამს, სწრაფი
    ვარიანტი რიცხვს ცვლის, „შენახვა" ინახავს და ჩავარდნაზე ფანჯარას ღიად
-   ტოვებს (§1.3), დახურვა ცვლილებას აბრუნებს (§4.5), სიად ქცეული მიზანი კი
-   ცარიელად ითვლება და შენახვაზე ობიექტში არ იშლება (§1).
+   ტოვებს, დახურვა ცვლილებას აბრუნებს, სიად ქცეული მიზანი კი
+   ცარიელად ითვლება და შენახვაზე ობიექტში არ იშლება.
    ============================================================ */
 
 const mocks = vi.hoisted(() => ({
@@ -105,7 +105,7 @@ describe('goal pace', () => {
     expect(Number.isFinite(paceOf(3, 2026, new Date(2026, 0, 1)))).toBe(true)
   })
 
-  it('treats anything but an object as "no goals" (§1)', async () => {
+  it('treats anything but an object as "no goals"', async () => {
     const { yearlyGoals } = await import('@/components/YearGoals')
 
     expect(yearlyGoals({ 2026: 12 })).toEqual({ 2026: 12 })
@@ -161,7 +161,7 @@ describe('YearGoals', () => {
     expect(buttonWith(i18n.t('actions.save'))).toBeFalsy()
   })
 
-  it('a failed save keeps the editor open (§1.3)', async () => {
+  it('a failed save keeps the editor open', async () => {
     mocks.settings.goals = { book: { 2026: 12 } }
     mocks.save.mockResolvedValue(false)
     await mount()
@@ -195,7 +195,7 @@ describe('YearGoals', () => {
     expect(buttonWith(i18n.t('actions.save'))).toBeTruthy()
   })
 
-  it('closing without saving puts the old goals back (§4.5)', async () => {
+  it('closing without saving puts the old goals back', async () => {
     mocks.settings.goals = { movie: { 2026: 52 } }
     await mount()
 
@@ -206,7 +206,7 @@ describe('YearGoals', () => {
     expect(mocks.set).toHaveBeenLastCalledWith('goals', { movie: { 2026: 52 } })
   })
 
-  it('a goal that arrived as a list counts as unset and is not spread on save (§1)', async () => {
+  it('a goal that arrived as a list counts as unset and is not spread on save', async () => {
     mocks.settings.goals = { movie: [50, 10, 10, 12] }
     await mount()
 

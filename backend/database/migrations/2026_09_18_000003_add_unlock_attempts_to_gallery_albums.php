@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **Tasks FEAT-04 — ალბომის პაროლის მცდელობათა მრიცხველი.**
+ * **ალბომის პაროლის მცდელობათა მრიცხველი.**
  *
  * ⚠️ **`throttle:album-unlock` ამას ვერ ცვლის.** ის ანონიმზე **IP + ალბომზე**
  * ითვლის, ე.ი. IP-ის როტაცია მას გვერდს უვლის — ხოლო ალბომის პაროლი

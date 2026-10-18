@@ -52,7 +52,7 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 /** ⚠️ ღილაკების რიგი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
 const FORM_ID = 'media-form'
 
-/* ⚠️ **გვერდის ფორმა თეთრ ბარათებადაა** (§26-მდელი სახე, დაბრუნდა
+/* ⚠️ **გვერდის ფორმა თეთრ ბარათებადაა** (ძველი სახე, დაბრუნდა
    2026-09-28): ქაღალდის ფონზე თეთრი ფილა ველებს აჯგუფებს. მოდალის ფორმებს
    ეს არ სჭირდებათ — იქ თვითონ მოდალია თეთრი ბარათი. */
 const FORM_CARD = 'rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6'
@@ -67,12 +67,12 @@ const EMPTY = {
   trailer_url: '',
   description_ka: '',
   description_en: '',
-  /** Tasks §9 (Q1) — „ჩემი ქულა" (`my_rating`); TMDB-ის `rating`-ს ფორმა აღარ ეხება */
+  /** „ჩემი ქულა" (`my_rating`); TMDB-ის `rating`-ს ფორმა აღარ ეხება */
   my_rating: null as number | null,
-  // §2.5 — ხანგრძლივობა **წუთებში** (`movies.runtime`), `DurationInput`-ით
+  // ხანგრძლივობა **წუთებში** (`movies.runtime`), `DurationInput`-ით
   runtime: '',
   genres: [] as string[],
-  /** §6.4 — ლექსიკონის **გასაღები**; ცარიელი = „როგორც არის" (ახალზე ნაგულისხმევი) */
+  /** ლექსიკონის **გასაღები**; ცარიელი = „როგორც არის" (ახალზე ნაგულისხმევი) */
   status: '',
   is_favorite: false,
 }
@@ -87,7 +87,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
   const { toast } = useToast()
   const api = mediaApi(type)
   const lang = useContentLang(i18n.language)
-  // §6.4 — სტატუსების ლექსიკონი დომენისაა
+  // სტატუსების ლექსიკონი დომენისაა
   const { data: statuses = [] } = useStatuses(type)
   const { settings } = useSettings()
   const { detailBase, libraryPath } = mediaOf(type)
@@ -101,15 +101,15 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
   const [lookupInput, setLookupInput] = useState('')
   const [lookupTmdbId, setLookupTmdbId] = useState<number | null>(null)
   const [lookupErr, setLookupErr] = useState<string | null>(null)
-  // Tasks §30.6 — ჩემი TMDB-ის გასაღები არ მაქვს (≠ „ვერ მოიძებნა" და ≠ „წყარო არ პასუხობს")
+  // ჩემი TMDB-ის გასაღები არ მაქვს (≠ „ვერ მოიძებნა" და ≠ „წყარო არ პასუხობს")
   const [lookupNoKey, setLookupNoKey] = useState(false)
   const [candidates, setCandidates] = useState<Candidate[]>([])
-  /** Tasks §50 — ნაპოვნი სხვა ტიპისაა: „სერიალებში გადასვლა" / „მაინც ფილმად" */
+  /** ნაპოვნი სხვა ტიპისაა: „სერიალებში გადასვლა" / „მაინც ფილმად" */
   const [suggest, setSuggest] = useState<TypeSuggest | null>(null)
 
-  // §6 — რომელი არჩევითი ველი ჩანს ამ დომენზე (ლიმიტი per-module-ია)
+  // რომელი არჩევითი ველი ჩანს ამ დომენზე (ლიმიტი per-module-ია)
   const fields = useModuleFields(type)
-  /* §26.5 — დამატებითი ველები ახალ ჩანაწერზეც. ⚠️ ჩავარდნისას გვერდი ღია
+  /* დამატებითი ველები ახალ ჩანაწერზეც. ⚠️ ჩავარდნისას გვერდი ღია
      რჩება და შექმნილს ანახლებს (`extras.current`) — მეორე „შენახვა" დუბლს
      აღარ ქმნის. */
   const extras = useRecordExtras(type, editing ? { id: Number(id) } : null)
@@ -117,7 +117,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
   // დომენზე მიბმული ტექსტი — სერიალის ფორმაზე „ფილმი" აღარ ეწეროს
   /* დომენზე მიბმული ტექსტი — სერიალის ფორმაზე „ფილმი" აღარ ეწეროს.
      ⚠️ **სუფიქსი დომენიდან იგება** (`Series` / `Anime`) და ფილმი უსუფიქსოა:
-     ასე მესამე დომენის (§7.1) დამატება ერთი i18n-წყვილია და არა `if`. */
+     ასე მესამე დომენის დამატება ერთი i18n-წყვილია და არა `if`. */
   const tm = (key: string) =>
     t(type === 'movie' ? `form.${key}` : `form.${key}${type === 'series' ? 'Series' : 'Anime'}`)
 
@@ -157,7 +157,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
     if (form.trailer_url) fd.append('trailer_url', form.trailer_url)
     fd.append('description_ka', form.description_ka)
     fd.append('description_en', form.description_en)
-    // Tasks §9 — ჩემი ქულა ყოველთვის იგზავნება: ცარიელი სტრიქონი = წაშლა (`Rating::normalize()`)
+    // ჩემი ქულა ყოველთვის იგზავნება: ცარიელი სტრიქონი = წაშლა (`Rating::normalize()`)
     fd.append('my_rating', form.my_rating == null ? '' : String(form.my_rating))
     if (form.runtime) fd.append('runtime', form.runtime)
     // ცარიელი გასაღები საერთოდ არ იგზავნება — backend ნაგულისხმევს დაუყენებს
@@ -191,11 +191,11 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
     if (d.poster) setPreview(d.poster)
   }
 
-  /* Tasks §30.6 — სწრაფი შევსების ჩავარდნა სამი სხვადასხვა ფაქტია და
+  /* სწრაფი შევსების ჩავარდნა სამი სხვადასხვა ფაქტია და
      სამნაირად ითქმის: გასაღები არ მაქვს (409 `credential_missing` →
      „მონაცემების" ბმული), ვერ მოიძებნა (404 `tmdb_not_found`) და წყარო არ
      პასუხობს (502 `tmdb_error`).
-     ⚠️ **`message` მანქანური კოდია** (GAP-01) — ადრე ის პირდაპირ იწერებოდა
+     ⚠️ **`message` მანქანური კოდია** — ადრე ის პირდაპირ იწერებოდა
      ეკრანზე, ე.ი. გასაღების გარეშე ფორმაში ნედლი „credential_missing" ჩანდა.
      ამიტომ ტექსტი `errorMessage()`-ით ითარგმნება. */
   const onLookupError = (e: unknown) => {
@@ -239,11 +239,11 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       setSuggest(hint)
       if (!list.length) {
         setCandidates([])
-        // §50 — აქ ვერ მოიძებნა, სხვა ტიპში კი მოიძებნა: მინიშნება თვითონ ხსნის
+        // აქ ვერ მოიძებნა, სხვა ტიპში კი მოიძებნა: მინიშნება თვითონ ხსნის
         if (!hint) setLookupErr(tm('lookupNotFound'))
         return
       }
-      // ⚠️ §50 — მინიშნებისას ერთი კანდიდატიც თავისით არ ირჩევა: ჯერ ტიპი წყდება
+      // ⚠️ მინიშნებისას ერთი კანდიდატიც თავისით არ ირჩევა: ჯერ ტიპი წყდება
       if (list.length === 1 && !hint) {
         setCandidates([])
         pickMut.mutate(list[0].tmdb_id)
@@ -256,7 +256,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
 
   const lookupBusy = candidatesMut.isPending || pickMut.isPending
 
-  /* Tasks §50 — `?tmdb=<id>` (სხვა ფორმის „…ში გადასვლა") ახალ ფორმას თავისით
+  /* `?tmdb=<id>` (სხვა ფორმის „…ში გადასვლა") ახალ ფორმას თავისით
      ავსებს. ⚠️ ჟანრების სიას ელოდება — შევსება ჟანრებს სახელით უთანადებს
      (`fillFromDraft`), ადრე მოსული დრაფტი მათ დაკარგავდა; ⚠️ ერთხელ — ref-ით. */
   const prefill = editing ? null : Number(params.get('tmdb')) || null
@@ -268,7 +268,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefill, genresQ.data])
 
-  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს**: ბლოკი
      `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
      ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
   const warnHidden = (missing: string[]) => {
@@ -311,7 +311,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         return
       }
 
-      // 19.3 — ტექსტი დომენს მიჰყვება: სერიალზე „ფილმი დაემატა" ეწერა
+      // ტექსტი დომენს მიჰყვება: სერიალზე „ფილმი დაემატა" ეწერა
       if (!editing) {
         toast({ title: t(type === 'series' ? 'toast.addedSeries' : 'toast.added'), variant: 'success' })
       }
@@ -346,7 +346,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         setRemovePoster(false)
       }
     },
-    /* Tasks §30.6 — `onError` აქ საერთოდ არ იყო, ე.ი. გასაღების გარეშე
+    /* `onError` აქ საერთოდ არ იყო, ე.ი. გასაღების გარეშე
        (409 `credential_missing`) ღილაკი ჩუმად არაფერს აკეთებდა. */
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
@@ -363,7 +363,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
 
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          {/* Tasks §4.1 — ტერნარი ანიმეს „ფილმის დამატებას“ აწერდა */}
+          {/* ტერნარი ანიმეს „ფილმის დამატებას“ აწერდა */}
           {t(mediaKey(editing ? 'form.editTitle' : 'form.addTitle', type))}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -393,7 +393,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         }}
         className="space-y-6"
       >
-        {/* --- §26.2 — სწრაფი შევსება (ყველა ფორმის ერთი ბლოკი) --- */}
+        {/* --- სწრაფი შევსება (ყველა ფორმის ერთი ბლოკი) --- */}
         <QuickFill title={t('form.lookup')} hint={t('form.lookupHint')} htmlFor="m-lookup">
           <QuickFillSearch
             id="m-lookup"
@@ -407,7 +407,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
           {lookupErr && <QuickFillMessage tone="error">{lookupErr}</QuickFillMessage>}
           {lookupNoKey && <CredentialMissingNotice provider="tmdb" />}
 
-          {/* Tasks §50 — „„ბრეკინგ ბედი" სერიალია — სერიალებში დავამატო?"
+          {/* „„ბრეკინგ ბედი" სერიალია — სერიალებში დავამატო?"
               გადასვლისას იქ ფორმა შევსებული ხვდება (`?tmdb=`). ⚠️ `type="button"` —
               ფორმის შიგნითაა, თორემ „შენახვას" გაუშვებდა. */}
           {suggest && (
@@ -452,7 +452,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         </QuickFill>
 
         {/* --- თარგმანადი შიგთავსი — თეთრი ბარათი ---
-            ⚠️ **ბარათები დაბრუნდა (2026-09-28, შენი მოთხოვნა).** §26-მა სექციები
+            ⚠️ **ბარათები დაბრუნდა (2026-09-28, შენი მოთხოვნა).** წინა ვერსიამ სექციები
             ფონზე, მხოლოდ სათაურის ხაზით დაალაგა — თეთრი ფონი გაქრა და გვერდი
             ერთ უწყვეტ სივრცედ იკითხებოდა. ბარათი ველებს აჯგუფებს: ერთი თეთრი
             ფილა = ერთი თემა, ქაღალდის ფონი მათ შორის = საზღვარი. */}
@@ -461,8 +461,8 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             {t('detail.content')} · {t(`lang.${i18n.language === 'en' ? 'en' : 'ka'}`)}
           </div>
 
-          {/* ⚠️ სათაური `locked`-ია (§6.5): ერთი ენა ყოველთვის სავალდებულოა.
-              ⚠️ **`shows()` მაინც ისმის (Tasks §4.5)** — ჩაკეტვა ახლა
+          {/* ⚠️ სათაური `locked`-ია: ერთი ენა ყოველთვის სავალდებულოა.
+              ⚠️ **`shows()` მაინც ისმის** — ჩაკეტვა ახლა
               სუპერ-ადმინს ცხადად ეხსნება, ე.ი. „აზრი არ აქვს" აღარ მართლდება:
               ჩამრთველი, რომელიც ფორმაზე არაფერს ცვლის, ღილაკის არარსებობაზე
               უარესია. ⚠️ ენა მხოლოდ იმას წყვეტს, რომელი `Input` დაიხატება —
@@ -502,7 +502,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         <section className={cn(FORM_CARD, 'space-y-4')}>
           <div className={CARD_TITLE}>{t('form.details')}</div>
 
-          {/* Tasks §38 — საერთო `MediaRow` (ფორმების იგივე წესი): 160 px-იანი სვეტი, ჩარჩო
+          {/* საერთო `MediaRow` (ფორმების იგივე წესი): 160 px-იანი სვეტი, ჩარჩო
               ველების სიმაღლისაა ლეიბლის გამოკლებით; გვერდით — წელი, შეფასება, ხანგრძლივობა
               (ორ ველზე ჩარჩო კვადრატი გამოდიოდა და პოსტერს ჭრიდა) */}
           <MediaRow
@@ -532,7 +532,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             }
           >
             <div className="space-y-4">
-              {/* §38.4 — `min-w-0`: დიდი პოსტერი მეზობელ ბადეს აღარ ჭყლეტს */}
+              {/* `min-w-0`: დიდი პოსტერი მეზობელ ბადეს აღარ ჭყლეტს */}
               <div className="grid min-w-0 grid-cols-2 gap-4">
                 {fields.shows('year') && (
                   <div>
@@ -554,7 +554,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
                     <FieldLabel htmlFor="m-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
                       {fields.label('rating')}
                     </FieldLabel>
-                    {/* Tasks §9 (Q1) → §42 — ჩამოსაშლელი „★ 1…10" + წილადი `my_rating`-ზე; TMDB-ის საშუალო ქვემოთ მხოლოდ საკითხავად */}
+                    {/* ჩამოსაშლელი „★ 1…10" + წილადი `my_rating`-ზე; TMDB-ის საშუალო ქვემოთ მხოლოდ საკითხავად */}
                     <RatingSelect
                       id="m-rating"
                       value={form.my_rating}
@@ -571,7 +571,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
                 )}
               </div>
 
-              {/* §2.5 — ხანგრძლივობა ხელით; ჩვეულებრივ TMDB-იდან მოდის */}
+              {/* ხანგრძლივობა ხელით; ჩვეულებრივ TMDB-იდან მოდის */}
               <FormField {...fields.field('runtime')} htmlFor="m-runtime" error={errors.runtime?.[0]}>
                 <DurationInput
                   id="m-runtime"
@@ -583,14 +583,14 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             </div>
           </MediaRow>
 
-          {/* ⚠️ §8 — ველის ინსტრუქცია `i`-ია და არა ქვეწარწერა */}
+          {/* ⚠️ ველის ინსტრუქცია `i`-ია და არა ქვეწარწერა */}
           <FormField
             {...fields.field('ge_url')}
             hint={joinHints(fields.hint('ge_url'), t('form.ge_urlHint'))}
             htmlFor="m-ge-url"
             error={errors.ge_url?.[0]}
           >
-            {/* Tasks §15.3 — ბმულის მეტა-მონაცემი გაცნობისთვის: სწორი გვერდია თუ არა, აქვე ჩანს */}
+            {/* ბმულის მეტა-მონაცემი გაცნობისთვის: სწორი გვერდია თუ არა, აქვე ჩანს */}
             <LinkField
               id="m-ge-url"
               value={form.ge_url}
@@ -599,7 +599,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             />
           </FormField>
 
-          {/* ტრეილერი (Tasks 9) — ცარიელზე სინქრონი TMDB-დან თვითონ მოიტანს */}
+          {/* ტრეილერი — ცარიელზე სინქრონი TMDB-დან თვითონ მოიტანს */}
           <FormField
             {...fields.field('trailer_url')}
             hint={joinHints(fields.hint('trailer_url'), t('form.trailer_urlHint'))}
@@ -631,7 +631,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
               <div
                 className={cn('flex flex-wrap gap-1.5', errors.status && 'rounded-md border border-destructive p-1.5')}
               >
-                {/* §6.4 — სია ლექსიკონიდან. ⚠️ ნაგულისხმები აღარ იდება — არცევა სავალდებულოა */}
+                {/* სია ლექსიკონიდან. ⚠️ ნაგულისხმები აღარ იდება — არცევა სავალდებულოა */}
                 {statuses.map((s) => (
                   <button
                     key={s.id}
@@ -641,7 +641,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
                       'inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
                       form.status === s.key ? STATUS_ACTIVE[statusTone(s)] : STATUS_INACTIVE[statusTone(s)],
                     )}
-                    // Tasks §16.3 — საკუთარი ფერი კლასებს ზემოდან ადგება; აიქონი წინ
+                    // საკუთარი ფერი კლასებს ზემოდან ადგება; აიქონი წინ
                     style={statusStyle(s, form.status === s.key ? 'active' : 'inactive')}
                   >
                     {s.icon && <ModuleIcon name={s.icon} className="size-3.5" />}
@@ -663,7 +663,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         </section>
       </form>
 
-      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები (თავისი თეთრი ბარათი).
+      {/* დამატებითი ველები (თავისი თეთრი ბარათი).
           ⚠️ `<form>`-ის **გარეთაა**: არსებულ ჩანაწერზე ბარათი თვითონ ინახავს
           თავს (მნიშვნელობები ცალკე ცხრილშია), ახალზე — მონახაზია და ჩანაწერთან
           ერთად ინახება; მის ველში Enter-მა ჩანაწერი არ უნდა შეინახოს. */}
@@ -674,7 +674,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         className="mt-6"
       />
 
-      {/* ⚠️ ღილაკების რიგი ბოლოშია, როგორც §26-მდე — `<form>`-ის გარეთ
+      {/* ⚠️ ღილაკების რიგი ბოლოშია, როგორც ადრე — `<form>`-ის გარეთ
           (დამატებითი ველების ქვემოთ), ამიტომ „შენახვა" ფორმას `form="…"`-ით უშვებს */}
       <div className="mt-6 flex flex-wrap gap-2">
         <Button type="submit" form={FORM_ID} disabled={mut.isPending}>

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * **OSRM-ის კლიენტი** (Tasks §30.5).
+ * **OSRM-ის კლიენტი**.
  *
  * ⚠️ `Http::fake()` **ერთი stub-ით** და ცვლადი პასუხით — `Factory::fake()`
  * stub-ებს ამატებს და არა ცვლის (`PlaceModuleTest`-ის იგივე გაკვეთილი).
@@ -50,12 +50,12 @@ class RouteClientTest extends TestCase
 
         // ⚠️ OSRM-ს `lng,lat` რიგით უნდა; ალტერნატივები და polyline ცხადადაა მოთხოვნილი
         Http::assertSent(fn ($r) => str_contains($r->url(), '/route/v1/driving/44.800000,41.700000;44.790000,41.710000')
-            // §56.3 — ნაგულისხმევი 3 გზა = მთავარი + 2 ალტერნატივა
+            // ნაგულისხმევი 3 გზა = მთავარი + 2 ალტერნატივა
             && str_contains($r->url(), 'alternatives=2')
             && str_contains($r->url(), 'geometries=polyline'));
     }
 
-    /** Tasks §56.3 — **N გზა**: `alternatives=N-1`, პასუხი N-ზე იჭრება, N ქეშის გასაღებშია, ჭერი 5 */
+    /** **N გზა**: `alternatives=N-1`, პასუხი N-ზე იჭრება, N ქეშის გასაღებშია, ჭერი 5 */
     public function test_the_number_of_routes_is_asked_for_cut_and_cached_apart(): void
     {
         $this->answer = ['code' => 'Ok', 'routes' => [$this->route(100, 60), $this->route(110, 70, 'b'), $this->route(120, 80, 'c')]];

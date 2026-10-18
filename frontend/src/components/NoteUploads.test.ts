@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **ფაილები ჯერ შეუნახავ ჩანაწერზე** (Tasks §23.4).
+   **ფაილები ჯერ შეუნახავ ჩანაწერზე**.
 
    ⚠️ აქამდე სამივე სექციაში „ჯერ შეინახე" ეწერა. ახლა ფაილი ბრაუზერში
    ემატება და შენახვისას ადის — და **ბრაუზერშივე მოწმდება**: 100 MB-ზე დიდი
@@ -86,7 +86,7 @@ describe('NoteUploads before the note is saved', () => {
 
     expect(el.textContent).not.toContain(i18n.t('notes.uploadsSaveFirst'))
 
-    // ⚠️ §23.4 — დოკუმენტსაც აქვს `accept`
+    // ⚠️ დოკუმენტსაც აქვს `accept`
     const doc = el.querySelector<HTMLInputElement>('input[type="file"][accept=".pdf"]')!
     expect(doc).toBeTruthy()
 

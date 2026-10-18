@@ -16,7 +16,7 @@ import { usePages } from '@/lib/paged'
 import { SortPick } from '@/components/gallery/SortPick'
 
 /* ============================================================
-   **საჯარო ფოტოების სია — ერთი კომპონენტი ოთხივე ჭრილისთვის** (Tasks §32).
+   **საჯარო ფოტოების სია — ერთი კომპონენტი ოთხივე ჭრილისთვის**.
 
    „ყველა ფოტო", ბიბლიოთეკის ჯგუფი, მსახიობი, ალბომი და „არეული" ხედი
    ერთსა და იმავე endpoint-ს ეკითხება (`gallery-photos`) — მხოლოდ ფილტრი
@@ -28,7 +28,7 @@ import { SortPick } from '@/components/gallery/SortPick'
    მიღებულ სიას ხედავს, ე.ი. ჩამოტვირთული ყველა ფოტოს შორის ისრით
    გადადიხარ — ნომრიანი გვერდები მას მიმდინარე ოცდაოთხზე ჩაკეტავდა.
 
-   ⚠️ **ბადე `PhotoGrid`-ია კითხვის რეჟიმში** (§1.1): სხვისი პროფილია, ე.ი.
+   ⚠️ **ბადე `PhotoGrid`-ია კითხვის რეჟიმში**: სხვისი პროფილია, ე.ი.
    მონიშვნა, ჩამოტვირთვა და წაშლა აქ არაფერს ნიშნავს. ჩაკეტილი ფილა
    ბლარია და `onLocked` პაროლს ითხოვს.
 
@@ -65,7 +65,7 @@ export function PublicPhotoList({
   const [sort, setSort] = useState<GallerySort>('new')
   const [seed] = useState(() => Math.floor(Math.random() * 100000))
 
-  // Tasks §46 — ნომრები + „მეტის ჩვენება" (ფოტოს გვერდი — `PER_PAGE`)
+  // ნომრები + „მეტის ჩვენება" (ფოტოს გვერდი — `PER_PAGE`)
   const query = usePages({
     queryKey: ['public-gallery', username, 'photos', filters, sort, sort === 'random' ? seed : 0],
     fetchPage: (page) =>

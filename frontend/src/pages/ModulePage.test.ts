@@ -10,10 +10,10 @@ import { formatBytes } from '@/lib/utils'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **პირადი მოდულის წაშლა `/modules/{key}`-ზე (Tasks §37.7, Q31).**
+   **პირადი მოდულის წაშლა `/modules/{key}`-ზე.**
 
    ⚠️ რასაც backend-ის ტესტი ვერ იტყვის: რომ დადასტურება **რიცხვს ასახელებს**
-   („მოდული და მისი N ჩანაწერი ურნაში გადავა" — Q31-ის პირობა), რიცხვი
+   („მოდული და მისი N ჩანაწერი ურნაში გადავა"), რიცხვი
    **წაშლამდე** იკითხება (`/details` — ჩანაწერების სია ადმინის მიერ გამორთულ
    მოდულზე 403-ია), წაშლის მოთხოვნა **მხოლოდ დადასტურების შემდეგ** მიდის,
    და მერე გვერდი `/modules`-ზე ბრუნდება — წაშლილი მოდულის გვერდზე დარჩენა
@@ -143,7 +143,7 @@ describe('ModulePage — deleting a private module', () => {
     await act(async () => del!.click())
     await flush()
 
-    // რიცხვი წაშლამდე იკითხება და ტექსტშია — Q31-ის პირობა
+    // რიცხვი წაშლამდე იკითხება და ტექსტშია
     expect(mocks.counts).toHaveBeenCalledWith('c1-recipes')
     expect(document.body.textContent).toContain(
       i18n.t('customModules.deleteHint', { count: 3, size: formatBytes(4096), days: 30 }),

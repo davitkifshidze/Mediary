@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PersonalUploader } from '@/components/personal/PersonalUploader'
 
 /* ============================================================
-   **ატვირთვა გვერდის სათაურიდან (Tasks §33.6)** — სად ჩავარდეს: ადამიანი
+   **ატვირთვა გვერდის სათაურიდან** — სად ჩავარდეს: ადამიანი
    და/ან ალბომი, ან არსად („უჯგუფო").
 
    ⚠️ ადამიანის ალბომის არჩევა ადამიანსაც თვითონ სვამს (სერვერის ინვარიანტი) —

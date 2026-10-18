@@ -69,13 +69,13 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
-   კურსების მოდული (`course`, FEAT-25).
+   კურსების მოდული (`course`).
 
    ⚠️ **გარე წყარო არ არსებობს** — ბმულის probe მხოლოდ სათაურსა და
    სურათს ავსებს, „კანდიდატების" არჩევანი აქ არაფერია.
 
    ⚠️ **სტატუსი enum-ია** (ოთხი მნიშვნელობა), ე.ი. საიდბარის სექციები
-   წიგნის/თამაშის რიგშია: „ყველა · რჩეული · დამატება" (§6.1), ხოლო
+   წიგნის/თამაშის რიგშია: „ყველა · რჩეული · დამატება", ხოლო
    სტატუსით ფილტრი პანელშია.
    ============================================================ */
 
@@ -97,7 +97,7 @@ export function CoursesPage() {
   const confirm = useConfirm()
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
   const [layout, setLayout] = useRecordLayout('course', 'rows')
 
   const view = params.get('view') ?? 'all'
@@ -136,11 +136,11 @@ export function CoursesPage() {
     status: statuses.length ? statuses.join(',') : undefined,
     favorite: view === 'favorite' ? true : undefined,
     sort: sort === 'newest' ? undefined : sort,
-    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
   }
 
-  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['courses', filters],
     fetchPage: (page) => fetchCourses({ ...filters, page, per_page: LIST_PAGE_SIZE }),
@@ -221,7 +221,7 @@ export function CoursesPage() {
         subtitle={t('courses.count', { count: total })}
         actions={
           <>
-            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             <div className="relative min-w-0 flex-1 sm:flex-none">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -290,7 +290,7 @@ export function CoursesPage() {
                       remove.mutate(course.id)
                     }
                   }
-                  /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+                  /* მარჯვენა ღილაკის მენიუ: გახსნა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
                   const actions: MenuAction[] = [
                     { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(course) },
                     ...(course.url
@@ -311,7 +311,7 @@ export function CoursesPage() {
                     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: askDelete },
                   ]
                   return (
-                    /* §45 — ერთი აღწერა სამ განლაგებაში; სტატუსი მხოლოდ ზოლშია (§29.1) */
+                    /* ერთი აღწერა სამ განლაგებაში; სტატუსი მხოლოდ ზოლშია */
                     <RecordView
                       key={course.id}
                       title={course.title}
@@ -322,7 +322,7 @@ export function CoursesPage() {
                       placeholder={<GraduationCap className="size-6" />}
                       titleAside={<VisibilityBadge value={course.visibility} />}
                       meta={[
-                        // §29.3 — ჰოსტის ნაცვლად პლატფორმის სახელი („YouTube“), უცნობზე ჰოსტივე
+                        // ჰოსტის ნაცვლად პლატფორმის სახელი („YouTube“), უცნობზე ჰოსტივე
                         hostLabel(course.platform, t),
                         course.category ? dictionaryName(course.category, lang) : null,
                       ]
@@ -331,8 +331,8 @@ export function CoursesPage() {
                       tags={course.tags}
                       actions={actions}
                       onEdit={() => setEditing(course)}
-                      /* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები ·
-                         ბმული (უბმულოზე უხილავი სლოტი, §14.2) · რედაქტირება · წაშლა — ყველა h-9 */
+                      /* ერთი ზოლი ყველა სიაზე: სტატუსი (ჩამოსაშლელი) · რჩეული · ფაილები ·
+                         ბმული (უბმულოზე უხილავი სლოტი) · რედაქტირება · წაშლა — ყველა h-9 */
                       bar={
                         <RecordActionBar
                           status={
@@ -374,7 +374,7 @@ export function CoursesPage() {
           onOpenChange={setPanelOpen}
         >
           {/* ⚠️ სტატუსი **აქ არის და არა საიდბარში**: enum-სტატუსიან მოდულებს
-              (წიგნი/თამაში/სამაგიდო) სექციები არ აქვთ — §6.1-ის წესი. */}
+              (წიგნი/თამაში/სამაგიდო) სექციები არ აქვთ. */}
           <FilterGroup title={t('courses.status')} count={draft.statuses.length}>
             <FilterOptionList>
               {COURSE_STATUSES.map((s) => (
@@ -419,7 +419,7 @@ export function CoursesPage() {
         </FilterPanel>
       </div>
 
-      {/* Tasks §8 — სია ახლდება რჩეულის/ფაილის შემდეგ, მოდალს ახალი ობიექტი უნდა მიუვიდეს */}
+      {/* სია ახლდება რჩეულის/ფაილის შემდეგ, მოდალს ახალი ობიექტი უნდა მიუვიდეს */}
       {detail && <CourseDetail course={courses.find((c) => c.id === detail.id) ?? detail} onClose={() => setDetail(null)} />}
 
       {editing && (
@@ -477,15 +477,15 @@ function CourseForm({
     course?.image ? (storageUrl(course.image) ?? course.image) : null,
   )
   const [removeThumb, setRemoveThumb] = useState(false)
-  /* Tasks §55.4 — ბმულიდან ნაპოვნი ფოტო **იგზავნება** (ადრე მხოლოდ ჩანდა და შენახვისას
+  /* ბმულიდან ნაპოვნი ფოტო **იგზავნება** (ადრე მხოლოდ ჩანდა და შენახვისას
      იკარგებოდა): `undefined` — არ შეგვხებია · `null` — მოხსნილია · სტრიქონი — ახალი */
   const [imageUrl, setImageUrl] = useState<string | null | undefined>(undefined)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [probing, setProbing] = useState(false)
   const qc = useQueryClient()
-  // §26.5 — დამატებითი ველები ახალ კურსზეც (აქამდე მხოლოდ რედაქტირებისას ჩანდა)
+  // დამატებითი ველები ახალ კურსზეც (აქამდე მხოლოდ რედაქტირებისას ჩანდა)
   const extras = useRecordExtras('course', course)
-  /* Tasks §29.3 — ფაილები **შექმნისთანავე** (`lib/pendingUploads.ts`, ჩანაწერების §23.4-ის
+  /* ფაილები **შექმნისთანავე** (`lib/pendingUploads.ts`, ჩანაწერების
      პატერნი): შენახვამდე ბრაუზერშია, შენახვისას ჯერ კურსი, მერე ფაილები სათითაოდ.
      ⚠️ ჩავარდნა კურსს არ აუქმებს — ფანჯარა ღია რჩება, ჩავარდნილი მიზეზით, „შენახვა" ხელახლა ცდის. */
   const pending = usePendingUploads<CourseFileKind>()
@@ -586,7 +586,7 @@ function CourseForm({
 
     setErrors({})
 
-    // Tasks §13.3 — submit-ზე დუბლი უხმოდ იჭრება: `TagSelect` უკვე გააფრთხილა, აქ მხოლოდ გარანტიაა
+    // submit-ზე დუბლი უხმოდ იჭრება: `TagSelect` უკვე გააფრთხილა, აქ მხოლოდ გარანტიაა
     const { tags } = dedupeTags(form.tags)
 
     save.mutate({
@@ -605,7 +605,7 @@ function CourseForm({
   return (
     <ModalShell title={t(course ? 'courses.edit' : 'courses.add')} onClose={onClose} wide>
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
-        {/* §26.2 — ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
+        {/* ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
             ⚠️ ბმული **არასავალდებულოა**: ოფლაინ კურსს მისამართი არ აქვს */}
         <QuickFill
           show={fields.shows('url')}
@@ -622,7 +622,7 @@ function CourseForm({
               value={form.url}
               onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
               onBlur={(e) => void loadMeta(e.target.value)}
-              // Tasks §15.2 — paste-ზეც, არა მხოლოდ ველიდან გასვლაზე
+              // paste-ზეც, არა მხოლოდ ველიდან გასვლაზე
               onPaste={(e) => void loadMeta(e.clipboardData.getData('text'))}
             />
             {probing && (
@@ -632,7 +632,7 @@ function CourseForm({
           {errors.url && <p className="mt-1 text-xs text-destructive">{errors.url}</p>}
         </QuickFill>
 
-        {/* §26 — მთავარი ფოტო ზემოთაა, სახელსა და აღწერასთან ერთად */}
+        {/* მთავარი ფოტო ზემოთაა, სახელსა და აღწერასთან ერთად */}
         <FormSection
           title={t('form.sections.basic')}
           mediaVariant="wide"
@@ -656,7 +656,7 @@ function CourseForm({
                 onClear={() => {
                   setThumbnail(null)
                   setRemoveThumb(true)
-                  // §55.4 — ბმულიდან მოსული ფოტოც იხსნება, თორემ შენახვის შემდეგ ისევ ჩნდებოდა
+                  // ბმულიდან მოსული ფოტოც იხსნება, თორემ შენახვის შემდეგ ისევ ჩნდებოდა
                   setImageUrl(null)
                   setPreview(null)
                 }}
@@ -664,7 +664,7 @@ function CourseForm({
             )
           }
         >
-          {/* ⚠️ სახელი `locked`-ია (§6.5) — ყოველთვის სავალდებულო */}
+          {/* ⚠️ სახელი `locked`-ია — ყოველთვის სავალდებულო */}
           <FormField {...fields.field('title')} required htmlFor="c-title" error={errors.title}>
             <Input
               id="c-title"
@@ -686,7 +686,7 @@ function CourseForm({
           </FormField>
         </FormSection>
 
-        {/* ⚠️ §26 — `required` აღარ წერია ხელით: ნიშანი ველების კონსტრუქტორიდან
+        {/* ⚠️ `required` აღარ წერია ხელით: ნიშანი ველების კონსტრუქტორიდან
             მოდის, როგორც დანარჩენ ფორმებში (სავალდებულობას `pickErrors` ამოწმებს) */}
         <FormSection title={t('form.sections.classification')}>
           <FormField size="half" {...fields.field('status')} htmlFor="c-status" error={errors.status}>
@@ -729,7 +729,7 @@ function CourseForm({
           </FormField>
         </FormSection>
 
-        {/* §29.3 — ფაილები ახალ კურსზე; არსებულს დეტალის ფანჯარაში აქვს */}
+        {/* ფაილები ახალ კურსზე; არსებულს დეტალის ფანჯარაში აქვს */}
         {!course && (
           <PendingFilesSection
             pending={pending}
@@ -743,7 +743,7 @@ function CourseForm({
         )}
       </form>
 
-      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები **ახალ კურსზეც** (აქამდე მხოლოდ
+      {/* დამატებითი ველები **ახალ კურსზეც** (აქამდე მხოლოდ
           რედაქტირებისას ჩანდა); ახალზე მონახაზია და კურსთან ერთად ინახება */}
       <CustomFieldsCard
         module="course"

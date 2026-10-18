@@ -8,7 +8,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { LIST_PAGE_SIZE, usePages } from '@/lib/paged'
 
 /* ============================================================
-   **„ვინ რა გახსნა და რამდენჯერ"** (Tasks §43.6).
+   **„ვინ რა გახსნა და რამდენჯერ"**.
 
    შენი სიტყვები: „ეგ მჭირდება აუდიტ ლოგში მხოლოდ: ვინ რა გახსნა და რამდენჯერ
    შევიდა". მომხმარებელი × ჩანაწერი → გახსნების რიცხვი და ბოლო გახსნა; რიგზე
@@ -26,7 +26,7 @@ export function AuditOpens({ filters, moduleName }: { filters: AuditFilters; mod
 
   const opensFilters: AuditFilters = { ...filters, actions: undefined }
 
-  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"
+  // გვერდზე 10: ნომრები + „მეტის ჩვენება"
   const opens = usePages({
     queryKey: ['audit-opens', opensFilters],
     fetchPage: (page) =>

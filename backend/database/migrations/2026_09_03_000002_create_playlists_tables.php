@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * პლეილისტები (Tasks 15) — მუსიკა ვიდეოების ქვეშ, მინიმალური ვერსია.
+ * პლეილისტები — მუსიკა ვიდეოების ქვეშ, მინიმალური ვერსია.
  *
  * ⚠️ **ცალკე „სიმღერის" ცხრილი განზრახ არ იქმნება.** სიმღერას სჭირდება
  * სახელი, ფოტო და YouTube-ის ბმული — ეს სამივე `videos`-ს უკვე აქვს
@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
  * კვოტის მრიცხველითა და ძებნით ერთად. ამიტომ სიმღერა = `videos`-ის რიგი,
  * ხოლო ახალი მხოლოდ **პლეილისტი** და მისი pivot-ია.
  *
- * `visibility` პლეილისტზეც არის და არა მარტო ვიდეოზე: Tasks 16-ის მიხედვით
+ * `visibility` პლეილისტზეც არის და არა მარტო ვიდეოზე:
  * **პლეილისტი გაზიარებადი ერთეულია** („საერთო პლეილისტები" დამთხვევებში).
  *
  * თანმიმდევრობა ორ დონეზეა: `playlists.sort_order` — პლეილისტების რიგი,
@@ -30,7 +30,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->unsignedInteger('sort_order')->default(0);
-            // Tasks 16.5 — ყოველ ახალ ცხრილს ხილვადობა თავიდანვე
+            // ყოველ ახალ ცხრილს ხილვადობა თავიდანვე
             $table->string('visibility', 20)->default('private');
             $table->timestamps();
 

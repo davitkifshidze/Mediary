@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** პირადი მოდულის კლასიფიკატორის რიგი (`custom_categories`, Tasks §37) */
+/** პირადი მოდულის კლასიფიკატორის რიგი (`custom_categories`) */
 class CustomCategoryResource extends JsonResource
 {
     public function toArray(Request $request): array

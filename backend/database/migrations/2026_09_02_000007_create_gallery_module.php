@@ -6,7 +6,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Tasks 10 — გალერეის მოდული.
+ * გალერეის მოდული.
  *
  * ⚠️ **ცალკე ცხრილი განზრახ არ იქმნება.** ფოტოები `attachments`-ში ჯდება
  * (`HasAttachments`) — ე.ი. კვოტის აღრიცხვა (17) და წაშლის კასკადი

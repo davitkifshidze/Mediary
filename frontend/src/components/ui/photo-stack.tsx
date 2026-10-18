@@ -24,12 +24,12 @@ import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/component
 export type StackPreview = string | { url: string; private?: boolean }
 
 /* ============================================================
-   ფოტოების **დასტა** — ერთი ჯგუფი ერთი კარტით (Tasks §4.2 → **§8.6**).
+   ფოტოების **დასტა** — ერთი ჯგუფი ერთი კარტით.
 
    სახელი, ზემოთ პირველი ფოტო, დანარჩენი უკან კარტებივით; მიტანაზე
    იშლება, დაჭერაზე ჯგუფი იხსნება.
 
-   ⚠️ **ერთი კომპონენტი ყველა ადგილისთვის** (§4.2-ის პირობა): ჩანაწერის
+   ⚠️ **ერთი კომპონენტი ყველა ადგილისთვის**: ჩანაწერის
    გვერდზე მსახიობების დასტები, გალერეის ჯგუფები, მოდულების ჭრილი და
    მსახიობის გვერდი — ერთი და იგივე კარტია. მეორე ასლი ორ სხვადასხვა
    დასტას დახატავდა.
@@ -39,7 +39,7 @@ export type StackPreview = string | { url: string; private?: boolean }
    კლასებად ვერ ჩაიწერება (დინამიური მნიშვნელობებისგან Tailwind CSS-ს არ
    აგენერირებს).
 
-   ## §8.6-ის ცვლილებები
+   ## ხუთი ბარათი და ვეერი
    ⚠️ **ხუთი ბარათი ოთხის ნაცვლად** — ოთხზე დასტა „სამ ფოტოდ" იკითხებოდა.
    შესაბამისად backend-იც ხუთ ესკიზს აბრუნებს (`previews`), თორემ უკანა
    ბარათები ცარიელი იქნებოდა.
@@ -50,7 +50,7 @@ export type StackPreview = string | { url: string; private?: boolean }
    ⚠️ **ესკიზის უქონლობა ცალკე მდგომარეობაა** — ცარიელი ნაცრისფერი კარტი
    „ჩატვირთვად" იკითხებოდა; ახლა ხატულა ცხადად ამბობს, რომ ესკიზი არაა.
 
-   ## ეტაპი 2-ის ცვლილება (2026-09-13)
+   ## მარჯვენა კლიკის მენიუ
    ⚠️ **მარჯვენა კლიკის მენიუ ბარათსაც აქვს** — გალერეის ჭრილებში სწორედ ეს
    ბარათია ძირითადი ერთეული, ე.ი. „ჩამოტვირთვა" და „ჯგუფის ყველა ფოტოს
    წაშლა" აქ უნდა იყოს და არა მხოლოდ ჯგუფის შიგნით.
@@ -99,7 +99,7 @@ export function PhotoStack({
 }: {
   title: string
   /**
-   * Tasks §25.1 — **ფოტოს ფიტი**: `cover` ჩვეულებრივი დასტაა; `contain` — შერეული
+   * **ფოტოს ფიტი**: `cover` ჩვეულებრივი დასტაა; `contain` — შერეული
    * ფორმატის ჯგუფზე (წყაროს/მომწოდებლის ჭრილი) პორტრეტი აღარ იჭრება, მუქ ფონზე ჯდება.
    */
   fit?: 'cover' | 'contain'
@@ -147,7 +147,7 @@ export function PhotoStack({
   const [spread, setSpread] = useState(false)
   const cards = images.slice(0, STACK_CARDS)
 
-  /* §25.1 — ⚠️ ყველა ბარათი ერთი სიმაღლისაა: `flex h-full flex-col`, მოქმედებების ზოლი
+  /* ⚠️ ყველა ბარათი ერთი სიმაღლისაა: `flex h-full flex-col`, მოქმედებების ზოლი
      `mt-auto`-თი ქვემოთ. ჩიპები/მეტა პირობითია, მაგრამ ზოლი მაინც ბოლოშია. */
   const card = (
     <div
@@ -162,7 +162,7 @@ export function PhotoStack({
       onMouseEnter={() => setSpread(true)}
       onMouseLeave={() => setSpread(false)}
     >
-      {/* მოდულის ფერის ზოლი ზემოთ (§25.1) */}
+      {/* მოდულის ფერის ზოლი ზემოთ */}
       {accent && <span aria-hidden className="absolute inset-x-0 top-0 h-1" style={{ background: accent }} data-testid="stack-accent" />}
       <button
         type="button"
@@ -221,7 +221,7 @@ export function PhotoStack({
                 style={{ ...fan(offset, spread), zIndex: cards.length - index }}
               >
                 {/* ⚠️ პრივატული ფაილი blob-ად იკითხება — `<img src>`-ს
-                    `/storage/*` პირად დისკამდე ვერ მიჰყავს (§17.5) */}
+                    `/storage/*` პირად დისკამდე ვერ მიჰყავს */}
                 {isPrivate ? (
                   <PrivateImage url={src} alt="" className={cn('size-full', fit === 'contain' ? 'object-contain bg-black/85' : 'object-cover')} />
                 ) : (

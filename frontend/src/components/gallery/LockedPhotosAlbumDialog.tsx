@@ -8,7 +8,7 @@ import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { AlbumPasswordFields } from '@/components/gallery/AlbumPasswordFields'
 
 /* ============================================================
-   **„ჩაკეტილი ფოტოები" — სისტემური ალბომის პაროლი (Tasks §35.5).**
+   **„ჩაკეტილი ფოტოები" — სისტემური ალბომის პაროლი.**
 
    ფოტოს პირველი ჩაკეტვისას ალბომი ჯერ არ არსებობს (სერვერი 409
    `locked_album_password_required`-ით პასუხობს) — აქ პაროლი ირჩევა, და იგივე

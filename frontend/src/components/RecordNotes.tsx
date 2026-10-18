@@ -15,7 +15,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   **ჩანიშვნების საერთო ბლოკი — ხუთივე მოდულზე ერთი (Tasks §6.2/§6.7).**
+   **ჩანიშვნების საერთო ბლოკი — ხუთივე მოდულზე ერთი.**
 
    შენი სიტყვები: „ციტატა და კომენტარი ტექსტები რამე ღილაკის მსგავსად იყოს
    და შიგნით მოდალი იხსნებოდეს … წაშლა ჰქონდეს და ძებნა".
@@ -112,7 +112,7 @@ export function RecordNotes({
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
   const add = useMutation({
-    // Tasks §23.2 — ციტატები აქედან გავიდა (`BookQuotes`): ჩანიშვნა ყველგან მხოლოდ ტექსტია
+    // ციტატები აქედან გავიდა (`BookQuotes`): ჩანიშვნა ყველგან მხოლოდ ტექსტია
     mutationFn: () => api.create({ body: body.trim() }),
     onSuccess: () => {
       setBody('')
@@ -136,7 +136,7 @@ export function RecordNotes({
     onError: fail,
   })
 
-  /* Tasks §47 — ჩანიშვნა Markdown-ია: სიაში, ძებნასა და ხაზგასმაში უბრალო ტექსტია
+  /* ჩანიშვნა Markdown-ია: სიაში, ძებნასა და ხაზგასმაში უბრალო ტექსტია
      (ძველი ციტატა — `is_quote` — ისედაც უბრალო ტექსტია) */
   const texts = useMemo(() => new Map(notes.map((n) => [n.id, n.is_quote ? n.body : plainText(n.body)])), [notes])
 
@@ -251,7 +251,7 @@ export function RecordNotes({
             </button>
 
             {/* ⚠️ წაშლა **ღილაკის გარეთაა** (ჩალაგებული `<button>` არასწორი
-                HTML-ია) და **დადასტურებას გადის** (Tasks §6.4) — ადრე ის
+                HTML-ია) და **დადასტურებას გადის** — ადრე ის
                 პირდაპირ იძახებდა მუტაციას, მაშინ როცა ფაილის წაშლა უკვე
                 კითხულობდა. */}
             <Button

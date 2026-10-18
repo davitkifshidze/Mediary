@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * თამაშების მოდული (`game`, Tasks §11; ველების სია დამტკიცდა 19.1-ში).
+ * თამაშების მოდული (`game`).
  *
  * ამოწმებს იმას, რაც აქ ადვილად ტყდება: მოდულის gate, **მრავალჟანრიანობა**
  * (pivot და არა სვეტი), `year`-ის აქსესორი, „ჩემი პლატფორმის" ავტომატური
@@ -62,7 +62,7 @@ class GameModuleTest extends TestCase
     }
 
     /**
-     * Tasks §13 — სტატუსი მხოლოდ სამია, ხოლო HLTB, ენები, DLC და Metacritic
+     * სტატუსი მხოლოდ სამია, ხოლო HLTB, ენები, DLC და Metacritic
      * ამოღებულია: ძველი სტატუსი 422-ია, ამოღებული ველი კი პასუხში აღარ ჩანს.
      */
     public function test_the_trimmed_game_fields(): void
@@ -110,7 +110,7 @@ class GameModuleTest extends TestCase
             ->json('data.id');
     }
 
-    /** მოდულის gate + 11.1-ის ველების ნაკრები */
+    /** მოდულის gate + ველების ნაკრები */
     public function test_module_gate_and_field_set(): void
     {
         $outsider = $this->makeUser('nomodule', []);
@@ -145,11 +145,11 @@ class GameModuleTest extends TestCase
             // ⚠️ `year` სვეტი არაა — `release_date`-ის აქსესორია
             ->assertJsonPath('data.year', 2022)
             ->assertJsonPath('data.size_gb', 60.5)
-            // §22.3 — ⚠️ ძველი ერთღერძიანი `steam` ისევ მიიღება და ორ ღერძად ითარგმნება
+            // ⚠️ ძველი ერთღერძიანი `steam` ისევ მიიღება და ორ ღერძად ითარგმნება
             ->assertJsonPath('data.links.0.kind', 'store')
             ->assertJsonPath('data.links.0.store', 'steam')
             ->assertJsonPath('data.status', 'finished')
-            // 16.5 — ხილვადობა default-ად პრივატულია
+            // ხილვადობა default-ად პრივატულია
             ->assertJsonPath('data.visibility', 'private');
 
         // ჟანრები pivot-შია და **ორივე** შენახულია
@@ -157,7 +157,7 @@ class GameModuleTest extends TestCase
     }
 
     /**
-     * **ბმულის ტიპი ორ ღერძად** (Tasks §22.3) — „რა" (`kind`) და „სად"
+     * **ბმულის ტიპი ორ ღერძად** — „რა" (`kind`) და „სად"
      * (`store`, მხოლოდ მაღაზიისთვის, ჰოსტიდან ამოცნობადი).
      */
     public function test_links_have_a_kind_and_a_store(): void
@@ -199,7 +199,7 @@ class GameModuleTest extends TestCase
     }
 
     /**
-     * **ტრეილერი და გზამკვლევი — თამაშის ვიდეოებში** (Tasks §22.4, Q15).
+     * **ტრეილერი და გზამკვლევი — თამაშის ვიდეოებში**.
      *
      * ⚠️ YouTube-ის ტრეილერი ბმულად აღარ რჩება — ფლეერით დასაკრავ ვიდეოდ
      * იქცევა; იგივე ვიდეო მეორედ არ ემატება (სხვა მისამართითაც); მაღაზიის
@@ -232,7 +232,7 @@ class GameModuleTest extends TestCase
         $this->assertSame(2, GameVideo::where('game_id', $id)->count());
     }
 
-    /** §22.3 — არსებული ბმულები ორ ღერძად გადაითარგმნება (მიგრაცია) */
+    /** არსებული ბმულები ორ ღერძად გადაითარგმნება (მიგრაცია) */
     public function test_the_migration_translates_old_link_kinds(): void
     {
         $id = $this->makeGame();
@@ -272,7 +272,7 @@ class GameModuleTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'data');
 
-        // ორი ჟანრი მძიმით = **AND** (5.2-ის წესი), ე.ი. მხოლოდ ერთი
+        // ორი ჟანრი მძიმით = **AND**, ე.ი. მხოლოდ ერთი
         $list = $this->actingAs($this->user)
             ->getJson("/api/games?genre_id={$action},{$adventure}")
             ->assertOk()
@@ -302,7 +302,7 @@ class GameModuleTest extends TestCase
     }
 
     /**
-     * §5.1 — ფრენჩაიზის მოდალის ორი წყარო: სია და **ზუსტი** ფილტრი.
+     * ფრენჩაიზის მოდალის ორი წყარო: სია და **ზუსტი** ფილტრი.
      *
      * ⚠️ ფილტრი `like` **არ არის** განზრახ — „Mass Effect" და
      * „Mass Effect: Andromeda" ორი სხვადასხვა ნაკრებია.
@@ -368,7 +368,7 @@ class GameModuleTest extends TestCase
             ->assertStatus(201);
     }
 
-    /** `igdb_id`-საც იგივე per-user წესი აქვს (`DECISIONS.md` §7) */
+    /** `igdb_id`-საც იგივე per-user წესი აქვს */
     public function test_igdb_id_is_unique_per_user(): void
     {
         $this->makeGame(['igdb_id' => 1942]);
@@ -398,8 +398,8 @@ class GameModuleTest extends TestCase
     }
 
     /**
-     * ⚠️ **ორივე გასაღების გარეშე — „ჩაწერე შენი გასაღები" და არა ცარიელი სია**
-     * (Tasks §30.6). ცარიელი სია „ასეთი თამაში არ არსებობს"-ად წაიკითხებოდა,
+     * ⚠️ **ორივე გასაღების გარეშე — „ჩაწერე შენი გასაღები" და არა ცარიელი სია**.
+     * ცარიელი სია „ასეთი თამაში არ არსებობს"-ად წაიკითხებოდა,
      * „წყარო მიუწვდომელია" კი სხვაგან გაგზავნიდა — სწორი ქმედება ჩაწერაა.
      */
     public function test_candidates_without_any_key_ask_for_the_users_own_key(): void
@@ -424,7 +424,7 @@ class GameModuleTest extends TestCase
     }
 
     /**
-     * §11.2 — walkthrough და სხვა ვიდეოები.
+     * walkthrough და სხვა ვიდეოები.
      * ⚠️ embed **სერვერზე** იგება allowlist-ით; ნედლი HTML არასდროს ინახება.
      */
     public function test_videos_build_the_embed_from_the_allowlist(): void
@@ -437,7 +437,7 @@ class GameModuleTest extends TestCase
                 'title' => 'Full walkthrough',
             ])
             ->assertStatus(201)
-            // default-ია „სრული დახურვა" (11.2 მას სავალდებულოდ ასახელებს)
+            // default-ია „სრული დახურვა"
             ->assertJsonPath('data.kind', 'walkthrough')
             ->assertJsonPath('data.platform', 'youtube')
             ->assertJsonPath('data.embed_url', 'https://www.youtube-nocookie.com/embed/aaaaaaaaaaa');
@@ -479,7 +479,7 @@ class GameModuleTest extends TestCase
         $used = (int) $this->user->refresh()->storage_used_bytes;
         $this->assertGreaterThan(0, $used);
 
-        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+        /* ⚠️ **კალათა** — `DELETE /api/<module>/{id}` ჩანაწერს
            აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
            როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/games/{$id}")->assertNoContent();
@@ -491,7 +491,7 @@ class GameModuleTest extends TestCase
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
     }
 
-    /** ატვირთული ყდა კვოტაზე გადის და `StorageMeter::files()`-შიც ჩანს (19.4/B) */
+    /** ატვირთული ყდა კვოტაზე გადის და `StorageMeter::files()`-შიც ჩანს */
     public function test_uploaded_cover_counts_towards_the_quota(): void
     {
         Storage::fake('public');

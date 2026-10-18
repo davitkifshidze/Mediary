@@ -29,7 +29,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * **ურნა კლასიფიკატორის რიგზე (Tasks §29, ეტაპი 3).**
+ * **ურნა კლასიფიკატორის რიგზე.**
  *
  * ⚠️ მოწმდება ის, რაც ჩუმად ტყდებოდა: ურნაში მყოფი რიგი თავის გასაღებს
  * ინარჩუნებს (ახალი იმავე სახელით 500-ს აღარ აბრუნებს), ყველა რიგის
@@ -136,7 +136,7 @@ class TrashDictionaryTest extends TestCase
         $this->assertNull($model::find($gone->id)->trash_meta);
     }
 
-    /** „მხოლოდ რიგი" — ჩანაწერები ახალ ადგილას რჩება (Q21-ის მიღებული შეზღუდვა) */
+    /** „მხოლოდ რიგი" — ჩანაწერები ახალ ადგილას რჩება (მიღებული შეზღუდვა) */
     public function test_a_row_only_restore_leaves_the_records_where_they_went(): void
     {
         [$gone, $target] = $this->pair(VideoType::class);

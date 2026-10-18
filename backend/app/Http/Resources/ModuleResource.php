@@ -18,7 +18,7 @@ class ModuleResource extends JsonResource
             'description_ka' => $this->description_ka,
             'description_en' => $this->description_en,
             'icon' => $this->icon,
-            // Tasks §2.1 — გვერდის ჰედერის ფონი (`null` = ნეიტრალური)
+            // გვერდის ჰედერის ფონი (`null` = ნეიტრალური)
             'color' => $this->color,
             'route_base' => $this->route_base,
             'api_base' => $this->api_base,
@@ -26,26 +26,26 @@ class ModuleResource extends JsonResource
             'is_active' => $this->is_active,
             'enabled_by_default' => $this->enabled_by_default,
             'sort_order' => $this->sort_order,
-            /* Tasks §37 — ინტერფეისიდან შექმნილი (პირადი) მოდული. ⚠️ ეს რესურსი
+            /* ინტერფეისიდან შექმნილი (პირადი) მოდული. ⚠️ ეს რესურსი
                სხვის პირად მოდულს **არასდროს** აჩვენებს — `GET /modules` მხოლოდ
                საკუთარს აბრუნებს, ადმინის ზედამხედველობა კი ცალკე ფორმითაა. */
             'is_custom' => $this->owner_id !== null,
             'definition' => $this->when($this->owner_id !== null, fn () => CustomModules::definition($this->resource)),
-            // 37.8 — ადმინმა გამორთო: მფლობელი თვითონ ვეღარ ჩართავს, მონაცემები ხელუხლებელია
+            // ადმინმა გამორთო: მფლობელი თვითონ ვეღარ ჩართავს, მონაცემები ხელუხლებელია
             'disabled_by_admin' => $this->when($this->owner_id !== null, fn () => ! $this->is_active),
             'users_count' => $this->when(isset($this->users_count), fn () => (int) $this->users_count),
-            // ვის აქვს ჩართული (ადმინის ტაბი, K14)
+            // ვის აქვს ჩართული (ადმინის ტაბი)
             'users' => $this->when(isset($this->users_list), fn () => $this->users_list),
             // კონტექსტიდან: ჩართულია თუ არა ჩემთვის / აქვს თუ არა მოთხოვნა რიგში
             'enabled' => $this->when(isset($this->enabled), fn () => (bool) $this->enabled),
-            // უფლება აქვს (ადმინმა ჩართო), თუნდაც თვითონ გამორთული ჰქონდეს — K13
+            // უფლება აქვს (ადმინმა ჩართო), თუნდაც თვითონ გამორთული ჰქონდეს
             'granted' => $this->when(isset($this->granted), fn () => (bool) $this->granted),
             'request_status' => $this->when(isset($this->request_status), fn () => $this->request_status),
             // per-user per-module პარამეტრები (`module_user.settings`)
             'user_settings' => $this->when(isset($this->user_settings), fn () => $this->user_settings),
-            // Tasks 16.1 — ჩანს თუ არა მოდული ჩემს საჯარო პროფილზე
+            // ჩანს თუ არა მოდული ჩემს საჯარო პროფილზე
             'is_public' => $this->when(isset($this->is_public), fn () => (bool) $this->is_public),
-            // შეიძლება თუ არა საერთოდ გასაჯაროება (`note` — არასდროს, 16.5)
+            // შეიძლება თუ არა საერთოდ გასაჯაროება (`note` — არასდროს)
             'shareable' => $this->when(isset($this->shareable), fn () => (bool) $this->shareable),
         ];
     }

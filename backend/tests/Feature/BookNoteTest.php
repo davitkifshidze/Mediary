@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **ციტატები ჩანიშვნებისგან ცალკე** (Tasks §23.2) — სია `quotes_count`-საც ამბობს.
+ * **ციტატები ჩანიშვნებისგან ცალკე** — სია `quotes_count`-საც ამბობს.
  */
 class BookNoteTest extends TestCase
 {

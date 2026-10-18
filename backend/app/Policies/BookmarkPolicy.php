@@ -3,7 +3,7 @@
 namespace App\Policies;
 
 /**
- * Bookmark-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ * Bookmark-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია.
  *
  * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
  * აღმოჩენისთვის არსებობს (`App\Models\Bookmark` → `App\Policies\BookmarkPolicy`)

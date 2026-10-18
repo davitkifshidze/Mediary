@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * **მსახიობების გვერდი `/actors` (Tasks §35.2).**
+ * **მსახიობების გვერდი `/actors`.**
  *
  *  · `GET /actors` — ყველა ჩემი მსახიობი (`ActorIndex`): ძებნა, ფილტრები,
  *    დახარისხება, გვერდები, სქესის მთვლელი და ფილტრის არჩევანი;
@@ -109,7 +109,7 @@ class ActorController extends Controller
      */
     private function card(CastMember $member, ActorIndex $index): array
     {
-        // §35.5 — დამალული: მხოლოდ სახელი და ბოქლომი (ფოტო, რიცხვები, ტეგები — არა)
+        // დამალული: მხოლოდ სახელი და ბოქლომი (ფოტო, რიცხვები, ტეგები — არა)
         if (RecordLocks::hiddenRecord($member)) {
             return $member->lockedCard();
         }
@@ -123,7 +123,7 @@ class ActorController extends Controller
             'known_for' => $member->known_for,
             'popularity' => $member->popularity,
             'has_tmdb' => (bool) $member->tmdb_person_id,
-            // §35.9 (Q17) — ჩემი ხელით შექმნილი: რედაქტირდება და ურნაში იშლება
+            // ჩემი ხელით შექმნილი: რედაქტირდება და ურნაში იშლება
             'editable' => $member->isEditableBy((int) auth()->id()),
             'synced' => $member->details_synced_at !== null,
             'counts' => [

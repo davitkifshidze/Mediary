@@ -48,7 +48,7 @@ import { RecordLockActions, RecordLockedScreen } from '@/components/locks/Record
 import { mediaLockBase } from '@/lib/locks'
 
 
-/** Tasks §8.1 — ტექსტის წყაროს ფერი; უცნობი (და ძველი ge.movie) — ნაცრისფერი */
+/** ტექსტის წყაროს ფერი; უცნობი (და ძველი ge.movie) — ნაცრისფერი */
 const SOURCE_TONE: Record<string, InfoTone> = {
   tmdb: 'info',
   translation: 'warn',
@@ -66,7 +66,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   const { toast } = useToast()
   const { enqueue, isQueued } = useQueue()
   const api = mediaApi(type)
-  // §6.4 — სტატუსების ლექსიკონი დომენისაა (ფილმი/სერიალი/ანიმე ცალ-ცალკე)
+  // სტატუსების ლექსიკონი დომენისაა (ფილმი/სერიალი/ანიმე ცალ-ცალკე)
   const { data: statuses = [] } = useStatuses(type)
   const loc = useLocation()
   const { detailBase, libraryPath } = mediaOf(type)
@@ -77,7 +77,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   const backTo = from && !isDetailPath(from) ? from : libraryPath
 
   const { data: m, isLoading } = useQuery({ queryKey: [type, 'detail', id], queryFn: () => api.get(id!) })
-  // Tasks §43 — გახსნა ჟურნალში (გვერდის მაუნთზე; ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  // გახსნა ჟურნალში (გვერდის მაუნთზე; ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen(type, m?.id)
   const collectionQ = useQuery({
     queryKey: ['collection', id],
@@ -91,7 +91,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   }
   const statusMut = useMutation({ mutationFn: (s: string) => api.setStatus(Number(id), s), onSuccess: onMutated })
   const favMut = useMutation({ mutationFn: () => api.toggleFavorite(Number(id)), onSuccess: onMutated })
-  /* Tasks §30.6 — `onError` აქ არ იყო, ე.ი. გასაღების გარეშე (409
+  /* `onError` აქ არ იყო, ე.ი. გასაღების გარეშე (409
      `credential_missing`) „სინქრონიზაცია" ჩუმად არაფერს აკეთებდა. ტექსტი
      წყაროს სახელს ამბობს („TMDB-ის გასაღები არ გაქვს — ჩაწერე „მონაცემებში""). */
   const resyncMut = useMutation({
@@ -99,7 +99,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
     onSuccess: onMutated,
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
-  /* Tasks §31.3 — „აღარ განაახლო": მასობრივი სინქრონი, თარგმანი და გალერეის ჩამოტვირთვა
+  /* „აღარ განაახლო": მასობრივი სინქრონი, თარგმანი და გალერეის ჩამოტვირთვა
      ამ ჩანაწერს გამოტოვებს; ზემოთა ერთეულოვანი ღილაკი მაინც მუშაობს */
   const pauseMut = useMutation({
     mutationFn: (paused: boolean) => setSyncPaused(type, Number(id), paused),
@@ -115,16 +115,16 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
     mutationFn: () => api.remove(Number(id)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [type] })
-      // 19.3 — ტექსტი დომენს მიჰყვება: სერიალზე „ფილმი წაიშალა" ეწერა
+      // ტექსტი დომენს მიჰყვება: სერიალზე „ფილმი წაიშალა" ეწერა
       toast({ title: t(mediaKey('toast.deleted', type)), variant: 'success' })
       // replace — წაშლილი ჩანაწერის URL ისტორიაში არ დარჩეს (Back მკვდარ გვერდს ხსნიდა)
       nav(backTo, { replace: true })
     },
   })
 
-  // FEAT-13 — გაზიარება ჩატში
+  // გაზიარება ჩატში
   const [sharing, setSharing] = useState(false)
-  /* Tasks §18 — რჩეულში დამატება ფრანჩაიზიან ფილმზე პოპაპით; მოხსნა — პირდაპირ */
+  /* რჩეულში დამატება ფრანჩაიზიან ფილმზე პოპაპით; მოხსნა — პირდაპირ */
   const [franchiseOpen, setFranchiseOpen] = useState(false)
   const toggleFavorite = () => {
     if (type === 'movie' && m && !m.is_favorite && m.collection_id) setFranchiseOpen(true)
@@ -147,7 +147,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
     return <div className={pageContainer('wide', 'py-10 text-muted-foreground')}>{t('api.loading')}</div>
   }
 
-  /* ⚠️ **წაშლილი/სხვისი ჩანაწერი აქამდე სამუდამოდ „იტვირთებოდა"** (Tasks GAP-21):
+  /* ⚠️ **წაშლილი/სხვისი ჩანაწერი აქამდე სამუდამოდ „იტვირთებოდა"**:
      404-ზე `isLoading` false ხდება, `m` კი ცარიელი რჩება — ერთი პირობა ორივე
      მდგომარეობას ფარავდა და მომხმარებელი უსასრულო „იტვირთება"-ს ხედავდა.
      ⚠️ ღილაკი სექციაში აბრუნებს და არა დეშბორდზე: სწორედ იქიდან მოხვედი. */
@@ -167,7 +167,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
     )
   }
 
-  /* Tasks §35.5 — დამალული ჩანაწერი: მხოლოდ სათაური და ბოქლომი (სერვერი სხვას არ აგზავნის) */
+  /* დამალული ჩანაწერი: მხოლოდ სათაური და ბოქლომი (სერვერი სხვას არ აგზავნის) */
   const lockOnChanged = () => {
     qc.invalidateQueries({ queryKey: [type] })
     qc.invalidateQueries({ queryKey: [type, 'detail', id] })
@@ -195,7 +195,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   }
 
   const description = lang === 'ka' ? m.description_ka || m.description_en : m.description_en || m.description_ka
-  /* Tasks §7 — საიდან მოვიდა ეს ტექსტი. ⚠️ წყარო **იმ ენისაა, რომელიც
+  /* საიდან მოვიდა ეს ტექსტი. ⚠️ წყარო **იმ ენისაა, რომელიც
      მართლა გამოჩნდა**: ka-ს ცარიელობაზე en-ის ტექსტი ჩანს და მისი
      წყაროც უნდა ეწეროს, თორემ ბარათი სხვა ენის წყაროს დაასახელებდა. */
   const descriptionSource =
@@ -211,7 +211,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
     .filter((p) => !p.owned)
     .map((p) => ({ tmdbId: p.tmdb_id, title: p.title }))
 
-  /* Tasks §7 — მარჯვენა ღილაკი ჰეროზე (პოსტერი, სათაური): სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+  /* მარჯვენა ღილაკი ჰეროზე (პოსტერი, სათაური): სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
   const heroActions: MenuAction[] = [
     statusActions(t('form.status'), statuses, m.status, lang, (key) => statusMut.mutate(key)),
     favoriteAction(m.is_favorite, toggleFavorite, t),
@@ -259,7 +259,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                     {m.episodes ? ` · ${t('detail.episodes', { count: m.episodes })}` : ''}
                   </span>
                 ) : null}
-                {/* Tasks §9 (Q1) — ჩემი ქულა ვარსკვლავებით და „4.6 / 10"; TMDB-ის საშუალო ცალკე, `i`-ით */}
+                {/* ჩემი ქულა ვარსკვლავებით და „4.6 / 10"; TMDB-ის საშუალო ცალკე, `i`-ით */}
                 <RatingStars value={m.my_rating} />
                 {m.rating && (
                   <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-muted-foreground">
@@ -281,7 +281,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
 
               {m.genres.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {/* ჟანრზე დაჭერა → ბიბლიოთეკა ამ ჟანრის ფილტრით (Tasks K9) */}
+                  {/* ჟანრზე დაჭერა → ბიბლიოთეკა ამ ჟანრის ფილტრით */}
                   {m.genres.map((g) => (
                     <Link
                       key={g.id}
@@ -295,10 +295,10 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                 </div>
               )}
 
-              {/* status + favorite — Tasks §40.3: სტატუსები, რჩეული და „საჯარო" ერთი სიმაღლისაა (`h-9`,
+              {/* status + favorite — სტატუსები, რჩეული და „საჯარო" ერთი სიმაღლისაა (`h-9`,
                   ღილაკის `sm`); ადრე სტატუსი ~34 px იყო, „საჯარო" ~20 px, რჩეული 36 px */}
               <div className="mt-5 flex flex-wrap items-center gap-2" data-testid="movie-status-row">
-                {/* §6.4 — სტატუსები per-user ლექსიკონიდან და არა კოდიდან */}
+                {/* სტატუსები per-user ლექსიკონიდან და არა კოდიდან */}
                 {statuses.map((s) => (
                   <button
                     key={s.id}
@@ -307,14 +307,14 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                       'inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm font-medium transition-colors',
                       m.status?.id === s.id ? STATUS_ACTIVE[statusTone(s)] : STATUS_INACTIVE[statusTone(s)],
                     )}
-                    // Tasks §16.3 — საკუთარი ფერი კლასებს ზემოდან ადგება; აიქონი წინ
+                    // საკუთარი ფერი კლასებს ზემოდან ადგება; აიქონი წინ
                     style={statusStyle(s, m.status?.id === s.id ? 'active' : 'inactive')}
                   >
                     {s.icon && <ModuleIcon name={s.icon} className="size-3.5" />}
                     {statusName(s, lang)}
                   </button>
                 ))}
-                {/* Tasks §8 — რჩეული ტექსტით, იგივე ღილაკი, რაც სიებშია */}
+                {/* რჩეული ტექსტით, იგივე ღილაკი, რაც სიებშია */}
                 <FavoriteButton
                   className="ml-1"
                   active={m.is_favorite}
@@ -322,13 +322,13 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   onToggle={toggleFavorite}
                 />
 
-                {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
+                {/* ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
                     `/profile`-ზეა, ე.ი. აქ მარტო ეს გადამრთველი ვერაფერს გამოაჩენს. */}
-                {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+                {/* ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
                 <VisibilityBadge value={m.visibility} />
               </div>
 
-              {/* actions — §40.3: მეორე რიგიც იმავე `h-9`-ზეა, აიქონები `size-3.5` */}
+              {/* actions — მეორე რიგიც იმავე `h-9`-ზეა, აიქონები `size-3.5` */}
               <div className="mt-4 flex flex-wrap items-center gap-2" data-testid="movie-actions">
                 {m.ge_url && (
                   <a href={m.ge_url} target="_blank" rel="noreferrer" className={buttonVariants({ size: 'sm' })}>
@@ -340,7 +340,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   {resyncMut.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
                   {resyncMut.isPending ? t('detail.syncing') : t('detail.sync')}
                 </Button>
-                {/* Tasks §31.3 — გადამრთველი „სინქრონიზაცია შეჩერებულია" */}
+                {/* გადამრთველი „სინქრონიზაცია შეჩერებულია" */}
                 <label
                   className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm"
                   data-testid="sync-paused"
@@ -353,7 +353,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   <SquarePen className="size-3.5" />
                   {t('actions.edit')}
                 </Link>
-                {/* FEAT-13 — გაზიარება ჩატში ბარათად.
+                {/* გაზიარება ჩატში ბარათად.
                     ⚠️ **გაზიარება ხილვადობას არ ცვლის**: პირადი ჩანაწერიდან
                     თანამოსაუბრემდე მხოლოდ სათაური და გლობალური იდენტობა
                     მიდის — სწორედ იმდენი, რამდენიც რეკომენდაციას სჭირდება. */}
@@ -361,7 +361,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   <Share2 className="size-3.5" />
                   {t('chat.share')}
                 </Button>
-                {/* Tasks §35.5 — ჩაკეტვა / ისევ ჩაკეტვა / პაროლი */}
+                {/* ჩაკეტვა / ისევ ჩაკეტვა / პაროლი */}
                 <RecordLockActions base={mediaLockBase(type, m.id)} record={lockRecord} onChanged={lockOnChanged} hint={t('lock.hintMedia')} size="sm" />
                 <Button variant="destructiveOutline" size="sm" onClick={askDelete} disabled={delMut.isPending}>
                   <Trash2 className="size-3.5" />
@@ -377,7 +377,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
       {/* ===== BODY ===== */}
       <div className={pageContainer('wide', 'space-y-8 pb-12')}>
         <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          {/* Tasks §8.1 — „საიდან მოვიდა ტექსტი" ცალკე ხაზი აღარაა: სათაურის
+          {/* „საიდან მოვიდა ტექსტი" ცალკე ხაზი აღარაა: სათაურის
               გვერდით i, **ფერი წყაროს მიხედვით** (TMDB — ლურჯი, ავტომატური
               თარგმანი — ქარვისფერი, შენი — მწვანე, ძველი/უცნობი — ნაცრისფერი).
               ხელით გადაწერა `manual`-ს ნიშნავს, ე.ი. ნიშანი არ ტყუის. */}
@@ -392,7 +392,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
               />
             )}
           </h2>
-          {/* Tasks §47 — აღწერა ფორმატით (Markdown) */}
+          {/* აღწერა ფორმატით (Markdown) */}
           {description ? (
             <Markdown text={description} className="leading-relaxed text-foreground/90" />
           ) : (
@@ -400,7 +400,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
           )}
         </section>
 
-        {/* ===== ტრეილერი (Tasks 9) ===== */}
+        {/* ===== ტრეილერი ===== */}
         {m.trailer_url && (
           <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <h2 className="mb-3 font-mono text-sm uppercase tracking-wider text-muted-foreground">
@@ -417,19 +417,19 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
           </section>
         )}
 
-        {/* ===== სეზონები და ეპიზოდები (FEAT-09) =====
+        {/* ===== სეზონები და ეპიზოდები =====
             ⚠️ **მხოლოდ TV-დომენებზე**: ფილმს სეზონი არ აქვს და endpoint-იც
             მას არ იღებს. ტრეილერის ქვემოთ დგას, რადგან „სად გავჩერდი"
             ყოველდღიური კითხვაა და გალერეაზე მაღლა უნდა იყოს. */}
         {(type === 'series' || type === 'anime') && <EpisodeTracker type={type} id={m.id} />}
 
-        {/* FEAT-14 — ხელახლა ნახვის ჟურნალი.
+        {/* ხელახლა ნახვის ჟურნალი.
             ⚠️ ბლოკი მხოლოდ ნახულ ჩანაწერზე ადგება: ჟურნალის პირველ რიგს
             სტატუსი ქმნის, ე.ი. ცარიელი ჟურნალი „ჯერ არ მინახავს"-ა —
             და იქ „კიდევ ვნახე" უაზრო ღილაკი იქნებოდა. */}
         <WatchLog type={type} recordId={m.id} watched={!!m.watched_at} />
 
-        {/* ===== გალერეა (Tasks 10) — ტრეილერის ქვემოთ, user-ის მოთხოვნით =====
+        {/* ===== გალერეა — ტრეილერის ქვემოთ, user-ის მოთხოვნით =====
             სექცია თვითონ ჩუმდება, თუ `gallery` მოდული ჩართული არ არის. */}
         <RecordGallery type={type} id={m.id} />
 
@@ -503,7 +503,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
           </section>
         )}
 
-        {/* ეტაპი 1 → Tasks §16 — მსახიობები: დამატება, როლი, მარჯვენა კლიკის მენიუ,
+        {/* მსახიობები: დამატება, როლი, მარჯვენა კლიკის მენიუ,
             drag & drop-ით დალაგება, დამალვა და წაშლა. ⚠️ სექცია **ცარიელზეც
             იხატება** — „დაამატე" იმ შემთხვევაშიც უნდა ჩანდეს, როცა TMDB-ს ამ
             ფილმზე არცერთი არ დაუდვია. */}

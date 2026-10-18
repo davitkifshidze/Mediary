@@ -33,14 +33,14 @@ function SuggestionSection({
   title: string
   items: Suggestion[]
   mediaType: MediaType
-  /** ჩანაწერი გვერდზე — პარამეტრებიდან, ცალკე ფილმებზე/სერიალებზე (E2) */
+  /** ჩანაწერი გვერდზე — პარამეტრებიდან, ცალკე ფილმებზე/სერიალებზე */
   perPage: number
 }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { enqueue, isQueued } = useQueue()
   const { detailBase } = mediaOf(mediaType)
-  /* Tasks §46 — ნომრები + „მეტის ჩვენება". სია შეიძლება შემცირდეს (ჩანაწერის დამატების შემდეგ ის
+  /* ნომრები + „მეტის ჩვენება". სია შეიძლება შემცირდეს (ჩანაწერის დამატების შემდეგ ის
      შემოთავაზებებიდან ქრება) — დიაპაზონი ბოლო არსებულ გვერდზე ჩამოდის, ცარიელი ბადე არ ჩანს */
   const pager = useClientPages(items, perPage)
 
@@ -131,7 +131,7 @@ function SuggestionSection({
 }
 
 /**
- * 19.3 — „owned შემოთავაზების დუბლი".
+ * „owned შემოთავაზების დუბლი".
  *
  * ბიბლიოთეკაში უკვე არსებული ჩანაწერი ორჯერ ჩანდა: „ჩემს კოლექციაში"
  * სექციაშიც და შემოთავაზებებშიც. backend განზრახ **არ** ჭრის მათ სიიდან
@@ -189,7 +189,7 @@ export function ActorPage() {
   const a = data.actor
   const name = lang === 'ka' ? a.name_ka || a.name : a.name
 
-  /* Tasks §35.5 — ჩემ მიერ ჩაკეტილი, ამ სესიაში დაუხსნელი: მხოლოდ სახელი და ბოქლომი */
+  /* ჩემ მიერ ჩაკეტილი, ამ სესიაში დაუხსნელი: მხოლოდ სახელი და ბოქლომი */
   if (a.hidden) {
     return (
       <PageContainer>
@@ -226,17 +226,17 @@ export function ActorPage() {
         {t('actions.back')}
       </button>
 
-      {/* §8.1 — **შიდა გვერდის თავი**: ბიოგრაფია, დაბადება, ოფიციალური
+      {/* **შიდა გვერდის თავი**: ბიოგრაფია, დაბადება, ოფიციალური
           ბმულები (IMDb · Instagram · Wikidata) და TMDB-დან განახლების ღილაკი.
           ⚠️ ადრე აქ მხოლოდ ავატარი და სახელი იდო — ე.ი. „შიდა გვერდი"
           სათაურის მეტს არაფერს ამბობდა. */}
       <ActorHero actor={a} name={name} />
 
-      {/* §7.5 — ტეგები + ვებიდან ძებნა. TMDB-ზე მსახიობს ხშირად სამი ფოტო
+      {/* ტეგები + ვებიდან ძებნა. TMDB-ზე მსახიობს ხშირად სამი ფოტო
           აქვს, ე.ი. „მხოლოდ TMDB არ იკმარებს" სწორედ აქ ხსნება. */}
       <ActorWebPhotos actorId={Number(id)} actorName={name} tags={a.tags ?? []} />
 
-      {/* გალერეა (Tasks 10 → §8) — ფოტოები, ვიდეო-ბმულები და ჩამოტვირთვა
+      {/* გალერეა — ფოტოები, ვიდეო-ბმულები და ჩამოტვირთვა
           იმავე დიალოგით, რაც გალერეაშია (ამ მსახიობზე მიბმული). */}
       <div className="mb-10">
         <ActorGallery castId={Number(id)} actorName={name} />
@@ -256,7 +256,7 @@ export function ActorPage() {
         </section>
       )}
 
-      {/* §7.1 — მესამე მედია-დომენი; შემოთავაზება ცალკე არ აქვს (იხ. `CastController`) */}
+      {/* მესამე მედია-დომენი; შემოთავაზება ცალკე არ აქვს (იხ. `CastController`) */}
       {data.animes.length > 0 && (
         <section className="mb-10">
           <h2 className="mb-4 text-lg font-semibold">{t('actor.inCollectionAnime')}</h2>
@@ -264,7 +264,7 @@ export function ActorPage() {
         </section>
       )}
 
-      {/* 19.3 — უკვე კოლექციაში მყოფი ჩანაწერი აქ აღარ მეორდება (იხ. `useAlreadyOwned`) */}
+      {/* უკვე კოლექციაში მყოფი ჩანაწერი აქ აღარ მეორდება (იხ. `useAlreadyOwned`) */}
       {movieSuggestions.length > 0 && (
         <SuggestionSection
           title={t('actor.more')}

@@ -14,7 +14,7 @@ use Throwable;
 use ZipArchive;
 
 /**
- * **Tasks §59.5 — „ჩემი სრული ექსპორტი": ყველა მოდული ერთ ZIP-ში.**
+ * **„ჩემი სრული ექსპორტი": ყველა მოდული ერთ ZIP-ში.**
  *
  * ```
  * manifest.json          — {app: mediary, kind: library, format, modules: [...], files}
@@ -174,7 +174,7 @@ class LibraryArchive
                 continue;
             }
 
-            // §7.1 — ჩამოწერილი ვიდეო თავიდან ჩამოიწერება და არქივში არ ჯდება
+            // ჩამოწერილი ვიდეო თავიდან ჩამოიწერება და არქივში არ ჯდება
             if (str_starts_with($path, StorageFolder::VIDEO_DOWNLOADS.'/')) {
                 continue;
             }

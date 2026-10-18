@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * **ადამიანი პირად გალერეაში (Tasks §33)** — მოდულის ჩანაწერი (`personal`).
+ * **ადამიანი პირად გალერეაში** — მოდულის ჩანაწერი (`personal`).
  *
  * ⚠️ **`cast_members` არ არის და არც უნდა გახდეს** — ის გლობალური ლექსიკონია
  * (ყველა ანგარიშს უჩანს), ახლობლის სახელი კი მხოლოდ შენია.
@@ -27,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `place` ადგილისაა: ურნის სახე, `trashed_files.record_type` და დამატებითი
  * ველების `record_type` ერთსა და იმავე სიტყვას კითხულობს.
  *
- * ⚠️ **ჩაკეტილი ადამიანი სიაში რჩება** (ბოქლომიანი ბარათი, Tasks §33.7) — მისი
+ * ⚠️ **ჩაკეტილი ადამიანი სიაში რჩება** (ბოქლომიანი ბარათი) — მისი
  * ფოტოები, ალბომები, ჩანიშვნა და დამატებითი ველები კი მხოლოდ ამ სესიაში
  * გახსნის შემდეგ გამოდის (`RecordLocks`).
  */
@@ -35,13 +35,13 @@ class Person extends Model
 {
     use BelongsToUser;
 
-    /** §33.4 — დამატებითი ველები ადამიანზე (წაშლა → ფაილი + კვოტა) */
+    /** დამატებითი ველები ადამიანზე (წაშლა → ფაილი + კვოტა) */
     use HasCustomFields;
 
-    /** §33.7 — პაროლით ჩაკეტვა (`RecordLocks`); საბოლოო წაშლა ლოკსაც შლის */
+    /** პაროლით ჩაკეტვა (`RecordLocks`); საბოლოო წაშლა ლოკსაც შლის */
     use HasRecordLock;
 
-    /** FEAT-11 — ურნა: `destroy()` `moveToTrash()`-ს იძახის */
+    /** ურნა: `destroy()` `moveToTrash()`-ს იძახის */
     use HasTrash;
 
     protected $table = 'persons';
@@ -59,7 +59,7 @@ class Person extends Model
      * ⚠️ **საბოლოო წაშლა ნაწილებსაც შლის — მოდელით, სათითაოდ.** SQL-ის
      * `nullOnDelete` მხოლოდ მეორე ფენაა: ის ფაილს დისკზე და ბაიტებს კვოტაში
      * დატოვებდა. ⚠️ `withoutGlobalScopes()` — ურნაში მყოფი ნაწილიც და
-     * მშობლის გამო დამალულიც (BUG-21-ის გაკვეთილი).
+     * მშობლის გამო დამალულიც.
      */
     protected static function booted(): void
     {

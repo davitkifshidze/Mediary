@@ -16,13 +16,13 @@ import { SortPick } from '@/components/gallery/SortPick'
 import { CutTabs } from '@/components/ui/cut-tabs'
 
 /* ============================================================
-   ერთი ჯგუფის შიგთავსი — **ერთი კომპონენტი ოთხივე ჭრილისთვის** (§8.5).
+   ერთი ჯგუფის შიგთავსი — **ერთი კომპონენტი ოთხივე ჭრილისთვის**.
 
    მსახიობის ჯგუფი, წყაროს ჯგუფი, მომწოდებლის ჯგუფი და ჩანაწერის ჯგუფი —
    ყველა ერთსა და იმავე endpoint-ს ეკითხება (`GET /gallery/photos`), მხოლოდ
    ფილტრი განსხვავდება. ოთხი ასლი ოთხნაირად დაითვლიდა გვერდებს.
 
-   ⚠️ **lightbox მთელ ჯგუფს ხედავს და არა მიმდინარე გვერდს** (§3.7) —
+   ⚠️ **lightbox მთელ ჯგუფს ხედავს და არა მიმდინარე გვერდს** —
    ბოლო სურათზე „შემდეგი" ახალ გვერდზე უნდა გადავიდეს.
    ============================================================ */
 
@@ -32,7 +32,7 @@ const ALL_PER_PAGE = 1000
 export function GroupPhotos({
   title,
   subtitle,
-  /** მუდმივი ახსნა აიქონად — `subtitle` ცოცხალ ფაქტს რჩება (Tasks §3) */
+  /** მუდმივი ახსნა აიქონად — `subtitle` ცოცხალ ფაქტს რჩება */
   hint,
   filters,
   cacheKey,
@@ -54,10 +54,10 @@ export function GroupPhotos({
   actions?: ReactNode
   showOwner?: boolean
   emptyText?: string
-  /** §7.15 — ჩაკეტილ ალბომში „პაროლის შეყვანა" */
+  /** ჩაკეტილ ალბომში „პაროლის შეყვანა" */
   onUnlock?: () => void
   /**
-   * Tasks §25.4 — კადრი · პოსტერი · ლოგო · მსახიობი ჩანართები (`category` სერვერულ
+   * კადრი · პოსტერი · ლოგო · მსახიობი ჩანართები (`category` სერვერულ
    * ფილტრად), რიცხვებით მთელი ჯგუფიდან. ჩანაწერის გვერდსა და ბიბლიოთეკას ერთი კომპონენტი.
    */
   categories?: boolean
@@ -98,14 +98,14 @@ export function GroupPhotos({
 
   const meta = query.data?.meta
 
-  /* ⚠️ **ჩაკეტილი ალბომი ცარიელი აღარაა — ის ბლარიან ფილებად იხატება**
-     (Tasks §7.11/§7.15). ადრე სერვერი 423-ს აბრუნებდა და ბადე საერთოდ
+  /* ⚠️ **ჩაკეტილი ალბომი ცარიელი აღარაა — ის ბლარიან ფილებად იხატება**.
+     ადრე სერვერი 423-ს აბრუნებდა და ბადე საერთოდ
      არ იხატებოდა; შენი მითითებით ახლა რიგები ჩანს (მხოლოდ `id` და
      ზომები), პაროლის ღილაკი კი აქვეა. */
   const locked = query.data && 'locked' in query.data ? query.data : null
   const photos = query.data && !('locked' in query.data) ? query.data.data : []
   const everything = allQ.data && !('locked' in allQ.data) ? allQ.data.data : undefined
-  // §25.4 — ლაითბოქსი არჩეული ჩანართის ფოტოებს ფურცლავს, რიცხვები კი მთელი ჯგუფისაა
+  // ლაითბოქსი არჩეული ჩანართის ფოტოებს ფურცლავს, რიცხვები კი მთელი ჯგუფისაა
   const lightbox =
     everything && categories && category !== 'all'
       ? everything.filter((image) => !image.locked && image.category === category)
@@ -171,7 +171,7 @@ export function GroupPhotos({
       )}
 
       {meta && meta.last_page > 1 && (
-        // Tasks §46 — ნომრები; „მეტის ნახვა" ფოტოს ბადეში რაოდენობის არჩევაა
+        // ნომრები; „მეტის ნახვა" ფოტოს ბადეში რაოდენობის არჩევაა
         <Pagination page={meta.page} lastPage={meta.last_page} total={meta.total} onPage={setPage} />
       )}
     </section>

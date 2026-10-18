@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * ჩანაწერების კატეგორიები — per-user CRUD + თანმიმდევრობა (Tasks §13.1).
+ * ჩანაწერების კატეგორიები — per-user CRUD + თანმიმდევრობა.
  * სტრუქტურა `BoardGameGenreController`-ის იდენტურია; წაშლისას ჩანაწერები
  * **არ იკარგება**: `move_to` ან „კატეგორიის გარეშე".
  */
@@ -66,7 +66,7 @@ class NoteCategoryController extends Controller
             DictionaryRecords::messages(),
         );
 
-        // ეტაპი 8 — ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**, მოდელის გავლით
+        // ჩანაწერებიც „იშლება“ — **მფლობელის ურნაში**, მოდელის გავლით
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::trash(NoteEntry::where('category_id', $noteCategory->id));
             DictionaryTrash::trash($noteCategory, 'note_category');
@@ -76,7 +76,7 @@ class NoteCategoryController extends Controller
 
         $moveTo = DictionaryRecords::moveTarget($data);
 
-        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+        /* ⚠️ **ურნა** — რიგი ურნაში გადადის და იმახსოვრებს,
            რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
            შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
         $records = NoteEntry::where('category_id', $noteCategory->id);

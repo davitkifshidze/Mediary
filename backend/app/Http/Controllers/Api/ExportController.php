@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * **FEAT-06 — „ჩემი მონაცემები": მოდულის ჩანაწერები ფაილად.**
+ * **„ჩემი მონაცემები": მოდულის ჩანაწერები ფაილად.**
  *
  * აქამდე ბიბლიოთეკის წაღების ორი გზა იყო და ორივე გვერდით: ატვირთული
  * **ფაილების** zip (`POST /storage/files/download`) და ბაზის სრული ასლი
@@ -58,7 +58,7 @@ class ExportController extends Controller
     {
         $user = $request->user();
 
-        /* ⚠️ §37 — საკუთარი პირადი მოდულიც (`visibleTo`), ე.ი. `whereIn(keys())`
+        /* ⚠️ საკუთარი პირადი მოდულიც (`visibleTo`), ე.ი. `whereIn(keys())`
            აქ აღარ გამოდგება: პირადის გასაღები ბაზაშია და არა რუკაში. */
         $modules = Module::where('is_active', true)
             ->visibleTo($user)
@@ -97,7 +97,7 @@ class ExportController extends Controller
         $user = $request->user();
 
         abort_unless(ExportDomain::has($module), 404);
-        // ⚠️ §37 — სხვისი პირადი მოდული 404-ია და არა 403 (არსებობა თავად ინფორმაციაა)
+        // ⚠️ სხვისი პირადი მოდული 404-ია და არა 403 (არსებობა თავად ინფორმაციაა)
         abort_if(CustomModules::isKey($module) && ! CustomModules::owns($user, $module), 404);
         abort_unless($user->hasModule($module), 403, 'module_disabled');
         abort_unless($user->hasPermission($module, 'view'), 403, 'forbidden');
@@ -137,7 +137,7 @@ class ExportController extends Controller
     }
 
     /**
-     * **Tasks §59.5 — „ჩემი სრული ექსპორტი"**: ყველა ჩემი მოდული ერთ ZIP-ში
+     * **„ჩემი სრული ექსპორტი"**: ყველა ჩემი მოდული ერთ ZIP-ში
      * (JSON + ფაილები) — ისე, რომ „იმპორტმა" უკან შემოიტანოს.
      *
      * ⚠️ **`LibraryArchive` მეთოდით და არა კონსტრუქტორით** — კონტროლერი

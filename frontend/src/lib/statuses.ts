@@ -16,7 +16,7 @@ import { resolveStatusColor } from '@/lib/statusColor'
 import { STATUS_FILL } from '@/lib/statusStyles'
 
 /* ============================================================
-   **სტატუსების წაკითხვის ერთადერთი ადგილი (Tasks §6.4).**
+   **სტატუსების წაკითხვის ერთადერთი ადგილი.**
 
    საიდბარი, ბარათის მენიუ, ფორმა, ფილტრი, მასობრივი ცვლილება და `/purge` —
    ექვსივე ერთსა და იმავე სიას ხატავს. ერთი ქეშის გასაღები (`['statuses', domain]`)
@@ -25,7 +25,7 @@ import { STATUS_FILL } from '@/lib/statusStyles'
 
 export const statusesQueryKey = (domain: StatusDomainKey) => ['statuses', domain] as const
 
-/** ⚠️ `StatusDomainKey` — პირადი მოდულის (§37) გასაღებიც, იგივე ქეშით */
+/** ⚠️ `StatusDomainKey` — პირადი მოდულის გასაღებიც, იგივე ქეშით */
 export function useStatuses(domain: StatusDomainKey, enabled = true) {
   return useQuery({
     queryKey: statusesQueryKey(domain),
@@ -59,7 +59,7 @@ export function useStatusMap(enabledDomains: readonly string[]): Record<StatusDo
 }
 
 /**
- * **პირადი მოდულების ლექსიკონები** (Tasks §37) — საიდბარის სექციებისთვის.
+ * **პირადი მოდულების ლექსიკონები** — საიდბარის სექციებისთვის.
  *
  * ⚠️ `useStatusMap()`-ის ფიქსირებული ექვსი query აქ არ გამოდგება: პირადი
  * მოდულების რიცხვი ბაზაშია და იცვლება. `useQueries` ცვალებად სიას
@@ -149,10 +149,10 @@ export function statusTone(status: Pick<Status, 'key' | 'role'> | null | undefin
 
 
 /**
- * **enum-სტატუსიანი მოდულების i18n სივრცე** (§6.4-ის მეორე მექანიზმი).
+ * **enum-სტატუსიანი მოდულების i18n სივრცე** (per-user ლექსიკონის გვერდით მეორე მექანიზმი).
  *
  * ⚠️ ეს რუკა სამ ფაილში ცალ-ცალკე ეწერა (`MatchPanel`, `StatsPage`,
- * `PurgePage`) და კურსი და ადგილი (Tasks §2) ორ მათგანს დააკლდა — ეკრანზე
+ * `PurgePage`) და კურსი და ადგილი ორ მათგანს დააკლდა — ეკრანზე
  * ნედლი გასაღები იხატებოდა. სივრცეები ისტორიულია (`board_game` →
  * `boardGames`), ამიტომ რუკაა და არა შეწებება.
  */
@@ -175,7 +175,7 @@ export type EnumStatusDomain = keyof typeof ENUM_STATUS_NS
 export type EnumStatusRole = StatusRole | 'dropped'
 
 /**
- * **enum-სტატუსის როლი — ფერი ლექსიკონის სტატუსებისაა** (Tasks §21).
+ * **enum-სტატუსის როლი — ფერი ლექსიკონის სტატუსებისაა**.
  *
  * შენი სიტყვები: „წიგნებში სტატუსს „ვკითხულობ“ ნაცრისფერი ფონი აქვს …
  * შესაბამისი ფერი მიეცი — ნაცრისფერი არ მომწონს".
@@ -214,7 +214,7 @@ export function enumStatusTone(domain: EnumStatusDomain, status: string): string
 }
 
 /**
- * **სტატუსის ფერი გრაფიკზე** (Tasks §28) — ზუსტად ბეჯის ტონი, ორივე
+ * **სტატუსის ფერი გრაფიკზე** — ზუსტად ბეჯის ტონი, ორივე
  * მექანიზმზე: ლექსიკონის სტატუსი `statusTone`-ით, enum-ისა `enumStatusTone`-ით.
  *
  * ⚠️ enum-ზე სერვერი `role`-ს არ აბრუნებს, ამიტომ დომენი აუცილებელია —
@@ -225,7 +225,7 @@ export function enumStatusTone(domain: EnumStatusDomain, status: string): string
 export function statusFill(domain: string, key: string | null, role: string | null, color: string | null = null): string {
   if (!key) return STATUS_FILL.undecided
 
-  // Tasks §16 — სტატუსის საკუთარი ფერი (ბეჯის იგივე წესი), თუ არის
+  // სტატუსის საკუთარი ფერი (ბეჯის იგივე წესი), თუ არის
   const own = resolveStatusColor(color)
   if (own) return own
 

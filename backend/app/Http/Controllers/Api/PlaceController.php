@@ -22,20 +22,20 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * ადგილების მოდული (`place`, FEAT-26).
+ * ადგილების მოდული (`place`).
  *
  * მფლობელობა — `BelongsToUser` global scope (სხვისი ჩანაწერი 404), უფლებები —
  * `permission:place` middleware.
  *
  * ⚠️ **წყარო OSM Nominatim-ია და უფასოა** — გასაღები არ სჭირდება, ე.ი.
- * კანდიდატების ნაკადი (§12-ის `candidates → lookup`) აქ ნამდვილად მუშაობს,
+ * კანდიდატების ნაკადი (`candidates → lookup`) აქ ნამდვილად მუშაობს,
  * განსხვავებით კურსებისგან.
  *
  * ⚠️ **„წყარო არ პასუხობს" ≠ „ვერაფერი ვიპოვე"**: პირველი **503
  * `places_unavailable`**-ია, მეორე — 200 ცარიელი სიით. ცარიელი სია
  * „ასეთი ადგილი არ არსებობს"-ად იკითხება და ხელით შევსებას აჩერებს.
  *
- * ⚠️ **Tasks §57 — წყაროები `PlaceSearch`-შია** (Google Places → SerpApi →
+ * ⚠️ **წყაროები `PlaceSearch`-შია** (Google Places → SerpApi →
  * Serper → Nominatim): წერისას შემოთავაზება (`live`, მხოლოდ Google), ცხადი
  * ძებნა, არჩეულის დეტალები, Google Maps-ის ბმული და უკუ-გეოკოდირება. შენახვისას
  * ტელეფონი, ვებგვერდი, საათები და წყაროს რეიტინგი ცალკე სვეტებია, წყაროს
@@ -44,7 +44,7 @@ use Illuminate\Validation\Rule;
  */
 class PlaceController extends Controller
 {
-    /** §57.1 — რამდენი ფოტო ჩამოვა გალერეაში ერთ შენახვაზე */
+    /** რამდენი ფოტო ჩამოვა გალერეაში ერთ შენახვაზე */
     private const GALLERY_URLS_MAX = 10;
 
     public function __construct(
@@ -55,7 +55,7 @@ class PlaceController extends Controller
     public function index(Request $request)
     {
         $query = Place::query()->with('category')->withCount(['files', 'galleryImages']);
-        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'place', $request);
 
         foreach ($this->slugList($request->string('status')->toString()) as $key) {
@@ -84,7 +84,7 @@ class PlaceController extends Controller
                 ->orWhere('address', 'like', Like::contains($q))
                 ->orWhere('city', 'like', Like::contains($q))
                 ->orWhere('country', 'like', Like::contains($q))
-                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // §47 — ფორმატის გარეშე
+                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // ფორმატის გარეშე
                 ->orWhere('tags', 'like', Like::contains($q)));
         }
 
@@ -126,7 +126,7 @@ class PlaceController extends Controller
     /**
      * კანდიდატები — ჩანაწერს არ ქმნის. `live=1` — წერისას (მხოლოდ Google;
      * გასაღების გარეშე `live: false` და SPA ცხად ძებნაზე გადადის), თორემ —
-     * წყაროების ჯაჭვი (§57.2); `city` — ფორმის ქალაქი, მიკერძოებისთვის.
+     * წყაროების ჯაჭვი; `city` — ფორმის ქალაქი, მიკერძოებისთვის.
      */
     public function candidates(Request $request)
     {
@@ -177,7 +177,7 @@ class PlaceController extends Controller
             : ($this->blocked() ?? response()->json(['message' => 'not_found'], 404));
     }
 
-    /** §57.3 — Google Maps-ის ბმული (მოკლეც) → ფორმის მონახაზი */
+    /** Google Maps-ის ბმული (მოკლეც) → ფორმის მონახაზი */
     public function link(Request $request)
     {
         $data = $request->validate(['url' => ['required', 'string', 'max:2000', 'url']]);
@@ -189,7 +189,7 @@ class PlaceController extends Controller
             : ($this->blocked() ?? response()->json(['message' => 'map_link_unreadable'], 422));
     }
 
-    /** §57.4 — პინის გადათრევა → მისამართი, ქალაქი, ქვეყანა */
+    /** პინის გადათრევა → მისამართი, ქალაქი, ქვეყანა */
     public function reverse(Request $request)
     {
         $data = $request->validate([
@@ -228,7 +228,7 @@ class PlaceController extends Controller
 
     public function destroy(Place $place)
     {
-        // ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`
+        // ⚠️ **კალათა** — `delete()` კი არა, `moveToTrash()`
         $place->moveToTrash();
 
         return response()->noContent();
@@ -270,7 +270,7 @@ class PlaceController extends Controller
     }
 
     /**
-     * **§57.1 — წყაროს ფოტოები ადგილის გალერეაში** (ვებძებნის იმავე იმპორტერით —
+     * **წყაროს ფოტოები ადგილის გალერეაში** (ვებძებნის იმავე იმპორტერით —
      * კვოტა, დუბლი, `SafeHttp`); ფოტო თუ ჯერ არ გაქვს, პირველი ჩამოსული მთავარი
      * ხდება (`GalleryController::setPrimary()`-ის წესი — ადგილს წყაროს სვეტი არ აქვს).
      * ⚠️ ჩავარდნა ადგილის შენახვას არ აჩერებს — ფოტო მეორეხარისხოვანია.
@@ -337,14 +337,14 @@ class PlaceController extends Controller
             'tags' => ['nullable', 'array', 'max:20'],
             'tags.*' => ['string', 'max:40'],
             'status' => [...$must, Rule::in(Place::STATUSES)],
-            // Tasks §25.2 — მთელი 1–10, დანარჩენი ოთხი მოდულის ზუსტი წესი
+            // მთელი 1–10, დანარჩენი ოთხი მოდულის ზუსტი წესი
             'rating' => Rating::rules(),
             'is_favorite' => ['nullable', 'boolean'],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'visited_at' => ['nullable', 'date'],
             'photo' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_photo' => ['nullable', 'boolean'],
-            // Tasks §57.1 — წყაროს ინფო (ტელეფონი, ვებგვერდი, საათები, წყაროს რეიტინგი 0–5)
+            // წყაროს ინფო (ტელეფონი, ვებგვერდი, საათები, წყაროს რეიტინგი 0–5)
             'phone' => ['nullable', 'string', 'max:60'],
             'website' => ['nullable', 'string', 'max:500', 'url'],
             'opening_hours' => ['nullable', 'array', 'max:14'],
@@ -389,14 +389,14 @@ class PlaceController extends Controller
         }
 
         if ($request->boolean('remove_photo')) {
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($place, 'photo_path');
             $place->photo_path = null;
         }
 
         if ($request->hasFile('photo')) {
-            // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($place, 'photo_path');
             $place->photo_path = $this->meter
                 ->storeUpload($request->user(), $request->file('photo'), StorageFolder::PLACE_PHOTOS);

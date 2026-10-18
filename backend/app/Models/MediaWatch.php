@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
- * **ერთი ნახვა (FEAT-14).**
+ * **ერთი ნახვა.**
  *
  * ⚠️ **„ნანახია" რიგის არსებობაა** — `is_watched`-ის ტიპის დროშა აქ
- * მეორე წყარო იქნებოდა იმავე ფაქტისა (FEAT-09-ის `episode_watches`-ის
+ * მეორე წყარო იქნებოდა იმავე ფაქტისა (`episode_watches`-ის
  * იგივე წესი).
  *
  * ⚠️ **`note` არჩევითია და განზრახ მოკლეა** — „ვის ვუყურე", „რომელ
@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class MediaWatch extends Model
 {
     /**
-     * ⚠️ **ურნა (Tasks §29, ეტაპი 2)** — `destroy()` `moveToTrash()`-ს იძახის;
+     * ⚠️ **ურნა** — `destroy()` `moveToTrash()`-ს იძახის;
      * რიგი ადგილზე რჩება და ურნიდან ბრუნდება.
      */
     use BelongsToUser, HasTrash;
@@ -38,7 +38,7 @@ class MediaWatch extends Model
     }
 
     /**
-     * ⚠️ **„ბოლო ნახვა" ურნასთან ერთად გადაითვლება** (Tasks §29.3) —
+     * ⚠️ **„ბოლო ნახვა" ურნასთან ერთად გადაითვლება** —
      * `syncWatchedAt()` ჟურნალს `trash` scope-ით კითხულობს, ე.ი. ურნაში
      * გადატანილი ნახვა თავისით ქრება, აღდგენილი კი ბრუნდება. უამისოდ
      * ჩანაწერი „ბოლოს ვნახე"-ს იმ დღეს იტყოდა, რომელიც ურნაშია.

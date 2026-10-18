@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { isCustomModule, isCustomModuleKey } from '@/lib/customModules'
 
 /* ============================================================
-   **პირადი მოდულის გასაღები (Tasks §37).**
+   **პირადი მოდულის გასაღები.**
 
    ⚠️ ფორმა `App\Support\CustomModules::PATTERN`-ის სარკეა: აქ შეცდომა
    ჩუმია — საბაზისო მოდული „პირადად" წაიკითხება (და მისი ველები `custom`-ის

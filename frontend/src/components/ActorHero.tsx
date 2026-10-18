@@ -17,7 +17,7 @@ import { RecordLockActions } from '@/components/locks/RecordLock'
 import { actorLockBase } from '@/lib/locks'
 
 /* ============================================================
-   მსახიობის **hero** — შიდა გვერდის თავი (Tasks §8.1/§8.5).
+   მსახიობის **hero** — შიდა გვერდის თავი.
 
    მოთხოვნა: „მსახიობებს შიდა გვერდები ცალკე უნდა ჰქონდეს" და „სტანდარტული
    ჩამოწერა ოფიციალური საიტებიდან — IMDb და TMDB".
@@ -53,14 +53,14 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
   const { toast } = useToast()
   const { date: formatDate } = useDateFormat()
   const [expanded, setExpanded] = useState(false)
-  // §35.3 — ხელით შექმნილის რედაქტირება და ჩანაწერებზე მიმაგრება
+  // ხელით შექმნილის რედაქტირება და ჩანაწერებზე მიმაგრება
   const [editing, setEditing] = useState(false)
   const [attaching, setAttaching] = useState(false)
   const editable = !!actor.created_by_me && !!actor.is_private
   const confirm = useConfirm()
   const navigate = useNavigate()
 
-  /* §35.9 (Q17) — ხელით შექმნილის წაშლა ურნაში; გვერდი აღარ არსებობს, ე.ი. სიაში ბრუნდება */
+  /* ხელით შექმნილის წაშლა ურნაში; გვერდი აღარ არსებობს, ე.ი. სიაში ბრუნდება */
   const trash = useMutation({
     mutationFn: () => trashActor(actor.id),
     onSuccess: () => {
@@ -127,7 +127,7 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
                 {actor.popularity.toFixed(1)}
               </span>
             )}
-            {/* §35.3 (Q9) — ხელით შექმნილი, TMDB-ს დაუკავშირებელი: სხვა ანგარიშები მას ვერ ხედავენ */}
+            {/* ხელით შექმნილი, TMDB-ს დაუკავშირებელი: სხვა ანგარიშები მას ვერ ხედავენ */}
             {actor.is_private && (
               <span className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
                 <Lock className="size-3" />
@@ -227,7 +227,7 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
             <Link2 className="size-4" />
             {t('actors.attach.open')}
           </Button>
-          {/* §35.5 — ჩაკეტვა / ისევ ჩაკეტვა / პაროლი (ლოკი მხოლოდ შენთვისაა) */}
+          {/* ჩაკეტვა / ისევ ჩაკეტვა / პაროლი (ლოკი მხოლოდ შენთვისაა) */}
           <RecordLockActions
             base={actorLockBase(actor.id)}
             record={{

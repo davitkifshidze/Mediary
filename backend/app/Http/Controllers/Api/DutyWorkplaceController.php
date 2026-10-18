@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
- * **სამსახურები (Tasks §34)** — `/duty/workplaces`: სახელი, მოკლე ასო, ფერი,
+ * **სამსახურები** — `/duty/workplaces`: სახელი, მოკლე ასო, ფერი,
  * საათობრივი განაკვეთი და **ტარიფები ტიპების მიხედვით** (`rates`) ერთ ფორმაში.
  *
  * ⚠️ **ტარიფები მთლიანად მოდის** (`rates: [{type_id, pay}]`): სიაში არმყოფი ან

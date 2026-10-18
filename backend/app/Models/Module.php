@@ -12,15 +12,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * მოდული = ერთი დომენი („plug-in"): ფილმები, სერიალები, მომავალში ანიმე/ვიდეო…
  * frontend-ის ნავიგაცია და მარშრუტები ამ ცხრილიდან იგება (იხ. lib/modules.tsx).
  *
- * **Tasks §37 — მოდული შეიძლება იყოს პირადი** (`owner_id`): მომხმარებელმა
+ * **მოდული შეიძლება იყოს პირადი** (`owner_id`): მომხმარებელმა
  * ინტერფეისიდან შექმნა და მის გარდა არავის უჩანს. ყველა ასეთი მოდულის
  * წესი `App\Support\CustomModules`-შია.
  *
- * ⚠️ **ურნაში მყოფი მოდული ყველგან ქრება — global scope `trash`-ით** (37.7):
+ * ⚠️ **ურნაში მყოფი მოდული ყველგან ქრება — global scope `trash`-ით**:
  * საიდბარი, `/modules`, მარშრუტი, ძებნა და ყველა რეესტრი `Module::`-ით
  * კითხულობს, ე.ი. ცალ-ცალკე `whereNull()` ოცდაათ ადგილას ერთ დღეს
  * დაავიწყდებოდა. ⚠️ **ათი ძველი მიგრაცია ამიტომ `withoutGlobalScope('trash')`-ს
- * იძახებს**: scope მოდელზეა, სვეტი კი მხოლოდ §37-ის მიგრაციაში ჩნდება —
+ * იძახებს**: scope მოდელზეა, სვეტი კი მხოლოდ პირადი მოდულების მიგრაციაში
+ * (`create_custom_modules`) ჩნდება —
  * ახალ ბაზაზე `migrate:fresh` სხვაგვარად არარსებულ სვეტს დაეძებდა.
  */
 class Module extends Model
@@ -52,7 +53,7 @@ class Module extends Model
         return $this->hasMany(ApprovalRequest::class);
     }
 
-    /** §37 — პირადი მოდულის მფლობელი (`null` — საბაზისო, ყველასი) */
+    /** პირადი მოდულის მფლობელი (`null` — საბაზისო, ყველასი) */
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
@@ -64,7 +65,7 @@ class Module extends Model
         return (bool) $this->morph_alias;
     }
 
-    /** §37 — ინტერფეისიდან შექმნილი (პირადი) მოდულია? */
+    /** ინტერფეისიდან შექმნილი (პირადი) მოდულია? */
     public function isCustom(): bool
     {
         return $this->owner_id !== null;

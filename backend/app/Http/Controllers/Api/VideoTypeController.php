@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * ვიდეოს ტიპების მართვა (Tasks 5.1) — per-user CRUD + თანმიმდევრობა.
+ * ვიდეოს ტიპების მართვა — per-user CRUD + თანმიმდევრობა.
  *
  * წაშლისას მიბმული ვიდეოები **არ იკარგება**: ან სხვა ტიპზე გადადის
  * (`move_to`), ან ტიპის გარეშე რჩება — იგივე წესი, რაც `GenreRemover`-შია.
@@ -75,7 +75,7 @@ class VideoTypeController extends Controller
             DictionaryRecords::messages(),
         );
 
-        // ეტაპი 8 — ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**, მოდელის გავლით
+        // ჩანაწერებიც „იშლება“ — **მფლობელის ურნაში**, მოდელის გავლით
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::trash(Video::where('type_id', $videoType->id));
             DictionaryTrash::trash($videoType, 'video_type');
@@ -85,7 +85,7 @@ class VideoTypeController extends Controller
 
         $moveTo = DictionaryRecords::moveTarget($data);
 
-        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+        /* ⚠️ **ურნა** — რიგი ურნაში გადადის და იმახსოვრებს,
            რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
            შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
         $records = Video::where('type_id', $videoType->id);
@@ -129,7 +129,7 @@ class VideoTypeController extends Controller
             'name_ka' => ['required', 'string', 'max:80'],
             'name_en' => ['required', 'string', 'max:80'],
             'icon' => ['nullable', 'string', 'max:60'],
-            // Tasks §19.2 → §24.3 — ლექსიკონის ფერის ერთი წესი
+            // ლექსიკონის ფერის ერთი წესი
             'color' => DictionaryColor::RULE,
         ]);
     }

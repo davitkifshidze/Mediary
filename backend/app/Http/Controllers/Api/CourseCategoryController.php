@@ -81,7 +81,7 @@ class CourseCategoryController extends Controller
 
         $moveTo = DictionaryRecords::moveTarget($data);
 
-        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+        /* ⚠️ **ურნა** — რიგი ურნაში გადადის და იმახსოვრებს,
            რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
            შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
         $records = Course::where('category_id', $courseCategory->id);

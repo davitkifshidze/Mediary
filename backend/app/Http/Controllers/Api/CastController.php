@@ -29,14 +29,14 @@ use Throwable;
 
 class CastController extends Controller
 {
-    /** ⚠️ მსახიობზე რამდენი საძიებო ტეგი შეიძლება (§7.5) — უსასრულო სია
+    /** ⚠️ მსახიობზე რამდენი საძიებო ტეგი შეიძლება — უსასრულო სია
         ძებნის შეკითხვას 255 სიმბოლოს ჭერს გადააცილებდა */
     private const MAX_TAGS = 20;
 
     /** მსახიობის გვერდი: ფილმები + სერიალები + ანიმეები (ჩემი კოლექცია + TMDB შემოთავაზება) */
     public function show(CastMember $castMember, TmdbClient $tmdb)
     {
-        /* Tasks §35.5 — ჩემ მიერ ჩაკეტილი, ამ სესიაში დაუხსნელი: მხოლოდ სახელი და ბოქლომი.
+        /* ჩემ მიერ ჩაკეტილი, ამ სესიაში დაუხსნელი: მხოლოდ სახელი და ბოქლომი.
            ⚠️ ფილმოგრაფია, ბიოგრაფია და TMDB-ის შემოთავაზებები საერთოდ არ გამოდის. */
         if (RecordLocks::hiddenRecord($castMember)) {
             return response()->json([
@@ -51,7 +51,7 @@ class CastController extends Controller
 
         $movies = $castMember->movies()->with('genres')->orderByDesc('year')->get();
         $series = $castMember->series()->with('genres')->orderByDesc('year')->get();
-        // §7.1 — მესამე მედია-დომენი; მსახიობი ერთია და სამივეს უკავშირდება
+        // მესამე მედია-დომენი; მსახიობი ერთია და სამივეს უკავშირდება
         $animes = $castMember->animes()->with('genres')->orderByDesc('year')->get();
 
         $suggestions = [];
@@ -137,7 +137,7 @@ class CastController extends Controller
         }
 
         return response()->json([
-            /* §8.1 — მსახიობს ახლა **შიდა გვერდი** აქვს, ე.ი. პასუხს
+            /* მსახიობს ახლა **შიდა გვერდი** აქვს, ე.ი. პასუხს
                ბიოგრაფია, დაბადების თარიღი, IMDb-ის id და ოფიციალური ბმულები
                მოსდევს. ფორმა ერთია (`CastMember::toDetailArray()`) — გალერეის
                `castShow()`-იც იმავეს აბრუნებს. */
@@ -145,7 +145,7 @@ class CastController extends Controller
             'movies' => MovieListResource::collection($movies),
             'series' => SeriesListResource::collection($series),
             'animes' => AnimeListResource::collection($animes),
-            /* ⚠️ **ანიმეს ცალკე შემოთავაზება განზრახ არ არსებობს** (§7.1):
+            /* ⚠️ **ანიმეს ცალკე შემოთავაზება განზრახ არ არსებობს**:
                TMDB-ზე ანიმე ჩვეულებრივი `tv` ჩანაწერია, ე.ი. `personTvCredits`
                ერთსა და იმავე სიას აბრუნებდა და გვერდზე ორი იდენტური ბადე
                გაჩნდებოდა. „რა მაქვს" კი დომენებად გაყოფილია — `animes` ზემოთ. */
@@ -155,12 +155,12 @@ class CastController extends Controller
     }
 
     /**
-     * **ახალი მსახიობი `/actors`-იდან (Tasks §35.3).**
+     * **ახალი მსახიობი `/actors`-იდან.**
      *
      * ორი გზა: TMDB-ის პირი (`tmdb_person_id` — საერთო ლექსიკონი, ფოტო TMDB-დან,
      * კვოტის გარეშე) ან სრულიად ხელით (სახელი, დეტალები, ატვირთული ფოტო
      * **შენი კვოტით**, `cast/uploads/{id}`-ში) — ⚠️ ხელით შექმნილი მხოლოდ შენ
-     * გიჩანს (`created_by`, Q9).
+     * გიჩანს (`created_by`).
      *
      * ⚠️ **დუბლი არ იქმნება** (`CastResolver`-ის წესი): იგივე TMDB-ის პირი ან
      * იგივე სახელი ლექსიკონში უკვე თუ არის, ის ბრუნდება `existing: true`-ით —
@@ -206,7 +206,7 @@ class CastController extends Controller
     }
 
     /**
-     * **ხელით შექმნილის რედაქტირება (Tasks §35.3)** — `POST` + `_method=PUT` (ფოტოს გამო multipart).
+     * **ხელით შექმნილის რედაქტირება** — `POST` + `_method=PUT` (ფოტოს გამო multipart).
      *
      * ⚠️ **მხოლოდ შემქმნელს და მხოლოდ კერძოზე** (`isEditableBy()`): TMDB-ის
      * მსახიობი ფაქტია და ყველასია — მისი სახელი ან ბიოგრაფია ერთი ანგარიშის
@@ -258,7 +258,7 @@ class CastController extends Controller
     }
 
     /**
-     * **ხელით შექმნილი მსახიობის წაშლა — ურნაში (Tasks §35.9, Q17 — „ა").**
+     * **ხელით შექმნილი მსახიობის წაშლა — ურნაში.**
      *
      * მსახიობი, მისი ბმულები ჩანაწერებზე და ჩემი ფოტოები ერთ ელემენტად გადადის
      * ურნაში და ერთად ბრუნდება (`CastMemberTrash`); ვადის ბოლოს — სამუდამოდ.
@@ -285,7 +285,7 @@ class CastController extends Controller
     }
 
     /**
-     * **მსახიობის მონაცემების განახლება TMDB-დან (Tasks §8.1).**
+     * **მსახიობის მონაცემების განახლება TMDB-დან.**
      *
      * ავსებს ბიოგრაფიას, დაბადების თარიღს, დაბადების ადგილს, IMDb-ის id-სა
      * და ოფიციალურ ბმულებს — ე.ი. სწორედ იმას, რაც „მსახიობის შიდა გვერდს"
@@ -322,7 +322,7 @@ class CastController extends Controller
     }
 
     /**
-     * მსახიობის საძიებო ტეგები (§7.5) — რითაც ვებში ფოტოები იძებნება.
+     * მსახიობის საძიებო ტეგები — რითაც ვებში ფოტოები იძებნება.
      *
      * ⚠️ **`PUT`-ია და არა `POST`:** ეს მთელი ნაკრების ჩანაცვლებაა (ერთი
      * წყვილი = ერთი რიგი), თანაც `EnsureModulePermission` POST-იდან `create`-ს
@@ -370,7 +370,7 @@ class CastController extends Controller
         return [
             ...$member->toDetailArray(),
             'photo' => $member->photo_path ? asset('storage/'.$member->photo_path) : null,
-            /* §7.5 — საძიებო ტეგები **ჩემია და არა გლობალური**: `cast_members`
+            /* საძიებო ტეგები **ჩემია და არა გლობალური**: `cast_members`
                საერთო ლექსიკონია, ტეგები კი `cast_member_tags`-შია, user-ზე. */
             'tags' => CastMemberTag::forActor((int) auth()->id(), $member->id),
         ];

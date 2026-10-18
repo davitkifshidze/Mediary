@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * **ინტერფეისიდან შექმნილი მოდულის ჩანაწერი (Tasks §37).**
+ * **ინტერფეისიდან შექმნილი მოდულის ჩანაწერი.**
  *
  * ⚠️ დამატებითი ველების მნიშვნელობები აქ **არ** მოდის — ისინი თავის
  * endpoint-ზეა (`GET /custom-fields/{module}/{id}`), ზუსტად ისე, როგორც
@@ -24,7 +24,7 @@ class CustomRecordResource extends JsonResource
             'description' => $this->description,
             'url' => $this->url,
             'domain' => $this->domain(),
-            // `VideoUrl`-ით ამოცნობილი ბმული — ფლეერში დასაკრავად (37.5); `null` = უბრალო ბმული
+            // `VideoUrl`-ით ამოცნობილი ბმული — ფლეერში დასაკრავად; `null` = უბრალო ბმული
             'platform' => $this->platform,
             'embed_url' => $this->embed_url,
             // ატვირთული ფოტო → /storage/…; თუ არაა — გვერდის og:image (დაშორებული)
@@ -34,7 +34,7 @@ class CustomRecordResource extends JsonResource
             'category_id' => $this->category_id,
             'category' => $this->whenLoaded('category', fn () => $this->category ? new CustomCategoryResource($this->category) : null),
             'tags' => $this->tags ?? [],
-            // §6.4 — ობიექტი და არა სტრიქონი (`BookmarkResource`-ის წესი)
+            // ობიექტი და არა სტრიქონი (`BookmarkResource`-ის წესი)
             'status' => StatusResource::brief($this->status),
             'is_favorite' => (bool) $this->is_favorite,
             'finished_at' => $this->finished_at?->toIso8601String(),

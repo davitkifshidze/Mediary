@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * **FEAT-08 — სტატისტიკა.**
+ * **სტატისტიკა.**
  *
  * ⚠️ **ტესტი აგრეგატებს ამოწმებს და არა გვერდს.** ყველა ჭრილი SQL-შია,
  * ე.ი. სწორედ იქ შეიძლება ჩუმად აცდეს: `year()`/`strftime()` ორ
@@ -59,7 +59,7 @@ class StatsTest extends TestCase
 
     private function movie(User $user, int $year, ?string $watchedAt = null, ?float $rating = null): Movie
     {
-        // Tasks §9 — სტატისტიკა **ჩემს** ქულას ითვლის (`my_rating`), TMDB-ის საშუალოს არა
+        // სტატისტიკა **ჩემს** ქულას ითვლის (`my_rating`), TMDB-ის საშუალოს არა
         $movie = Movie::create(['user_id' => $user->id, 'year' => $year, 'my_rating' => $rating]);
 
         if ($watchedAt) {
@@ -195,7 +195,7 @@ class StatsTest extends TestCase
     }
 
     /**
-     * სტატუსი ორ მექანიზმზე დგას (§6.4) — ლექსიკონი და enum.
+     * სტატუსი ორ მექანიზმზე დგას — ლექსიკონი და enum.
      *
      * ⚠️ ლექსიკონის სახელი **მფლობელის** რიგშია, ე.ი. სერვისმა ის
      * თვითონ უნდა ამოიკითხოს; `id`-ს ბრუნება გვერდს ვერაფერს ეტყოდა.
@@ -226,7 +226,7 @@ class StatsTest extends TestCase
     }
 
     /**
-     * ⚠️ **სტატუსის ზოლის რიგი ლექსიკონისაა** (Tasks §28) — სეგმენტები ერთ
+     * ⚠️ **სტატუსის ზოლის რიგი ლექსიკონისაა** — სეგმენტები ერთ
      * ზოლად იხატება, ე.ი. თანმიმდევრობა ინფორმაციაა. `groupBy`-ის რიგი
      * დრაივერზეა დამოკიდებული (პრაქტიკაში `status_id`-ისა), ამიტომ ტესტი
      * ლექსიკონს **ამოაბრუნებს** — `sort_order` `id`-ს აღარ ემთხვევა და
@@ -347,7 +347,7 @@ class StatsTest extends TestCase
         Carbon::setTestNow();
     }
 
-    /* ---------- Tasks §49 — „მედია" სამ ჩანართად (Q13), ზოლიდან სიაზე ---------- */
+    /* ---------- „მედია" სამ ჩანართად, ზოლიდან სიაზე ---------- */
 
     private function withSeries(User $user): User
     {
@@ -432,7 +432,7 @@ class StatsTest extends TestCase
         $this->assertSame([], $this->forModule($payload, 'song')['actors']);
     }
 
-    /** Tasks §28.3 — წლის ერთი ხაზი: წელს და შარშან, ნახვების ჟურნალიდან */
+    /** წლის ერთი ხაზი: წელს და შარშან, ნახვების ჟურნალიდან */
     public function test_the_media_year_line_reads_the_watch_log(): void
     {
         $movie = Movie::create(['user_id' => $this->me->id, 'year' => 2001]);
@@ -447,7 +447,7 @@ class StatsTest extends TestCase
         $this->assertSame(1, $movies['last_year']);
     }
 
-    /** Tasks §49.2 — „მედიის" ბლოკი და კალენდარი აღარ არსებობს */
+    /** „მედიის" ბლოკი და კალენდარი აღარ არსებობს */
     public function test_the_media_block_and_the_calendar_are_gone(): void
     {
         $this->assertArrayNotHasKey('media', $this->stats());
@@ -455,7 +455,7 @@ class StatsTest extends TestCase
     }
 
     /**
-     * Tasks §49.3 — **თვის ზოლი → იმ თვის სია**: სხვა მოდულებზე „როდის დავასრულე"
+     * **თვის ზოლი → იმ თვის სია**: სხვა მოდულებზე „როდის დავასრულე"
      * (`done=`), მედიაზე ნახვების ჟურნალი (`watched=`, ხელახლა ნახვაც);
      * დაზიანებული თვე უგულებელყოფილია.
      */
@@ -483,7 +483,7 @@ class StatsTest extends TestCase
     }
 
     /**
-     * Tasks §49.3 — **წლის და ქულის ზოლი** — სიის რიცხვი ზოლს ემთხვევა: ქულის
+     * **წლის და ქულის ზოლი** — სიის რიცხვი ზოლს ემთხვევა: ქულის
      * კალათა `round()`-ია (6.5 → 7), ე.ი. 7-ის ზოლი 6.5…7.4-ია; მედიაზე ეს **შენი**
      * ქულაა (`my_rating`) და არა TMDB-ის.
      */

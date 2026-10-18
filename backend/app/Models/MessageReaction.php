@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * წერილზე რეაქცია (Tasks §10.10).
+ * წერილზე რეაქცია.
  *
  * ⚠️ **თითო ადამიანზე ერთი რეაქცია** (`unique(message_id, user_id)`) —
  * Messenger/Instagram-ის სემანტიკა. გაფართოება მოგვიანებით უსაფრთხოა,

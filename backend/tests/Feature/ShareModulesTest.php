@@ -26,9 +26,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * **გაზიარების ბმული — ეტაპი 2-ის რვა დომენი (Tasks §40.10).**
+ * **გაზიარების ბმული — დანარჩენი რვა დომენი.**
  *
- * ⚠️ ყოველი ნახვის ტესტი **შესულ უცხოზეც** ეშვება (§1.2-ის გაკვეთილი):
+ * ⚠️ ყოველი ნახვის ტესტი **შესულ უცხოზეც** ეშვება:
  * ლექსიკონის მოდელს `owner` scope აქვს, ე.ი. ანონიმურ ტესტზე ჟანრი ჩანს,
  * შესულ უცხოს კი — მის საკუთარ ლექსიკონზე მოჭრილი რელაცია ცარიელს აძლევდა.
  */
@@ -281,7 +281,7 @@ class ShareModulesTest extends TestCase
         $token = $this->link(['video' => ['scope' => 'status', 'statuses' => ['watched']]]);
         $this->assertSame([$watched->id], array_column($this->anonymous("/api/public/shares/{$token}/video")->json('data'), 'id'));
 
-        // ⚠️ სტატუსის უქონელ დომენზე „სტატუსით" საერთოდ არ არსებობს (§40.13 — `ShareDomain::modes()`)
+        // ⚠️ სტატუსის უქონელ დომენზე „სტატუსით" საერთოდ არ არსებობს (`ShareDomain::modes()`)
         foreach (['song', 'board_game'] as $domain) {
             $this->actingAs($this->owner)
                 ->postJson('/api/share-links', ['domains' => [$domain => ['scope' => 'status', 'statuses' => ['done']]]])

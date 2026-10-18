@@ -4,7 +4,7 @@ import { formatDate } from '@/lib/dates'
 import type { Settings } from '@/lib/settings'
 
 /* ============================================================
-   ავტორიზაცია, პროფილი, მოდულები, მოთხოვნები და ადმინ-პანელი (I7).
+   ავტორიზაცია, პროფილი, მოდულები, მოთხოვნები და ადმინ-პანელი.
    ============================================================ */
 
 export interface User {
@@ -16,52 +16,52 @@ export interface User {
   email: string
   display_name: string
   avatar_path: string | null
-  /** როლის `key` — სისტემურები: `super_admin` · `user` (Tasks 1.6) */
+  /** როლის `key` — სისტემურები: `super_admin` · `user` */
   role: string
   role_id: number | null
   role_name_ka: string | null
   role_name_en: string | null
   is_super_admin: boolean
   /**
-   * მოდულის შიდა უფლებები (19.8): `{ movie: ['view','create'], '*': ['view'] }`.
+   * მოდულის შიდა უფლებები: `{ movie: ['view','create'], '*': ['view'] }`.
    * `null` = შეზღუდვის გარეშე (სუპერ-ადმინი).
    */
   permissions?: Record<string, string[]> | null
   /**
-   * Tasks 1.6 — რომელ ადმინის სექციას ხედავს: `users` · `roles` · `requests`.
+   * რომელ ადმინის სექციას ხედავს: `users` · `roles` · `requests`.
    * ⚠️ ბმულების დამალვა **ამით** ხდება და აღარ `is_super_admin`-ით: წვდომა
    * როლიდანაც შეიძლება მოვიდეს.
    */
   admin_resources?: string[]
   is_active: boolean
-  /** Tasks 16.1 — საჯარო პროფილი; `private` default (არავინ ხდება საჯარო ჩუმად) */
+  /** საჯარო პროფილი; `private` default (არავინ ხდება საჯარო ჩუმად) */
   profile_visibility?: 'private' | 'public'
   bio?: string | null
   settings: Partial<Settings> | null
-  /** FEAT-16 — მხოლოდ ფაქტი; საიდუმლო და აღდგენის კოდები აქ არასდროს მოდის */
+  /** მხოლოდ ფაქტი; საიდუმლო და აღდგენის კოდები აქ არასდროს მოდის */
   two_factor_enabled?: boolean
   /** საიდუმლო შექმნილია, კოდი ჯერ არ დადასტურებულა — შესვლა ჯერ არ იცვლება */
   two_factor_pending?: boolean
   /**
-   * Tasks §43.4 — ჟურნალის რომელ ტიპს აგზავნის SPA (`visit` · `refresh` · `open` ·
+   * ჟურნალის რომელ ტიპს აგზავნის SPA (`visit` · `refresh` · `open` ·
    * `click`); მხოლოდ საკუთარ თავზე მოდის. გამორთულზე ქსელში არაფერი მიდის.
    */
   audit_kinds?: string[]
   created_at: string | null
   /** ადმინის მიერ მინიჭებული მოდულები */
   modules?: string[]
-  /** რომელი გამორთო თვითონ (K13) — მინიჭებული რჩება */
+  /** რომელი გამორთო თვითონ — მინიჭებული რჩება */
   hidden_modules?: string[]
   movies_count?: number
   series_count?: number
   videos_count?: number
-  /** L4 — ადმინის სიაში სრული ინფო (`GET /admin/users`) */
+  /** ადმინის სიაში სრული ინფო (`GET /admin/users`) */
   favorites_count?: number
   last_activity?: string | null
   /**
-   * 17.3 — დაქეშილი მრიცხველი (`used`/`quota`).
+   * დაქეშილი მრიცხველი (`used`/`quota`).
    *
-   * ⚠️ **`files`/`bytes` მხოლოდ ერთი ანგარიშის გვერდზეა** (Tasks PERF-14):
+   * ⚠️ **`files`/`bytes` მხოლოდ ერთი ანგარიშის გვერდზეა**:
    * ისინი დისკიდან გადათვლილი ინვენტარია და თითო მომხმარებელზე ~30 query
    * ღირდა — სია კი მათ არც ხატავდა. `GET /admin/users/{id}`-ის პასუხის
    * ზედა დონის `storage` ისევ ატარებს მათ (`AdminUserDetail`).
@@ -69,7 +69,7 @@ export interface User {
   storage?: StorageUsage
 }
 
-/* ---------- საცავი (Tasks 17.1/17.3) ---------- */
+/* ---------- საცავი ---------- */
 
 export interface StorageUsage {
   used: number
@@ -82,7 +82,7 @@ export interface StorageUsage {
   /** მოდულებად დაშლა — მხოლოდ `GET /storage`-ზე */
   modules?: Record<string, number>
   /**
-   * §17.2 — მოდულებზე გადანაწილებული ლიმიტები.
+   * მოდულებზე გადანაწილებული ლიმიტები.
    * ⚠️ სიაში მხოლოდ **ცხადად დაყენებული** ლიმიტებია: გასაღების არარსებობა
    * ნიშნავს „ლიმიტი არ აქვს" და არა „0 ბაიტი".
    */
@@ -93,7 +93,7 @@ export interface StorageUsage {
 }
 
 /**
- * §17.2 — ლიმიტების ჩაწერა. `null` ლიმიტს **ხსნის** (0 კი „აკრძალვაა").
+ * ლიმიტების ჩაწერა. `null` ლიმიტს **ხსნის** (0 კი „აკრძალვაა").
  * ჯამის შემოწმება backend-ზეა — 422 `allocation_exceeds_quota`.
  */
 export async function saveStorageAllocations(
@@ -114,7 +114,7 @@ export async function recalculateStorage(): Promise<StorageUsage> {
   return data
 }
 
-/* ---------- საცავის მართვა (Tasks 17.5) ---------- */
+/* ---------- საცავის მართვა ---------- */
 
 export interface StorageFiles {
   files: UploadedFile[]
@@ -123,7 +123,7 @@ export interface StorageFiles {
   /** მოდულების ჯამები — ფილტრის ჩიპებს რიცხვები სჭირდება */
   modules: Record<string, { files: number; bytes: number }>
   /**
-   * Tasks §29 — ურნაში მყოფი: სიაში არ ჩანს, მაგრამ ადგილს იკავებს, ე.ი.
+   * ურნაში მყოფი: სიაში არ ჩანს, მაგრამ ადგილს იკავებს, ე.ი.
    * „ნაჩვენები" და „დაკავებული" სწორედ ამით ეთანხმება ერთმანეთს.
    */
   trash?: { files: number; bytes: number }
@@ -135,7 +135,7 @@ export async function fetchStorageFiles(limit = 2000): Promise<StorageFiles> {
   return data
 }
 
-/** სად მოქმედებს წაშლა/ჩამოტვირთვა — მონიშნულებზე თუ ყველაფერზე (§6.2) */
+/** სად მოქმედებს წაშლა/ჩამოტვირთვა — მონიშნულებზე თუ ყველაფერზე */
 export type StorageScope = { paths: string[] } | { all: true }
 
 /** ერთი საკუთარი ატვირთვის წაშლა; აბრუნებს განახლებულ მდგომარეობას */
@@ -147,7 +147,7 @@ export async function deleteStorageFile(
 }
 
 /**
- * **§6.2 — მონიშნულების ან ყველას წაშლა.** იმავე endpoint-ია, რაც ერთ
+ * **მონიშნულების ან ყველას წაშლა.** იმავე endpoint-ია, რაც ერთ
  * ფაილზე: წესი („მხოლოდ ის, რაც `StorageMeter::files()`-შია") ერთ ადგილას რჩება.
  */
 export async function deleteStorageFiles(
@@ -158,7 +158,7 @@ export async function deleteStorageFiles(
 }
 
 /**
- * **§6.2 — მონიშნულების ან ყველას ჩამოტვირთვა ერთ zip-ად.**
+ * **მონიშნულების ან ყველას ჩამოტვირთვა ერთ zip-ად.**
  *
  * ⚠️ `blob` და არა json: პასუხი ფაილია. ⚠️ `POST`, რადგან მონიშვნა ასეულ
  * გზას შეიძლება შეიცავდეს და query-string-ს ეს არ ჯდება.
@@ -168,7 +168,7 @@ export async function downloadStorageFiles(scope: StorageScope): Promise<void> {
   const url = URL.createObjectURL(res.data as Blob)
   const a = document.createElement('a')
   a.href = url
-  /* ⚠️ `formatDate(…, 'iso')` და არა `toISOString()` (Tasks BUG-15): ეს
+  /* ⚠️ `formatDate(…, 'iso')` და არა `toISOString()`: ეს
      უკანასკნელი **UTC-ზე გადადის**, ე.ი. თბილისში 00:00–04:00 ექსპორტი
      გუშინდელი თარიღით დაინომრებოდა. სწორედ ამისთვის არსებობს `lib/dates.ts`-ის
      `sv-SE` წესი და `dates.test.ts`. */
@@ -213,7 +213,7 @@ export interface ModuleInfo {
   description_ka: string | null
   description_en: string | null
   icon: string
-  /** გვერდის ჰედერის ფონი (§2.1) — `#rrggbb` ან `null` = ნეიტრალური */
+  /** გვერდის ჰედერის ფონი — `#rrggbb` ან `null` = ნეიტრალური */
   color: string | null
   route_base: string
   api_base: string
@@ -223,7 +223,7 @@ export interface ModuleInfo {
   sort_order: number
   /** რამდენს აქვს **რეალურად ჩართული** (თვითონ გამორთული არ ითვლება) */
   users_count?: number
-  /** ვის აქვს მინიჭებული — ადმინის ტაბი (K14/L3) */
+  /** ვის აქვს მინიჭებული — ადმინის ტაბი */
   users?: {
     id: number
     display_name: string
@@ -232,7 +232,7 @@ export interface ModuleInfo {
     is_super_admin: boolean
     /** super_admin-ს pivot-ის გარეშე აქვს */
     implicit: boolean
-    /** თვითონ გამორთო (K13) — უფლება რჩება */
+    /** თვითონ გამორთო — უფლება რჩება */
     hidden_by_user: boolean
     enabled_at: string | null
   }[]
@@ -244,22 +244,22 @@ export interface ModuleInfo {
   request_status?: 'pending' | 'approved' | 'rejected' | null
   /** per-user per-module პარამეტრები (`module_user.settings`) */
   user_settings?: Record<string, unknown>
-  /** Tasks 16.1 — ჩანს თუ არა მოდული ჩემს საჯარო პროფილზე */
+  /** ჩანს თუ არა მოდული ჩემს საჯარო პროფილზე */
   is_public?: boolean
-  /** შეიძლება თუ არა საერთოდ გასაჯაროება — `note`-ზე **არასდროს** (16.5) */
+  /** შეიძლება თუ არა საერთოდ გასაჯაროება — `note`-ზე **არასდროს** */
   shareable?: boolean
   /**
-   * Tasks §37 — ინტერფეისიდან შექმნილი (პირადი) მოდული. ⚠️ `GET /modules`
+   * ინტერფეისიდან შექმნილი (პირადი) მოდული. ⚠️ `GET /modules`
    * მხოლოდ **საკუთარს** აბრუნებს — სხვისი პირადი მოდული აქ არასდროს ჩანს.
    */
   is_custom?: boolean
-  /** §37 — მოდულის სტრუქტურა (კლასიფიკაცია, სტატუსების საწყისი ნაკრები) */
+  /** მოდულის სტრუქტურა (კლასიფიკაცია, სტატუსების საწყისი ნაკრები) */
   definition?: CustomModuleDefinition
-  /** §37.8 — სუპერადმინმა გამორთო: მფლობელი ვეღარ ჩართავს, მონაცემები ხელუხლებელია */
+  /** სუპერადმინმა გამორთო: მფლობელი ვეღარ ჩართავს, მონაცემები ხელუხლებელია */
   disabled_by_admin?: boolean
 }
 
-/* ---------- Tasks §37 — ინტერფეისიდან შექმნილი მოდული ---------- */
+/* ---------- ინტერფეისიდან შექმნილი მოდული ---------- */
 
 /** კლასიფიკაციის სახე — **სახელია და არა მექანიზმი** (ერთი ზოგადი კლასიფიკატორი) */
 export const CUSTOM_CLASSIFICATIONS = ['category', 'genre', 'type'] as const
@@ -299,7 +299,7 @@ export type CustomModuleDetails = Partial<
   Pick<CustomModuleInput, 'name_ka' | 'name_en' | 'description_ka' | 'description_en' | 'icon' | 'color' | 'classification'>
 >
 
-/** ახალი მოდული — ყოველი მომხმარებელი თავისთვის (Q28) */
+/** ახალი მოდული — ყოველი მომხმარებელი თავისთვის */
 export async function createCustomModule(input: CustomModuleInput): Promise<ModuleInfo> {
   const { data } = await api.post('/modules', input)
   return data.data
@@ -311,7 +311,7 @@ export async function updateCustomModule(key: string, input: CustomModuleDetails
   return data.data
 }
 
-/** §37.7 — წაშლის დადასტურების რიცხვები: ცოცხალი ჩანაწერები, დაკავებული ადგილი, ურნის ვადა */
+/** წაშლის დადასტურების რიცხვები: ცოცხალი ჩანაწერები, დაკავებული ადგილი, ურნის ვადა */
 export interface CustomModuleCounts {
   records: number
   bytes: number
@@ -323,14 +323,14 @@ export async function fetchCustomModuleCounts(key: string): Promise<CustomModule
   return data
 }
 
-/** §37.7 — მოდული ურნაში, ჩანაწერებთან ერთად (აღდგება ურნის ვადაში) */
+/** მოდული ურნაში, ჩანაწერებთან ერთად (აღდგება ურნის ვადაში) */
 export async function deleteCustomModule(key: string): Promise<{ trashed: boolean; records: number; trash_id: number }> {
   const { data } = await api.delete(`/modules/${key}`)
   return data
 }
 
 /**
- * §37.8 — სუპერადმინის ზედამხედველობა (Q41): **აგრეგატები და არა შიგთავსი** —
+ * სუპერადმინის ზედამხედველობა: **აგრეგატები და არა შიგთავსი** —
  * სახელი, მფლობელი, ჩანაწერების რაოდენობა და დაკავებული ადგილი.
  */
 export interface CustomModuleOverview {
@@ -352,7 +352,7 @@ export async function fetchCustomModulesOverview(): Promise<CustomModuleOverview
   return data.data
 }
 
-/** §37.8 — გლობალური გამორთვა (`modules.is_active`); მფლობელი შეტყობინებას იღებს */
+/** გლობალური გამორთვა (`modules.is_active`); მფლობელი შეტყობინებას იღებს */
 export async function setCustomModuleActive(id: number, isActive: boolean): Promise<CustomModuleOverview> {
   const { data } = await api.patch(`/admin/modules/custom/${id}`, { is_active: isActive })
   return data.data
@@ -360,7 +360,7 @@ export async function setCustomModuleActive(id: number, isActive: boolean): Prom
 
 export interface ApprovalRequestItem {
   id: number
-  /** `upload_limit` — Tasks §34.5 (ფორმატი ან ზომა; `payload.granted_scope` დამტკიცებისას) */
+  /** `upload_limit` — ფორმატი ან ზომა (`payload.granted_scope` დამტკიცებისას) */
   type: 'module_access' | 'genre_delete' | 'storage_increase' | 'upload_limit'
   status: 'pending' | 'approved' | 'rejected'
   message: string | null
@@ -381,7 +381,7 @@ export interface LoginInput {
   password: string
   remember?: boolean
   /**
-   * FEAT-16 — TOTP ან აღდგენის კოდი.
+   * TOTP ან აღდგენის კოდი.
    * ⚠️ პაროლი კოდთან ერთად **ხელახლა** იგზავნება: სერვერზე „ნახევრად
    * შესული" მდგომარეობა განზრახ არ არსებობს (მისი ვადა და გაუქმება ცალკე
    * დასაცავი იქნებოდა), ე.ი. მეორე ნაბიჯი იმავე მოთხოვნის გამეორებაა.
@@ -441,7 +441,7 @@ export async function saveSettings(settings: Settings): Promise<void> {
 
 /* ---------- მოდულები / მოთხოვნები ---------- */
 
-/* ---------- ორფაქტორიანი შესვლა და აღდგენა (FEAT-16) ---------- */
+/* ---------- ორფაქტორიანი შესვლა და აღდგენა ---------- */
 
 export interface TwoFactorStart {
   secret: string
@@ -506,7 +506,7 @@ export async function fetchModules(): Promise<ModuleInfo[]> {
 }
 
 /**
- * **პირადი რიგი** (Tasks §36) — მთელი სია ერთი მოთხოვნით; პასუხი **ჩაწერილს**
+ * **პირადი რიგი** — მთელი სია ერთი მოთხოვნით; პასუხი **ჩაწერილს**
  * აბრუნებს (უცნობი/უხილავი გასაღები სერვერზე ჩუმად იშლება).
  */
 export async function saveModuleOrder(keys: string[]): Promise<string[]> {
@@ -530,7 +530,7 @@ export async function requestModule(moduleKey: string, message?: string): Promis
 }
 
 /**
- * 17.4 — ლიმიტის გაზრდის მოთხოვნა. `requestedBytes` **სასურველი სრული
+ * ლიმიტის გაზრდის მოთხოვნა. `requestedBytes` **სასურველი სრული
  * ლიმიტია** და არა მატება (იხ. `ApprovalRequestController`).
  */
 export async function requestStorageIncrease(
@@ -545,7 +545,7 @@ export async function requestStorageIncrease(
 }
 
 /**
- * **ატვირთვის ლიმიტის მოთხოვნა (Tasks §34.5).** ფორმატი **სიიდან** — ის,
+ * **ატვირთვის ლიმიტის მოთხოვნა.** ფორმატი **სიიდან** — ის,
  * რაც ამ სახეობის `selectable`-შია და ჯერ არ აქვს; ზომა კილობაიტებში
  * (მხოლოდ ზრდა). არაფერი ახალი → 422 `upload_request_nothing_new`.
  */
@@ -563,7 +563,7 @@ export async function cancelRequest(id: number): Promise<void> {
   await api.delete(`/requests/${id}`)
 }
 
-/** მოდულის ჩართვა/გამორთვა საკუთარი თავისთვის (K13) */
+/** მოდულის ჩართვა/გამორთვა საკუთარი თავისთვის */
 export async function setModuleEnabled(key: string, enabled: boolean): Promise<void> {
   await api.patch(`/modules/${key}`, { enabled })
 }
@@ -571,7 +571,7 @@ export async function setModuleEnabled(key: string, enabled: boolean): Promise<v
 /**
  * per-user per-module პარამეტრები (`module_user.settings`).
  * ანგარიშის დონის პარამეტრებისგან (`users.settings`) განსხვავებული ფენაა —
- * მაგ. გალერეის ფოტოს ზომა/რაოდენობა (Tasks 10).
+ * მაგ. გალერეის ფოტოს ზომა/რაოდენობა.
  */
 export async function updateModuleSettings(
   key: string,
@@ -580,12 +580,11 @@ export async function updateModuleSettings(
   await api.put(`/modules/${key}/settings`, { settings })
 }
 
-/* ---------- ველების კონსტრუქტორი (Tasks §6, ფაზა 1) ---------- */
+/* ---------- ველების კონსტრუქტორი ---------- */
 
 /**
  * მოდულის **არჩევითი** ველი. ⚠️ სავალდებულო ველები (ვიდეოს სახელი/ბმული)
- * აქ საერთოდ არ ჩნდება — მათი გამორთვა ჩაწერას გატეხავდა
- * (იხ. `docs/6-field-builder.md`).
+ * აქ საერთოდ არ ჩნდება — მათი გამორთვა ჩაწერას გატეხავდა.
  */
 export interface ModuleField {
   key: string
@@ -597,19 +596,19 @@ export interface ModuleField {
    */
   required: boolean
   /**
-   * §16 — ჩანს თუ არა ველი **საჯარო პროფილზე** და დამთხვევებში.
+   * ჩანს თუ არა ველი **საჯარო პროფილზე** და დამთხვევებში.
    * ⚠️ წყვეტს ჩანაწერის **მფლობელი** და არა მნახველი.
    */
   public: boolean
   /**
-   * §6.5 — ველი, რომლის გარეშე ჩანაწერი **ვერ ჩაიწერება** (ვიდეოს `url`,
+   * ველი, რომლის გარეშე ჩანაწერი **ვერ ჩაიწერება** (ვიდეოს `url`,
    * ჩანაწერის სახელი). სიაში ჩანს, რომ სია არ ტყუოდეს, მაგრამ
    * ჩართულობა/სავალდებულოობა არ იმართება — backend-იც იგივეს ამბობს
    * (`FieldCatalog::for()` აიძულებს `true`-ს).
    */
   locked: boolean
   /**
-   * §4 — **ჩაკეტვა მოხსნილია** (`super_admin`-ის ცხადი არჩევანი).
+   * **ჩაკეტვა მოხსნილია** (`super_admin`-ის ცხადი არჩევანი).
    *
    * ⚠️ `locked` ამის შემდეგაც `true` რჩება: ის სქემაზე ამბობს სიმართლეს,
    * ე.ი. ინტერფეისს შეუძლია თქვას „ჩაკეტილია, მაგრამ შენ მოხსენი" და
@@ -617,7 +616,7 @@ export interface ModuleField {
    */
   unlocked: boolean
   /**
-   * ⚠️ **§6.5-ის შემდეგ რიგი მხოლოდ backend-ისაა** — UI მას აღარ ცვლის და
+   * ⚠️ **რიგი მხოლოდ backend-ისაა** — UI მას აღარ ცვლის და
    * `PUT` მას აღარ იღებს. მნიშვნელობა კითხვისთვის რჩება (ფორმის რიგი).
    */
   sort_order: number
@@ -627,15 +626,15 @@ export interface ModuleField {
   placeholder_ka: string | null
   placeholder_en: string | null
   /**
-   * §6 ფაზა 3 — user-ის მიერ დამატებული ველი (და არა ჩაშენებული).
+   * user-ის მიერ დამატებული ველი (და არა ჩაშენებული).
    * ⚠️ ლეიბლი მას ლოკალიზაციაში **არ აქვს**: ნაგულისხმევი `key`-ია.
    */
   custom?: boolean
 }
 
-/* ---------- §6, ფაზა 3 — მორგებული ველები ---------- */
+/* ---------- მორგებული ველები ---------- */
 
-/** მორგებული ველის ტიპები (`file` — ფაზა 4b, კვოტაზე გადის) */
+/** მორგებული ველის ტიპები (`file`, კვოტაზე გადის) */
 export const CUSTOM_FIELD_TYPES = [
   'text',
   'number',
@@ -651,9 +650,9 @@ export type CustomFieldType = (typeof CUSTOM_FIELD_TYPES)[number]
  * მოდულები, რომლებსაც მორგებული ველები აქვთ — სარკე `CustomFields::modules()`-ისა
  * (`RegistryConsistencyTest` რიგითაც ამოწმებს).
  *
- * ⚠️ **ანიმე, კურსი და ადგილი აქ აკლდა** (ნაპოვნია Tasks §37-ზე): მათ
+ * ⚠️ **ანიმე, კურსი და ადგილი აქ აკლდა**: მათ
  * `/modules/{key}`-ზე დამატებითი ველების რედაქტორი საერთოდ არ იხატებოდა.
- * ⚠️ პირადი მოდული (§37) აქ **არ** წერია — მისი გასაღები ბაზაშია;
+ * ⚠️ პირადი მოდული აქ **არ** წერია — მისი გასაღები ბაზაშია;
  * `supportsCustomFields()` ორივეს ცნობს.
  */
 export const CUSTOM_FIELD_MODULES = [
@@ -669,9 +668,9 @@ export const CUSTOM_FIELD_MODULES = [
   'bookmark',
   'course',
   'place',
-  // Tasks §33 — ადამიანი პირად გალერეაში
+  // ადამიანი პირად გალერეაში
   'personal',
-  // Tasks §34 — მორიგეობა
+  // მორიგეობა
   'duty',
 ] as const
 
@@ -694,13 +693,13 @@ export interface CustomFieldDefinition {
 }
 
 /**
- * `ფაილი` ტიპის მნიშვნელობა (ფაზა 4b).
+ * `ფაილი` ტიპის მნიშვნელობა.
  * ⚠️ **`url` API-ს გზაა და არა `/storage/…`** — `notes/fields` პრივატულ დისკზეა
- * (§17.5) და ფაილი მხოლოდ მფლობელობაშემოწმებული route-იდან გაიცემა.
+ * და ფაილი მხოლოდ მფლობელობაშემოწმებული route-იდან გაიცემა.
  */
 export interface CustomFieldFile {
   /**
-   * ⚠️ **სავალდებულოა §7.3-ის შემდეგ** — ერთ ველზე რამდენიმე ფაილია და
+   * ⚠️ **სავალდებულოა** — ერთ ველზე რამდენიმე ფაილია და
    * სახელი უნიკალური არაა, ე.ი. „წაშალე ეს" სხვანაირად ვერ ითქმის.
    */
   id: number
@@ -744,7 +743,7 @@ export async function saveCustomFieldValues(
   return data.values
 }
 
-/* ---------- §6, ფაზა 4b — `ფაილი` ტიპი ---------- */
+/* ---------- `ფაილი` ტიპი ---------- */
 
 /**
  * ⚠️ **ატვირთვა ცალკე endpoint-ია და მაშინვე ხდება** (და არა მონახაზში
@@ -762,7 +761,7 @@ export async function uploadCustomFieldFile(
 ): Promise<CustomFieldFile[]> {
   const form = new FormData()
   form.append('key', key)
-  // §7.3 — ერთი რექვესთი მთელ პარტიაზე; backend `files[]`-საც იღებს და `file`-საც
+  // ერთი რექვესთი მთელ პარტიაზე; backend `files[]`-საც იღებს და `file`-საც
   files.forEach((file) => form.append('files[]', file))
 
   const { data } = await api.post(`/custom-fields/${module}/${id}/file`, form)
@@ -788,7 +787,7 @@ export async function deleteCustomFieldFile(
 
 /** გადახრები, რომლებსაც `PUT` იღებს (ცარიელი ტექსტი გადახრას შლის) */
 /**
- * ⚠️ **`sort_order` აქ განზრახ არაა** (§6.5): დალაგების UI მოიხსნა და
+ * ⚠️ **`sort_order` აქ განზრახ არაა**: დალაგების UI მოიხსნა და
  * თანმიმდევრობა კატალოგისაა — backend-იც აღარ იღებს ამ ატრიბუტს.
  */
 export type ModuleFieldPatch = Partial<
@@ -820,7 +819,7 @@ export async function saveModuleFields(
 }
 
 /**
- * **ველების კონფიგის ნაგულისხმევზე დაბრუნება** (§4).
+ * **ველების კონფიგის ნაგულისხმევზე დაბრუნება**.
  *
  * ⚠️ `DELETE` — `POST`-ს `permission:` middleware `create`-ად წაიკითხავდა,
  * `delete` კი ზუსტად ის უფლებაა, რასაც ეს მოქმედება ითხოვს.
@@ -838,14 +837,14 @@ export async function fetchUsers(): Promise<User[]> {
 }
 
 /**
- * ერთი ატვირთული ფაილი (Tasks 1.3 / 17.5).
+ * ერთი ატვირთული ფაილი.
  * ⚠️ ორივე კავშირი **`StorageMeter::files()`-ის სარკეა** — იქ დამატებული
  * `kind`/`owner_type` აქაც უნდა ჩაიწეროს, თორემ `storage.fileKind.*`
  * ლეიბლი და წაშლის გზა ჩუმად ამოვარდება (ასე გამოჩნდა `field` 2026-09-06-ზე).
  */
 /**
  * **ფსევდო-მოდულები მეხსიერების ჭრილში** — `modules` ცხრილში რიგი არ აქვთ,
- * ამიტომ სახელი `storage.<key>`-იდან მოდის. ⚠️ Tasks §4.11: `backup` ამ სიას
+ * ამიტომ სახელი `storage.<key>`-იდან მოდის. ⚠️ `backup` ამ სიას
  * აკლდა და ბაზის ასლი ლათინური „backup“-ით იხატებოდა; სია ორ ფაილში
  * ცალ-ცალკე ეწერა (`StorageCard`, `StorageLibrary`).
  */
@@ -867,7 +866,7 @@ export interface UploadedFile {
     | 'game'
     | 'bookmark'
     | 'video_file'
-    // §7.4 — სიმღერის სექციის ფაილი
+    // სიმღერის სექციის ფაილი
     | 'song_file'
     | 'book_file'
     | 'board_game_file'
@@ -875,10 +874,10 @@ export interface UploadedFile {
     | 'note_entry_file'
     | 'gallery_image'
     | 'message'
-    /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილი */
+    /** მორგებულ ველზე ატვირთული ფაილი */
     | 'field_value'
   /**
-   * პრივატულ დისკზეა (§17.5) — `/storage/*` მას **ვერ ხედავს**.
+   * პრივატულ დისკზეა — `/storage/*` მას **ვერ ხედავს**.
    * ⚠️ ამას backend ამბობს (`StorageFolder::isPrivate()`) და არა ფრონტი:
    * ფესვების სიის აქ გამეორება ერთ დღეს პრივატულ ფაილს საჯარო url-ით
    * გამოაჩენდა.
@@ -891,14 +890,14 @@ export interface UploadedFile {
   mime: string | null
   created_at: string | null
   /**
-   * Tasks §29 — წაშლა ფაილს ურნაში აგზავნის (`true`) თუ ჯერ მყისიერად შლის
-   * (სვეტის ფაილი: პოსტერი, მთავარი ფოტო, ავატარი — §29-ის მე-4 ეტაპი).
+   * წაშლა ფაილს ურნაში აგზავნის (`true`) თუ ჯერ მყისიერად შლის
+   * (სვეტის ფაილი: პოსტერი, მთავარი ფოტო, ავატარი).
    * ⚠️ სერვერი წყვეტს — SPA-ში სიის ასლი პირველივე ეტაპზე დაშორდებოდა.
    */
   trashable?: boolean
 }
 
-/** მომხმარებლის შიდა გვერდი (K14) */
+/** მომხმარებლის შიდა გვერდი */
 export interface UserDetail {
   user: User
   content: {
@@ -907,13 +906,13 @@ export interface UserDetail {
     videos: number
     favorites: number
   }
-  /** 17.1 — დაქეშილი მრიცხველი + დისკიდან გადათვლილი ჯამი და მოდულების ჭრილი */
+  /** დაქეშილი მრიცხველი + დისკიდან გადათვლილი ჯამი და მოდულების ჭრილი */
   storage: StorageUsage & {
     files: number
     bytes: number
     modules: Record<string, number>
   }
-  /** ატვირთული ფაილები — ყველაზე მძიმეები თავში, მაქსიმუმ 200 (1.3) */
+  /** ატვირთული ფაილები — ყველაზე მძიმეები თავში, მაქსიმუმ 200 */
   files: UploadedFile[]
   last_activity: string | null
   modules: {
@@ -925,11 +924,11 @@ export interface UserDetail {
     is_active: boolean
     granted: boolean
     enabled: boolean
-    /** მომხმარებელმა თვითონ დამალა (K13) */
+    /** მომხმარებელმა თვითონ დამალა */
     hidden_by_user: boolean
     enabled_at: string | null
   }[]
-  /** Tasks §34.6 — ატვირთვის პირადი გამონაკლისები (ცარიელი რუკა — არცერთი) */
+  /** ატვირთვის პირადი გამონაკლისები (ცარიელი რუკა — არცერთი) */
   upload_overrides: UploadOverrides
   requests: ApprovalRequestItem[]
 }
@@ -945,7 +944,7 @@ export async function updateUser(
     role_id?: number
     is_active?: boolean
     storage_quota_bytes?: number
-    /** Tasks 1.3 (🔗 16) — abuse-ის შემთხვევაში პროფილის იძულებით დახურვა */
+    /** abuse-ის შემთხვევაში პროფილის იძულებით დახურვა */
     profile_visibility?: 'private' | 'public'
   },
 ): Promise<User> {
@@ -953,7 +952,7 @@ export async function updateUser(
   return data.data
 }
 
-/* ---------- როლები და უფლებები (Tasks 1.6) ---------- */
+/* ---------- როლები და უფლებები ---------- */
 
 export interface Role {
   id: number
@@ -982,7 +981,7 @@ export async function fetchRoles(): Promise<Role[]> {
   return data.data
 }
 
-/** მისანიჭებელი როლი — მხოლოდ id და სახელი (Tasks GAP-10) */
+/** მისანიჭებელი როლი — მხოლოდ id და სახელი */
 export interface AssignableRole {
   id: number
   key: string
@@ -991,7 +990,7 @@ export interface AssignableRole {
 }
 
 /**
- * **`/users/{id}`-ის როლის სელექტისთვის (Tasks GAP-10).**
+ * **`/users/{id}`-ის როლის სელექტისთვის.**
  *
  * ⚠️ `fetchRoles()` `admin_access:roles`-ის უკანაა, ე.ი. `admin:users`-ის
  * მქონე ადმინი (როლების უფლების გარეშე) 403-ს იღებდა და სელექტი **ჩუმად
@@ -1018,7 +1017,7 @@ export async function deleteRole(id: number): Promise<void> {
 }
 
 /**
- * **პირადი გამონაკლისების ჩასწორება (Tasks §34.6)** — მთელი რუკა (`PUT`);
+ * **პირადი გამონაკლისების ჩასწორება** — მთელი რუკა (`PUT`);
  * ერთი სახეობის ან ერთი ფორმატის მოხსნაც ამ გზით ხდება.
  */
 export async function updateUserUploadOverrides(id: number, overrides: UploadOverrides): Promise<UploadOverrides> {
@@ -1041,7 +1040,7 @@ export async function fetchAdminModules(): Promise<ModuleInfo[]> {
 }
 
 /**
- * **„ეს რიგი ყველასთვის ნაგულისხმევად"** (Tasks §36.3, მხოლოდ super_admin) —
+ * **„ეს რიგი ყველასთვის ნაგულისხმევად"** (მხოლოდ super_admin) —
  * `modules.sort_order`; პირადი რიგის მქონე თავისას ინარჩუნებს.
  */
 export async function saveDefaultModuleOrder(keys: string[]): Promise<string[]> {
@@ -1087,14 +1086,14 @@ export async function fetchPendingCount(): Promise<number> {
 
 /**
  * `grantedBytes` მხოლოდ `storage_increase`-ს ეხება: ადმინს შეუძლია
- * მოთხოვნილზე **ნაკლებ** ლიმიტზე დათანხმდეს — ეს უარი არაა (17.4).
+ * მოთხოვნილზე **ნაკლებ** ლიმიტზე დათანხმდეს — ეს უარი არაა.
  */
 export async function approveRequest(
   id: number,
   note?: string,
   grantedBytes?: number,
   /**
-   * Tasks §34.5 — ატვირთვის მოთხოვნაზე: ვისზე ვრცელდება. `user` (ნაგულისხმევი)
+   * ატვირთვის მოთხოვნაზე: ვისზე ვრცელდება. `user` (ნაგულისხმევი)
    * — პირადი გამონაკლისი; `all` — ინსტალაციის ლიმიტი (მხოლოდ სუპერადმინს).
    */
   scope?: UploadScope,
@@ -1112,7 +1111,7 @@ export async function rejectRequest(id: number, note?: string): Promise<Approval
   return data.data
 }
 
-/* ---------- მასობრივი წაშლა (Tasks 20) ---------- */
+/* ---------- მასობრივი წაშლა ---------- */
 
 export const PURGE_TARGETS = [
   'movie',
@@ -1125,19 +1124,19 @@ export const PURGE_TARGETS = [
   'note',
   'bookmark',
   'anime',
-  // FEAT-25 — კურსები
+  // კურსები
   'course',
-  // FEAT-26 — ადგილები
+  // ადგილები
   'place',
-  // Tasks §33 — პირადი გალერეა (ჩანაწერი ადამიანია; ფოტოები მასთან ერთად მიდის)
+  // პირადი გალერეა (ჩანაწერი ადამიანია; ფოტოები მასთან ერთად მიდის)
   'personal',
-  // Tasks §34 — მორიგეობა
+  // მორიგეობა
   'duty',
   'gallery',
 ] as const
 export type PurgeTarget = (typeof PURGE_TARGETS)[number]
 /**
- * სამიზნე — საბაზისო ან (Tasks §37.5) **სამიზნე ანგარიშის პირადი მოდული**.
+ * სამიზნე — საბაზისო ან **სამიზნე ანგარიშის პირადი მოდული**.
  * ⚠️ `PURGE_TARGETS` მხოლოდ საბაზისოებს ჩამოთვლის; პირადები ანგარიშისაა და
  * `fetchPurgeTargets()`-ით მოდის (სხვისი პირადი მოდული `/modules`-ში არ ჩანს).
  */
@@ -1160,26 +1159,26 @@ export type PurgeMode = (typeof PURGE_MODES)[number]
 export const PURGE_TARGET_MODES = {
   movie: ['ids', 'genre', 'status', 'all'],
   series: ['ids', 'genre', 'status', 'all'],
-  // §7.1 — ანიმეს ფილმის/სერიალის იგივე ღერძები აქვს
+  // ანიმეს ფილმის/სერიალის იგივე ღერძები აქვს
   anime: ['ids', 'genre', 'status', 'all'],
-  // §6.4 — ვიდეოს სტატუსი ახლა აქვს, ე.ი. სკოუპიც
-  // ⚠️ `ids` თერთმეტივეს აქვს (§25.1) — სარკეა `PurgeService::TARGET_MODES`-ისა
+  // ვიდეოს სტატუსი ახლა აქვს, ე.ი. სკოუპიც
+  // ⚠️ `ids` თერთმეტივეს აქვს — სარკეა `PurgeService::TARGET_MODES`-ისა
   video: ['ids', 'type', 'tag', 'status', 'all'],
   song: ['ids', 'type', 'tag', 'all'],
   book: ['ids', 'type', 'tag', 'status', 'all'],
   board_game: ['ids', 'type', 'all'],
   game: ['ids', 'type', 'status', 'all'],
-  // §13 — „ტიპი" აქ **კატეგორიაა** (`note_entries.category_id`)
+  // „ტიპი" აქ **კატეგორიაა** (`note_entries.category_id`)
   note: ['ids', 'type', 'tag', 'status', 'all'],
-  // §18 — ბუკმარკზეც კატეგორიაა (`bookmarks.category_id`)
+  // ბუკმარკზეც კატეგორიაა (`bookmarks.category_id`)
   bookmark: ['ids', 'type', 'tag', 'status', 'all'],
-  // FEAT-25 — კურსები; „ტიპი“ აქაც კატეგორიაა (`courses.category_id`)
+  // კურსები; „ტიპი“ აქაც კატეგორიაა (`courses.category_id`)
   course: ['ids', 'type', 'tag', 'status', 'all'],
-  // FEAT-26 — ადგილზეც კატეგორიაა (`places.category_id`)
+  // ადგილზეც კატეგორიაა (`places.category_id`)
   place: ['ids', 'type', 'tag', 'status', 'all'],
-  // Tasks §33 — სტატუსი, ტეგი და კლასიფიკატორი არ აქვს
+  // სტატუსი, ტეგი და კლასიფიკატორი არ აქვს
   personal: ['ids', 'all'],
-  // Tasks §34 — სტატუსი და ტეგი არ აქვს; ტიპით/სამსახურით ჭრა მის გვერდზეა
+  // სტატუსი და ტეგი არ აქვს; ტიპით/სამსახურით ჭრა მის გვერდზეა
   duty: ['ids', 'all'],
   gallery: ['ids', 'genre', 'status', 'all'],
 } as const satisfies Record<PurgeTarget, readonly PurgeMode[]>
@@ -1207,7 +1206,7 @@ export type PurgeTargetWithStatus = {
  * `watched` აქვს, წიგნს `read`.
  * სარკეა `PurgeService::TARGET_STATUSES`-ისა.
  *
- * ⚠️ **§6.4-ის შემდეგ აქ მხოლოდ `enum`-იანი დომენებია** (წიგნი · თამაში ·
+ * ⚠️ **აქ მხოლოდ `enum`-იანი დომენებია** (წიგნი · თამაში ·
  * კურსი · ადგილი). დანარჩენ ექვსს per-user ლექსიკონი აქვს, ე.ი. სია **სამიზნე
  * ანგარიშიდან** ჩამოდის (`GET /statuses/{domain}?user_id=`) — ჩემი
  * ნაგულისხმევები სხვის გადარქმეულ სტატუსზე ცრუ პასუხს გასცემდა.
@@ -1215,7 +1214,7 @@ export type PurgeTargetWithStatus = {
 export const PURGE_TARGET_STATUSES: Record<string, string[]> = {
   book: ['to_read', 'reading', 'read', 'abandoned'],
   game: ['to_play', 'playing', 'finished'],
-  // Tasks §2 — აკლდა, ე.ი. `/purge`-ის „სტატუსით" სკოუპი ცარიელ სიას ხატავდა
+  // აკლდა, ე.ი. `/purge`-ის „სტატუსით" სკოუპი ცარიელ სიას ხატავდა
   course: ['to_take', 'taking', 'done', 'dropped'],
   place: ['to_visit', 'visited'],
 }
@@ -1232,7 +1231,7 @@ export interface PurgeInput {
   tags?: string[]
   keep_favorites?: boolean
   /**
-   * §25.5 — „ჩანაწერს ვშლი, ფოტოები გალერეაში დამიტოვე".
+   * „ჩანაწერს ვშლი, ფოტოები გალერეაში დამიტოვე".
    *
    * ⚠️ ფოტო **უკატეგორიო** ხდება (მშობელი ეხსნება) და არა იშლება; ადგილი
    * კი **არ თავისუფლდება** — ფაილი დისკზე რჩება და კვოტაშიც ითვლება,
@@ -1243,7 +1242,7 @@ export interface PurgeInput {
   user_id?: number
 }
 
-/** რიგის ერთი ერთეული (20.2) — `SyncPlanItem`-ის ანალოგი */
+/** რიგის ერთი ერთეული — `SyncPlanItem`-ის ანალოგი */
 export interface PurgePlanItem {
   /** დომენი (გალერეაზეც ჩანაწერის დომენია და არა `gallery`) */
   type: Exclude<PurgeTarget, 'gallery'> | CustomModuleKey
@@ -1261,10 +1260,10 @@ export interface PurgePlan {
     attachments: number
     notes: number
     bytes: number
-    /** §25.5 — რამდენი ფოტო რჩება გალერეაში (და არა იშლება) */
+    /** რამდენი ფოტო რჩება გალერეაში (და არა იშლება) */
     kept_photos: number
     /**
-     * ⚠️ Tasks §29.8 — `/purge` სამიზნის ურნაში აგზავნის: `bytes` მხოლოდ მისი
+     * ⚠️ `/purge` სამიზნის ურნაში აგზავნის: `bytes` მხოლოდ მისი
      * ურნის დაცლისას ან `trash_days` დღის შემდეგ თავისუფლდება
      */
     to_trash: boolean
@@ -1276,7 +1275,7 @@ export interface PurgePlan {
   storage: StorageUsage
 }
 
-/** per-item წაშლის შედეგი — რიგისთვის (20.2) */
+/** per-item წაშლის შედეგი — რიგისთვის */
 export interface PurgeItemResult {
   ok: boolean
   /** ჩანაწერი უკვე აღარ იყო */
@@ -1295,7 +1294,7 @@ export async function fetchPurgePlan(input: PurgeInput): Promise<PurgePlan> {
 export type PurgeRecord = { id: number; title: string; year: number | null }
 
 /**
- * **სამიზნე ანგარიშის** ჩანაწერები ერთი სამიზნის ფარგლებში (§25.2).
+ * **სამიზნე ანგარიშის** ჩანაწერები ერთი სამიზნის ფარგლებში.
  *
  * ⚠️ **მოდულის თავისი `list({all:true})` აქ არ ვარგა** და სწორედ ეს იყო
  * ხარვეზი: `/purge` სხვისი ბიბლიოთეკიდან შლის (`user_id`), მოდულის სია კი
@@ -1315,7 +1314,7 @@ export async function fetchPurgeRecords(opts: {
 }
 
 /**
- * ⚠️ დესტრუქციული — რიგის ერთი ნაბიჯი (20.2). ინტერფეისი **მხოლოდ ამ
+ * ⚠️ დესტრუქციული — რიგის ერთი ნაბიჯი. ინტერფეისი **მხოლოდ ამ
  * გზას** იყენებს; ერთრექვესთიანი `POST /admin/purge` backend-ზე რჩება
  * (სკრიპტული გაშვება და ტესტები), მაგრამ გვერდიდან აღარ იძახება.
  *
@@ -1326,7 +1325,7 @@ export async function purgeItem(
     target: PurgeTargetKey
     media_type?: 'movie' | 'series'
     user_id?: number
-    /** §25.5 — რიგის **ყოველ** ნაბიჯს უნდა მოჰყვეს, თორემ პირველის
+    /** რიგის **ყოველ** ნაბიჯს უნდა მოჰყვეს, თორემ პირველის
         ფოტოები დარჩებოდა და დანარჩენების — წაიშლებოდა */
     keep_gallery?: boolean
   },
@@ -1342,8 +1341,8 @@ export async function purgeItem(
 }
 
 /**
- * **სამიზნე ანგარიშის პირადი მოდული (Tasks §37.5)** — სახელი, სკოუპები და
- * (`type`-ისთვის) მისი კლასიფიკატორი. შიგთავსი აქ არ მოდის (Q41).
+ * **სამიზნე ანგარიშის პირადი მოდული** — სახელი, სკოუპები და
+ * (`type`-ისთვის) მისი კლასიფიკატორი. შიგთავსი აქ არ მოდის.
  */
 export interface PurgeCustomTarget {
   key: CustomModuleKey
@@ -1360,7 +1359,7 @@ export async function fetchPurgeTargets(userId?: number): Promise<PurgeCustomTar
   return data.items ?? []
 }
 
-/* ---------- ატვირთვის ლიმიტები (2026-09-14 → Tasks §34) ---------- */
+/* ---------- ატვირთვის ლიმიტები ---------- */
 
 /**
  * ⚠️ **სარკეა backend-ის `UploadLimits::KINDS`-ისა** —
@@ -1378,15 +1377,15 @@ export const UPLOAD_KINDS = [
   'field',
   'chat',
   'import',
-  // Tasks §59.6 — „ჩემი სრული ექსპორტის" ZIP (ცალკე, დიდი ზღვარი)
+  // „ჩემი სრული ექსპორტის" ZIP (ცალკე, დიდი ზღვარი)
   'import_archive',
-  // Tasks §33 — პირადი გალერეა (ფოტო 15 MB, ვიდეო 300 MB)
+  // პირადი გალერეა (ფოტო 15 MB, ვიდეო 300 MB)
   'personal_photo',
   'personal_video',
 ] as const
 export type UploadKind = (typeof UPLOAD_KINDS)[number]
 
-/** ვისზე ვრცელდება დამტკიცებული ატვირთვის მოთხოვნა (§34.5, Q42) */
+/** ვისზე ვრცელდება დამტკიცებული ატვირთვის მოთხოვნა */
 export type UploadScope = 'user' | 'all'
 
 export interface UploadLimitValues {
@@ -1410,7 +1409,7 @@ export interface UploadKindLimit {
   max_bytes: number
   /** ⚠️ `true` = ჭერი PHP-მ ჩამოწია (`php.ini`), და არა აპმა */
   capped_by_server: boolean
-  /** ⚠️ **ნამდვილი სია**, არასდროს ცარიელი (§34.4 — „ნებისმიერი ფორმატი" ტყუილი იყო) */
+  /** ⚠️ **ნამდვილი სია**, არასდროს ცარიელი („ნებისმიერი ფორმატი" ტყუილი იყო) */
   mimes: string[]
   /** `mimes` + ფსევდონიმები (`jpeg`, `prc`…) — ბრაუზერის შემოწმებისა და `accept`-ისთვის */
   extensions: string[]
@@ -1441,7 +1440,7 @@ export async function fetchUploadLimits(): Promise<UploadLimits> {
 }
 
 /**
- * **სუპერადმინის რედაქტორი (Tasks §34.2)** — მხოლოდ გაგზავნილი სახეობები
+ * **სუპერადმინის რედაქტორი** — მხოლოდ გაგზავნილი სახეობები
  * იცვლება; ნაგულისხმევის ტოლი მნიშვნელობა ბაზიდან იშლება (ცალკე „დაბრუნების"
  * endpoint არ სჭირდება).
  */

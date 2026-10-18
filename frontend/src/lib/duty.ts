@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { DUTY_KEY, type DutyShift, type DutyShiftType, type DutyWorkplace } from '@/api/duty'
 
 /* ============================================================
-   **მორიგეობა — SPA-ს საერთო დამხმარეები (Tasks §34).**
+   **მორიგეობა — SPA-ს საერთო დამხმარეები.**
 
    ⚠️ **თარიღი აქ სტრიქონია** (`YYYY-MM-DD`) და არა `Date`: კალენდარი დღეებს
    ითვლის, საათები და სასაათო სარტყელი მას არ ეხება. `Date` მხოლოდ შიგნით

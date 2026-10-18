@@ -7,10 +7,10 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * ვადამოსული შეხსენებების გაგზავნა (Tasks §13.2/§13.3).
+ * ვადამოსული შეხსენებების გაგზავნა.
  *
  * Scheduler-ი ამას ყოველ წუთს იძახებს (`routes/console.php`), ე.ი. მუშაობს
- * მაშინაც, როცა ბრაუზერი **სრულად დახურულია** — §13.3-ის სწორედ ის შემთხვევა,
+ * მაშინაც, როცა ბრაუზერი **სრულად დახურულია** — სწორედ ის შემთხვევა,
  * რომელსაც Web Notifications ვერ ფარავს. Windows-ზე გაშვება:
  *
  *   php artisan schedule:work        (ან Task Scheduler → `schedule:run` ყოველ წუთს)
@@ -26,7 +26,7 @@ class SendNoteRemindersCommand extends Command
     protected $description = 'გაუშვებს ვადამოსულ შეხსენებებს (ბრაუზერი/ტელეგრამი/ელფოსტა)';
 
     /**
-     * **„ბოლოს როდის გაეშვა scheduler" — ერთადერთი ნიშანი** (Tasks FEAT-05).
+     * **„ბოლოს როდის გაეშვა scheduler" — ერთადერთი ნიშანი**.
      *
      * ⚠️ `mediary:doctor`-ს ამის გარკვევა სხვაგვარად არ შეუძლია: Laravel-ს
      * გაშვების ისტორია არ ინახავს, ხოლო „შეხსენება არ მოვიდა" შეიძლება

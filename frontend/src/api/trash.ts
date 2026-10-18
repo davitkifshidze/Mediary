@@ -2,7 +2,7 @@ import { api } from '@/lib/api'
 import { readPage, type Page } from '@/lib/paged'
 
 /* ============================================================
-   ურნა (FEAT-11 → Tasks §29).
+   ურნა.
 
    ⚠️ **ერთი მოთხოვნა ყველა სახეზე** — ჩანაწერები, რიგიანი ფაილები
    (გალერეის ფოტო, ვიდეო-ბმული, მოდულების ფაილები, ბაზის ასლი) და
@@ -28,14 +28,14 @@ export type TrashBlocked =
   | 'slot_taken'
   | 'field_missing'
   | 'already_present'
-  /** აუდიტის ლოგის გასუფთავება — აღდგენას `admin:audit` სჭირდება (Tasks §29.8) */
+  /** აუდიტის ლოგის გასუფთავება — აღდგენას `admin:audit` სჭირდება */
   | 'permission_missing'
 
 export interface TrashParent {
   kind: string
   id: number
   title: string
-  /** ⚠️ თუ მშობელიც ურნაშია, აღდგენა მასაც დააბრუნებს (29.5) */
+  /** ⚠️ თუ მშობელიც ურნაშია, აღდგენა მასაც დააბრუნებს */
   trashed: boolean
 }
 
@@ -47,14 +47,14 @@ export interface TrashItem {
   trashed_at: string | null
   /** რამდენი დღე რჩება საბოლოო წაშლამდე — **სერვერი ითვლის** */
   expires_in_days: number
-  /** ბაიტები; ჩანაწერზე — მისი ფაილების ჯამი (29.4) */
+  /** ბაიტები; ჩანაწერზე — მისი ფაილების ჯამი */
   size: number
   /**
    * ესკიზი. `private` — ურნის საკუთარი მარშრუტით (`/trash/{kind}/{id}/file`)
    * და ბლობად; სხვაგვარად `src` დისკის გზაა ან დაშორებული ბმული.
    */
   preview: { src: string; private: boolean } | null
-  /** ჩაკეტილი ალბომის ფოტო — ესკიზი არ იგზავნება (29.5) */
+  /** ჩაკეტილი ალბომის ფოტო — ესკიზი არ იგზავნება */
   locked: boolean
   /** მომენტი, რომელიც თვითონ ელემენტია — ნახვის დრო, შეხსენების შემდეგი გაგზავნა */
   when: string | null
@@ -65,15 +65,15 @@ export interface TrashItem {
   count: number | null
   /** რომელ მოდულს ეკუთვნის — მრავალმოდულიან ჯგუფში (სტატუსი, ნახვა, ველის ფაილი) */
   module: string | null
-  /** კლასიფიკატორის რიგი: აღდგენას შეუძლია გადატანილი ჩანაწერებიც დააბრუნოს (Tasks §29, ეტაპი 3) */
+  /** კლასიფიკატორის რიგი: აღდგენას შეუძლია გადატანილი ჩანაწერებიც დააბრუნოს */
   offers_records: boolean
   /**
-   * მთავარი ფოტო/ავატარი დაკავებულ სვეტში (ეტაპი 4): აღდგენა ახლანდელს
-   * ჩაანაცვლებს — ის თვითონ გადავა ურნაში (29.2 — „ჯერ იკითხავს")
+   * მთავარი ფოტო/ავატარი დაკავებულ სვეტში: აღდგენა ახლანდელს
+   * ჩაანაცვლებს — ის თვითონ გადავა ურნაში (აღდგენამდე ჯერ იკითხება)
    */
   replaceable: boolean
   /**
-   * ჩატის წერილი (ეტაპი 5): `self` — მხოლოდ ჩემთან დამალული, `both` —
+   * ჩატის წერილი: `self` — მხოლოდ ჩემთან დამალული, `both` —
    * ორივესთან წაშლილი. ⚠️ საბოლოო წაშლა მას მხოლოდ ურნიდან აშორებს —
    * წერილი დამალული რჩება.
    */
@@ -99,11 +99,11 @@ export interface TrashGroup {
 }
 
 export interface TrashPayload {
-  /** ⚠️ ამ ანგარიშის ვადა (Tasks §29.6) და არა კოდის მუდმივა */
+  /** ⚠️ ამ ანგარიშის ვადა და არა კოდის მუდმივა */
   keep_days: number
   /** ვადის ზედა ზღვარი — ინსტალაციისაა */
   max_days: number
-  /** ⚠️ რამდენ ადგილს იკავებს ურნა — თავისუფლდება მხოლოდ საბოლოო წაშლისას (29.4) */
+  /** ⚠️ რამდენ ადგილს იკავებს ურნა — თავისუფლდება მხოლოდ საბოლოო წაშლისას */
   bytes: number
   data: TrashGroup[]
 }
@@ -113,14 +113,14 @@ export async function fetchTrash(): Promise<TrashPayload> {
   return res.data
 }
 
-/** Tasks §46 — ერთი ჯგუფის გვერდი; ჯამური სია (`fetchTrash`) პირველს უკვე შეიცავს */
+/** ერთი ჯგუფის გვერდი; ჯამური სია (`fetchTrash`) პირველს უკვე შეიცავს */
 export async function fetchTrashItems(kind: string, page: number, perPage: number): Promise<Page<TrashItem>> {
   const { data } = await api.get(`/trash/${encodeURIComponent(kind)}/items`, { params: { page, per_page: perPage } })
   return readPage<TrashItem>(data)
 }
 
 /**
- * **ვადის შეცვლის გადახედვა** (Tasks §29.6) — რამდენი წაიშლება მომდევნო
+ * **ვადის შეცვლის გადახედვა** — რამდენი წაიშლება მომდევნო
  * ღამის გასუფთავებისას, თუ ვადა `days` იქნება.
  */
 export interface TrashRetention {
@@ -129,7 +129,7 @@ export interface TrashRetention {
   saved_days: number
   default_days: number
   max_days: number
-  /** §34.1 — ზედა ზღვარი სუპერადმინის ცვლილების გარეშე (`TRASH_MAX_DAYS`) */
+  /** ზედა ზღვარი სუპერადმინის ცვლილების გარეშე (`TRASH_MAX_DAYS`) */
   default_max_days: number
   /** სუპერადმინი ამაზე მეტს ვერ დააწესებს (`TrashDomain::MAX_DAYS_CEILING`) */
   max_days_ceiling: number
@@ -144,7 +144,7 @@ export async function fetchTrashRetention(days: number): Promise<TrashRetention>
 }
 
 /**
- * **ურნის ზედა ზღვარი ყველასთვის** (Tasks §29.6 → §34.1) — მხოლოდ სუპერადმინი.
+ * **ურნის ზედა ზღვარი ყველასთვის** — მხოლოდ სუპერადმინი.
  * `null` — ნაგულისხმევზე დაბრუნება.
  */
 export async function updateTrashMaxDays(

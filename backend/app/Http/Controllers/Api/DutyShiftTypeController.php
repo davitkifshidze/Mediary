@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * **მორიგეობის ტიპები (Tasks §34)** — `/duty/types`, კლასიფიკატორის შაბლონით
+ * **მორიგეობის ტიპები** — `/duty/types`, კლასიფიკატორის შაბლონით
  * (`PlaceCategoryController`): ზარმაცი ნაგულისხმევები (8/12/24 სთ), რიგი,
  * წაშლა გადატანით.
  *

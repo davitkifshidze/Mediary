@@ -9,13 +9,13 @@ import type { Course } from '@/api/courses'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **კურსის რიგი — ერთი მოქმედებების ზოლი** (Tasks §29.1/§29.4).
+   **კურსის რიგი — ერთი მოქმედებების ზოლი**.
 
    ⚠️ მოწმდება: სტატუსი ერთხელაა და ჩამოსაშლელია (`Select` აღარ არის), ყველა
    კონტროლი ერთი სიმაღლისაა (h-9), ბმულის სლოტი უბმულო კურსზეც ადგილზეა
    (უხილავი), ფაილების ღილაკს რიცხვი აქვს, პლატფორმა ჰოსტის ნაცვლად
    ბრენდის სახელით წერია („YouTube“, არა „youtube.com“).
-   Tasks §55.4 — ბმულიდან ნაპოვნი ფოტო შენახვისას **იგზავნება** (`image_url`).
+   ბმულიდან ნაპოვნი ფოტო შენახვისას **იგზავნება** (`image_url`).
    ============================================================ */
 
 function course(id: number, over: Partial<Course> = {}): Course {
@@ -76,7 +76,7 @@ if (!('ResizeObserver' in globalThis)) {
   }
 }
 
-/* მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ (DEBT-12-ის წესი, `NoteReminders.test.ts`):
+/* მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ (როგორც `NoteReminders.test.ts`-ში):
    გვერდი დეტალის ფანჯარასთან ერთად Leaflet-ის ლეიზი საზღვარსაც იწევს და სრულ `npm test`-ში
    პირველი ტესტი 5 წმ-ს სცდებოდა — ერთჯერადი იმპორტი ჰუკშია, თავისი ვადით. */
 beforeAll(async () => {
@@ -132,7 +132,7 @@ const bars = () => [...document.querySelectorAll<HTMLElement>('[data-testid="rec
 const menuItem = (label: string) =>
   [...document.querySelectorAll<HTMLElement>('button, [role="menuitem"]')].find((el) => el.textContent?.trim() === label)
 
-describe('CoursesPage row (§29.1)', () => {
+describe('CoursesPage row', () => {
   it('draws one action bar whose controls share a height and keeps the link slot on a course without a link', async () => {
     await mount()
 
@@ -163,7 +163,7 @@ describe('CoursesPage row (§29.1)', () => {
     expect(empty.getAttribute('aria-hidden')).toBe('true')
     expect(second.querySelector('[data-testid="files-button"]')?.textContent?.trim()).toBe(i18n.t('actions.files'))
 
-    // §29.3 — პლატფორმა ბრენდის სახელით, არა ჰოსტით
+    // პლატფორმა ბრენდის სახელით, არა ჰოსტით
     expect(document.body.textContent).toContain('YouTube')
     expect(document.body.textContent).not.toContain('youtube.com')
   })
@@ -182,7 +182,7 @@ describe('CoursesPage row (§29.1)', () => {
   })
 })
 
-describe('CoursesPage form (§55.4)', () => {
+describe('CoursesPage form', () => {
   it('sends the photo the link probe found — before, the form showed it and dropped it on save', async () => {
     const category = { id: 5, key: 'dev', name_ka: 'პროგრამირება', name_en: 'Dev', icon: null, sort_order: 0 }
     const subject = course(1, { url: null, platform: null, category_id: 5, category })

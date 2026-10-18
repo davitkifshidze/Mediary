@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * **Tasks §59.6 — „ეს ჩანაწერი უკვე მაქვს?"** (დუბლიკატის შემოწმება).
+ * **„ეს ჩანაწერი უკვე მაქვს?"** (დუბლიკატის შემოწმება).
  *
  * წესები `ImportSource::IDENTITY`-შია (TMDB-ის ნომერი / ბმული / სათაური + წელი…);
  * აქ ისინი **გასაღებებად** იქცევა (`tmdb_id:603`, `title:the matrix|1999`) და

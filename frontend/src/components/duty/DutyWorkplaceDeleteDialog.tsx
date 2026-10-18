@@ -15,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 /* ============================================================
-   **სამსახურის წაშლა — მისი მორიგეობების ბედი (Tasks §34).**
+   **სამსახურის წაშლა — მისი მორიგეობების ბედი.**
 
    კლასიფიკატორის სამი ცხადი არჩევანი (`/dictionaries`-ის იგივე ფანჯარა და
    სიტყვები): სხვა სამსახურზე გადატანა · უსამსახუროდ დატოვება · მორიგეობების

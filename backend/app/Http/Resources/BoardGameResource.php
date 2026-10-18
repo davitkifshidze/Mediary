@@ -7,7 +7,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * ბორდგეიმი (`board_game` მოდული). სათაური ერთენოვანია — წყარო (BGG)
- * მხოლოდ ინგლისურია და §14 ორ ენას არ ითხოვს.
+ * მხოლოდ ინგლისურია და ორი ენა საჭირო არაა.
  */
 class BoardGameResource extends JsonResource
 {
@@ -44,7 +44,7 @@ class BoardGameResource extends JsonResource
             'is_favorite' => $this->is_favorite,
             'links' => $this->links ?? [],
 
-            // 16.5 — საჯარო პროფილის წინაპირობა; default `private`
+            // საჯარო პროფილის წინაპირობა; default `private`
             'visibility' => $this->visibility,
             'files_count' => $this->whenCounted('files'),
             'images_count' => $this->whenCounted('images'),

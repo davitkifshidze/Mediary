@@ -8,7 +8,7 @@ import type { GalleryCastImage, GalleryImage, GalleryLockedImage } from '@/api/g
 import '@/i18n'
 
 /* ============================================================
-   მსახიობისა და ჩანაწერის გალერეა — **„ალბომში დამატება" (Tasks §17)**.
+   მსახიობისა და ჩანაწერის გალერეა — **„ალბომში დამატება"**.
 
    შენი სიტყვები: „კონკრეტულ მსახიობზე ფოტოს მარჯვენა კლიკით, კონტექსტური
    მენიუდან, ალბომში დამატება უნდა შეიძლებოდეს".
@@ -20,7 +20,7 @@ import '@/i18n'
    ჩუმად მოსცილდებოდა. ამას ვერც ტიპები ხედავს და ვერც backend-ის ტესტი:
    სერვერისთვის ორივე მოთხოვნა სწორია.
 
-   ⚠️ **ორი ბადე, ერთი ქცევა** (Q34): `GalleryPanel` (ჩანაწერის საკუთარი
+   ⚠️ **ორი ბადე, ერთი ქცევა**: `GalleryPanel` (ჩანაწერის საკუთარი
    ფოტოებიც და მსახიობის გვერდიც) და `CastPhotoStacks` (ფილმის გვერდზე
    მსახიობების დასტები) — ორივე აქ მოწმდება.
    ============================================================ */
@@ -79,7 +79,7 @@ const lockedPhoto = (id: number): GalleryLockedImage => ({
 let root: Root | null = null
 let container: HTMLDivElement | null = null
 
-// ⚠️ lightbox და context-menu მძიმე მოდულებია — DEBT-12-ის გაკვეთილი
+// ⚠️ lightbox და context-menu მძიმე მოდულებია — წინასწარ ვათბობთ, ტესტის ბიუჯეტის გარეთ
 beforeAll(async () => {
   await import('@/components/GalleryPanel')
   await import('@/components/CastPhotoStacks')
@@ -174,7 +174,7 @@ async function moveIntoAlbum(i18n: { t: (key: string) => string }) {
   await click(submit())
 }
 
-describe('GalleryPanel — გადატანა ალბომში (§17)', () => {
+describe('GalleryPanel — გადატანა ალბომში', () => {
   it('ფოტოს მენიუდან ალბომში დამატება მსახიობს არ აშორებს', async () => {
     const i18n = (await import('@/i18n')).default
     const { GalleryPanel } = await import('@/components/GalleryPanel')
@@ -214,7 +214,7 @@ describe('GalleryPanel — გადატანა ალბომში (§17)
   })
 })
 
-describe('CastPhotoStacks — იგივე გადატანა ფილმის გვერდზე (Q34)', () => {
+describe('CastPhotoStacks — იგივე გადატანა ფილმის გვერდზე', () => {
   it('მსახიობის დასტის ფოტოც ალბომში მსახიობზე დარჩენით გადადის', async () => {
     const i18n = (await import('@/i18n')).default
     const { CastPhotoStacks } = await import('@/components/CastPhotoStacks')

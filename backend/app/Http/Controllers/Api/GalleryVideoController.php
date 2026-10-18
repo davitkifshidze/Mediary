@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 /**
- * **ვიდეო-ბმულები გალერეაში (Tasks §8.1/§8.4).**
+ * **ვიდეო-ბმულები გალერეაში.**
  *
  * მოთხოვნა: „დაამატე მსახიობებზე ვიდეო სერჩი — ვიდეოს ლინკები, ან სადაც
  * ვიდეო დევს, იმის ლინკები და თამბნეილები".
@@ -53,7 +53,7 @@ class GalleryVideoController extends Controller
         $data = $request->validate([
             'owner' => ['nullable', 'string', 'regex:/^('.$owners.'):\d+$/'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
-            // Tasks §25.5 — ვიდეოების გვერდის ძებნა, მფლობელის სახე და დალაგება
+            // ვიდეოების გვერდის ძებნა, მფლობელის სახე და დალაგება
             'q' => ['nullable', 'string', 'max:200'],
             'owner_type' => ['nullable', 'in:record,actor'],
             'sort' => ['nullable', 'in:new,old,title'],
@@ -158,7 +158,7 @@ class GalleryVideoController extends Controller
             'published_at' => $data['published_at'] ?? null,
             'thumbnail_url' => $this->httpUrl($data['thumbnail_url'] ?? null),
             'source_url' => $this->httpUrl($data['source_url'] ?? null),
-            /* ⚠️ **`user_id`-ის ფილტრიც აუცილებელია** (აუდიტი 2026-09-14): scope
+            /* ⚠️ **`user_id`-ის ფილტრიც აუცილებელია**: scope
                მოხსნილია, ე.ი. `max()` **ყველა ანგარიშის** რიგებს კითხულობდა —
                ორი ხაზით ზემოთ იგივე query სწორად იფილტრება. საზიარო მშობელზე
                (ერთი მსახიობი მრავალ ანგარიშზე) ეს რიგითობას ახტუნებდა და
@@ -179,7 +179,7 @@ class GalleryVideoController extends Controller
 
     public function destroy(GalleryVideo $galleryVideo)
     {
-        // ⚠️ **ურნა (Tasks §29, Q22)** — ბმული ურნაში გადადის და იქიდან ბრუნდება
+        // ⚠️ **ურნა** — ბმული ურნაში გადადის და იქიდან ბრუნდება
         $galleryVideo->moveToTrash();
 
         return response()->noContent();
@@ -190,7 +190,7 @@ class GalleryVideoController extends Controller
     /** მშობელი + მფლობელობის შემოწმება */
     private function parent(Request $request, string $target, int $id): ?Model
     {
-        // §37.4 — `query()`: პირადი მოდულის ჩანაწერი მოდულითაც იჭრება
+        // `query()`: პირადი მოდულის ჩანაწერი მოდულითაც იჭრება
         $parent = GalleryParent::query($target)?->find($id);
 
         if (! $parent) {

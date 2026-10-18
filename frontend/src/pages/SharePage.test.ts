@@ -9,7 +9,7 @@ import type { PublicShare, ShareItems, SharePlan } from '@/api/shareLinks'
 import '@/i18n'
 
 /* ============================================================
-   გაზიარების ბმულის გვერდი — `/share/:token` (Tasks §40.6, §40.8).
+   გაზიარების ბმულის გვერდი — `/share/:token`.
 
    აქ მოწმდება ის, რასაც ვერც `tsc` ხედავს და ვერც backend-ის ტესტი:
    · ანონიმის „შესვლა" **ისევ ბმულზე აბრუნებს** (`state.from`);
@@ -265,7 +265,7 @@ describe('SharePage — ბიბლიოთეკაში დამატე�
   })
 })
 
-describe('SharePage — ეტაპი 2-ის სექციები (§40.10)', () => {
+describe('SharePage — არამედია სექციები', () => {
   const stage2 = (): PublicShare => ({
     owner: { username: 'nino', display_name: 'Nino', avatar_path: null },
     link: { expires_at: null, show_status: true },
@@ -348,7 +348,7 @@ describe('SharePage — ეტაპი 2-ის სექციები (§40.
   })
 })
 
-describe('SharePage — პლეილისტები (§40.13)', () => {
+describe('SharePage — პლეილისტები', () => {
   const playlistShare = (): PublicShare => ({
     owner: { username: 'nino', display_name: 'Nino', avatar_path: null },
     link: { expires_at: null, show_status: true },

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * კურსი — მოდული `course` (FEAT-25).
+ * კურსი — მოდული `course`.
  *
  * ⚠️ **გარე წყარო არ არსებობს** (Udemy/Coursera-ს კატალოგი დახურულია), ე.ი.
  * „კანდიდატები → სქემა" ნაკადი აქ არაა; ბუკმარკის `LinkMetadata` probe
@@ -23,26 +23,26 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * არცერთს არ უდრის. წიგნის/თამაშის/სამაგიდოს იგივე რიგი.
  *
  * ⚠️ **სტატუსსა და მის თარიღებს ერთი მეთოდი ათანხმებს** (`syncStatusDates()`).
- * გაკვეთილები, ხანგრძლივობა, ლექტორი და შეფასება Tasks §14-მა ამოიღო —
+ * გაკვეთილები, ხანგრძლივობა, ლექტორი და შეფასება ამოღებულია —
  * ე.ი. პროგრესი აღარ არსებობს და სტატუსი მხოლოდ ხელით იცვლება.
  */
 class Course extends Model
 {
     use BelongsToUser;
 
-    /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
+    /** მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
-    /** FEAT-18 — ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
+    /** ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
     use HasTags;
 
-    /** FEAT-11 — კალათა: `destroy()` `moveToTrash()`-ს იძახის */
+    /** კალათა: `destroy()` `moveToTrash()`-ს იძახის */
     use HasTrash;
 
     /** ⚠️ ოთხი და არა სამი: „მივატოვე" ცალკე ფაქტია და არა „დასრულებული" */
     public const STATUSES = ['to_take', 'taking', 'done', 'dropped'];
 
-    /** ფაილის სახეები — ⚠️ სერტიფიკატი (`certificate`) Tasks §55.5-მა მოხსნა */
+    /** ფაილის სახეები — ⚠️ სერტიფიკატი (`certificate`) მოხსნილია */
     public const FILE_KINDS = ['image', 'doc'];
 
     protected $guarded = ['id'];
@@ -66,8 +66,8 @@ class Course extends Model
         static::deleting(function (Course $course) {
             $course->deleteThumbnail();
 
-            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა** (BUG-21-ის
-               ზუსტი გაკვეთილი): `course_files` `BelongsToUser`-ს იყენებს, ე.ი.
+            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა**:
+               `course_files` `BelongsToUser`-ს იყენებს, ე.ი.
                `files()` **მიმდინარე ავტორიზებულ** მომხმარებელზე იჭრება.
                `/admin/purge` და ანგარიშის წაშლა სხვის ბიბლიოთეკას ადმინის
                სესიიდან შლის — სია ცარიელი დაბრუნდებოდა, ფაილები დისკზე
@@ -106,8 +106,8 @@ class Course extends Model
     /**
      * **სტატუსისა და მისი თარიღების შეთანხმება — ერთადერთი ადგილი.**
      *
-     * ⚠️ **`finished_at` მხოლოდ აქ იწერება** — FEAT-08/FEAT-21 სწორედ ამ
-     * თარიღით ითვლის „წელს რამდენი დავასრულე"-ს. `??=`: უკვე ჩაწერილი თარიღი
+     * ⚠️ **`finished_at` მხოლოდ აქ იწერება** — თვეების ჭრილი და წლის მიზანი
+     * სწორედ ამ თარიღით ითვლის „წელს რამდენი დავასრულე"-ს. `??=`: უკვე ჩაწერილი თარიღი
      * არ გადაიწერება, თორემ ყოველი რედაქტირება მას მიმდინარე წელში გადაათრევდა.
      */
     public function syncStatusDates(): void

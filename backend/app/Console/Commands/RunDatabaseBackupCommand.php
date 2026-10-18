@@ -7,7 +7,7 @@ use App\Services\Backup\BackupRunner;
 use Illuminate\Console\Command;
 
 /**
- * **`php artisan backups:run {backup} [--restore]` — Tasks §22.**
+ * **`php artisan backups:run {backup} [--restore]` — ასლის შექმნა და აღდგენა.**
  *
  * ⚠️ ბრძანება **ორივე გზაზეა**, `videos:download`-ის ზუსტი პრეცედენტი: მას
  * ადმინის ღილაკი უშვებს ფონურად (`BackgroundProcess`) და ხელითაც შეიძლება
@@ -24,7 +24,7 @@ class RunDatabaseBackupCommand extends Command
 {
     protected $signature = 'backups:run {backup : database_backups.id} {--restore : დამპის ბაზაში ჩატვირთვა}';
 
-    protected $description = 'ბაზის დამპის აღება ან აღდგენა (Tasks §22)';
+    protected $description = 'ბაზის დამპის აღება ან აღდგენა';
 
     public function handle(BackupRunner $runner): int
     {

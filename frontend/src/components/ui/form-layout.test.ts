@@ -3,7 +3,7 @@ import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
 /* ============================================================
-   **ფორმის სექციის მედია-სვეტი იჭიმება** (Tasks §14.1) — კლასების შემოწმება
+   **ფორმის სექციის მედია-სვეტი იჭიმება** — კლასების შემოწმება
    snapshot-ის გარეშე: `media`-იანი სექცია `sm:items-stretch` რიგია, რომ
    `PosterUploader fill` ყუთმა ზუსტად ველების სიმაღლე მიიღოს.
    ============================================================ */
@@ -37,7 +37,7 @@ describe('FormSection', () => {
     expect(row.querySelector('[data-testid="media"]')).toBeTruthy()
   })
 
-  it('§38 — fixed column width, the label above, the frame in the remaining flex-1 box, gap-6 to the fields', async () => {
+  it('fixed column width, the label above, the frame in the remaining flex-1 box, gap-6 to the fields', async () => {
     const { FormSection } = await import('@/components/ui/form-layout')
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -72,7 +72,7 @@ describe('FormSection', () => {
     expect(column.nextElementSibling?.className).toContain('min-w-0')
   })
 
-  it('§38 — a poster column is 160 px', async () => {
+  it('a poster column is 160 px', async () => {
     const { MediaRow } = await import('@/components/ui/form-layout')
     container = document.createElement('div')
     document.body.appendChild(container)

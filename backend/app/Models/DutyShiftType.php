@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * **მორიგეობის ტიპი (Tasks §34)** — „8 სთ“ · „12 სთ“ · „24 სთ“ და შენი.
+ * **მორიგეობის ტიპი** — „8 სთ“ · „12 სთ“ · „24 სთ“ და შენი.
  *
  * ⚠️ **კლასიფიკატორია** (`/dictionaries`, `bookmark_categories`-ის შაბლონი):
  * ორენოვანი სახელი, რადგან სამი ნაგულისხმევი კოდიდან მოდის; წაშლა —
@@ -20,10 +20,10 @@ class DutyShiftType extends Model
 {
     use BelongsToUser, HasTrash;
 
-    /** §B3 — უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
+    /** უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
     use HasDictionaryKey;
 
-    /** ახალ ანგარიშზე ავტომატურად შექმნილი ტიპები (Q8 — 8, 12 და 24 საათი) */
+    /** ახალ ანგარიშზე ავტომატურად შექმნილი ტიპები (8, 12 და 24 საათი) */
     public const DEFAULTS = [
         ['key' => 'h8', 'name_ka' => '8 სთ', 'name_en' => '8 h', 'hours' => 8, 'icon' => 'Sun'],
         ['key' => 'h12', 'name_ka' => '12 სთ', 'name_en' => '12 h', 'hours' => 12, 'icon' => 'Sunset'],
@@ -56,7 +56,7 @@ class DutyShiftType extends Model
     /** ლენივი შევსება — მოდულის მოგვიანებით ჩართვაც ერთსა და იმავე გზას გადის */
     public static function ensureDefaults(int $userId): void
     {
-        // ⚠️ ურნაში მყოფიც (Tasks §29) — სხვაგვარად ნაგულისხმევები იმავე გასაღებით ჩაიწერებოდა და ინდექსი დაიძვრებოდა
+        // ⚠️ ურნაში მყოფიც — სხვაგვარად ნაგულისხმევები იმავე გასაღებით ჩაიწერებოდა და ინდექსი დაიძვრებოდა
         if (static::withoutGlobalScopes(['owner', 'trash'])->where('user_id', $userId)->exists()) {
             return;
         }

@@ -36,22 +36,22 @@ class StoreAnimeRequest extends FormRequest
             ],
             'ge_url' => ['nullable', 'url', 'max:500'],
             'trailer_url' => ['nullable', 'url', 'max:500'],
-            'description_ka' => RichText::rules(), // §47 — აქამდე ზღვარი არ ჰქონდა
+            'description_ka' => RichText::rules(), // აქამდე ზღვარი არ ჰქონდა
             'description_en' => RichText::rules(),
             'rating' => ['nullable', 'numeric', 'min:0', 'max:10'],
-            // Tasks §9 — „ჩემი ქულა" (ვარსკვლავები, 4.6 / 10); TMDB-ის `rating`-ისგან ცალკე
+            // „ჩემი ქულა" (ვარსკვლავები, 4.6 / 10); TMDB-ის `rating`-ისგან ცალკე
             'my_rating' => Rating::rules(),
             'runtime' => ['nullable', 'integer', 'min:1', 'max:1000'],
             'seasons' => ['nullable', 'integer', 'min:1', 'max:1000'],
             'episodes' => ['nullable', 'integer', 'min:1', 'max:100000'],
-            /* Tasks §6.4 — სტატუსი per-user ლექსიკონია, ე.ი. სია კოდში აღარ წერია.
+            /* სტატუსი per-user ლექსიკონია, ე.ი. სია კოდში აღარ წერია.
                ⚠️ გასაღები **ამ ანგარიშის** ლექსიკონში უნდა არსებობდეს, თორემ
                უცნობი მნიშვნელობა ჩუმად „სტატუსის გარეშედ“ იქცეოდა. */
             'status' => ['required', 'string', Status::rule('anime')],
             'is_favorite' => ['nullable', 'boolean'],
             'genres' => ['required', 'array', 'min:1'],
             'genres.*' => ['string', 'max:100'],
-            // Tasks §34.3 — ზომა და ფორმატი ერთი წყაროდან (`primary`: მთავარი ფოტო, პოსტერი, ავატარი)
+            // ზომა და ფორმატი ერთი წყაროდან (`primary`: მთავარი ფოტო, პოსტერი, ავატარი)
             'poster' => ['nullable', ...UploadLimits::rule('primary', $this->user())],
             'visibility' => ['nullable', Rule::in(PublicDomain::VALUES)],
         ];

@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **ადგილის შენახული მარშრუტები** (Tasks §30.4).
+ * **ადგილის შენახული მარშრუტები**.
  *
  * მარშრუტს OSRM-ის საჯარო სერვერი ითვლის (`RouteClient`) და ის **ყოველთვის
  * მომხმარებლის მიმდინარე მდებარეობიდან** იწყება (`from_lat`/`from_lng`,
@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Schema;
  * ⚠️ `trashed_at` — ურნა იმავე წესით, რაც ადგილის ფაილს (`TrashDomain::ITEMS`,
  * `place_route`); მშობლის საბოლოო წაშლა მასაც შლის (`Place::booted()`).
  * ⚠️ რუკის ბიბლიოთეკა (Leaflet) ამ მიგრაციასთან ერთად შემოვიდა — 2026-09-21-ის
- * „მოგვიანებით" (`create_places_module`) სწორედ ეს ტასქია.
+ * „მოგვიანებით" (`create_places_module`) სწორედ ეს იყო.
  */
 return new class extends Migration
 {

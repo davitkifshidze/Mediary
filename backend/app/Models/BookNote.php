@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * წიგნის ჩანიშვნა ან **ციტატა** (Tasks §12).
+ * წიგნის ჩანიშვნა ან **ციტატა**.
  *
  * ციტატა ჩვეულებრივი ჩანიშვნისგან მხოლოდ ორი ველით განსხვავდება
  * (`is_quote` + `page`), ე.ი. ცალკე ცხრილს არ იმსახურებს.
@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class BookNote extends Model
 {
     /**
-     * ⚠️ **ურნა (Tasks §29, ეტაპი 2)** — `destroy()` `moveToTrash()`-ს იძახის;
+     * ⚠️ **ურნა** — `destroy()` `moveToTrash()`-ს იძახის;
      * რიგი ადგილზე რჩება და ურნიდან ბრუნდება.
      */
     use BelongsToUser, HasTrash;

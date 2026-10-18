@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * **უსაფრთხოების ჰედერები ყოველ პასუხზე (Tasks SEC-04, SEC-16).**
+ * **უსაფრთხოების ჰედერები ყოველ პასუხზე.**
  *
  * ⚠️ ფაილის გაცემა `nosniff`-ს `SafeMime::response()`-ში თვითონაც აკეთებს — ეს
  * **მეორე** ფენაა: ნებისმიერი მომავალი endpoint, რომელიც ფაილს ან ტექსტს

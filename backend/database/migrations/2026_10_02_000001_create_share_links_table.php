@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Tasks §40.2 — **გაზიარების ბმული.**
+ * **გაზიარების ბმული.**
  *
  * მფლობელი ბმულს ქმნის, სხვა ადამიანი მისით მის ფილმებს, სერიალებსა და
  * ანიმეს ხედავს (ფარგლებით — `domains`).

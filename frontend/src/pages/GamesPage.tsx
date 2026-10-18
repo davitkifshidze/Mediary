@@ -59,7 +59,7 @@ import { RecordActionBar } from '@/components/RecordActionBar'
 import { EnumStatusMenu } from '@/components/StatusMenu'
 
 /* ============================================================
-   თამაშების მოდული (`game`, Tasks §11).
+   თამაშების მოდული (`game`).
 
    იგივე მოდელი, რაც წიგნებსა და ბორდგეიმებზე: **სტატუსი საიდბარის სექციაა**
    (`?view=`), პანელი კი ჟანრს, **პლატფორმასა** და რეჟიმს ფილტრავს —
@@ -81,7 +81,7 @@ export function GamesPage() {
   const navigate = useNavigate()
 
   const [params, setParams] = useSearchParams()
-  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
   const [layout, setLayout] = useRecordLayout('game', 'rows')
   const search = params.toString()
   const view = params.get('view') ?? 'all'
@@ -121,11 +121,11 @@ export function GamesPage() {
     // „რჩეული" და „ყველა" სტატუსს არ ნიშნავს — დანარჩენი სექცია სტატუსია
     status: (GAME_STATUSES as readonly string[]).includes(view) ? view : undefined,
     sort: sort === 'newest' ? undefined : sort,
-    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
   }
 
-  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['games', filters],
     fetchPage: (page) => fetchGames({ ...filters, page, per_page: LIST_PAGE_SIZE }),
@@ -150,7 +150,7 @@ export function GamesPage() {
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
   const favorite = useMutation({ mutationFn: toggleGameFavorite, onSuccess: invalidate, onError: fail })
-  // Tasks §7 — სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
+  // სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
   const status = useMutation({
     mutationFn: ({ id, next }: { id: number; next: (typeof GAME_STATUSES)[number] }) => updateGame(id, { status: next }),
     onSuccess: invalidate,
@@ -217,7 +217,7 @@ export function GamesPage() {
         subtitle={t('games.count', { count: total })}
         actions={
           <>
-            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             <Tooltip>
               <TooltipTrigger asChild>
@@ -269,7 +269,7 @@ export function GamesPage() {
       <div className="flex gap-6">
         <div className="min-w-0 flex-1">
           {query.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
-          {/* ⚠️ §2.4 — ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
+          {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !games.length && (
             <EmptyState
@@ -294,12 +294,12 @@ export function GamesPage() {
           <RecordList layout={layout}>
             {games.map((game) => {
               const cover = storageUrl(game.cover)
-              // §22.3 — რიგის ბმული: ჯერ მაღაზია, მერე სხვა ბმული, ბოლოს ოფიციალური საიტი
+              // რიგის ბმული: ჯერ მაღაზია, მერე სხვა ბმული, ბოლოს ოფიციალური საიტი
               const store =
                 game.links.find((l) => l.kind === 'store') ??
                 game.links.find((l) => l.kind !== 'official') ??
                 game.links[0]
-              /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+              /* მარჯვენა ღილაკის მენიუ: გახსნა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
                 { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpened(game) },
                 ...(store
@@ -361,7 +361,7 @@ export function GamesPage() {
                   }
                   extra={
                     <>
-                      {/* Tasks §24.2 — ჟანრები, პლატფორმები („ჩემი" სავსე) და რეჟიმები ერთი ფერებით, რაც დეტალის ბარათებს */}
+                      {/* ჟანრები, პლატფორმები („ჩემი" სავსე) და რეჟიმები ერთი ფერებით, რაც დეტალის ბარათებს */}
                       <p className="mt-1 flex flex-wrap gap-1">
                         {(game.genres ?? []).slice(0, 4).map((genre) => (
                           <GenreChip key={genre.id} genre={genre} />
@@ -377,14 +377,14 @@ export function GamesPage() {
                   }
                   actions={actions}
                   onEdit={() => setEditing(game)}
-                  /* Tasks §22.1 — ⚠️ **არჩევითი მარცხნივ, ყოველთვის არსებული მარჯვნივ.**
+                  /* ⚠️ **არჩევითი მარცხნივ, ყოველთვის არსებული მარჯვნივ.**
                      შენი სიტყვები: „რამდენიმეს MC და რიცხვი აქვს და მერე „გადაუწყვეტელი“ —
                      სიმეტრია დაირღვა; რჩეულის გვერდით ჯერ საერთო ზომის სტატუსის ნიშანი
                      იყოს". ბმული და ქულა ზოგს აქვს, ზოგს არა — მათ მარჯვნივ დგომისას
                      სტატუსი და ღილაკები რიგიდან რიგში ინაცვლებდა. სტატუსს ერთი მინიმალური
                      სიგანეც აქვს, რომ რჩეული ყველა რიგში ერთ სვეტში იდგეს. */
-                  /* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: ქულა · სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები ·
-                     მაღაზიის ბმული (უბმულოზე უხილავი სლოტი — §22.1-ის „ხტომა" საბოლოოდ ქრება) · რედაქტირება · წაშლა */
+                  /* ერთი ზოლი ყველა სიაზე: ქულა · სტატუსი (ჩამოსაშლელი) · რჩეული · ფაილები ·
+                     მაღაზიის ბმული (უბმულოზე უხილავი სლოტი — რიგი აღარ „ხტება") · რედაქტირება · წაშლა */
                   bar={
                     <RecordActionBar
                       before={
@@ -436,7 +436,7 @@ export function GamesPage() {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
-          {/* სტატუსი აქ განზრახ არ არის (Tasks 3) — ის საიდბარის სექციაა */}
+          {/* სტატუსი აქ განზრახ არ არის — ის საიდბარის სექციაა */}
           <FilterGroup title={t('games.platformsLabel')} count={draft.platforms.length}>
             <FilterOptionList>
               {GAME_PLATFORMS.map((p) => (

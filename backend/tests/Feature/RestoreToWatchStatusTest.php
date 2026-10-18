@@ -13,11 +13,11 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * **Tasks §15 — „საყურებელი" ბრუნდება ფილმებში, სერიალებსა და ანიმეში.**
+ * **„საყურებელი" ბრუნდება ფილმებში, სერიალებსა და ანიმეში.**
  *
  * მიგრაცია `2026_09_27_000006` ორ მდგომარეობას ასწორებს — (ა) `to_watch`
  * „ვუყურებ"-ად გადაკეთდა და `watching` ხდება, (ბ) `to_watch` აღარაა და
- * „გადაუწყვეტელის" შემდეგ ბრუნდება — და Q12-ის პირობას იცავს: ძველი რიგის
+ * „გადაუწყვეტელის" შემდეგ ბრუნდება — და ერთ პირობას იცავს: ძველი რიგის
  * კვალი (ჩანაწერები, საიდბარი, აუდიტის ლოგი) ძველ რიგს მიჰყვება, ახალ
  * „საყურებელს" კი არაფერი ძველი.
  */
@@ -242,7 +242,7 @@ class RestoreToWatchStatusTest extends TestCase
         $this->assertSame(['საყურებელი', 'todo', 'Clock'], [$toWatch->name_ka, $toWatch->role, $toWatch->icon]);
         $this->assertSame(['undecided', 'to_watch', 'watching', 'watched'], $this->keys($this->user, 'series'));
 
-        // ⚠️ Q12 — ყველაფერი ძველ რიგს მიჰყვება, ახალს არაფერი
+        // ⚠️ ყველაფერი ძველ რიგს მიჰყვება, ახალს არაფერი
         $this->assertSame($old->id, $series->refresh()->status_id);
         $this->assertSame('watching', $series->status_key);
 

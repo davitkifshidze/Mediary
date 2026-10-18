@@ -12,12 +12,12 @@ import { RecordUnlockDialog } from '@/components/locks/RecordLock'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
-   **მსახიობის ბარათი `/actors`-ზე (Tasks §35.2).**
+   **მსახიობის ბარათი `/actors`-ზე.**
 
    ფოტო, სახელი კონტენტის ენაზე (მეორე ენა ქვემოთ), „N ფილმი · M სერიალი"
-   **ჩემს ბიბლიოთეკაში** და ჩემი ტეგები. მარჯვენა ღილაკი — გვერდის მენიუ (§7).
+   **ჩემს ბიბლიოთეკაში** და ჩემი ტეგები. მარჯვენა ღილაკი — გვერდის მენიუ.
 
-   ⚠️ §35.5 — **დამალული** (ჩემ მიერ ჩაკეტილი, ამ სესიაში დაუხსნელი) მხოლოდ
+   ⚠️ **დამალული** (ჩემ მიერ ჩაკეტილი, ამ სესიაში დაუხსნელი) მხოლოდ
    ფილტრში „მხოლოდ ჩაკეტილები" ჩანს: სახელი და ბოქლომი, დაჭერა — გახსნა.
    ============================================================ */
 
@@ -51,7 +51,7 @@ function OpenActorTile({ actor, actions }: { actor: ActorCard; actions: MenuActi
 
         <div className="mt-2 space-y-0.5">
           <p className="flex items-center gap-1 text-sm font-semibold">
-            {/* §35.5 — ჩაკეტილი, ამ სესიაში გახსნილი */}
+            {/* ჩაკეტილი, ამ სესიაში გახსნილი */}
             {actor.locked && <LockOpen className="size-3.5 shrink-0 text-muted-foreground" aria-label={t('lock.badgeOpen')} />}
             <span className="line-clamp-1">{title}</span>
           </p>

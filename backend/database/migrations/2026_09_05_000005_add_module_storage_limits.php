@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **Tasks §17.2 — კვოტის გადანაწილება მოდულებზე.**
+ * **კვოტის გადანაწილება მოდულებზე.**
  *
  * ლიმიტი `module_user`-ზე ჯდება და არა ცალკე `storage_allocations`-ზე:
  * ეს ზუსტად per-user × per-module ფაქტია, pivot კი უკვე არსებობს

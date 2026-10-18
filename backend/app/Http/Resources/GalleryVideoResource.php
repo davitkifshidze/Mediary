@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * გალერეის ვიდეო-ბმული (`gallery_videos`, Tasks §8.1).
+ * გალერეის ვიდეო-ბმული (`gallery_videos`).
  *
  * ⚠️ **`thumbnail_url` დაშორებული მისამართია** და არა ჩვენი ფაილი — ფრონტმა
  * მას `storageUrl()` **არ** უნდა გაუკეთოს. სწორედ ამიტომ ჰქვია `_url` და

@@ -16,7 +16,7 @@ import { AddPersonButton, PersonalPeopleCut } from '@/components/personal/Person
 import { PersonalUploadDialog } from '@/components/personal/PersonalUploadDialog'
 
 /* ============================================================
-   **პირადი გალერეა — `/personal` და მისი ჭრილები (Tasks §33.5).**
+   **პირადი გალერეა — `/personal` და მისი ჭრილები.**
 
    შენი სიტყვები: „პიროვნების გალერეის დამატება, ალბომის შექმნა გარეთ და
    პიროვნებაშიც … ასევე ცალკე, გარეთ იყოს ფოტო/ვიდეო ბარათების სექცია, სადაც

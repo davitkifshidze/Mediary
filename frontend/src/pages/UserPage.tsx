@@ -50,7 +50,7 @@ import { PageContainer } from '@/components/ui/page'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   მომხმარებლის შიდა გვერდი ადმინისთვის (Tasks K14).
+   მომხმარებლის შიდა გვერდი ადმინისთვის.
    ერთ ადგილას: უფლებები, მოდულები, შიგთავსი, ადგილი და მოთხოვნების ისტორია.
    ============================================================ */
 
@@ -77,7 +77,7 @@ export function UserPage() {
   const fmt = useDateFormat()
 
   const userId = Number(id)
-  /* ⚠️ **ვიწრო სია და არა `fetchRoles()` (Tasks GAP-10)**: ის
+  /* ⚠️ **ვიწრო სია და არა `fetchRoles()`**: ის
      `admin_access:roles`-ის უკანაა, ე.ი. `admin:users`-ის მქონე ადმინი
      403-ს იღებდა და როლის სელექტი **ჩუმად ცარიელი** რჩებოდა. */
   const { data: roles = [] } = useQuery({
@@ -109,7 +109,7 @@ export function UserPage() {
     onError: fail,
   })
 
-  // 1.3 — მოთხოვნა აქვე მტკიცდება; badge და `/requests` ერთად უნდა განახლდეს
+  // მოთხოვნა აქვე მტკიცდება; badge და `/requests` ერთად უნდა განახლდეს
   const review = useMutation({
     mutationFn: ({ id, ok }: { id: number; ok: boolean }) =>
       ok ? approveRequest(id) : rejectRequest(id),
@@ -122,14 +122,14 @@ export function UserPage() {
     onError: fail,
   })
 
-  // 17.1 — კვოტა MB-ებში იმართება; ჩატვირთვისას ბაზის მნიშვნელობით ივსება
+  // კვოტა MB-ებში იმართება; ჩატვირთვისას ბაზის მნიშვნელობით ივსება
   const [quotaMb, setQuotaMb] = useState('')
   const quotaBytes = data?.storage.quota
   useEffect(() => {
     if (quotaBytes != null) setQuotaMb(String(Math.round(quotaBytes / 1024 / 1024)))
   }, [quotaBytes])
 
-  /* FEAT-16 — ერთჯერადი აღდგენის ბმული. ⚠️ **`useMutation` და არა
+  /* ერთჯერადი აღდგენის ბმული. ⚠️ **`useMutation` და არა
      `useQuery`**: ყოველი გამოძახება ახალ ტოკენს ქმნის და ძველს კლავს, ე.ი.
      გვერდის გახსნა/refetch მოქმედ ბმულს გააუქმებდა. */
   const resetLink = useMutation({
@@ -202,7 +202,7 @@ export function UserPage() {
         <Stat icon={Star} label={t('filter.favorite')} value={content.favorites} />
       </div>
 
-      {/* ---------- საცავი და ლიმიტი (Tasks 1.3 / 17.1) ---------- */}
+      {/* ---------- საცავი და ლიმიტი ---------- */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-sm">
@@ -265,8 +265,8 @@ export function UserPage() {
         <h2 className="mb-4 font-display text-lg font-semibold tracking-tight">{t('admin.permissions')}</h2>
 
         <div className="flex flex-wrap items-end gap-6">
-          {/* Tasks 1.6 — როლი სიიდან აირჩევა; უფლებები `/roles`-ზე იმართება.
-              ⚠️ SEC-02 — საკუთარ როლს სერვერი 422-ით არ ცვლის, და `super_admin`
+          {/* როლი სიიდან აირჩევა; უფლებები `/roles`-ზე იმართება.
+              ⚠️ საკუთარ როლს სერვერი 422-ით არ ცვლის, და `super_admin`
               მხოლოდ `super_admin`-ს ჩანს (ამჟამინდელ მნიშვნელობის გარდა, თორემ
               ველი ცარიელად დაიხატებოდა). ⚠️ **ეს მოხერხებულობაა, არა დაცვა** —
               სერვერი `role_escalation`-ით ამ ორის გარდა ყველაფერს ამოწმებს. */}
@@ -303,7 +303,7 @@ export function UserPage() {
             {t('admin.active')}
           </label>
 
-          {/* Tasks 1.3 (🔗 16) — abuse-ის შემთხვევაში პროფილს ადმინი ხურავს.
+          {/* abuse-ის შემთხვევაში პროფილს ადმინი ხურავს.
               ⚠️ ორმხრივია: შემთხვევით დახურულის უკან დაბრუნებაც უნდა შეეძლოს. */}
           <label className="flex h-10 cursor-pointer items-center gap-2 text-sm">
             <Switch
@@ -380,24 +380,24 @@ export function UserPage() {
         </div>
       </section>
 
-      {/* ---------- ატვირთული ფაილები (1.3) ---------- */}
+      {/* ---------- ატვირთული ფაილები ---------- */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
         <h2 className="mb-4 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
           {t('admin.filesTitle')}
           <InfoHint info={t('admin.filesHint')} />
         </h2>
 
-        {/* სია საერთო კომპონენტია `/settings`-თან (17.5) — ერთი ხედი, ერთი წყარო.
+        {/* სია საერთო კომპონენტია `/settings`-თან — ერთი ხედი, ერთი წყარო.
             ადმინის მხარეს წაშლა განზრახ არ არის: სხვისი ფაილი მას არ ეკუთვნის. */}
         <StorageLibrary files={files} total={storage.files} bytes={storage.bytes} />
       </section>
 
-      {/* ---------- ატვირთვის პირადი გამონაკლისები (Tasks §34.6) ----------
+      {/* ---------- ატვირთვის პირადი გამონაკლისები ----------
           ⚠️ აქ ჩანს და იხსნება — თორემ დამტკიცებით მიცემული ნებართვა
           სამუდამოდ უხილავი დარჩებოდა. */}
       <UploadOverridesSection userId={userId} overrides={data.upload_overrides ?? {}} />
 
-      {/* ---------- მოთხოვნები (Tasks 1.3 — აქვე დამტკიცება, არა მხოლოდ ისტორია) ---------- */}
+      {/* ---------- მოთხოვნები (აქვე დამტკიცება, არა მხოლოდ ისტორია) ---------- */}
       {requests.length > 0 && (
         <section className="mb-6 rounded-xl border border-border bg-card p-5">
           <h2 className="mb-3 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
@@ -444,7 +444,7 @@ export function UserPage() {
         </section>
       )}
 
-      {/* ---------- პაროლის აღდგენის ბმული (FEAT-16) ----------
+      {/* ---------- პაროლის აღდგენის ბმული ----------
           ⚠️ **საშიში ზონის გარეთაა**: ბმულის გაცემა არაფერს შლის და
           წითელ ჩარჩოში მოხვედრა მას იმაზე მძიმედ წაიკითხავდა, ვიდრე არის. */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">

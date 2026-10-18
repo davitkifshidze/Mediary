@@ -10,7 +10,7 @@ use App\Support\RichText;
 use Illuminate\Http\Request;
 
 /**
- * წიგნის ჩანიშვნები **და ციტატები** (Tasks §12) — საკუთარი ცხრილი `book_notes`.
+ * წიგნის ჩანიშვნები **და ციტატები** — საკუთარი ცხრილი `book_notes`.
  * ციტატა იგივე რიგია `is_quote = true`-თი და (სურვილისამებრ) გვერდით.
  */
 class BookNoteController extends Controller
@@ -42,7 +42,7 @@ class BookNoteController extends Controller
 
     public function destroy(BookNote $bookNote)
     {
-        // ⚠️ ურნა (Tasks §29, ეტაპი 2) — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
+        // ⚠️ ურნა — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
         $bookNote->moveToTrash();
 
         return response()->noContent();

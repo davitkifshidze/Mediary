@@ -15,7 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **ჯვარედინი ძებნა (აუდიტი 2026-09-14, §D6).**
+ * **ჯვარედინი ძებნა.**
  *
  * თერთმეტმოდულიან კატალოგს გლობალური ძებნა არ ჰქონდა: `VideoSearch`
  * მხოლოდ ვიდეოებს ემსახურებოდა, დანარჩენში კი ძებნა სექციის შიგნით იყო.
@@ -213,7 +213,7 @@ class GlobalSearchTest extends TestCase
     }
 
     /**
-     * Tasks §47 — აღწერა Markdown-ია: სიტყვებს შორის `**` და ბმულის ფრჩხილი
+     * აღწერა Markdown-ია: სიტყვებს შორის `**` და ბმულის ფრჩხილი
      * ფრაზის ძებნას აღარ არღვევს, ნაჭერში კი ფორმატის ნიშნები არ ჩანს.
      */
     public function test_a_formatted_description_is_found_and_shown_as_plain_text(): void

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { decodePolyline } from '@/lib/polyline'
 
-/* Tasks §30 — Google-ის საცნობარო მაგალითი (precision 5) და ცარიელი სტრიქონი */
+/* Google-ის საცნობარო მაგალითი (precision 5) და ცარიელი სტრიქონი */
 describe('decodePolyline', () => {
   it('decodes the reference example', () => {
     expect(decodePolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@')).toEqual([

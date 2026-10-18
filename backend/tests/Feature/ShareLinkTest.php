@@ -20,9 +20,9 @@ use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
- * **გაზიარების ბმული — შექმნა და ნახვა (Tasks §40.2–40.7).**
+ * **გაზიარების ბმული — შექმნა და ნახვა.**
  *
- * ⚠️ **ორი მნახველი, ორივე სავალდებულო** (§1.2-ის გაკვეთილი): ანონიმი **და**
+ * ⚠️ **ორი მნახველი, ორივე სავალდებულო**: ანონიმი **და**
  * შესული უცხო. ანონიმზე `owner` scope არაფერს ჭრის, ე.ი. მარტო ანონიმური
  * ტესტი ადვილ ნახევარს იცავს — შესულ უცხოს კი scope **მის საკუთარ**
  * ბიბლიოთეკაზე მოჭრიდა და ბმული ცარიელი გამოჩნდებოდა.
@@ -271,7 +271,7 @@ class ShareLinkTest extends TestCase
         }
     }
 
-    /** ⚠️ ცოცხალია (Q47) — ფარგალს მორგებული ახალი ჩანაწერი ბმულშიც ჩნდება; ურნაში მყოფი ქრება */
+    /** ⚠️ ცოცხალია — ფარგალს მორგებული ახალი ჩანაწერი ბმულშიც ჩნდება; ურნაში მყოფი ქრება */
     public function test_the_scope_is_live_and_skips_the_trash(): void
     {
         $old = $this->movie($this->owner, 'Old');
@@ -332,7 +332,7 @@ class ShareLinkTest extends TestCase
         );
     }
 
-    /** „უკვე გაქვს ✓" — იდენტობით; ურნაში მყოფიც ჩანს (40.1-ის გაკვეთილი) */
+    /** „უკვე გაქვს ✓" — იდენტობით; ურნაში მყოფიც ჩანს */
     public function test_a_signed_in_viewer_sees_what_is_already_in_the_library(): void
     {
         $this->movie($this->owner, 'Have it', ['tmdb_id' => 1]);
@@ -400,7 +400,7 @@ class ShareLinkTest extends TestCase
         $this->anonymous("/api/public/shares/{$token}/movie")->assertStatus(404);
     }
 
-    /** ⚠️ `per_page` ორივე მხრიდან იზღუდება (§B4) — ავტორიზაციის გარეშე endpoint-ია */
+    /** ⚠️ `per_page` ორივე მხრიდან იზღუდება — ავტორიზაციის გარეშე endpoint-ია */
     public function test_per_page_is_clamped_from_both_sides(): void
     {
         $this->movie($this->owner, 'A');

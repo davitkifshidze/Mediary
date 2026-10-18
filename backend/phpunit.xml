@@ -38,15 +38,14 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
-        <!-- Tasks §44.3 — ტესტი ნამდვილ yt-dlp-ს (ქსელს) არასდროს იძახებს: `.env`-ის ბილიკი აქ არარსებულით იცვლება;
+        <!-- ტესტი ნამდვილ yt-dlp-ს (ქსელს) არასდროს იძახებს: `.env`-ის ბილიკი აქ არარსებულით იცვლება;
              yt-dlp-ის ქცევას ტესტი ყალბი `YtDlp`-ით ამოწმებს -->
         <env name="YTDLP_BINARY" value="tests-have-no-yt-dlp"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
-        <!-- ⚠️ `GEMINI_API_KEY`/`TMDB_API_KEY`-ის ცარიელად ჩამაგრება აქ აღარაა
-             (Tasks §30): აპი `.env`-ის წყაროს გასაღებებს **საერთოდ აღარ
-             კითხულობს**, ე.ი. დეველოპერის ცოცხალი გასაღები ტესტში ვეღარ
+        <!-- ⚠️ `GEMINI_API_KEY`/`TMDB_API_KEY`-ის ცარიელად ჩამაგრება აქ აღარაა:
+             აპი `.env`-ის წყაროს გასაღებებს **საერთოდ აღარ კითხულობს**, ე.ი. დეველოპერის ცოცხალი გასაღები ტესტში ვეღარ
              მოხვდება. გასაღები მხოლოდ ბაზის `user_credentials`-შია, და ტესტი
              მას თავის მომხმარებელს თვითონ აძლევს (`TestCase::giveCredential()`). -->
         <env name="NIGHTWATCH_ENABLED" value="false"/>

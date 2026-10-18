@@ -39,7 +39,7 @@ export function genreName(g: Pick<Genre, 'name_ka' | 'name_en'>, lang: Lang): st
 }
 
 /**
- * როლის სახელი (Tasks 1.6). სახელი ბაზიდან მოდის, რომ **საკუთარი** როლებიც
+ * როლის სახელი. სახელი ბაზიდან მოდის, რომ **საკუთარი** როლებიც
  * ითარგმნებოდეს — i18n-ის `roles.*` მხოლოდ სისტემურ ორს იცნობდა.
  */
 export function roleName(
@@ -50,7 +50,7 @@ export function roleName(
   return name || r.role || '—'
 }
 
-/** ვიდეოს ტიპის სახელი (Tasks 5.1) — იგივე წესი, რაც ჟანრზე */
+/** ვიდეოს ტიპის სახელი — იგივე წესი, რაც ჟანრზე */
 export function videoTypeName(t: { name_ka: string; name_en: string }, lang: Lang): string {
   return lang === 'ka' ? t.name_ka || t.name_en : t.name_en || t.name_ka || ''
 }
@@ -66,7 +66,7 @@ export function castName(c: Pick<CastMember, 'name' | 'name_ka'>, lang: Lang): s
 
 /* --- მოთხოვნები (`approval_requests`) --- */
 
-/** მოთხოვნილი სრული ლიმიტი ბაიტებში (17.4) — `payload`-ის ერთადერთი მკითხველი */
+/** მოთხოვნილი სრული ლიმიტი ბაიტებში — `payload`-ის ერთადერთი მკითხველი */
 export function requestedQuota(r: ApprovalRequestItem): number {
   return Number(r.payload?.requested_bytes ?? 0)
 }
@@ -108,11 +108,11 @@ export function requestLabel(
 }
 
 /**
- * **ატვირთვის ლიმიტის მოთხოვნა (Tasks §34.5)** — „ითხოვს ატვირთვას — დოკუმენტები:
+ * **ატვირთვის ლიმიტის მოთხოვნა** — „ითხოვს ატვირთვას — დოკუმენტები:
  * MP3, FLAC · ≤ 50 MB".
  *
  * ⚠️ **დამტკიცებულზე ამბობს, ვისზე გავრცელდა** (`granted_scope`) — სიამაც და
- * მთხოვნელის შეტყობინებამაც ეს უნდა თქვას (Q42). „პირადი გამონაკლისი" ორივე
+ * მთხოვნელის შეტყობინებამაც ეს უნდა თქვას. „პირადი გამონაკლისი" ორივე
  * მხრიდან ერთნაირად იკითხება — ადმინის სიაშიც და „ჩემს მოთხოვნებშიც".
  */
 function uploadRequestLabel(

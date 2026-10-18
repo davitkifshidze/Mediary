@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 
 /**
- * პირველი super_admin-ის შექმნა (I4). არსებული single-user მონაცემები
+ * პირველი super_admin-ის შექმნა. არსებული single-user მონაცემები
  * სწორედ ამ ანგარიშს მიება (იხ. 2026_08_28_000002_add_user_ownership).
  */
 class BootstrapAdminCommand extends Command
@@ -89,7 +89,7 @@ class BootstrapAdminCommand extends Command
             return;
         }
 
-        // ⚠️ §37.6 — მხოლოდ საბაზისო: `--promote`-ზე სხვისი პირადი მოდულიც მიებმებოდა
+        // ⚠️ მხოლოდ საბაზისო: `--promote`-ზე სხვისი პირადი მოდულიც მიებმებოდა
         $ids = Module::base()->pluck('id')->mapWithKeys(fn ($id) => [$id => ['enabled_at' => now()]])->all();
         $user->modules()->syncWithoutDetaching($ids);
     }

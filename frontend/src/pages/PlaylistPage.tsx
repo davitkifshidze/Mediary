@@ -45,7 +45,7 @@ export function PlaylistPage() {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
-  // §7.2 — სწორედ აქ აქვს აზრი ავტომატურ გადასვლას: რიგი პლეილისტის რიგია
+  // სწორედ აქ აქვს აზრი ავტომატურ გადასვლას: რიგი პლეილისტის რიგია
   const player = usePlayer()
 
   const [adding, setAdding] = useState(false)
@@ -59,7 +59,7 @@ export function PlaylistPage() {
 
   // დამატების აუზი — ჩემი სიმღერები; მოთხოვნა მხოლოდ პანელის გახსნაზე
   // ⚠️ `all` — პლეილისტში დასამატებელი ავზი მთელი ბიბლიოთეკაა
-  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  // გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen('playlist', playlist?.id)
   const poolQ = useQuery({
     queryKey: ['songs', 'playlist-pool'],
@@ -67,8 +67,8 @@ export function PlaylistPage() {
     enabled: adding,
   })
 
-  /* ⚠️ **მოდულის დონის ცარიელი სია და არა ინლაინ `[]`** (Tasks DEBT-08, იგივე
-     ხარვეზი, რაც PERF-11-ში): `playlist?.songs ?? []` ყოველ რენდერზე ახალი
+  /* ⚠️ **მოდულის დონის ცარიელი სია და არა ინლაინ `[]`**:
+     `playlist?.songs ?? []` ყოველ რენდერზე ახალი
      მასივია, ე.ი. ქვედა `useMemo`-ს deps ყოველთვის იცვლებოდა და memo
      არასდროს ინახებოდა. ესაა ერთადერთი `exhaustive-deps`-ის ნაპოვარი,
      რომელსაც suppress არ ჰქონდა — და სწორედ ის უშლიდა ხელს წესის
@@ -78,7 +78,7 @@ export function PlaylistPage() {
 
   const save = useMutation({
     mutationFn: (ids: number[]) => setPlaylistSongs(playlistId, ids),
-    /* Tasks §11 — ოპტიმისტურად: სიმღერა ჩაშვებისთანავე თავის ადგილზე დგება (აქამდე მხოლოდ
+    /* ოპტიმისტურად: სიმღერა ჩაშვებისთანავე თავის ადგილზე დგება (აქამდე მხოლოდ
        პასუხზე ხტებოდა). ⚠️ ჯერ მიმდინარე ჩამოტვირთვა ჩერდება, თორემ ძველი რიგი ახალს დააწერდა. */
     onMutate: async (ids) => {
       await qc.cancelQueries({ queryKey: ['playlists', playlistId] })
@@ -147,11 +147,11 @@ export function PlaylistPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. ⚠️ `playlist` დომენია,
-              მოდული კი `song` — პლეილისტი მუსიკის მოდულში ცხოვრობს (§15). */}
-          {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+          {/* ხილვადობა: მესამე (ბოლო) ფენა. ⚠️ `playlist` დომენია,
+              მოდული კი `song` — პლეილისტი მუსიკის მოდულში ცხოვრობს. */}
+          {/* ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
           <VisibilityBadge value={playlist.visibility} />
-          {/* §7.2 — მთელი პლეილისტი თანმიმდევრობით; ერთი დამთავრდება →
+          {/* მთელი პლეილისტი თანმიმდევრობით; ერთი დამთავრდება →
               შემდეგი თავისით ჩაირთვება (ეს არის ამოცანის არსი) */}
           {songs.length > 0 && (
             <Button
@@ -163,7 +163,7 @@ export function PlaylistPage() {
               {t('playback.playAll')}
             </Button>
           )}
-          {/* §40.1 — „საჯარო“ ბეჯის გვერდით ღილაკებიც `h-9`-ზეა */}
+          {/* „საჯარო“ ბეჯის გვერდით ღილაკებიც `h-9`-ზეა */}
           <Button size="sm" onClick={() => setAdding((v) => !v)}>
             <Plus className="size-3.5" />
             {t('playlists.addSongs')}
@@ -205,7 +205,7 @@ export function PlaylistPage() {
         <Sortable ids={songIds} onReorder={(ids) => save.mutate(ids)}>
         {songs.map((song, i) => {
           const cover = storageUrl(song.thumbnail)
-          /* Tasks §7 — მარჯვენა ღილაკის მენიუ: აქედან დაკვრა · წყარო · — · მოხსნა პლეილისტიდან */
+          /* მარჯვენა ღილაკის მენიუ: აქედან დაკვრა · წყარო · — · მოხსნა პლეილისტიდან */
           const actions: MenuAction[] = [
             {
               key: 'play',
@@ -237,7 +237,7 @@ export function PlaylistPage() {
                 {i + 1}
               </span>
 
-              {/* §7.2 — სურათზე დაჭერა **ამ ადგილიდან** უშვებს პლეილისტს */}
+              {/* სურათზე დაჭერა **ამ ადგილიდან** უშვებს პლეილისტს */}
               <button
                 onClick={() => player.play(songs.map(songItem), i, playlist.name)}
                 aria-label={t('playback.playFromHere')}

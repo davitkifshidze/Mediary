@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 /**
- * გალერეის ალბომები (Tasks §26) — „ჯგუფი უკატეგორიოში".
+ * გალერეის ალბომები — „ჯგუფი უკატეგორიოში".
  *
  * ⚠️ **ეს ლექსიკონი არ არის და `/dictionaries`-ში არ ჯდება.** ლექსიკონის
  * რიგს ორენოვანი სახელი აქვს, რადგან მისი ნაგულისხმევები კოდიდან მოდის
@@ -52,7 +52,7 @@ class GalleryAlbumController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:4', 'max:100'],
-            // §7.5 — ალბომი ერთადერთია გალერეაში, რასაც საკუთარი ჩამრთველი აქვს
+            // ალბომი ერთადერთია გალერეაში, რასაც საკუთარი ჩამრთველი აქვს
             'visibility' => ['nullable', 'in:'.implode(',', PublicDomain::VALUES)],
         ]);
 
@@ -65,7 +65,7 @@ class GalleryAlbumController extends Controller
             'sort_order' => (int) GalleryAlbum::query()->max('sort_order') + 1,
         ]);
 
-        // პაროლით შექმნილი ალბომი მაშინვე ღიაა — შენ ახლა დაადე (§35.4 — პაროლი `record_locks`-შია)
+        // პაროლით შექმნილი ალბომი მაშინვე ღიაა — შენ ახლა დაადე (პაროლი `record_locks`-შია)
         if ($password) {
             $album->setPassword($password);
             AlbumLock::unlock($album);
@@ -77,8 +77,8 @@ class GalleryAlbumController extends Controller
     /**
      * სახელი, აღწერა და პაროლი.
      *
-     * ⚠️ **პაროლის შეცვლა/მოხსნა ანგარიშის პაროლს ითხოვს** (Tasks §7.8, შენი
-     * გადაწყვეტილება). უამისოდ ლოკს აზრი არ ექნებოდა: ბრაუზერთან მისული კაცი
+     * ⚠️ **პაროლის შეცვლა/მოხსნა ანგარიშის პაროლს ითხოვს**. უამისოდ ლოკს
+     * აზრი არ ექნებოდა: ბრაუზერთან მისული კაცი
      * უბრალოდ „მოხსნას" დააჭერდა. საკმარისია ისიც, რომ ალბომი **ამ სესიაში
      * უკვე გახსნილია** — ე.ი. პაროლი ერთხელ ისედაც შეიყვანე.
      *
@@ -97,8 +97,8 @@ class GalleryAlbumController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:4', 'max:100'],
             'remove_password' => ['nullable', 'boolean'],
-            /* ⚠️ **ანგარიშის პაროლია და აღარ ალბომისა** (Tasks §7.8, შენი
-               გადაწყვეტილება). ეს აუქმებს ძველ წესს „აღდგენა არ არსებობს":
+            /* ⚠️ **ანგარიშის პაროლია და აღარ ალბომისა**. ეს აუქმებს
+               ძველ წესს „აღდგენა არ არსებობს":
                „ალბომის პაროლი დამავიწყდა" აღარაა ჩიხი, მფლობელობა კი მაინც
                მტკიცდება — და ის ისედაც უფრო ძლიერი საიდუმლოა. */
             'account_password' => ['nullable', 'string', 'max:255'],
@@ -130,16 +130,16 @@ class GalleryAlbumController extends Controller
         // „შევინახე" მაშინვე საკუთარ ალბომს დამიმალავდა
         if ($wantsLockChange) {
             $removing = (bool) ($data['remove_password'] ?? false);
-            // §35.4 — პაროლი `record_locks`-შია (`GalleryAlbum::setPassword()`)
+            // პაროლი `record_locks`-შია (`GalleryAlbum::setPassword()`)
             $galleryAlbum->setPassword($removing ? null : $data['password']);
 
             $removing
                 ? AlbumLock::lock($galleryAlbum)
                 : AlbumLock::unlock($galleryAlbum);
 
-            /* ⚠️ **ფაილები ფიზიკურად გადადის** (§7.9): პასუხიდან ამოღება
+            /* ⚠️ **ფაილები ფიზიკურად გადადის**: პასუხიდან ამოღება
                საკმარისი არ არის, სანამ `/storage/gallery/images/…` ბმული
-               იხსნება. `AlbumVault` პოსტერსაც წმენდს (§7.14). */
+               იხსნება. `AlbumVault` პოსტერსაც წმენდს. */
             if ($removing && $wasLocked) {
                 AlbumVault::reveal($galleryAlbum);
             } elseif (! $removing && ! $wasLocked) {
@@ -159,7 +159,7 @@ class GalleryAlbumController extends Controller
      * ⚠️ **throttle როუტზეა** (`throttle:album-unlock`) — უამისოდ ოთხნიშნა
      * პაროლს სკრიპტი წუთებში გატეხდა.
      *
-     * ⚠️ **სესიის გარეშე 409 `session_required`** (Tasks BUG-02) — ტოკენით
+     * ⚠️ **სესიის გარეშე 409 `session_required`** — ტოკენით
      * მოსულ კლიენტს `/api`-ზე სესია არ აქვს, `AlbumLock::unlock()` კი მას
      * უხმაუროდ იგდებდა: სწორი პაროლი 200-ს აბრუნებდა და ალბომი ჩაკეტილი
      * რჩებოდა. აქ ორაკულის საკითხი არ დგას (მფლობელობა უკვე შემოწმებულია),
@@ -170,8 +170,8 @@ class GalleryAlbumController extends Controller
     {
         abort_unless(AlbumLock::hasSession(), 409, 'session_required');
 
-        /* ⚠️ **ბლოკი `Hash::check`-ზე ადრე** (Tasks FEAT-04, BUG-02-ის იგივე
-           რიგი): შემოწმების შემდეგ დაბრუნებული 423 ორაკულს ადგილზე
+        /* ⚠️ **ბლოკი `Hash::check`-ზე ადრე**: შემოწმების შემდეგ
+           დაბრუნებული 423 ორაკულს ადგილზე
            დატოვებდა — უბრალოდ სხვა კოდით. */
         abort_if($galleryAlbum->unlockBlocked(), 423, 'album_temporarily_locked');
 
@@ -210,7 +210,7 @@ class GalleryAlbumController extends Controller
      * დაშვებული „წაშალე ალბომი" ერთი კლიკით გააშიშვლებდა ყველაფერს,
      * რაც ეს-ესაა დამალე — ლოკის სრული შემოვლა.
      *
-     * ⚠️ **სამი ნაბიჯი ორად დაიყო (Tasks BUG-04):** რიგები ერთ ტრანზაქციაში,
+     * ⚠️ **სამი ნაბიჯი ორად დაიყო:** რიგები ერთ ტრანზაქციაში,
      * ფაილები — commit-ის შემდეგ. იხ. ქვემოთ, რატომ არის სწორედ ეს რიგი
      * სწორი და არა პირიქით.
      */
@@ -222,7 +222,7 @@ class GalleryAlbumController extends Controller
             'move_to' => [
                 'nullable',
                 'integer',
-                // ⚠️ ურნაში მყოფ ალბომში გადატანა ფოტოს უხილავს გახდიდა (Tasks §29)
+                // ⚠️ ურნაში მყოფ ალბომში გადატანა ფოტოს უხილავს გახდიდა
                 Rule::exists('gallery_albums', 'id')->where('user_id', $request->user()->id)->whereNull('trashed_at'),
             ],
         ]);
@@ -239,23 +239,23 @@ class GalleryAlbumController extends Controller
 
         /* ⚠️ ფოტოები **ცვლილებამდე** იკითხება: ქვემოთ ისინი ამ ალბომს
            აღარ ეკუთვნიან, ე.ი. `where('album_id', …)` ვეღარაფერს იპოვიდა.
-           ⚠️ ურნაში მყოფიც (Tasks §29) — ის ალბომს კვლავ ეკუთვნის და მისი
+           ⚠️ ურნაში მყოფიც — ის ალბომს კვლავ ეკუთვნის და მისი
            ფაილი სხვებთან ერთად უნდა გადავიდეს. */
         $images = $galleryAlbum->images()->withoutGlobalScopes(['album_lock', 'trash'])->get();
 
-        /* ⚠️ **ჯერ რიგები — ერთ ტრანზაქციაში —, მერე ფაილები** (Tasks BUG-04).
+        /* ⚠️ **ჯერ რიგები — ერთ ტრანზაქციაში —, მერე ფაილები**.
            ადრე პირველი ნაბიჯი `AlbumVault::reveal()` იყო, ე.ი. `update()`-ის
            ან `delete()`-ის ჩავარდნაზე ჩაკეტილი ალბომის ფოტოები უკვე
            `gallery/images`-ში იდო — საჯარო დისკზე, `/storage/...` ბმულით —
            ალბომს კი `password_hash` ისევ ედო. ზუსტად ის ხვრელი, რომლის
-           დახურვასაც §7.9 ემსახურება.
+           დახურვასაც `gallery/locked` ემსახურება.
 
            ⚠️ **პირიქით ჩავარდნა უვნებელია და სწორედ ამიტომ არის ეს რიგი
            სწორი**: ფაილი `gallery/locked`-ში დარჩა, მაგრამ `path` მასზე
            მიუთითებს და `GalleryImage::servedUrl()` პირად დისკს API-ის
            მარშრუტით ემსახურება — ფოტო ჩანს, უბრალოდ `/storage/*`-ის გარეთ. */
-        /* ⚠️ **ალბომი ურნაში გადადის და თავის ფოტოებს იმახსოვრებს** (Tasks §29,
-           ეტაპი 2): ფოტოები ისევ ალბომის გარეშე (ან `move_to`-ში) რჩება —
+        /* ⚠️ **ალბომი ურნაში გადადის და თავის ფოტოებს იმახსოვრებს**:
+           ფოტოები ისევ ალბომის გარეშე (ან `move_to`-ში) რჩება —
            ალბომის წაშლა ფოტოებს არ შლის —, მათი id-ები კი ალბომს ახლავს, რომ
            აღდგენამ ისინი უკან დააბრუნოს (`GalleryAlbum::afterTrashChange()`).
            პაროლი ალბომზე რჩება: აღდგენილი ჩაკეტილი ალბომი ისევ ჩაკეტილია. */
@@ -274,7 +274,7 @@ class GalleryAlbumController extends Controller
         $moved = $images->whereNull('trashed_at')->count();
 
         /* ⚠️ კომპენსაცია აქ საჭირო აღარ არის: `placeMany()` თითო ფოტოს ან
-           ბოლომდე გადაიტანს, ან ხელს არ ახლებს (BUG-03-ის ასლი → commit →
+           ბოლომდე გადაიტანს, ან ხელს არ ახლებს (ასლი → commit →
            წაშლა), ე.ი. ნახევრად გადატანილი ფაილი ვერ დარჩება. */
         AlbumVault::placeMany($images, $target);
 
@@ -330,7 +330,7 @@ class GalleryAlbumController extends Controller
             // „ამ სესიაში ღიაა". სწორედ ეს ორი წყვეტს, რას ხატავს ბარათი.
             'locked' => $album->isLocked(),
             'unlocked' => AlbumLock::isUnlocked($album),
-            /* FEAT-04 — ⚠️ **ეს ორი ველი მხოლოდ მფლობელის სიაშია.** საჯარო
+            /* ⚠️ **ეს ორი ველი მხოლოდ მფლობელის სიაშია.** საჯარო
                პასუხში მათი ჩაწერა თავდამსხმელს ეტყოდა, რამდენი ცდა დარჩა
                და როდის გაიხსნება — ე.ი. თვითონ მცველი გახდებოდა მინიშნება. */
             'failed_unlocks' => (int) ($album->lockRow()?->failed_unlocks ?? 0),

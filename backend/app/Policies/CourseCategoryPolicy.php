@@ -3,7 +3,7 @@
 namespace App\Policies;
 
 /**
- * CourseCategory-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ * CourseCategory-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია.
  *
  * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
  * აღმოჩენისთვის არსებობს და იმისთვის, რომ ამ დომენს მომავალში საკუთარი

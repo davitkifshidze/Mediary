@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
- * **ანგარიშის აღდგენა და მეორე ფაქტორი (FEAT-16).**
+ * **ანგარიშის აღდგენა და მეორე ფაქტორი.**
  *
  * ⚠️ **`throttle:login` წუთში 5 მცდელობას უშვებს** და აღდგენის წყვილიც
  * იმავე ჭერის უკანაა — ამიტომ ტესტები წვრილადაა დაშლილი (`AuthTest`-ის
@@ -106,7 +106,7 @@ class AccountRecoveryTest extends TestCase
     }
 
     /**
-     * ⚠️ SEC-02-ის იგივე კარი: `admin:users`-ის მქონე ადმინი სუპერ-ადმინის
+     * ⚠️ იერარქიის იგივე კარი: `admin:users`-ის მქონე ადმინი სუპერ-ადმინის
      * ბმულს ვერ გასცემს — თორემ ერთი მოთხოვნით მის ანგარიშს იღებდა.
      */
     public function test_an_admin_cannot_issue_a_link_for_someone_above_them(): void

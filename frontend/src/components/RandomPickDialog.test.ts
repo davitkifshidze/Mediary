@@ -8,14 +8,14 @@ import type { PickRecord, PickSource } from '@/lib/pick'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **„რა ვნახო დღეს" — N ბარათი, სტატუსები, გამორიცხვა** (Tasks §17.4–17.6).
+   **„რა ვნახო დღეს" — N ბარათი, სტატუსები, გამორიცხვა**.
 
    ⚠️ მოწმდება: ნაგულისხმევი ფარგლები `todo` როლის ყველა სტატუსია; რაოდენობა
    `module_user.settings.pick`-იდან მოდის; ჩიპის გადართვა ფარგლებს ცვლის და
    **ჩუმად** ინახება (`saveModuleSettings`), ბოლო ჩიპი არ იხსნება; „სხვა N"
    ნაჩვენებს `exclude`-ით გამორიცხავს, ამოწურვაზე „თავიდან" ჩანს; „დავიწყოთ"
    `doing` როლის სტატუსს წერს და ბარათი ადგილზე რჩება.
-   Tasks §52 — ნაგულისხმევი რაოდენობა 5-ია, შენახული 10 და ხელით ჩაწერილი
+   ნაგულისხმევი რაოდენობა 5-ია, შენახული 10 და ხელით ჩაწერილი
    (20-მდე) მოქმედებს; გაგორებისას ბარათების ადგილას იმდენივე ჩონჩხია.
    ============================================================ */
 
@@ -133,7 +133,7 @@ describe('RandomPickDialog', () => {
   it('asks for one record from every todo status by default and excludes what it has shown on "another"', async () => {
     const source = await mount()
 
-    // §52.1 — არაფერი შენახულა → 5
+    // არაფერი შენახულა → 5
     expect(source.fetch).toHaveBeenCalledWith({ count: 5, status: ['to_watch', 'wishlist'], exclude: [] })
     expect(document.body.textContent).toContain('Amélie')
     expect(document.body.textContent).toContain('2001 · ★ 7.4')
@@ -193,7 +193,7 @@ describe('RandomPickDialog', () => {
     expect(source.open).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }))
   })
 
-  it('reads a saved 10 and a typed-in count up to 20 (§52.1)', async () => {
+  it('reads a saved 10 and a typed-in count up to 20', async () => {
     const ten = await mount({}, { pick: { count: 10 } })
     expect(ten.fetch).toHaveBeenCalledWith({ count: 10, status: ['to_watch', 'wishlist'], exclude: [] })
     expect(document.body.textContent).toContain(i18n.t('pick.againN', { count: 10 }))
@@ -211,7 +211,7 @@ describe('RandomPickDialog', () => {
     expect(capped.fetch).toHaveBeenCalledWith({ count: 20, status: ['to_watch', 'wishlist'], exclude: [] })
   })
 
-  it('shows as many skeletons as cards while it rolls, so the window keeps its size (§52.2)', async () => {
+  it('shows as many skeletons as cards while it rolls, so the window keeps its size', async () => {
     let release: (list: PickRecord[]) => void = () => {}
     const pending = () => new Promise<PickRecord[]>((resolve) => (release = resolve))
     const fetch = vi.fn(pending)

@@ -26,8 +26,8 @@ import { StorageBar, storageLevel } from './StorageBar'
 import { ThemeToggle } from './ThemeToggle'
 
 /* ============================================================
-   ზედა ზოლი (Tasks K12 / F3).
-   მარჯვნივ — სათარგმნების მრიცხველი (Tasks 7), ენა, თემა და მომხმარებლის
+   ზედა ზოლი.
+   მარჯვნივ — სათარგმნების მრიცხველი, ენა, თემა და მომხმარებლის
    მენიუ (პროფილი · პარამეტრები · გასვლა).
    მობილურზე მარცხნივ ჰამბურგერიც, რომელიც საიდბარის უჯრას ხსნის.
    ============================================================ */
@@ -40,9 +40,9 @@ export function Header({ onMenu }: { onMenu: () => void }) {
   const level = user?.storage ? storageLevel(user.storage) : 'ok'
   const storageWarning = level === 'ok' ? null : level === 'warn' ? 'warn' : 'critical'
 
-  // Tasks 7 — „გაქვს N სათარგმნი". მრიცხველი მსუბუქია, მაგრამ ყოველ ნავიგაციაზე
+  // „გაქვს N სათარგმნი". მრიცხველი მსუბუქია, მაგრამ ყოველ ნავიგაციაზე
   // მისი გადათვლა ზედმეტია — ამიტომ 5 წუთი ითვლება ახლად.
-  // ⚠️ **მედია-მოდულის გარეშე საერთოდ არ ეშვება** (Tasks PERF-17): ორენოვანი
+  // ⚠️ **მედია-მოდულის გარეშე საერთოდ არ ეშვება**: ორენოვანი
   // სქემა მხოლოდ მედია-დომენებს აქვთ, ე.ი. `/translations`-ის ბმულიც და
   // მარშრუტიც იმავე პირობაზეა — ბეჯი მკვდარ რიცხვს ხატავდა და query-ს ხარჯავდა.
   const pendingQ = useQuery({
@@ -57,7 +57,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
     'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
 
   return (
-    /* ⚠️ Tasks §35 — მარჯვენა padding `--player-w`-ით: გვერდითა დამკვრელი გვერდს აწვება
+    /* ⚠️ მარჯვენა padding `--player-w`-ით: გვერდითა დამკვრელი გვერდს აწვება
        და `<main>` იმავე ცვლადს კითხულობს. ჰედერს რომ არ ჰქონოდა, შუა ბლოკი
        მთელ სიგანეზე დაცენტრდებოდა და ძებნა გვერდის სათაურს პანელის ნახევარი
        სიგანით დაშორდებოდა — სწორედ ის, რასაც ქვემოთა ჩანაწერი იცავს.
@@ -125,7 +125,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
           გამოც აბსოლუტური პოზიციონირება ერთხელ უკვე უარვყავით.
           1520px-ზე კი ველი 608px-ზე მთავრდება, მოქმედებები 820-ზე იწყება. */}
       <div className={cn('flex min-w-0 flex-1 items-center', pageContainer())}>
-        {/* ჯვარედინი ძებნა (აუდიტი §D6) — ⚠️ **ლოგოსა და მოქმედებებს შორის**:
+        {/* ჯვარედინი ძებნა — ⚠️ **ლოგოსა და მოქმედებებს შორის**:
             ის ყველა მოდულს ეხება, ე.ი. არცერთ სექციას არ ეკუთვნის.
             ვიწრო ეკრანზე იმალება — იქ ადგილი ჰამბურგერსა და ავატარს სჭირდება. */}
         <div className="hidden max-w-xl flex-1 md:block">
@@ -141,7 +141,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
         სიმაღლეზე ცენტრირებას ინარჩუნებს; `<header>` `sticky`-ია, ე.ი.
         პოზიციონირებულია და აბსოლუტური ბავშვის საყრდენად გამოდგება. */}
       <div className="flex shrink-0 items-center gap-2 px-4 min-[1520px]:absolute min-[1520px]:inset-y-0 min-[1520px]:right-0">
-        {/* Tasks 7 — ღილაკი მხოლოდ მაშინ ჩანს, როცა მართლა არის სათარგმნი */}
+        {/* ღილაკი მხოლოდ მაშინ ჩანს, როცა მართლა არის სათარგმნი */}
         {pending > 0 && (
           <Link
             to="/translations"
@@ -155,7 +155,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
             </span>
           </Link>
         )}
-        {/* FEAT-19 — შეტყობინებების ზარი. ⚠️ **თარგმანის ღილაკის გვერდით**:
+        {/* შეტყობინებების ზარი. ⚠️ **თარგმანის ღილაკის გვერდით**:
             ორივე „რაღაც გელოდება"-ს ამბობს, ე.ი. ერთ ადგილას უნდა იდგნენ;
             ორივე თვითონ ქრება, როცა სათქმელი არაფერია. */}
         <NotificationBell />
@@ -177,7 +177,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
             <span className="hidden max-w-[10rem] truncate text-sm font-medium sm:block">
               {user?.display_name}
             </span>
-            {/* 17.3 — 80%/95%-ის გაფრთხილება დახურულ მენიუშიც ჩანს */}
+            {/* 80%/95%-ის გაფრთხილება დახურულ მენიუშიც ჩანს */}
             {storageWarning && (
               <AlertTriangle
                 className={cn(
@@ -202,7 +202,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
               <div className="border-b border-border px-2.5 pb-2 pt-1.5">
                 <p className="truncate text-sm font-medium">{user?.display_name}</p>
                 <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
-                {/* 17.3 — „გამოყენებულია X / Y"; დეტალები `/profile`-ზეა (ეტაპი 5) */}
+                {/* „გამოყენებულია X / Y"; დეტალები `/profile`-ზეა */}
                 {user?.storage && <StorageBar usage={user.storage} className="mt-2.5" />}
               </div>
 

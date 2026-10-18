@@ -6,12 +6,12 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **ურნა ჩანაწერის ნაწილებზე (Tasks §29, ეტაპი 2).**
+ * **ურნა ჩანაწერის ნაწილებზე.**
  *
  * ჩანიშვნები და ციტატები, თამაშის ვიდეოები, ფლეილისტები, შეხსენებები,
  * ყურების ჟურნალის ჩანაწერი და ალბომი — თითოეულს თავისი `trashed_at`
- * (`TrashDomain::itemTables()`, ეტაპი 1-ის იგივე ციკლი და იგივე დაცვა:
- * უკვე არსებული სვეტი გამოტოვდება, ე.ი. სუფთა ბაზაზე ეტაპი 1-ის მიგრაცია
+ * (`TrashDomain::itemTables()`, `extend_trash_to_files`-ის იგივე ციკლი და იგივე
+ * დაცვა: უკვე არსებული სვეტი გამოტოვდება, ე.ი. სუფთა ბაზაზე ის მიგრაცია
  * თვითონაც ყველას დაამატებს და ეს — არაფერს).
  *
  * ⚠️ **`gallery_albums.trashed_photo_ids`** — ალბომის წაშლა მის ფოტოებს
@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * ⚠️ **`trash_entries`** — ურნის ელემენტი, რომელსაც საკუთარი რიგი არ აქვს
  * და ფაილიც არ არის: ჩანაწერიდან მოხსნილი მსახიობის ბმული (`castables`-ს
- * `id` არ აქვს — გასაღები სამსვეტიანია) და, მე-7 ეტაპზე, აუდიტის ლოგის
+ * `id` არ აქვს — გასაღები სამსვეტიანია) და, მოგვიანებით, აუდიტის ლოგის
  * გასუფთავება ერთ ელემენტად. `trashed_files` აქ არ გამოდგებოდა: მისი
  * `path` სავალდებულოა და საბოლოო წაშლა ფაილს შლის (`StoredFile`).
  */
@@ -49,7 +49,7 @@ return new class extends Migration
             Schema::create('trash_entries', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-                // `cast_link` (ეტაპი 7-ზე — `audit_log`)
+                // `cast_link` · `audit_log`
                 $table->string('kind', 40);
                 $table->string('record_type', 40)->nullable();
                 $table->unsignedBigInteger('record_id')->nullable();
@@ -76,6 +76,6 @@ return new class extends Migration
             Schema::table('gallery_albums', fn (Blueprint $table) => $table->dropColumn('trashed_photo_ids'));
         }
 
-        // ⚠️ `trashed_at`-ს ეტაპი 1-ის მიგრაციის `down()` შლის — ორივეს ერთი ციკლი აქვს
+        // ⚠️ `trashed_at`-ს `extend_trash_to_files`-ის `down()` შლის — ორივეს ერთი ციკლი აქვს
     }
 };

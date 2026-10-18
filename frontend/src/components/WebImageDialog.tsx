@@ -55,7 +55,7 @@ import { useToast } from '@/components/ui/feedback'
 import { WebSearchCost, WebSourcePicker } from '@/components/WebSourcePicker'
 
 /* ============================================================
-   ვებიდან ფოტოს ძებნა და ჩამოტვირთვა (Tasks §7.5/§7.6 → **§8.4**).
+   ვებიდან ფოტოს ძებნა და ჩამოტვირთვა.
 
    ⚠️ **ორივე მომხმარებელი ერთ დიალოგზეა** — მსახიობის ფოტოები ტეგებით და
    ჩანაწერის ფოტოები, როცა TMDB-ზე ცოტაა. ორი ასლი ორნაირად მოიქცეოდა,
@@ -70,7 +70,7 @@ import { WebSearchCost, WebSourcePicker } from '@/components/WebSourcePicker'
    ⚠️ **ცენზურა გამორთულია** (`safe=off`) და ესკიზი **ბლარის გარეშე** ჩანს —
    შენი პირდაპირი პირობა. კოდში შიგთავსის კლასიფიკაცია არ იწერება.
 
-   ## ეტაპი 5 (2026-09-13) — ვიზუალი ნაბიჯებად
+   ## ვიზუალი ნაბიჯებად
    ⚠️ **ნაბიჯის ნომერი გამომძახებელთანაა** (`STEP`), რადგან განაწილება
    მხოლოდ მაშინ არსებობს, როცა მასში ვინმე შეიძლება იყოს — ე.ი. „შედეგები"
    ხან მესამეა, ხან მეოთხე. ორ ადგილას დაწერილი ნომერი აუცილებლად გაშორდებოდა.
@@ -78,7 +78,7 @@ import { WebSearchCost, WebSourcePicker } from '@/components/WebSourcePicker'
    ⚠️ **ცარიელი პასუხი `EmptyState`-ია და არა ნაცრისფერი წინადადება**, და
    „სცადე სხვა წყარო" **ღილაკებია**. ⚠️ ძებნას ისევ **მხოლოდ დაჭერა** უშვებს.
 
-   ## §8.4 — ვის მიება ფოტო
+   ## ვის მიება ფოტო
    ⚠️ **წესი სერვერზეა ერთხელ** (სახელით დამთხვევა სათაურსა და ბმულში) —
    ე.ი. ტესტდება და ქართულ სახელსაც ცნობს. აქ მხოლოდ **არჩევანია**: ვის
    შორის დაანაწილოს და (სურვილისამებრ) თითო ფოტოს ხელით გადაწერა.
@@ -87,20 +87,20 @@ import { WebSearchCost, WebSourcePicker } from '@/components/WebSourcePicker'
    არ საჭიროებს, ე.ი. მოდალის შიგნით z-index-ის და `pointer-events`-ის
    არცერთი ხაფანგი არ ეხება (იხ. `lib/layers.ts`-ის ისტორია).
 
-   ## Tasks §19 (2026-09-27)
-   ⚠️ **ჩიპები გადამრთველებია** (19.1, `lib/webQuery.ts`): შეკითხვაში უკვე
+   ## ჩიპები, ხარჯი და მონიშვნა
+   ⚠️ **ჩიპები გადამრთველებია** (`lib/webQuery.ts`): შეკითხვაში უკვე
    მყოფი სახელი აქტიურია და დაჭერით ამოიღება; ველს „გასუფთავება" ცლის,
-   ჩიპები კი რჩება. ⚠️ **ხარჯი სათაურის ზოლშია** (19.2) — ის მიმაგრებულია
-   და შედეგების გადახვევისას არ ქრება. ⚠️ **„+ მსახიობი"** (19.3) იმავე
+   ჩიპები კი რჩება. ⚠️ **ხარჯი სათაურის ზოლშია** — ის მიმაგრებულია
+   და შედეგების გადახვევისას არ ქრება. ⚠️ **„+ მსახიობი"** იმავე
    `CastMemberDialog`-ს ხსნის, რასაც ჩანაწერის გვერდი; დამატებული ფილმის
-   შემადგენლობაშიც ჩნდება (Q13) და აქ მაშინვე მონიშნულია. ⚠️ **„აჩვენე"
-   უკვე ჩამოსულ შედეგებს ჰყოფს** (19.4) — ახალი ძებნის გარეშე; „კიდევ
+   შემადგენლობაშიც ჩნდება და აქ მაშინვე მონიშნულია. ⚠️ **„აჩვენე"
+   უკვე ჩამოსულ შედეგებს ჰყოფს** — ახალი ძებნის გარეშე; „კიდევ
    ჩამოიტანე" ახალი ძებნაა, ე.ი. ცალკე ღილაკია და ფასს თვითონ ამბობს.
    ⚠️ **„ყველას მონიშვნა" ყველა ჩამოსულს ნიშნავს** და არა მიმდინარე
-   გვერდს (19.5) — შემოტანა კი ნაწილებად მიდის, ერთი პროგრესით (§4.3).
+   გვერდს — შემოტანა კი ნაწილებად მიდის, ერთი პროგრესით.
    ============================================================ */
 
-/** კონტექსტი, საიდანაც შეკითხვა იწყება (§5.2) */
+/** კონტექსტი, საიდანაც შეკითხვა იწყება */
 export interface WebImageContext {
   /** ჩანაწერის/მსახიობის სახელი — საწყისი შეკითხვა და პირველი ჩიპი */
   base: string
@@ -109,7 +109,7 @@ export interface WebImageContext {
   /** ვის მიება ჩამოწერილი ფოტო (ცხადად ეწერება) */
   attachesTo?: string
   /**
-   * Tasks §19.3 — რომელ ჩანაწერს მიება განაწილებიდან დამატებული მსახიობი.
+   * რომელ ჩანაწერს მიება განაწილებიდან დამატებული მსახიობი.
    * ⚠️ შემადგენლობა მხოლოდ მედია-დომენს აქვს; მის გარეშე „+ მსახიობი" არ
    * იხატება (წიგნს, თამაშს, ადგილს მსახიობი არ ჰყავს).
    */
@@ -117,7 +117,7 @@ export interface WebImageContext {
   /** მსახიობი დაემატა — გამომძახებელმა ჩანაწერის შემადგენლობა ხელახლა წაიკითხოს */
   onCastAdded?: () => void
   /**
-   * Tasks §22.2 — სწრაფი ჩიპები შეკითხვისთვის („პერსონაჟები", „ყდები"…): იგივე
+   * სწრაფი ჩიპები შეკითხვისთვის („პერსონაჟები", „ყდები"…): იგივე
    * გადამრთველები, რაც მსახიობებს, ოღონდ განაწილებაში არ მონაწილეობენ.
    */
   terms?: string[]
@@ -131,7 +131,7 @@ const SERPER_PER_PAGE = 100
 
 /**
  * სად მიდის მონიშნული: არსებული ჩანაწერი (`id`) — ჩამოტვირთვა უმალ; ან **ჯერ
- * შეუქმნელი ჩანაწერი** (`onPick`, Tasks §41.3) — ფოტოები ფორმას უბრუნდება და ის
+ * შეუქმნელი ჩანაწერი** (`onPick`) — ფოტოები ფორმას უბრუნდება და ის
  * შექმნის შემდეგ იმავე `importWebImages`-ით აგზავნის (ფანჯრის ზუსტად იგივე გზა).
  */
 type ImageDestination = { id: number; onPick?: undefined } | { id?: undefined; onPick: (images: SerpImage[]) => void }
@@ -174,14 +174,14 @@ export function WebImageDialog({
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [quota, setQuota] = useState<SerpQuota | null>(null)
   const [searched, setSearched] = useState(false)
-  /** §19.4 — რამდენი ჩანს ერთ გვერდზე (`0` = ყველა) და რომელი გვერდია */
+  /** რამდენი ჩანს ერთ გვერდზე (`0` = ყველა) და რომელი გვერდია */
   const [pageSize, setPageSize] = useState(PHOTO_PAGE_DEFAULT)
 
-  /** §8.4 — რომელ მსახიობებზე ნაწილდება */
+  /** რომელ მსახიობებზე ნაწილდება */
   const [distribute, setDistribute] = useState<number[]>([])
   /** ფოტოს გასაღები → ხელით არჩეული მსახიობი (`AUTO` = სერვერის გადაწყვეტილება) */
   const [overrides, setOverrides] = useState<Record<string, string>>({})
-  /** §19.3 — აქვე დამატებული მსახიობები (ჩანაწერის ხელახალ წაკითხვამდე) */
+  /** აქვე დამატებული მსახიობები (ჩანაწერის ხელახალ წაკითხვამდე) */
   const [added, setAdded] = useState<{ id: number; name: string }[]>([])
   const [castOpen, setCastOpen] = useState(false)
   /**
@@ -219,7 +219,7 @@ export function WebImageDialog({
   /** გვერდები მხოლოდ იმ წყაროს აქვს, რომელსაც backend `paged`-ად აღნიშნავს */
   const pagedSelected = available.some((e) => e.paged && selected.includes(e.key))
   /**
-   * §19.2 — Serper-ის credit-ების **ჭერი** ამ ძებნაზე: backend-იც ზუსტად ასე
+   * Serper-ის credit-ების **ჭერი** ამ ძებნაზე: backend-იც ზუსტად ასე
    * ჭრის (`min(pages, ceil(limit / 100))`), ე.ი. ზედმეტ გვერდს არ ყიდულობს.
    */
   const credits = pagedSelected
@@ -277,7 +277,7 @@ export function WebImageDialog({
     if (q) search.mutate({ q, engines: override })
   }
 
-  /** §19.4 — ვისაც გაგრძელება აქვს (Serper — შემდეგი გვერდი, Commons — offset) */
+  /** ვისაც გაგრძელება აქვს (Serper — შემდეგი გვერდი, Commons — offset) */
   const continuable = sources.filter((s) => s.next != null)
   const moreCredits = continuable.some((s) => engineOf(available, s.engine)?.paged) ? 1 : 0
 
@@ -318,10 +318,10 @@ export function WebImageDialog({
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  /** Tasks §4.3 — ნაწილებად შემოტანის ერთი პროგრესი (`null` = არ მიმდინარეობს) */
+  /** ნაწილებად შემოტანის ერთი პროგრესი (`null` = არ მიმდინარეობს) */
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
-  /** მონიშნული — ხელით არჩეული სამიზნით (§8.4) */
+  /** მონიშნული — ხელით არჩეული სამიზნით */
   const selection = () =>
     items
       .filter((i) => picked.has(keyOf(i)))
@@ -350,7 +350,7 @@ export function WebImageDialog({
         description: [
           // ⚠️ კვოტამ შუაში გააჩერა — რამდენი შემოვიდა და რამდენი არა, ორივე ითქვას
           res.quota_exceeded && missed > 0 ? t('web.importQuotaStopped', { count: missed }) : null,
-          // §8.4 — სად წავიდა: „ჰელენა 3 · ფილმი 7"
+          // სად წავიდა: „ჰელენა 3 · ფილმი 7"
           assignedLine(res.assigned, people, context?.attachesTo, t),
           res.thumbnails > 0 ? t('web.importedThumbnails', { count: res.thumbnails }) : null,
           res.failed > 0 ? t('web.importFailed', { count: res.failed }) : null,
@@ -386,7 +386,7 @@ export function WebImageDialog({
       cur.includes(personId) ? cur.filter((x) => x !== personId) : [...cur, personId],
     )
 
-  /** §19.3 — დამატებული მსახიობი სიაში **მაშინვე მონიშნულია** */
+  /** დამატებული მსახიობი სიაში **მაშინვე მონიშნულია** */
   const onCastAdded = (member: CastMember) => {
     setAdded((cur) => (cur.some((p) => p.id === member.id) ? cur : [...cur, { id: member.id, name: member.name }]))
     setDistribute((cur) => (cur.includes(member.id) ? cur : [...cur, member.id]))
@@ -395,8 +395,8 @@ export function WebImageDialog({
 
   const allPicked = items.length > 0 && picked.size === items.length
 
-  /** §19.4 — მიმდინარე გვერდი უკვე ჩამოსული შედეგებიდან (ახალი ძებნის გარეშე) */
-  // Tasks §46 — ნომრები + „მეტის ჩვენება" ჩამოსულ შედეგებზე (ახალი ძებნის გარეშე)
+  /** მიმდინარე გვერდი უკვე ჩამოსული შედეგებიდან (ახალი ძებნის გარეშე) */
+  // ნომრები + „მეტის ჩვენება" ჩამოსულ შედეგებზე (ახალი ძებნის გარეშე)
   const pager = useClientPages(items, pageSize)
   const shown = pager.shown
 
@@ -414,7 +414,7 @@ export function WebImageDialog({
   const hasDistribute = people.length > 0 || canAddCast
   const STEP = { query: 1, sources: 2, distribute: 3, results: hasDistribute ? 4 : 3 }
 
-  /* Tasks §30.6 — რომელ ფასიან წყაროს აკლია **ჩემი** გასაღები. ⚠️ სიიდან ისინი
+  /* რომელ ფასიან წყაროს აკლია **ჩემი** გასაღები. ⚠️ სიიდან ისინი
      უბრალოდ ქრებიან, ე.ი. ამის თქმის გარეშე უცნობი დარჩებოდა, რატომ ჩანს
      მხოლოდ Wikimedia და სად უნდა ჩაიწეროს გასაღები. */
   const missingKeys = status?.missing ?? []
@@ -448,7 +448,7 @@ export function WebImageDialog({
         aside={<WebSearchCost engines={available} selected={selected} quota={shownQuota} credits={credits} />}
       >
         <div className="mt-5 space-y-3">
-          {/* ---------- 1. რას ვეძებთ (შეკითხვა + კონტექსტის ჩიპები, §5.2) ---------- */}
+          {/* ---------- 1. რას ვეძებთ (შეკითხვა + კონტექსტის ჩიპები) ---------- */}
           <StepSection step={STEP.query} title={t('web.stepQuery')}>
             <div className="flex flex-wrap gap-2 sm:flex-nowrap">
               <Input
@@ -464,7 +464,7 @@ export function WebImageDialog({
                   }
                 }}
               />
-              {/* §19.1 — ველი იცლება, ჩიპები რჩება; ფოკუსი ველში ბრუნდება */}
+              {/* ველი იცლება, ჩიპები რჩება; ფოკუსი ველში ბრუნდება */}
               <Button
                 type="button"
                 variant="ghost"
@@ -502,11 +502,11 @@ export function WebImageDialog({
                       key={person.id}
                       label={person.name}
                       active={hasTerm(query, person.name)}
-                      // ⚠️ „ფილმი + მსახიობი" სწორედ ის შეკითხვაა, რომელსაც §5.2 ითხოვს
+                      // ⚠️ „ფილმი + მსახიობი" სწორედ ის შეკითხვაა, რომელიც გვჭირდება
                       onClick={() => setQuery((cur) => toggleTerm(cur, person.name, 'end'))}
                     />
                   ))}
-                  {/* §22.2 — თემატური ჩიპები (წიგნის პერსონაჟები, ყდები…) */}
+                  {/* თემატური ჩიპები (წიგნის პერსონაჟები, ყდები…) */}
                   {(context.terms ?? []).map((term) => (
                     <QueryChip
                       key={term}
@@ -551,7 +551,7 @@ export function WebImageDialog({
               </div>
 
               <div>
-                {/* ⚠️ „თითო გვერდი ერთი კრედიტია" ეკრანზე უნდა ეწეროს (Tasks DEBT-17) */}
+                {/* ⚠️ „თითო გვერდი ერთი კრედიტია" ეკრანზე უნდა ეწეროს */}
                 <Label htmlFor="web-pages" className="inline-flex items-center gap-1">
                   {t('web.pagesLabel')}
                   {pagedSelected && <InfoHint critical={t('web.pagesCostWarn')} />}
@@ -573,7 +573,7 @@ export function WebImageDialog({
             </div>
           </StepSection>
 
-          {/* ---------- 3. §8.4 — განაწილება მსახიობებზე ---------- */}
+          {/* ---------- 3. განაწილება მსახიობებზე ---------- */}
           {hasDistribute && (
             <StepSection
               step={STEP.distribute}
@@ -586,7 +586,7 @@ export function WebImageDialog({
               hint={distribute.length ? t('web.distributeOn', { count: distribute.length }) : t('web.distributeOff')}
               action={
                 <>
-                  {/* §19.3 — ჩანაწერის შემადგენლობას ემატება (Q13) */}
+                  {/* ჩანაწერის შემადგენლობას ემატება */}
                   {canAddCast && (
                     <Button type="button" size="sm" variant="outline" onClick={() => setCastOpen(true)}>
                       <UserPlus className="size-4" />
@@ -634,7 +634,7 @@ export function WebImageDialog({
             action={
               items.length > 0 ? (
                 <>
-                  {/* §19.4 — „აჩვენე" უკვე ჩამოსულს ჰყოფს და ახალ ძებნას არ უშვებს */}
+                  {/* „აჩვენე" უკვე ჩამოსულს ჰყოფს და ახალ ძებნას არ უშვებს */}
                   <PhotoPageSizePick
                     value={pageSize}
                     total={items.length}
@@ -651,7 +651,7 @@ export function WebImageDialog({
                     onClick={() => setPicked(allPicked ? new Set() : new Set(items.map(keyOf)))}
                   >
                     {allPicked ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
-                    {/* ⚠️ §19.5 — **ყველა ჩამოსული** და არა მიმდინარე გვერდი: რიცხვი ამას ამბობს */}
+                    {/* ⚠️ **ყველა ჩამოსული** და არა მიმდინარე გვერდი: რიცხვი ამას ამბობს */}
                     {allPicked ? t('photos.clear') : t('web.selectAllCount', { count: items.length })}
                   </Button>
                 </>
@@ -681,7 +681,7 @@ export function WebImageDialog({
                   result.failed > 0 ? t('web.importFailed', { count: result.failed }) : null,
                   result.skipped > 0 ? t('web.importSkipped', { count: result.skipped }) : null,
                   result.thumbnails > 0 ? t('web.importedThumbnails', { count: result.thumbnails }) : null,
-                  // §8.4 — სად წავიდა („ჰელენა 3 · ფილმი 7"), სერვერის პასუხიდან
+                  // სად წავიდა („ჰელენა 3 · ფილმი 7"), სერვერის პასუხიდან
                   assignedLine(result.assigned, people, context?.attachesTo, t),
                 ]
                   .filter(Boolean)
@@ -798,7 +798,7 @@ export function WebImageDialog({
                         </span>
                       </button>
 
-                      {/* §8.4 — ხელით გადაწერა; ჩანს მხოლოდ განაწილების დროს */}
+                      {/* ხელით გადაწერა; ჩანს მხოლოდ განაწილების დროს */}
                       {distribute.length > 0 && on && (
                         <label className="flex items-center gap-1.5 border-t border-border bg-muted/40 px-2.5 py-1.5">
                           <Users className="size-3 shrink-0 text-muted-foreground" />
@@ -829,7 +829,7 @@ export function WebImageDialog({
               <Pagination className="mt-4" {...pager.pagination} />
             )}
 
-            {/* §19.4 — ახალი ძებნა, ე.ი. ცალკე ღილაკი, რომელიც ფასს თვითონ ამბობს */}
+            {/* ახალი ძებნა, ე.ი. ცალკე ღილაკი, რომელიც ფასს თვითონ ამბობს */}
             {items.length > 0 && continuable.length > 0 && (
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                 <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => more.mutate()}>
@@ -856,7 +856,7 @@ export function WebImageDialog({
             {t('actions.cancel')}
           </Button>
           {onPick ? (
-            /* §41.3 — ჩანაწერი ჯერ არ არსებობს: მონიშნული ფორმას უბრუნდება, ჩამოტვირთვა — შექმნის შემდეგ */
+            /* ჩანაწერი ჯერ არ არსებობს: მონიშნული ფორმას უბრუნდება, ჩამოტვირთვა — შექმნის შემდეგ */
             <Button
               type="button"
               onClick={() => {
@@ -898,7 +898,7 @@ export function WebImageDialog({
 }
 
 /**
- * შეკითხვის ჩიპი (§19.1) — არააქტიური „+"-ით ამატებს, აქტიური ჯვრით ამოიღებს.
+ * შეკითხვის ჩიპი — არააქტიური „+"-ით ამატებს, აქტიური ჯვრით ამოიღებს.
  * ⚠️ ჯვარი ნიშანია და არა ცალკე ღილაკი (`Chip`-ის `remove`) — ჩიპი თვითონაა ღილაკი.
  */
 function QueryChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
@@ -915,7 +915,7 @@ function keyOf(item: SerpImage): string {
 }
 
 /**
- * „კიდევ"-ის პასუხის შერწყმა (§19.4) — **დუბლი ერთდება** და მისი წყაროები
+ * „კიდევ"-ის პასუხის შერწყმა — **დუბლი ერთდება** და მისი წყაროები
  * ერთ სიაში იკრიბება (სერვერის `search()`-ის იგივე წესი, ოღონდ ნაწილებს შორის).
  */
 function mergeImages(current: SerpImage[], incoming: SerpImage[]): SerpImage[] {
@@ -978,7 +978,7 @@ function engineName(engines: SerpEngine[], key: string): string {
 }
 
 /**
- * „სად წავიდა" — **სერვერის პასუხიდან** და არა ჩვენი ვარაუდიდან (§8.4).
+ * „სად წავიდა" — **სერვერის პასუხიდან** და არა ჩვენი ვარაუდიდან.
  *
  * ⚠️ ფრონტში გამოთვლილი „ალბათ ასე დანაწილდა" ერთ დღეს სერვერის წესს
  * გაცდებოდა და მომხმარებელს არასწორს აჩვენებდა.

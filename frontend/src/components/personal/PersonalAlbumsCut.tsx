@@ -12,7 +12,7 @@ import { PersonalAlbumCards } from '@/components/personal/PersonalAlbumCards'
 import { PersonalAlbumDialog } from '@/components/personal/PersonalAlbumDialog'
 
 /* ============================================================
-   **„ალბომები" (Tasks §33.5)** — ჯერ „გარე" ალბომები, მერე ადამიანების
+   **„ალბომები"** — ჯერ „გარე" ალბომები, მერე ადამიანების
    ალბომები, თითო ადამიანი თავისი სათაურით (ჯგუფებად).
 
    ⚠️ **ცარიელი ალბომიც იხატება** (გალერეის წესი): საქაღალდე, რომელიც

@@ -8,7 +8,7 @@ import type { LatLng } from '@/lib/polyline'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   **ადგილის რუკა — Leaflet, OSM-ის ფილები** (Tasks §30.2).
+   **ადგილის რუკა — Leaflet, OSM-ის ფილები**.
 
    ⚠️ **ლეიზი ჩანკია**: ეს ფაილი მხოლოდ `import()`-ით იტვირთება
    (`PlaceMapLazy.tsx`), ე.ი. Leaflet (~40 kB) ბანდლში მხოლოდ ადგილების
@@ -24,10 +24,10 @@ import { cn } from '@/lib/utils'
 
    ⚠️ `scrollWheelZoom: false` — რუკა მოდალშია და გვერდის სქროლი არ უნდა
    „დაიჭიროს"; მასშტაბი ღილაკებით, ორმაგი დაწკაპუნებით ან **Ctrl + ბორბლით**
-   (Tasks §56.2, `lib/mapWheel.ts` — ადრე Ctrl + ბორბალი მთელ გვერდს ადიდებდა);
+   (`lib/mapWheel.ts` — ადრე Ctrl + ბორბალი მთელ გვერდს ადიდებდა);
    უბრალო ბორბალზე — მინიშნება „ზუმი — Ctrl + ბორბალი".
 
-   ⚠️ **Tasks §56.1 — საწყისის არჩევა რუკაზე** (`onPickFrom`): ამ რეჟიმში
+   ⚠️ **საწყისის არჩევა რუკაზე** (`onPickFrom`): ამ რეჟიმში
    დაჭერა საწყისს სვამს (და არა ადგილის მარკერს), საწყისის პინი კი
    გადაითრევა.
    ============================================================ */
@@ -46,7 +46,7 @@ export interface PlaceMapProps {
   /** ფორმაში — მარკერის გადათრევა და დაწკაპუნებით გადატანა */
   draggable?: boolean
   onMove?: (lat: number, lng: number) => void
-  /** §56.1 — საწყისი რუკიდან: დაჭერა და საწყისის პინის გადათრევა */
+  /** საწყისი რუკიდან: დაჭერა და საწყისის პინის გადათრევა */
   onPickFrom?: (lat: number, lng: number) => void
   zoom?: number
   className?: string
@@ -89,7 +89,7 @@ export default function PlaceMap({
   const pick = useRef(onPickFrom)
   pick.current = onPickFrom
   const picking = !!onPickFrom
-  // §56.2 — „ზუმი — Ctrl + ბორბალი" (უბრალო ბორბალზე, ცოტა ხნით)
+  // „ზუმი — Ctrl + ბორბალი" (უბრალო ბორბალზე, ცოტა ხნით)
   const [wheelHint, setWheelHint] = useState(false)
 
   const [lat, lng] = center
@@ -112,7 +112,7 @@ export default function PlaceMap({
       if (p) move.current?.(p.lat, p.lng)
     })
     m.on('click', (e: L.LeafletMouseEvent) => {
-      // §56.1 — საწყისის არჩევისას დაჭერა საწყისს სვამს, ადგილს არ ეხება
+      // საწყისის არჩევისას დაჭერა საწყისს სვამს, ადგილს არ ეხება
       if (pick.current) pick.current(e.latlng.lat, e.latlng.lng)
       else if (drag.current) move.current?.(e.latlng.lat, e.latlng.lng)
     })
@@ -121,7 +121,7 @@ export default function PlaceMap({
     // ⚠️ მოდალის ზომა ანიმაციის შემდეგ დგება — ერთი დაგვიანებული გადათვლა, თორემ ფილები ნახევრად იხატება
     const timer = window.setTimeout(() => m.invalidateSize(), 150)
 
-    /* §56.2 — Ctrl + ბორბალი: რუკის ზუმი კურსორის წერტილზე. ⚠️ `passive: false` —
+    /* Ctrl + ბორბალი: რუკის ზუმი კურსორის წერტილზე. ⚠️ `passive: false` —
        თორემ `preventDefault` არ მუშაობს და ბრაუზერი გვერდსაც ადიდებს */
     let hintTimer = 0
     const onWheel = createWheelZoom(
@@ -171,7 +171,7 @@ export default function PlaceMap({
 
     if (!me.current) {
       me.current = L.marker([fromLat, fromLng], { icon: pin('me'), keyboard: false, draggable: true }).addTo(m)
-      // §56.1 — გადათრეული საწყისი; გადათრევა მხოლოდ არჩევის რეჟიმშია ჩართული (ქვემოთ)
+      // გადათრეული საწყისი; გადათრევა მხოლოდ არჩევის რეჟიმშია ჩართული (ქვემოთ)
       me.current.on('dragend', () => {
         const p = me.current?.getLatLng()
         if (p) pick.current?.(p.lat, p.lng)
@@ -182,7 +182,7 @@ export default function PlaceMap({
     }
   }, [fromLat, fromLng])
 
-  /* ---- §56.1 — საწყისის პინი გადაითრევა მხოლოდ არჩევის რეჟიმში; კურსორი — ჯვარი ---- */
+  /* ---- საწყისის პინი გადაითრევა მხოლოდ არჩევის რეჟიმში; კურსორი — ჯვარი ---- */
   useEffect(() => {
     const dragging = me.current?.dragging
     if (dragging) {
@@ -223,7 +223,7 @@ export default function PlaceMap({
   return (
     <div className={cn('relative', className)}>
       <div ref={host} className="size-full" data-testid="leaflet-map" />
-      {/* §56.2 — მინიშნება უბრალო ბორბალზე; რუკის ზემოთ, მაგრამ მაუსს არ იჭერს */}
+      {/* მინიშნება უბრალო ბორბალზე; რუკის ზემოთ, მაგრამ მაუსს არ იჭერს */}
       {wheelHint && (
         <div
           className={cn('pointer-events-none absolute inset-0 grid place-items-center bg-black/35 text-sm font-medium text-white', LAYER_MAP_HINT)}

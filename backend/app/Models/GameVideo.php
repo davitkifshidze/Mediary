@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * თამაშზე მიბმული ვიდეო (Tasks §11.2) — თითო თამაშს რამდენიმე აქვს.
+ * თამაშზე მიბმული ვიდეო — თითო თამაშს რამდენიმე აქვს.
  *
  * ⚠️ **`videos` ცხრილს განზრახ არ ვიყენებთ.** ის ვიდეოს მოდულის ბიბლიოთეკაა
  * (თავისი ტიპების ლექსიკონით, ძებნით, სტატისტიკით); თამაშის walkthrough კი
@@ -22,12 +22,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class GameVideo extends Model
 {
     /**
-     * ⚠️ **ურნა (Tasks §29, ეტაპი 2)** — `destroy()` `moveToTrash()`-ს იძახის;
+     * ⚠️ **ურნა** — `destroy()` `moveToTrash()`-ს იძახის;
      * რიგი ადგილზე რჩება და ურნიდან ბრუნდება.
      */
     use BelongsToUser, HasTrash;
 
-    /** 11.2 — „სრული დახურვა/გეიმფლეი" მთავარია, ამიტომ ის არის default */
+    /** „სრული დახურვა/გეიმფლეი" მთავარია, ამიტომ ის არის default */
     public const KINDS = ['walkthrough', 'trailer', 'review', 'guide', 'other'];
 
     protected $guarded = ['id'];

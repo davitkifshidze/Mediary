@@ -5,7 +5,7 @@ namespace App\Support;
 use Illuminate\Support\Facades\DB;
 
 /**
- * **რომელი ცხრილის აღდგენა რამდენად საშიშია (Tasks §11.4).**
+ * **რომელი ცხრილის აღდგენა რამდენად საშიშია.**
  *
  * ⚠️ **აქ არის ამ სექციის ყველაზე დიდი საფრთხე და ის გაზომილია.** ბაზაში
  * **119 უცხო გასაღებია — 99 `CASCADE`, 20 `SET NULL`**, ხოლო `users`-ზე
@@ -84,7 +84,7 @@ final class RestoreScope
      *
      * ⚠️ **sqlite-ზე (ტესტები) ცარიელია** — იქ `information_schema` არ
      * არსებობს და მთელი ეს ფუნქცია მხოლოდ MySQL-ზე მუშაობს, ისევე როგორც
-     * დანარჩენი §22/§11.
+     * ბაზის აღდგენის დანარჩენი ნაწილი.
      *
      * @return list<array{table: string, column: string, on_delete: string}>
      */

@@ -36,12 +36,12 @@ import { cn, formatBytes } from '@/lib/utils'
 const MB = 1024 * 1024
 
 /* ============================================================
-   მოთხოვნების სექცია (Tasks 1.5) — ადრე ადმინის ტაბი იყო.
+   მოთხოვნების სექცია — ადრე ადმინის ტაბი იყო.
 
    ერთ გვერდზე ორივე მხარეა: ადმინისთვის — ყველას მოთხოვნები დასამტკიცებლად,
    ყველასთვის — **ჩემი** მოთხოვნები (ადრე `/modules`-ზე ეკიდა და ტვირთავდა).
 
-   **სია ცხრილია (Tasks §5).** შენი სიტყვები: „მოთხოვნები … მას დეითეიბლის
+   **სია ცხრილია.** შენი სიტყვები: „მოთხოვნები … მას დეითეიბლის
    მსგავსი სორტირება ჰქონდეს, ასევე სერჩი და გვერდზე რამდენი გამოჩნდეს".
 
    ⚠️ **„რიგში" მყოფიც ცხრილშია და არა ბარათებად.** ის ერთადერთი ჭრილია,
@@ -55,7 +55,7 @@ const MB = 1024 * 1024
  * **ჭრილები ბარათებად** (2026-09-15, შენი მითითებით: „მინდა მსგავსი
  * ვიზუალის იყოს, რაც მაქვს აუდიტ-ლოგში").
  *
- * ⚠️ **ხატულა და ტონი `lib/cutStyle.ts`-შია და აქ აღარ იწერება** (Tasks §2):
+ * ⚠️ **ხატულა და ტონი `lib/cutStyle.ts`-შია და აქ აღარ იწერება**:
  * იმავე ცნებებს — „რიგი / დამტკიცებული / უარყოფილი" — სხვა ჭრილებიც
  * ხატავენ, ლოკალური ასლი კი პირველივე შესწორებაზე დაშორდებოდა.
  */
@@ -72,7 +72,7 @@ const TYPE_ICON = {
   module_access: Boxes,
   storage_increase: HardDrive,
   genre_delete: Tags,
-  // Tasks §34.5 — ატვირთვის ლიმიტი (ფორმატი ან ზომა)
+  // ატვირთვის ლიმიტი (ფორმატი ან ზომა)
   upload_limit: HardDriveUpload,
 } as const
 
@@ -81,7 +81,7 @@ export function RequestsPage() {
   const qc = useQueryClient()
   const { toast } = useToast()
   const fmt = useDateFormat()
-  // Tasks 1.6 — მოთხოვნების სექცია როლის უფლებაზეც იხსნება
+  // მოთხოვნების სექცია როლის უფლებაზეც იხსნება
   const { canAdmin } = useAuth()
   const isAdmin = canAdmin('requests')
 
@@ -105,9 +105,9 @@ export function RequestsPage() {
     qc.invalidateQueries({ queryKey: ['pending-count'] })
     qc.invalidateQueries({ queryKey: ['modules'] })
     qc.invalidateQueries({ queryKey: ['genres'] })
-    // 17.4 — დამტკიცება კვოტას ცვლის, ე.ი. საცავის ხედიც უნდა განახლდეს
+    // დამტკიცება კვოტას ცვლის, ე.ი. საცავის ხედიც უნდა განახლდეს
     qc.invalidateQueries({ queryKey: ['storage'] })
-    // §34.5 — „ყველასთვის" ინსტალაციის ლიმიტს ცვლის (ჩემსაც)
+    // „ყველასთვის" ინსტალაციის ლიმიტს ცვლის (ჩემსაც)
     qc.invalidateQueries({ queryKey: ['upload-limits'] })
   }
 
@@ -360,7 +360,7 @@ export function RequestsPage() {
 }
 
 /* ============================================================
-   განხილვის ფანჯარა (Tasks §5.2).
+   განხილვის ფანჯარა.
 
    ⚠️ **შენიშვნა უარყოფასაც ეხება** და არა მხოლოდ დამტკიცებას — ერთი ველი,
    ორივე ღილაკი, ზუსტად როგორც ბარათებში იყო.
@@ -381,13 +381,13 @@ function ReviewDialog({
   const { t, i18n } = useTranslation()
   const fmt = useDateFormat()
   const { user: me } = useAuth()
-  /* §34.5 (Q42) — ვისზე ვრცელდება დამტკიცებული ატვირთვის მოთხოვნა.
+  /* ვისზე ვრცელდება დამტკიცებული ატვირთვის მოთხოვნა.
      ⚠️ **„მხოლოდ მას" ნაგულისხმევია** — „ყველასთვის" ინსტალაციის ლიმიტს
      ცვლის და მხოლოდ სუპერადმინს შეუძლია (სერვერი სხვას 403-ს უბრუნებს). */
   const [scope, setScope] = useState<UploadScope>('user')
 
   const [note, setNote] = useState('')
-  // 17.4 — რამდენს ვაძლევთ სინამდვილეში (MB). ცარიელი = მოთხოვნილი ზუსტად.
+  // რამდენს ვაძლევთ სინამდვილეში (MB). ცარიელი = მოთხოვნილი ზუსტად.
   const [grant, setGrant] = useState('')
 
   const pending = r.status === 'pending'
@@ -436,11 +436,11 @@ function ReviewDialog({
         )}
 
         {/* ⚠️ ჟანრის წაშლა **გლობალურია** — ეს ერთადერთი ადგილია, სადაც ადმინი
-            დამტკიცებამდე ხედავს, რას შლის (Tasks §5.3). ამიტომ ის მოდალის
+            დამტკიცებამდე ხედავს, რას შლის. ამიტომ ის მოდალის
             სხეულშია და არა გვერდით გადაწეულ უჯრაში. */}
         {r.type === 'genre_delete' && r.payload && (
           <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {/* ⚠️ სამივე TMDB-დომენი — ანიმე აქ არ ჩანდა (Tasks BUG-19) */}
+            {/* ⚠️ სამივე TMDB-დომენი — ანიმე აქ არ ჩანდა */}
             {t('admin.genreDeleteWarning', {
               movies: (r.payload.movies_count as number) ?? 0,
               series: (r.payload.series_count as number) ?? 0,
@@ -449,7 +449,7 @@ function ReviewDialog({
           </p>
         )}
 
-        {/* 17.4 — ლიმიტის კონტექსტი მოთხოვნის მომენტისთვის */}
+        {/* ლიმიტის კონტექსტი მოთხოვნის მომენტისთვის */}
         {r.type === 'storage_increase' && (
           <p className="text-xs text-muted-foreground">
             {t('admin.storageRequestContext', {
@@ -462,7 +462,7 @@ function ReviewDialog({
           </p>
         )}
 
-        {/* §34.5 — ატვირთვის მოთხოვნის კონტექსტი: რა აქვს ახლა */}
+        {/* ატვირთვის მოთხოვნის კონტექსტი: რა აქვს ახლა */}
         {r.type === 'upload_limit' && (
           <p className="text-xs text-muted-foreground">
             {t('requests.uploadContext', {
@@ -474,7 +474,7 @@ function ReviewDialog({
 
         {pending ? (
           <>
-            {/* §34.5 (Q42) — ვისზე გავრცელდეს; არჩევანი დამტკიცების ღილაკის ზემოთაა */}
+            {/* ვისზე გავრცელდეს; არჩევანი დამტკიცების ღილაკის ზემოთაა */}
             {r.type === 'upload_limit' && (
               <section>
                 <h3 className="mb-2 text-sm font-medium">{t('requests.scopeTitle')}</h3>
@@ -491,7 +491,7 @@ function ReviewDialog({
               </section>
             )}
 
-            {/* მოთხოვნილზე ნაკლების მიცემა უარი არაა (17.4) */}
+            {/* მოთხოვნილზე ნაკლების მიცემა უარი არაა */}
             {r.type === 'storage_increase' && (
               <label className="block">
                 <span className="mb-1 block text-sm font-medium">{t('requests.grantLabel')}</span>

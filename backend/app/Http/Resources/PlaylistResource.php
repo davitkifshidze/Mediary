@@ -19,7 +19,7 @@ class PlaylistResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'sort_order' => $this->sort_order,
-            // Tasks 16 — პლეილისტი დამოუკიდებელი გაზიარებადი ერთეულია
+            // პლეილისტი დამოუკიდებელი გაზიარებადი ერთეულია
             'visibility' => $this->visibility,
             'songs_count' => $this->whenCounted('songs'),
             'songs' => SongResource::collection($this->whenLoaded('songs')),

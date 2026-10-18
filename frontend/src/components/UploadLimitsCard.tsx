@@ -13,9 +13,9 @@ import { UploadLimitsEditor } from '@/components/uploads/UploadLimitsEditor'
 import { UploadRequestDialog } from '@/components/uploads/UploadRequestDialog'
 
 /* ============================================================
-   **ატვირთვის ლიმიტები პარამეტრებში (2026-09-14 → Tasks §34).**
+   **ატვირთვის ლიმიტები პარამეტრებში.**
 
-   შენი სიტყვები (§34): „ატვირთვის ლიმიტები და ფორმატები უნდა შეიძლებოდეს
+   შენი სიტყვები: „ატვირთვის ლიმიტები და ფორმატები უნდა შეიძლებოდეს
    გაწერო, რაც გინდა — სუპერადმინზე მაქვს საუბარი; უბრალო მომხმარებელს კი
    უნდა უჩანდეს, რაც გაწერილია, და თუ რამე სჭირდება — მიწერისთვის
    შეიძლებოდეს სუპერადმინთან ჩატის გახსნა“.
@@ -154,7 +154,7 @@ function Row({
 
       {limit.capped_by_server && <span className="text-xs text-destructive">{t('uploads.cappedByServer')}</span>}
 
-      {/* ⚠️ §34.4 — **ნამდვილი სია** (ადრე „ნებისმიერი ფორმატი" ეწერა სურათზე) */}
+      {/* ⚠️ **ნამდვილი სია** (ადრე „ნებისმიერი ფორმატი" ეწერა სურათზე) */}
       <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={formatList(limit.mimes)}>
         {formatList(limit.mimes)}
       </span>

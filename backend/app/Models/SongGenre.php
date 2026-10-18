@@ -14,19 +14,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * ⚠️ გლობალურ `genres`-ს განზრახ არ ვიყენებთ: ის TMDB-ის ფილმის ჟანრებია და
  * „როკი" იქ ფილმის ჟანრების არჩევანშიც გამოჩნდებოდა.
  *
- * ⚠️ კავშირი **მრავალი-მრავალთანაა** (`song_genre_song`) და არა `genre_id` —
- * `DECISIONS.md` §5-ის პასუხი 2026-09-06-ს.
+ * ⚠️ კავშირი **მრავალი-მრავალთანაა** (`song_genre_song`) და არა `genre_id`.
  */
 class SongGenre extends Model
 {
     /**
-     * ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — წაშლა რიგს ურნაში აგზავნის
+     * ⚠️ **ურნა** — წაშლა რიგს ურნაში აგზავნის
      * (`DictionaryTrash::trash()`); `trash_meta` იმახსოვრებს გადატანილ
      * ჩანაწერებს, რომ აღდგენამ მათი დაბრუნება შემოგთავაზოს.
      */
     use BelongsToUser, HasTrash;
 
-    /** §B3 — უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
+    /** უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
     use HasDictionaryKey;
 
     /** ახალ ანგარიშზე ავტომატურად შექმნილი ჟანრები (იგივე სია მიგრაციაშიც) */
@@ -66,7 +65,7 @@ class SongGenre extends Model
      */
     public static function ensureDefaults(int $userId): void
     {
-        // ⚠️ ურნაში მყოფიც (Tasks §29) — სხვაგვარად ნაგულისხმევები იმავე გასაღებით ჩაიწერებოდა და ინდექსი დაიძვრებოდა
+        // ⚠️ ურნაში მყოფიც — სხვაგვარად ნაგულისხმევები იმავე გასაღებით ჩაიწერებოდა და ინდექსი დაიძვრებოდა
         if (static::withoutGlobalScopes(['owner', 'trash'])->where('user_id', $userId)->exists()) {
             return;
         }

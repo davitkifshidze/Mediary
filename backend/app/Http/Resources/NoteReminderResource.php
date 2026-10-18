@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * შეხსენება (`note_reminders`, Tasks §13.2).
+ * შეხსენება (`note_reminders`).
  *
  * `next_at` **გამოთვლილი** ველია და ფრონტზე მხოლოდ საჩვენებლად მიდის —
  * მისი ჩაწერა მხოლოდ `NoteReminder::computeNextAt()`-ს შეუძლია.
@@ -27,7 +27,7 @@ class NoteReminderResource extends JsonResource
             'mode' => $this->mode,
             'remind_at' => $this->remind_at?->toIso8601String(),
             'interval_minutes' => $this->interval_minutes,
-            // ⚠️ **სიებია და არა ერთეული მნიშვნელობები** (ეტაპი 7): დღეში
+            // ⚠️ **სიებია და არა ერთეული მნიშვნელობები**: დღეში
             // რამდენიმე დრო და თვეში რამდენიმე რიცხვი. `H:i` — წამები
             // ინტერფეისს არ სჭირდება.
             'times_of_day' => array_values(array_map(
@@ -38,7 +38,7 @@ class NoteReminderResource extends JsonResource
             'days_of_month' => array_values($this->days_of_month ?? []),
             'month' => $this->month,
             'repeat_count' => $this->repeat_count,
-            // მოქმედების ფანჯარა — აბსოლუტური მომენტები (ეტაპი 7)
+            // მოქმედების ფანჯარა — აბსოლუტური მომენტები
             'starts_at' => $this->starts_at?->toIso8601String(),
             'ends_at' => $this->ends_at?->toIso8601String(),
             'timezone' => $this->timezone,

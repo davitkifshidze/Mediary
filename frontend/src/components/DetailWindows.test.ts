@@ -9,10 +9,10 @@ import type { Place } from '@/api/places'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **დეტალის ფანჯრების ერთი რიგი** (Tasks §26.4).
+   **დეტალის ფანჯრების ერთი რიგი**.
 
    შენი სიტყვები: „ფოტოები ბოლოშია — ზემოთ გააკეთე… ყველა მოდულში".
-   თამაშის ფანჯარამ ეს §22.2-ში დაადგინა; აქ მოწმდება, რომ წიგნი,
+   თამაშის ფანჯარამ ეს პირველმა დაადგინა; აქ მოწმდება, რომ წიგნი,
    სამაგიდო და ადგილიც იმავეს აკეთებს: თავში მთავარი ფოტო და ცნობები,
    **ფოტოების სექცია დოკუმენტებზე ადრე**. რიგი მხოლოდ მონტირებით ჩანს.
    ============================================================ */
@@ -86,7 +86,7 @@ const before = (list: string[], first: string, second: string) => {
   expect(a).toBeLessThan(b)
 }
 
-describe('detail windows (§26.4)', () => {
+describe('detail windows', () => {
   it('book: cover and facts on top, photos before files and notes', async () => {
     const { BookDetail } = await import('@/components/BookDetail')
     const book = {

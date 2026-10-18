@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * **Tasks §55 — კურსის YouTube-ის ფლეილისტი.**
+ * **კურსის YouTube-ის ფლეილისტი.**
  *
  * ⚠️ `Http::fake()` **ერთი სტაბია** (CLAUDE.md: მეორე გამოძახება არაფერს ცვლის) —
  * ერთი closure პასუხობს `playlists`/`playlistItems`/`videos`/oEmbed-ს მისამართით.
@@ -119,7 +119,7 @@ class CoursePlaylistTest extends TestCase
         });
     }
 
-    /** §55.2 — გასაღებით: Data API, ორი გვერდი, ხანგრძლივობა, დახურული ვიდეო გამოტოვდება, ქეში */
+    /** გასაღებით: Data API, ორი გვერდი, ხანგრძლივობა, დახურული ვიდეო გამოტოვდება, ქეში */
     public function test_with_a_key_the_data_api_lists_every_video_with_its_duration(): void
     {
         $this->giveKey();
@@ -151,7 +151,7 @@ class CoursePlaylistTest extends TestCase
         $this->assertGreaterThan($sent, count(Http::recorded()));
     }
 
-    /** §55.2 — გასაღების გარეშე: `yt-dlp --flat-playlist` (ყალბი) */
+    /** გასაღების გარეშე: `yt-dlp --flat-playlist` (ყალბი) */
     public function test_without_a_key_yt_dlp_answers(): void
     {
         $this->fakeYtDlp([
@@ -203,7 +203,7 @@ class CoursePlaylistTest extends TestCase
         $this->getJson("/api/courses/{$course->id}/playlist")->assertNotFound();
     }
 
-    /** §55.4 — ფორმის probe და შენახვის ავტოშევსება: სათაური, აღწერა, ფოტო ფლეილისტიდან */
+    /** ფორმის probe და შენახვის ავტოშევსება: სათაური, აღწერა, ფოტო ფლეილისტიდან */
     public function test_the_form_probe_and_autofill_read_the_playlist(): void
     {
         $this->giveKey();

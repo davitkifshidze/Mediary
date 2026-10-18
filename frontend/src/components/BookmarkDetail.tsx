@@ -36,18 +36,18 @@ import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type Menu
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   **ბუკმარკის დეტალის ფანჯარა** (Tasks §36.1–§36.4).
+   **ბუკმარკის დეტალის ფანჯარა**.
 
    შენი სიტყვები: „ბუკმარკს რომ დააჭერ, პირდაპირ კი არ ილინკებოდეს —
    იხსნებოდეს მოდალი: ინფო, რა არის დამატებული; შიგნით ჰქონდეს გალინკვის
    ღილაკი. ასევე შეიძლებოდეს ბუკმარკზე დაამატო გალერეა, ან, თუ შოპინგია ან
    რამე ისეთი, კონკრეტული ლინკის დამატებაც იყოს დამატებით".
 
-   რიგი §26.4-ისაა (`DetailHero`): თავში მთავარი ფოტო, სტატუსი, კატეგორია და
-   ცნობები (დამატების თარიღი, გახსნები და ბოლო გახსნა, შესვლები §10) და
+   რიგი ყველა დეტალის ფანჯრის საერთოა (`DetailHero`): თავში მთავარი ფოტო, სტატუსი, კატეგორია და
+   ცნობები (დამატების თარიღი, გახსნები და ბოლო გახსნა, შესვლები) და
    მოქმედებები — „ბმულის გახსნა" (იგივე `visited` მთვლელით), „კოპირება",
    „რედაქტირება", „წაშლა"; მერე აღწერა და ტეგები, ბმულები ბარათებად და
-   გალერეა — §22.3-ის ორი საცავი ერთ ხედად: ჩემი ატვირთული (`bookmark_files`)
+   გალერეა — ორი საცავი ერთ ხედად: ჩემი ატვირთული (`bookmark_files`)
    და ვებიდან ჩამოტვირთული (`gallery_images`, გალერეის მოდული).
    ============================================================ */
 
@@ -66,10 +66,10 @@ export function BookmarkDetail({
   onDelete: () => void
 }) {
   const { t, i18n } = useTranslation()
-  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  // გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen('bookmark', bookmark.id)
   const lang = useContentLang(i18n.language)
-  // §22.2 — ვებძებნის ჩიპები შინაარსის ენაზე და არა ინტერფეისისაზე
+  // ვებძებნის ჩიპები შინაარსის ენაზე და არა ინტერფეისისაზე
   const fixedT = i18n.getFixedT(lang)
   const { date: formatDate, dateTime } = useDateFormat()
   const { toast } = useToast()
@@ -90,7 +90,7 @@ export function BookmarkDetail({
     onSuccess: refresh,
     onError: fail,
   })
-  /* Tasks §24.3 — „გახსნის" მთვლელის ჩავარდნა ჩუმად არ იკარგება (სიის იგივე წესი) */
+  /* „გახსნის" მთვლელის ჩავარდნა ჩუმად არ იკარგება (სიის იგივე წესი) */
   const visited = useMutation({ mutationFn: () => markBookmarkVisited(bookmark.id), onSuccess: refresh, onError: fail })
 
   const openLink = () => {
@@ -103,7 +103,7 @@ export function BookmarkDetail({
     toast({ title: t(ok ? 'bookmarks.linkCopied' : 'bookmarks.copyFailed'), variant: ok ? 'success' : 'error' })
   }
 
-  /* Tasks §36.5 — მარჯვენა კლიკი თავზე: ბმული · სტატუსი ▸ · რჩეული · ბმულის დამატება · — · რედაქტირება · წაშლა */
+  /* მარჯვენა კლიკი თავზე: ბმული · სტატუსი ▸ · რჩეული · ბმულის დამატება · — · რედაქტირება · წაშლა */
   const heroActions: MenuAction[] = [
     { key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: openLink },
     statusActions(t('bookmarks.status'), statuses, bookmark.status, lang, (key) => status.mutate(key)),
@@ -118,7 +118,7 @@ export function BookmarkDetail({
   return (
     <ModalShell title={bookmark.title} onClose={onClose} wide>
       <div className="mt-4 space-y-6" data-testid="bookmark-detail">
-        {/* ---------- თავი: მთავარი ფოტო, სტატუსი, კატეგორია, ცნობები, მოქმედებები (§26.4) ---------- */}
+        {/* ---------- თავი: მთავარი ფოტო, სტატუსი, კატეგორია, ცნობები, მოქმედებები ---------- */}
         <RecordContextMenu actions={heroActions}>
           <DetailHero
             image={image}
@@ -134,7 +134,7 @@ export function BookmarkDetail({
             badges={
               <>
                 <StatusBadge status={bookmark.status} size="row" />
-                {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+                {/* ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
                 <VisibilityBadge value={bookmark.visibility} />
                 <FavoriteButton active={bookmark.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
               </>
@@ -160,14 +160,14 @@ export function BookmarkDetail({
                 </span>
               )}
               {bookmark.created_at && <span>{t('bookmarks.addedOn', { date: formatDate(bookmark.created_at) })}</span>}
-              {/* „გახსნა" — ბმულზე გასვლა (`visit_count`); „შევედი" ზემოთაა — ფანჯრის გახსნა (§10) */}
+              {/* „გახსნა" — ბმულზე გასვლა (`visit_count`); „შევედი" ზემოთაა — ფანჯრის გახსნა */}
               <span>{t('bookmarks.visits', { count: bookmark.visit_count })}</span>
               {bookmark.visited_at && (
                 <span>{t('bookmarks.lastOpened', { date: dateTime(bookmark.visited_at) })}</span>
               )}
             </DetailFacts>
 
-            {/* Tasks §36.2 — ბმული **ფანჯრის შიგნითაა** და იმავე მთვლელს ზრდის */}
+            {/* ბმული **ფანჯრის შიგნითაა** და იმავე მთვლელს ზრდის */}
             <div className="flex flex-wrap items-center gap-2 pt-1" data-testid="bookmark-actions">
               <a
                 href={bookmark.url}
@@ -210,7 +210,7 @@ export function BookmarkDetail({
           </p>
         )}
 
-        {/* ---------- Tasks §36.3 — დამატებითი ბმულები ბარათებად ---------- */}
+        {/* ---------- დამატებითი ბმულები ბარათებად ---------- */}
         <DetailSection
           title={t('bookmarks.linksTitle')}
           hint={t('bookmarks.linksHint')}
@@ -224,7 +224,7 @@ export function BookmarkDetail({
           <BookmarkLinkCards links={bookmark.links ?? []} />
         </DetailSection>
 
-        {/* ---------- Tasks §36.4 — გალერეა: ორი საცავი ერთ ხედად (§22.3) ---------- */}
+        {/* ---------- გალერეა: ორი საცავი ერთ ხედად ---------- */}
         <div ref={gallery} data-testid="bookmark-gallery">
           <DetailSection title={t('bookmarks.galleryTitle')} hint={t('bookmarks.galleryHint')}>
             <div className="space-y-6">
@@ -260,7 +260,7 @@ function Photos({ bookmark }: { bookmark: Bookmark }) {
     queryFn: () => fetchBookmarkFiles(bookmark.id),
   })
 
-  // 17.1 — ატვირთვა/წაშლა კვოტას ცვლის, ჰედერის ინდიკატორიც უნდა განახლდეს
+  // ატვირთვა/წაშლა კვოტას ცვლის, ჰედერის ინდიკატორიც უნდა განახლდეს
   const done = () => {
     void qc.invalidateQueries({ queryKey: ['bookmark-files', bookmark.id] })
     void qc.invalidateQueries({ queryKey: ['storage'] })
@@ -277,7 +277,7 @@ function Photos({ bookmark }: { bookmark: Bookmark }) {
 
   return (
     <DetailPhotos
-      /* §22.3 — ორი საცავი ერთ ხედად: ეს ბლოკი „ატვირთულია", ქვემოთ — „ვებიდან" */
+      /* ორი საცავი ერთ ხედად: ეს ბლოკი „ატვირთულია", ქვემოთ — „ვებიდან" */
       title={
         <span className="inline-flex items-center gap-2">
           {t('bookmarks.photosTitle')}

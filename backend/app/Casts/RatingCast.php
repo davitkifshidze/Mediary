@@ -7,7 +7,7 @@ use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * **ქულა ბაზაში `decimal(3,1)`-ია, JSON-ში — რიცხვი** (Tasks §9.3).
+ * **ქულა ბაზაში `decimal(3,1)`-ია, JSON-ში — რიცხვი**.
  *
  * ⚠️ რატომ არა `decimal:1`: ის სტრიქონს აბრუნებს ("7.0"), SPA-ს კი რიცხვი
  * სჭირდება (ვარსკვლავების შევსება, `step 0.1` ველი). რატომ არა `float`:

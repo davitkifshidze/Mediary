@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * ადგილის კატეგორიების მართვა — per-user CRUD + თანმიმდევრობა (FEAT-26).
+ * ადგილის კატეგორიების მართვა — per-user CRUD + თანმიმდევრობა.
  * სტრუქტურა `BookmarkCategoryController`-ის იდენტურია (ერთი და იგივე
  * ლექსიკონის შაბლონი); წაშლისას ადგილები **არ იკარგება**: `move_to`,
  * „კატეგორიის გარეშე" ან ცხადი `delete_records`.
@@ -81,7 +81,7 @@ class PlaceCategoryController extends Controller
 
         $moveTo = DictionaryRecords::moveTarget($data);
 
-        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+        /* ⚠️ **ურნა** — რიგი ურნაში გადადის და იმახსოვრებს,
            რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
            შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
         $records = Place::where('category_id', $placeCategory->id);

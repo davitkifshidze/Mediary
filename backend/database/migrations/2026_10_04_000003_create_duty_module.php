@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **მორიგეობა — მოდული `duty` (Tasks §34, Q8).**
+ * **მორიგეობა — მოდული `duty`.**
  *
  * ოთხი ცხრილი: **სამსახური** (`duty_workplaces` — სახელი, მოკლე ასო კალენდრის
  * ჩიპისთვის, ფერი, საათობრივი განაკვეთი), **ტიპი** (`duty_shift_types` — „8 სთ“
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * ⚠️ **ერთ დღეს რამდენიმე მორიგეობა შეიძლება** (ორ სამსახურში, ან ორი ერთში) —
  * უნიკალური ინდექსი თარიღზე განზრახ არ არის. ღამის მორიგეობის თარიღი
- * **დაწყების დღეა** (Q8).
+ * **დაწყების დღეა**.
  *
  * ⚠️ **სამსახური და ტიპი ურნაში მიდის** (კლასიფიკატორის წესი, `DictionaryTrash`):
  * წაშლისას მორიგეობები სხვაგან გადადის, უსამსახუროდ/უტიპოდ რჩება ან ურნაში
@@ -97,7 +97,7 @@ return new class extends Migration
             $table->index(['user_id', 'workplace_id', 'date']);
         });
 
-        // დამატებითი ველები მორიგეობაზე (§34.6) — ცხრილის სახელი `CustomFields`-იდან
+        // დამატებითი ველები მორიგეობაზე — ცხრილის სახელი `CustomFields`-იდან
         $values = CustomFields::TABLE_BY_MODULE['duty'];
 
         if (! Schema::hasTable($values)) {

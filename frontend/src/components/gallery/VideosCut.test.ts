@@ -9,7 +9,7 @@ import type { GalleryVideo } from '@/api/gallery'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **გალერეის ვიდეოების გვერდი — თავიდან** (Tasks §25.5/§25.8).
+   **გალერეის ვიდეოების გვერდი — თავიდან**.
 
    ⚠️ მოწმდება: ვერტიკალური ბარათები ესკიზით, ორხაზიანი სათაურით, არხით და
    მფლობელის ჩიპით; ღილაკები ტექსტით; „მფლობელი" ჭრილი სერვერს `owner_type`-ს
@@ -104,7 +104,7 @@ const cards = () => [...document.querySelectorAll<HTMLElement>('[data-testid="ga
 const button = (scope: ParentNode, label: string) =>
   [...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)
 
-describe('VideosCut (§25.5)', () => {
+describe('VideosCut', () => {
   it('draws vertical cards with title, channel, owner chip and text buttons', async () => {
     await mount()
 

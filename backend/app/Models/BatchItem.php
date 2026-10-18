@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * **პარტიის ერთი ერთეულის შედეგი** (Tasks FEAT-03).
+ * **პარტიის ერთი ერთეულის შედეგი**.
  *
  * ⚠️ სამი მდგომარეობაა და სამივე სხვადასხვა ქმედებას ითხოვს:
  *  · `ok`      — შესრულდა;
@@ -25,7 +25,7 @@ class BatchItem extends Model
     use BelongsToUser, MassPrunable;
 
     /**
-     * რამდენ დღეს ვინახავთ (Tasks DEBT-24).
+     * რამდენ დღეს ვინახავთ.
      *
      * ⚠️ **უფრო მოკლეა, ვიდრე მრიცხველებისა და ეს განზრახაა**: ეს პარტიის
      * მიმდინარეობის ჟურნალია — 300-ერთეულიანი გაშვება 300 რიგს ტოვებს და

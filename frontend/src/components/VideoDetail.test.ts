@@ -8,12 +8,12 @@ import { PlayerProvider, usePlayer, videoItem } from '@/lib/player'
 import i18n from '@/i18n'
 
 /* ============================================================
-   ვიდეოს დეტალები — დაკვრა მხოლოდ აპის დამკვრელში (Tasks §35.6 → §48).
+   ვიდეოს დეტალები — დაკვრა მხოლოდ აპის დამკვრელში.
 
    ⚠️ აქ ფანჯარას **საკუთარი ჩაშენება ჰქონდა** (`VideoEmbed`) და გლობალურ
    დამკვრელთან ერთად ორივე ჟღერდა. ტესტი იმას პინავს, რასაც ვერც ტიპი
    ხედავს და ვერც backend-ი: ფანჯარაში ფრეიმი **საერთოდ არ იხატება**.
-   §48 — „დაკვრა" ვიდეოს გვერდს გადასცემს და ფანჯარა **ღია რჩება**: ესკიზი
+   „დაკვრა" ვიდეოს გვერდს გადასცემს და ფანჯარა **ღია რჩება**: ესკიზი
    დამკვრელის ადგილია (`inline`); „გატანა" მას მოტივტივე ჩარჩოში (ვიწროზე —
    ზოლში) გადაიტანს, ესკიზი კი „აქ დაბრუნებას" გვთავაზობს.
    ============================================================ */
@@ -163,7 +163,7 @@ describe('VideoDetail — დაკვრა დამკვრელშია',
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('ამ ფანჯარაში მყოფი ვიდეო ესკიზზე ჯდება; „გატანა" და „აქ დაბრუნება" (§48)', async () => {
+  it('ამ ფანჯარაში მყოფი ვიდეო ესკიზზე ჯდება; „გატანა" და „აქ დაბრუნება"', async () => {
     const onClose = vi.fn()
     await mount(video(), { onPlay: vi.fn(), onClose }, true)
 
@@ -186,7 +186,7 @@ describe('VideoDetail — დაკვრა დამკვრელშია',
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('სათაურის ქვეშ სამი ბეჯია და „რედაქტირება" გვერდს გადასცემს (Tasks §19.6)', async () => {
+  it('სათაურის ქვეშ სამი ბეჯია და „რედაქტირება" გვერდს გადასცემს', async () => {
     const { VideoDetail } = await import('@/components/VideoDetail')
     const onEdit = vi.fn()
     const subject = video({
@@ -222,7 +222,7 @@ describe('VideoDetail — დაკვრა დამკვრელშია',
     expect(onEdit).toHaveBeenCalledWith(subject)
   })
 
-  it('რჩეული · „საჯარო" · რედაქტირება — ერთი სიმაღლე, h-9 (Tasks §40.2)', async () => {
+  it('რჩეული · „საჯარო" · რედაქტირება — ერთი სიმაღლე, h-9', async () => {
     const { VideoDetail } = await import('@/components/VideoDetail')
 
     container = document.createElement('div')
@@ -246,7 +246,7 @@ describe('VideoDetail — დაკვრა დამკვრელშია',
     const favorite = document.querySelector<HTMLElement>(`button[aria-label="${i18n.t('actions.favorite')}"]`)!
     const visibility = [...document.querySelectorAll<HTMLElement>('span')].find((s) => s.textContent === i18n.t('visibility.public'))!
     const edit = buttonWith('actions.edit')!
-    // Tasks §53 (Q14) — „ბმულის გახსნა" ბარათის ზოლიდან აქ გადმოვიდა
+    // „ბმულის გახსნა" ბარათის ზოლიდან აქ გადმოვიდა
     const link = document.querySelector<HTMLAnchorElement>('[data-testid="video-open-link"]')!
     expect(link.getAttribute('href')).toBe('https://youtu.be/talk')
     expect(link.getAttribute('target')).toBe('_blank')

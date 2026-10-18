@@ -16,14 +16,14 @@ use Illuminate\Support\Facades\Auth;
 class CastMember extends Model
 {
     /**
-     * Tasks 10 — მსახიობის გალერეა. ⚠️ `cast_members` **გლობალური** ლექსიკონია
+     * მსახიობის გალერეა. ⚠️ `cast_members` **გლობალური** ლექსიკონია
      * (ერთი მსახიობი ყველა ანგარიშისთვის), ფოტოები კი `gallery_images`-ია
      * `user_id`-თი, ე.ი. გალერეა მაინც per-user რჩება (`owner` global scope).
      */
     use HasGallery;
 
     /**
-     * Tasks §35.5 — მსახიობის ჩაკეტვა. ⚠️ ლოკი **მნახველისაა** (`RecordLocks::ownerOf()` —
+     * მსახიობის ჩაკეტვა. ⚠️ ლოკი **მნახველისაა** (`RecordLocks::ownerOf()` —
      * `user_id` აქ არ არის): ჩემი პაროლი მას მხოლოდ ჩემგან მალავს — ჩემს სიაში,
      * ძებნაში, ჩანაწერის მსახიობებში და გალერეაში; სხვა ანგარიშს ის ჩვეულებრივ უჩანს.
      */
@@ -43,28 +43,28 @@ class CastMember extends Model
 
     protected $casts = [
         'tmdb_person_id' => 'integer',
-        // §35.3 — ხელით შექმნილის ავტორი (TMDB-ის მსახიობზე `null`)
+        // ხელით შექმნილის ავტორი (TMDB-ის მსახიობზე `null`)
         'created_by' => 'integer',
         'gender' => 'integer',
-        // §8.1 — TMDB-ის `person` + `external_ids`
+        // TMDB-ის `person` + `external_ids`
         'birthday' => 'date',
         'deathday' => 'date',
         'popularity' => 'float',
         'profile_links' => 'array',
         'details_synced_at' => 'datetime',
-        // Tasks §35.9 (Q17) — ხელით შექმნილი მსახიობი ურნაში (`CastMemberTrash`)
+        // ხელით შექმნილი მსახიობი ურნაში (`CastMemberTrash`)
         'trashed_at' => 'datetime',
     ];
 
     /**
      * ⚠️ **გლობალური ლექსიკონია, მაგრამ წაშლადი მაინც უნდა იყოს უსაფრთხო.**
-     * იშლება მხოლოდ ხელით შექმნილი — ურნის გავლით (Tasks §35.9, `CastMemberTrash`)
+     * იშლება მხოლოდ ხელით შექმნილი — ურნის გავლით (`CastMemberTrash`)
      * და ანგარიშის წაშლისას; `morphs()` კი კასკადს არ ქმნის, ე.ი. მისი ფოტოები
      * და ვიდეო-ბმულები ორფნად დარჩებოდა და კვოტაც სამუდამოდ დაკავებული.
      */
     protected static function booted(): void
     {
-        /* **Tasks §35.3 (Q9) — ხელით შექმნილი მსახიობი მხოლოდ შემქმნელს უჩანს**,
+        /* **ხელით შექმნილი მსახიობი მხოლოდ შემქმნელს უჩანს**,
            სანამ TMDB-ის პირს არ დაუკავშირდება. ⚠️ scope ლექსიკონის **ყველა**
            კარზე მოქმედებს — ძებნა, `{castMember}`-ის მიბმა (სხვისი 404-ია),
            ჩანაწერის მსახიობები, `CastSync::resolve()`-ის სახელით დამთხვევა
@@ -77,7 +77,7 @@ class CastMember extends Model
             }
         });
 
-        /* **Tasks §35.9 (Q17) — ურნაში მყოფი მსახიობი ყველა კარიდან ქრება**: სია,
+        /* **ურნაში მყოფი მსახიობი ყველა კარიდან ქრება**: სია,
            გვერდი (404), ძებნა, ჩანაწერის მსახიობები, გალერეის ჯგუფები, საჯარო
            პროფილი. ⚠️ `creator`-ისგან განსხვავებით **ავტორიზაციის გარეშეც** —
            ურნაში მხოლოდ კერძო მსახიობი ხვდება, ე.ი. მისი დამალვა სხვას არაფერს უცვლის. */
@@ -86,7 +86,7 @@ class CastMember extends Model
         static::deleting(function (self $member) {
             $member->deleteGalleryMedia();
 
-            // §35.3 — ატვირთული ფოტო შემქმნელის კვოტაშია; TMDB-ის საერთო ფაილი კი არა
+            // ატვირთული ფოტო შემქმნელის კვოტაშია; TMDB-ის საერთო ფაილი კი არა
             if ($member->ownsPhotoFile()) {
                 app(StorageMeter::class)->deleteUpload($member->created_by, $member->photo_path);
             }
@@ -157,7 +157,7 @@ class CastMember extends Model
     }
 
     /*
-     * ⚠️ **სამივე უკუ-რელაცია წაშლილ ბმულს (`is_removed`) ფილტრავს** (Tasks §16)
+     * ⚠️ **სამივე უკუ-რელაცია წაშლილ ბმულს (`is_removed`) ფილტრავს**
      * — ზუსტად ისე, როგორც `HasCastMembers::cast()`. ამ რელაციებზე დგას
      * მსახიობის ფილმოგრაფია, `CastMember::whereHas('movies')` (გალერეის
      * ჭრილები, ძებნის „ჩემი მსახიობები", ჩამოტვირთვის აუზი) — ე.ი. ფილმიდან
@@ -179,7 +179,7 @@ class CastMember extends Model
             ->wherePivot('is_removed', false);
     }
 
-    /** §7.1 — მესამე მედია-დომენი; მსახიობი ერთია და სამივეს უკავშირდება */
+    /** მესამე მედია-დომენი; მსახიობი ერთია და სამივეს უკავშირდება */
     public function animes(): MorphToMany
     {
         return $this->morphedByMany(Anime::class, 'castable')
@@ -189,7 +189,7 @@ class CastMember extends Model
 
     /* ---------- translation accessor (name = canonical column) ---------- */
 
-    /** Tasks §31.3 — „აღარ განაახლო" თითო მომხმარებლისგან (`cast_member_sync_prefs`) */
+    /** „აღარ განაახლო" თითო მომხმარებლისგან (`cast_member_sync_prefs`) */
     public function syncPauses(): HasMany
     {
         return $this->hasMany(CastMemberSyncPref::class)->withoutGlobalScope('owner');
@@ -201,7 +201,7 @@ class CastMember extends Model
     }
 
     /**
-     * **მსახიობის სრული ფორმა (Tasks §8.1)** — ერთი ადგილი, სამი გამომძახებელი:
+     * **მსახიობის სრული ფორმა** — ერთი ადგილი, სამი გამომძახებელი:
      * `GET /cast/{id}`, `GET /gallery/cast/{id}` და გალერეის ჯგუფები.
      *
      * ⚠️ ორი ასლი ორ სხვადასხვა ველს დაწერდა და მსახიობის გვერდი ერთგან
@@ -215,10 +215,10 @@ class CastMember extends Model
             'id' => $this->id,
             'name' => $this->name,
             'name_ka' => $this->name_ka,
-            // §35.3 — „ჩემი ხელით შექმნილი" (რედაქტირდება) და „მხოლოდ მე ვხედავ"
+            // „ჩემი ხელით შექმნილი" (რედაქტირდება) და „მხოლოდ მე ვხედავ"
             'created_by_me' => $this->created_by !== null && $this->created_by === Auth::id(),
             'is_private' => $this->isPrivate(),
-            // §35.5 — ჩემი ლოკი ამ მსახიობზე (ფაქტები, hash არასდროს)
+            // ჩემი ლოკი ამ მსახიობზე (ფაქტები, hash არასდროს)
             ...RecordLocks::state($this),
             'gender' => $this->gender,
             'photo_path' => $this->photo_path,

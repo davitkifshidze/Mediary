@@ -15,7 +15,7 @@ import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 /* ============================================================
-   **ერთიანი მონიშვნა → N მორიგეობა (Tasks §34.5).**
+   **ერთიანი მონიშვნა → N მორიგეობა.**
 
    ზემოთ — **სამსახური** და **ნაგულისხმევი ტიპი** ყველა დღეზე („A · 24 სთ“);
    ქვემოთ — მონიშნული დღეები, სადაც თითოეულზე ტიპი ცალკე იცვლება (ან „სხვა“ +

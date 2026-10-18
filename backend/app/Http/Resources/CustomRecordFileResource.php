@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
 
-/** პირადი მოდულის ჩანაწერის ფაილი (Tasks §37.5) — `image` (ჩემი ფოტო) · `doc` */
+/** პირადი მოდულის ჩანაწერის ფაილი — `image` (ჩემი ფოტო) · `doc` */
 class CustomRecordFileResource extends JsonResource
 {
     public function toArray(Request $request): array
@@ -16,7 +16,7 @@ class CustomRecordFileResource extends JsonResource
             'id' => $this->id,
             'kind' => $this->kind,
             'path' => $this->path,
-            // ⚠️ დისკს **საქაღალდე** წყვეტს და არა გამომძახებელი (§17.5)
+            // ⚠️ დისკს **საქაღალდე** წყვეტს და არა გამომძახებელი
             'url' => Storage::disk(StorageFolder::diskFor($this->path))->url($this->path),
             'original_name' => $this->original_name,
             'mime' => $this->mime,

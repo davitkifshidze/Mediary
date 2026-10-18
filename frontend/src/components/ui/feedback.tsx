@@ -30,7 +30,7 @@ export function useConfirm() {
   return React.useContext(ConfirmContext)
 }
 
-// ---------- Alert (Tasks §13.1) ----------
+// ---------- Alert ----------
 /**
  * **ერთღილაკიანი გაფრთხილება** — sweetalert-ის ანალოგი ჩვენი ვიზუალით.
  * შენი სიტყვები: „ამოვარდეს სვალის მსგავსი პოპაპი და გითხრას, რომ მსგავსი
@@ -105,7 +105,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   )
 
   /**
-   * ⚠️ **გვერდითი ეფექტი state-updater-ის გარეთაა** (Tasks DEBT-09).
+   * ⚠️ **გვერდითი ეფექტი state-updater-ის გარეთაა**.
    *
    * ადრე `resolve()` `setConfirmState((cur) => …)`-ის შიგნით იძახებოდა,
    * `main.tsx` კი `<StrictMode>`-შია — ე.ი. dev-ში updater **ორჯერ** გადის.
@@ -200,7 +200,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
                       )}
                     </div>
                   </div>
-                  {/* ⚠️ BUG-01 — ნაგულისხმევი ტექსტი **ენის** და არა ქართულ literal-ის:
+                  {/* ⚠️ ნაგულისხმევი ტექსტი **ენის** და არა ქართულ literal-ის:
                       49 `confirm({`-იდან უმეტესობა `cancelText`-ს არ აწვდის, ე.ი.
                       ინგლისურ UI-ში თითქმის ყველა წაშლის დიალოგს „გაუქმება" ეწერა */}
                   <div className="mt-6 flex justify-end gap-2">
@@ -221,7 +221,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
           </DialogPrimitive.Portal>
         </DialogPrimitive.Root>
 
-        {/* Tasks §13.1 — ერთღილაკიანი გაფრთხილება; popup-ზე მაღლა (`LAYER_ALERT`) */}
+        {/* ერთღილაკიანი გაფრთხილება; popup-ზე მაღლა (`LAYER_ALERT`) */}
         <DialogPrimitive.Root
           open={!!alertState}
           onOpenChange={(open) => {
@@ -270,11 +270,11 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
           </DialogPrimitive.Portal>
         </DialogPrimitive.Root>
 
-        {/* Toasts — ⚠️ `--player-w` (Tasks §35): გვერდითა დამკვრელი მარჯვენა
+        {/* Toasts — ⚠️ `--player-w`: გვერდითა დამკვრელი მარჯვენა
             კიდეზე დგას და შეტყობინება მას არ უნდა ფარავდეს; პანელის გარეშე
             ცვლადი არ არის და `right-4` რჩება. */}
         <div className="pointer-events-none fixed top-4 right-[calc(1rem+var(--player-w,0px))] z-[70] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2">
-          {/* ⚠️ **`dismiss` პირდაპირ და არა `() => dismiss(t.id)`** (Tasks BUG-10):
+          {/* ⚠️ **`dismiss` პირდაპირ და არა `() => dismiss(t.id)`**:
               ისრიანი ფუნქცია პროვაიდერის **ყოველ** რენდერზე ახალია, ე.ი.
               `ToastCard`-ის ეფექტი ტაიმერს თავიდან აწყობდა ყოველ ახალ toast-ზე,
               ყოველ დახურვაზე და confirm-ის გახსნაზეც. `dismiss` კი

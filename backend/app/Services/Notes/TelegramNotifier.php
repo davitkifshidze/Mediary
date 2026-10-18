@@ -6,7 +6,7 @@ use App\Support\Redact;
 use App\Support\SourceLog;
 
 /**
- * ტელეგრამის მიწოდება (Tasks §13.3) — Telegram Bot API, **სრულიად უფასო**
+ * ტელეგრამის მიწოდება — Telegram Bot API, **სრულიად უფასო**
  * და worker-ის გარეშე: ერთი HTTPS რექვესთი.
  *
  * user თავად ქმნის ბოტს (@BotFather) და პარამეტრებში წერს token-სა და
@@ -49,7 +49,7 @@ class TelegramNotifier
         } catch (\Throwable $e) {
             SourceLog::threw('telegram', $e);
 
-            // SEC-14 — ტოკენი მისამართის გზაშია, ე.ი. გამონაკლისის ტექსტში ეხვედება
+            // ტოკენი მისამართის გზაშია, ე.ი. გამონაკლისის ტექსტში ეხვედება
             return Redact::secrets($e->getMessage());
         }
     }

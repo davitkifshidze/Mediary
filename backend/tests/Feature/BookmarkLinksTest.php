@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **ბუკმარკის დამატებითი ბმულები** (Tasks §36.3, §36.6).
+ * **ბუკმარკის დამატებითი ბმულები**.
  *
  * შენი სიტყვები: „თუ შოპინგია ან რამე ისეთი, კონკრეტული ლინკის დამატებაც
  * იყოს დამატებით".
@@ -123,7 +123,7 @@ class BookmarkLinksTest extends TestCase
     }
 
     /**
-     * ⚠️ **რიგი multipart-შიც რჩება** (თამაშის §22.3-ის გაკვეთილი): `validate()`
+     * ⚠️ **რიგი multipart-შიც რჩება** (თამაშის ბმულების გაკვეთილი): `validate()`
      * wildcard-ის მასივს წესების რიგით აგებს, ე.ი. წარწერიანი და უწარწეროდ
      * რიგები სხვადასხვა რიგით მოდის და `ksort`-ის გარეშე აირეოდა.
      */
@@ -146,7 +146,7 @@ class BookmarkLinksTest extends TestCase
         );
     }
 
-    /** JSON `PATCH` მხოლოდ `links`-ით (§36.5 — „ბმულის დამატება" ფორმის გარეშე) სხვა ველებს არ ეხება */
+    /** JSON `PATCH` მხოლოდ `links`-ით („ბმულის დამატება" ფორმის გარეშე) სხვა ველებს არ ეხება */
     public function test_a_links_only_patch_keeps_everything_else_and_an_empty_list_clears(): void
     {
         $id = $this->postJson('/api/bookmarks', $this->payload([

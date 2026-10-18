@@ -8,7 +8,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
-   **მორიგეობის მარჯვენა ღილაკის მენიუ (Tasks §7, §34.7)** — რჩეული · — ·
+   **მორიგეობის მარჯვენა ღილაკის მენიუ** — რჩეული · — ·
    რედაქტირება · წაშლა.
 
    ერთი წყარო სიის სტრიქონისა და კალენდრის ჩიპისთვის, რომ ორ ხედში მენიუ არ

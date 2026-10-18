@@ -25,7 +25,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 /**
- * **ანიმეების კონტროლერი (Tasks §7.1).**
+ * **ანიმეების კონტროლერი.**
  *
  * ⚠️ **სერიალის ზუსტი ასლია და ეს განზრახაა** (შენი მითითება: „ყველაფერი
  * თავისი ჰქონდეს"). გაზიარებული აქ მხოლოდ ის არის, რაც წყაროსთან საუბარს
@@ -41,7 +41,7 @@ class AnimeController extends Controller
     /** ანიმეების სია (ფილტრი: status, genre, favorite, q, sort) */
     public function index(Request $request)
     {
-        /* Tasks §35.5 (Q9) — ფილტრი „ჩაკეტილები": მხოლოდ ჩემი ჩაკეტილები. დამალული
+        /* ფილტრი „ჩაკეტილები": მხოლოდ ჩემი ჩაკეტილები. დამალული
            ბოქლომიანი ბარათით მოდის (`lockedCard()`), ამ სესიაში გახსნილი — ჩვეულებრივად.
            ⚠️ დანარჩენ სიაში დამალული საერთოდ არ არის (`record_lock` scope). */
         if ($request->boolean('locked')) {
@@ -49,12 +49,12 @@ class AnimeController extends Controller
         }
 
         $query = Anime::query()->with('genres');
-        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'anime', $request);
 
-        // §6.4 — სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
+        // სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
         // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.
-        /* Tasks §17.5 — ⚠️ რამდენიმე სტატუსი **ან**-ითაა და არა „და"-თი: ჩანაწერს
+        /* ⚠️ რამდენიმე სტატუსი **ან**-ითაა და არა „და"-თი: ჩანაწერს
            ერთი სტატუსი აქვს, ე.ი. თითო გასაღებზე ცალკე `whereHas` ყოველთვის
            ცარიელს დააბრუნებდა (ასე იყო მძიმით გამოყოფილ სიაზეც). */
         if ($keys = $this->statusKeys($request)) {
@@ -92,7 +92,7 @@ class AnimeController extends Controller
             $query->where('rating', '<=', $request->float('rating_max'));
         }
 
-        /* FEAT-20 — „რა ვნახო დღეს". ⚠️ **ფილტრების შემდეგ და დალაგებამდე**:
+        /* „რა ვნახო დღეს". ⚠️ **ფილტრების შემდეგ და დალაგებამდე**:
            არჩევანი ზუსტად იმ სიიდან უნდა მოდიოდეს, რომელსაც ეკრანზე ხედავ,
            დალაგებას კი შემთხვევით არჩევანზე აზრი არ აქვს. */
         if ($request->string('pick')->toString() === 'random') {
@@ -114,7 +114,7 @@ class AnimeController extends Controller
     /** ერთი ანიმე დეტალურად */
     public function show(Anime $anime)
     {
-        // §35.5 — დამალული: ბოქლომიანი ბარათი (რესურსი თვითონ ჭრის); რელაციები ზედმეტია
+        // დამალული: ბოქლომიანი ბარათი (რესურსი თვითონ ჭრის); რელაციები ზედმეტია
         if (RecordLocks::hiddenRecord($anime)) {
             return new AnimeResource($anime);
         }
@@ -147,7 +147,7 @@ class AnimeController extends Controller
             return MissingCredential::response(CredentialProviders::TMDB);
         }
 
-        // ⚠️ ურნიანად (Tasks §40.1ა) — ურნაში მყოფი 409 `record_in_trash`-ია და არა ახალი რიგი
+        // ⚠️ ურნიანად — ურნაში მყოფი 409 `record_in_trash`-ია და არა ახალი რიგი
         $existing = MediaDuplicate::find('anime', Anime::class, (int) $request->user()->getKey(), ['tmdb_id' => $data['tmdb_id']]);
         if ($existing) {
             $existing->load(['genres', 'cast']);
@@ -195,7 +195,7 @@ class AnimeController extends Controller
     /** წაშლა */
     public function destroy(Anime $anime)
     {
-        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+        /* ⚠️ **კალათა** — `delete()` კი არა, `moveToTrash()`.
            ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
            გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
            ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
@@ -208,7 +208,7 @@ class AnimeController extends Controller
     /* ---------- დამხმარეები ---------- */
 
     /**
-     * **„რა ვნახო დღეს" — შემთხვევითი ჩანაწერები** (FEAT-20 → Tasks §17.5):
+     * **„რა ვნახო დღეს" — შემთხვევითი ჩანაწერები**:
      * ლოგიკა `PicksRandomRecords`-შია, აქ მხოლოდ რესურსია. ⚠️ პასუხი
      * **სიაა** (`data: []`) — დიალოგი 1–5 ბარათს აჩვენებს; ცარიელი სია
      * მდგომარეობაა და არა შეცდომა.
@@ -221,7 +221,7 @@ class AnimeController extends Controller
     private function applyData(Anime $anime, Request $request): void
     {
         // translation ველები (title_*, description_*) ცალკე მუშავდება — იხ. applyTranslations()
-        // Tasks §9 (Q1) — `my_rating` „ჩემი ქულაა", `rating` TMDB-ის საშუალო: ორი სვეტი, ორი აზრი
+        // `my_rating` „ჩემი ქულაა", `rating` TMDB-ის საშუალო: ორი სვეტი, ორი აზრი
         foreach (['year', 'ge_url', 'trailer_url', 'rating', 'my_rating', 'runtime', 'seasons', 'episodes'] as $field) {
             if ($request->has($field)) {
                 $anime->{$field} = $request->input($field) ?: null;
@@ -234,7 +234,7 @@ class AnimeController extends Controller
             $anime->imdb_url = $imdb ? "https://www.imdb.com/title/{$imdb}/" : null;
         }
 
-        /* §6.4 — სტატუსსაც და `watched_at`-საც **ერთი ადგილი** წერს
+        /* სტატუსსაც და `watched_at`-საც **ერთი ადგილი** წერს
            (`HasStatus::applyStatusKey()`): ორი ასლი მაშინვე დაშორდებოდა,
            რადგან „დასრულებულის“ კრიტერიუმი ახლა `role`-ია და არა სახელი. */
         if ($request->filled('status')) {
@@ -245,23 +245,23 @@ class AnimeController extends Controller
             $anime->is_favorite = $request->boolean('is_favorite');
         }
 
-        // Tasks 16.1 — ხილვადობა. ⚠️ `filled` და არა `has`: multipart-ზე ველი
+        // ხილვადობა. ⚠️ `filled` და არა `has`: multipart-ზე ველი
         // შეიძლება ცარიელი მოვიდეს, რაც „არ შეცვალო"-ს ნიშნავს და არა `private`-ს.
         if ($request->filled('visibility')) {
             $anime->visibility = $request->string('visibility')->toString();
         }
 
-        // 17.1 — იხ. `MovieController`-ის იგივე ბლოკი: კვოტაში მხოლოდ ხელით
-        // ატვირთული პოსტერი ითვლება (19.4/B)
+        // იხ. `MovieController`-ის იგივე ბლოკი: კვოტაში მხოლოდ ხელით
+        // ატვირთული პოსტერი ითვლება
         if ($request->boolean('remove_poster')) {
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($anime, 'poster_path', 'poster_source');
             $anime->poster_path = null;
             $anime->poster_source = null;
         }
 
         if ($request->hasFile('poster')) {
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($anime, 'poster_path', 'poster_source');
             $anime->poster_path = $this->meter
                 ->storeUpload($request->user(), $request->file('poster'), StorageFolder::ANIME_POSTERS);
@@ -286,7 +286,7 @@ class AnimeController extends Controller
 
             $existing = $anime->translations->firstWhere('locale', $loc);
 
-            /* ⚠️ **ხელით გადაწერილი აღწერა `manual`-ია** (Tasks §7).
+            /* ⚠️ **ხელით გადაწერილი აღწერა `manual`-ია**.
                უამისოდ ჩანაწერი „მანქანურ თარგმანად" რჩებოდა მას შემდეგაც,
                რაც user თვითონ გადაწერდა — ბარათზე მითითებული წყარო ტყუოდა.
                ⚠️ ვნიშნავთ **მხოლოდ მაშინ, როცა ტექსტი მართლა შეიცვალა**:

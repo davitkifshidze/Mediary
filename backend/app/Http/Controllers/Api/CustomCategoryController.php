@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * **პირადი მოდულის კლასიფიკატორი — CRUD + რიგი (Tasks §37).**
+ * **პირადი მოდულის კლასიფიკატორი — CRUD + რიგი.**
  *
  * `BookmarkCategoryController`-ის ზუსტი ფორმა, ერთი განსხვავებით: ცხრილი
  * საერთოა ყველა პირად მოდულზე, ე.ი. ყოველი query **მოდულით** იჭრება
@@ -75,7 +75,7 @@ class CustomCategoryController extends Controller
 
         $records = CustomRecord::query()->forModule($type)->where('category_id', $category->id);
 
-        // ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**
+        // ჩანაწერებიც „იშლება“ — **მფლობელის ურნაში**
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::trash($records);
             DictionaryTrash::trash($category, 'custom_category');

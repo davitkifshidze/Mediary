@@ -19,9 +19,9 @@ import { cn } from '@/lib/utils'
 import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
-   დამთხვევები ორ საჯარო პროფილს შორის (Tasks §16.2).
+   დამთხვევები ორ საჯარო პროფილს შორის.
 
-   ⚠️ **მხოლოდ `public` ჩანაწერები ითვლება — ორივე მხრიდან.** ეს §16.2-ის
+   ⚠️ **მხოლოდ `public` ჩანაწერები ითვლება — ორივე მხრიდან.** ეს
    ცხადი წესია და backend-ზე იმით არის უზრუნველყოფილი, რომ ორივე მხარე
    იმავე სამფენოვან query-ზე გადის, რაც საჯარო პროფილს კვებავს.
 
@@ -71,7 +71,7 @@ export function MatchPanel({ username }: { username: string }) {
   // შედარებად დომენებზე key = მოდულის key (`playlist` ერთადერთი გამონაკლისი
   // იყო და ის შედარებადი არაა) — ე.ი. რუკა აქ არ სჭირდება
   const label = (row: MatchRow) => {
-    // §37.4 — ფსევდო-დომენი: მოდულის რიგი არ აქვს, ყველა პირადი მოდული ერთადაა
+    // ფსევდო-დომენი: მოდულის რიგი არ აქვს, ყველა პირადი მოდული ერთადაა
     if (row.domain === 'custom') return t('matches.customModules')
     const m = modules[row.domain]
     return m ? (lang === 'ka' ? m.name_ka : m.name_en) : row.domain
@@ -193,7 +193,7 @@ function MatchItems({ username, domain }: { username: string; domain: MatchDomai
                 {t('matches.you')}: {statusLabel(t, lang, card.domain, card.mine.status, card.mine.rating)}
               </span>
               <span className="block">
-                {/* Tasks §9 — მედიაზე მეორე მხარის ქულა `my_rating`-ია; `rating` იქ TMDB-ის საშუალოა */}
+                {/* მედიაზე მეორე მხარის ქულა `my_rating`-ია; `rating` იქ TMDB-ის საშუალოა */}
                 @{username}: {statusLabel(t, lang, card.domain, card.status ?? null, (card.my_rating !== undefined ? card.my_rating : card.rating) ?? null)}
               </span>
             </span>
@@ -205,7 +205,7 @@ function MatchItems({ username, domain }: { username: string; domain: MatchDomai
 }
 
 /**
- * სტატუსის ლეიბლი — ⚠️ **ორი მექანიზმი ერთდროულად** (§6.4).
+ * სტატუსის ლეიბლი — ⚠️ **ორი მექანიზმი ერთდროულად**.
  *
  * ლექსიკონიან დომენებზე სტატუსი **ობიექტია** და სახელი მასშივე მოდის:
  * ის მფლობელის ლექსიკონშია და მნახველი მას სხვაგან ვერსად წაიკითხავდა.

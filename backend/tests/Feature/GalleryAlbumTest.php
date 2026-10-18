@@ -22,8 +22,8 @@ use RuntimeException;
 use Tests\TestCase;
 
 /**
- * **უკატეგორიო სექცია, ალბომები და ფოტოს გადატანა (Tasks §26)**, პლუს
- * „ჩანაწერს ვშლი — ფოტოები დამიტოვე" (§25.5).
+ * **უკატეგორიო სექცია, ალბომები და ფოტოს გადატანა**, პლუს
+ * „ჩანაწერს ვშლი — ფოტოები დამიტოვე".
  */
 class GalleryAlbumTest extends TestCase
 {
@@ -138,7 +138,7 @@ class GalleryAlbumTest extends TestCase
     }
 
     /**
-     * SEC-07 — გალერეის `$actions` უფლების მქონე ანგარიში (მოდული ჩართული)
+     * გალერეის `$actions` უფლების მქონე ანგარიში (მოდული ჩართული)
      * და მისი ერთი ფოტო, ფილმზე.
      *
      * @param  list<string>  $actions
@@ -178,7 +178,7 @@ class GalleryAlbumTest extends TestCase
     }
 
     /**
-     * ⚠️ **SEC-07 (High, 2026-09-17).** გადატანა `POST`-ია და `create`-ად
+     * ⚠️ გადატანა `POST`-ია და `create`-ად
      * იკითხებოდა: create-only როლი **არსებულ** ფოტოებს გადაიტანდა
      * (ჩაკეტილ ალბომში — ე.ი. დამალვა), update-only კი ცრუ 403-ს იღებდა.
      */
@@ -198,7 +198,7 @@ class GalleryAlbumTest extends TestCase
         $this->assertSame('movie', $photo->refresh()->imageable_type);
     }
 
-    /** SEC-07 — ⚠️ და update-only როლი (create-ის გარეშე) **გადაიტანს**, ცრუ 403-ის გარეშე */
+    /** ⚠️ და update-only როლი (create-ის გარეშე) **გადაიტანს**, ცრუ 403-ის გარეშე */
     public function test_an_update_only_role_can_move_photos(): void
     {
         Storage::fake('public');
@@ -265,7 +265,7 @@ class GalleryAlbumTest extends TestCase
     }
 
     /**
-     * §25.5 — „ჩანაწერს ვშლი, ფოტოები გალერეაში დამიტოვე".
+     * „ჩანაწერს ვშლი, ფოტოები გალერეაში დამიტოვე".
      *
      * ⚠️ ფოტო **უკატეგორიო** ხდება და არა იშლება; მოცულობა კი არ
      * თავისუფლდება, რასაც გეგმაც ცხადად ამბობს.
@@ -316,7 +316,7 @@ class GalleryAlbumTest extends TestCase
             ])
             ->assertOk();
 
-        /* ⚠️ Tasks §29.8 — ჩანაწერი ურნაშია და ფოტო მასზე მიბმული რჩება
+        /* ⚠️ ჩანაწერი ურნაშია და ფოტო მასზე მიბმული რჩება
            (ერთად ბრუნდება); ურნის დაცლა მას ჩანაწერთან ერთად შლის. */
         $this->assertSame('movie', GalleryImage::withoutGlobalScope('owner')->find($image->id)?->imageable_type);
 
@@ -405,7 +405,7 @@ class GalleryAlbumTest extends TestCase
         return $this->actingAs($this->user)->withHeaders(['Referer' => 'http://localhost:5173']);
     }
 
-    /** ჩაკეტილი ალბომის ფოტო — ფაილი **პირად** დისკზეა (§7.9) */
+    /** ჩაკეტილი ალბომის ფოტო — ფაილი **პირად** დისკზეა */
     private function lockedPhoto(GalleryAlbum $album, string $path): GalleryImage
     {
         Storage::disk('private')->put($path, 'x');
@@ -426,7 +426,7 @@ class GalleryAlbumTest extends TestCase
         return $this->spa()->withSession([RecordLocks::SESSION_KEY => [AlbumLock::TYPE => [$album->id]]]);
     }
 
-    /** §35.4 — ალბომის პაროლი და მრიცხველი `record_locks`-შია; ბაზიდან, მემოს გვერდის ავლით */
+    /** ალბომის პაროლი და მრიცხველი `record_locks`-შია; ბაზიდან, მემოს გვერდის ავლით */
     private function lockOf(GalleryAlbum $album): RecordLock
     {
         return RecordLock::withoutGlobalScopes()
@@ -504,7 +504,7 @@ class GalleryAlbumTest extends TestCase
     }
 
     /**
-     * პირდაპირ ალბომის გახსნა — **რიგები ჩანს, ბილიკი არა** (Tasks §7.11/§7.15).
+     * პირდაპირ ალბომის გახსნა — **რიგები ჩანს, ბილიკი არა**.
      *
      * ⚠️ ადრე ეს 423 იყო. შენი მითითებით („ჩაკეტილ ფოტოებს ბლარიანი ფოტო
      * დაუდგეს") ის შეიცვალა: ბადემ უნდა დახატოს ბლარიანი ფილები და პაროლი
@@ -604,7 +604,7 @@ class GalleryAlbumTest extends TestCase
     }
 
     /**
-     * **სესიის გარეშე გახსნა 409-ია და არა ჩუმი „კარგი"** (Tasks BUG-02).
+     * **სესიის გარეშე გახსნა 409-ია და არა ჩუმი „კარგი"**.
      *
      * ტოკენით მოსულ კლიენტს `/api`-ზე სესია არ აქვს, გახსნილობა კი სწორედ
      * იქ იწერება — ე.ი. `AlbumLock::unlock()` უხმაუროდ არაფერს აკეთებდა და
@@ -689,16 +689,16 @@ class GalleryAlbumTest extends TestCase
     }
 
     /**
-     * **BUG-04 — რიგების ჩავარდნა ფაილებს საჯაროდ არ ტოვებს.**
+     * **რიგების ჩავარდნა ფაილებს საჯაროდ არ ტოვებს.**
      *
      * ადრე პირველი ნაბიჯი `AlbumVault::reveal()` იყო: `update()`-ის ან
      * `delete()`-ის ჩავარდნაზე ჩაკეტილი ალბომის ფოტოები უკვე
      * `gallery/images`-ში იდო — საჯარო დისკზე, `/storage/...` ბმულით —
-     * ალბომს კი `password_hash` ისევ ედო. ე.ი. ჩავარდნილი წაშლა §7.9-ის
+     * ალბომს კი `password_hash` ისევ ედო. ე.ი. ჩავარდნილი წაშლა ალბომის
      * ლოკს ერთ ნაბიჯში ხსნიდა.
      *
      * ⚠️ ჩავარდნა `DB::listen`-ით კეთდება: ალბომის ურნაში გადატანა
-     * (Tasks §29 — `trashed_at`-ის `update`) მოდელისაა და მისი გატეხვა
+     * (`trashed_at`-ის `update`) მოდელისაა და მისი გატეხვა
      * ერთადერთი გზაა, რომელიც ტესტს მოდელის გადაფარვას არ ათხოვებს.
      */
     public function test_a_failed_delete_leaves_the_files_locked(): void
@@ -721,7 +721,7 @@ class GalleryAlbumTest extends TestCase
             ->deleteJson('/api/gallery/albums/'.$album->id)
             ->assertStatus(500);
 
-        /* ⚠️ პირველ რიგში ის, რაზეც ეს ტასქია: ფაილი საჯარო დისკზე არ
+        /* ⚠️ პირველ რიგში ის, რასაც ეს ტესტი იცავს: ფაილი საჯარო დისკზე არ
            გასულა. ძველ კოდზე `reveal()` პირველი ნაბიჯი იყო, ე.ი. აქამდე ის
            უკვე `gallery/images`-ში იდო. */
         $this->assertSame('gallery/locked/secret.jpg', $image->refresh()->path);
@@ -735,7 +735,7 @@ class GalleryAlbumTest extends TestCase
     }
 
     /**
-     * **პაროლის მოხსნა ანგარიშის პაროლს ითხოვს** (Tasks §7.8, შენი გადაწყვეტილება).
+     * **პაროლის მოხსნა ანგარიშის პაროლს ითხოვს** (შენი გადაწყვეტილება).
      *
      * ⚠️ ადრე ის ალბომის მოქმედ პაროლს ითხოვდა, ე.ი. „დამავიწყდა" ჩიხი იყო.
      * ანგარიშის პაროლი მფლობელობას ისევე ამტკიცებს და აღდგენასაც აძლევს გზას.
@@ -787,10 +787,10 @@ class GalleryAlbumTest extends TestCase
         Storage::disk('public')->assertMissing('gallery/images/secret.jpg');
     }
 
-    /* ================= FEAT-04: ცდების მრიცხველი ================= */
+    /* ================= ცდების მრიცხველი ================= */
 
     /**
-     * **N არასწორი ცდა ალბომს დროებით ბლოკავს** (Tasks FEAT-04).
+     * **N არასწორი ცდა ალბომს დროებით ბლოკავს**.
      *
      * ⚠️ `throttle:album-unlock` ამას ვერ ცვლის: ის ანონიმზე **IP + ალბომზე**
      * ითვლის, ე.ი. IP-ის როტაცია მას გვერდს უვლის. მრიცხველი ალბომზეა.
@@ -832,7 +832,7 @@ class GalleryAlbumTest extends TestCase
     }
 
     /**
-     * ⚠️ **ბლოკი პაროლის შემოწმებაზე ადრეა** (BUG-02-ის იგივე რიგი):
+     * ⚠️ **ბლოკი პაროლის შემოწმებაზე ადრეა**:
      * `Hash::check`-ის შემდეგ დაბრუნებული 423 ორაკულს ადგილზე დატოვებდა.
      */
     public function test_a_blocked_album_never_checks_the_password(): void

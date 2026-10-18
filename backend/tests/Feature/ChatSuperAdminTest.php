@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **Tasks §34.5 — „მიწერე ადმინს".**
+ * **„მიწერე ადმინს".**
  *
  * ჩატი ორივე პროფილის საჯაროობას ითხოვს (409 `profile_not_public`), ე.ი.
  * დახურული პროფილით ადმინს ვერ მისწერდი — სწორედ მაშინ, როცა „ჩამირთე JPG"

@@ -7,7 +7,7 @@ use App\Models\TrashEntry;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
 /**
- * ჩანაწერის მსახიობები — ფილმი, სერიალი, ანიმე (`castables`, Tasks §16).
+ * ჩანაწერის მსახიობები — ფილმი, სერიალი, ანიმე (`castables`).
  *
  * **ორი რელაცია ერთ ცხრილზე, და მათი განსხვავება ეს ფაილის აზრია:**
  *
@@ -44,7 +44,7 @@ trait HasCastMembers
         static::deleting(function ($record) {
             $record->castLinks()->detach();
 
-            /* ⚠️ Tasks §29 — ამ ჩანაწერის ურნაში მყოფი მსახიობის ბმულებიც:
+            /* ⚠️ ამ ჩანაწერის ურნაში მყოფი მსახიობის ბმულებიც:
                ჩანაწერი აღარ არსებობს, ე.ი. მათი აღდგენა ვეღარსად მოხდება. */
             TrashEntry::withoutGlobalScope('owner')
                 ->where('kind', 'cast_link')

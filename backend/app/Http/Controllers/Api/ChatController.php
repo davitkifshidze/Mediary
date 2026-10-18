@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
- * **ჩატი (Tasks §16.3)** — პირადი მიმოწერა.
+ * **ჩატი** — პირადი მიმოწერა.
  *
  * ⚠️ **წვდომას მონაწილეობა წყვეტს და არა `owner` scope.** საუბარი ორისაა,
  * ე.ი. `BelongsToUser`-ის მოდელი აქ არ მუშაობს — ყოველ endpoint-ზე ცხადად
@@ -37,17 +37,17 @@ use Illuminate\Validation\Rule;
  * ⚠️ **მიწერის წესები `ChatService`-შია** (საჯარო პროფილები + დაბლოკვა) —
  * კონტროლერი მათ არ იმეორებს.
  *
- * **მედია გაკეთდა 2026-09-06-ს** (`DECISIONS.md` §1). სამი წესი:
+ * **მედია გაკეთდა 2026-09-06-ს**. სამი წესი:
  *
  * ⚠️ **ფაილი პრივატულ დისკზე ჯდება** (`chat/` — `StorageFolder::PRIVATE_ROOTS`)
  * და გარეთ **ერთადერთი გზით** გადის: `GET /api/chat/files/{message}`,
  * რომელიც მონაწილეობას ცხადად ამოწმებს. `/storage/*`-ით ის არ იხსნება.
  *
- * ⚠️ **კვოტა გამგზავნისაა (§16.4).** ატვირთვა `StorageMeter::storeUpload()`-ზე
+ * ⚠️ **კვოტა გამგზავნისაა.** ატვირთვა `StorageMeter::storeUpload()`-ზე
  * გადის, ე.ი. ადგილის ამოწურვაზე **413** ბრუნდება — ტექსტი და ემოჯი კი
  * იმავე მდგომარეობაშიც იგზავნება, რადგან ისინი დისკს საერთოდ არ ეხება.
  *
- * ⚠️ **წაშლა ორივესთან შლის** (`DECISIONS.md` §1) — შეტყობინების რიგი რჩება,
+ * ⚠️ **წაშლა ორივესთან შლის** — შეტყობინების რიგი რჩება,
  * შიგთავსი კი „ფაილი წაშლილია"-დ იხატება. იხ. `ChatService::deleteAttachment()`.
  */
 class ChatController extends Controller
@@ -58,7 +58,7 @@ class ChatController extends Controller
         private PublicProfileService $profiles,
         private StorageMeter $meter,
         private AuditLogger $audit,
-        // FEAT-13 — ჩანაწერის გაზიარება ბარათად
+        // ჩანაწერის გაზიარება ბარათად
         private SharedRecord $shared,
     ) {}
 
@@ -68,14 +68,14 @@ class ChatController extends Controller
         $me = $request->user();
 
         $conversations = Conversation::whereHas('participants', fn ($q) => $q->whereKey($me->id))
-            /* ⚠️ **მოჩვენება საუბარი არ იხატება** (Tasks BUG-21): თანამოსაუბრის
+            /* ⚠️ **მოჩვენება საუბარი არ იხატება**: თანამოსაუბრის
                ანგარიშის წაშლისას `conversation_user` კასკადით ქრება, საუბარი კი
                რჩება — და `otherThan()` `null`-ს აბრუნებდა, ე.ი. სიაში
                უსახელო, ვერგახსნადი რიგი ჩნდებოდა. ⚠️ **თვითონ საუბარი და
                მეორე მხარის წერილები განზრახ რჩება**: ისინი მისი ისტორიაა და
                სხვისი ანგარიშის წაშლის გამო არ უნდა გაქრეს. */
             ->whereHas('participants', fn ($q) => $q->whereKeyNot($me->id))
-            // ⚠️ ბოლო წერილიც **ჩემი ხედიდან** უნდა იყოს (§4.6) — თორემ
+            // ⚠️ ბოლო წერილიც **ჩემი ხედიდან** უნდა იყოს — თორემ
             // სიაში ისევ ის იწერებოდა, რაც ახლახან წავშალე
             ->with(['participants', 'messages' => fn ($q) => $q->visibleTo($me->id)->latest('id')->limit(1)])
             ->orderByDesc('last_message_at')
@@ -83,10 +83,10 @@ class ChatController extends Controller
             ->get();
 
         $unread = $this->chat->unreadCounts($me);
-        // §10.5 — რიგის რიცხვი პატიოსანი რჩება, **ჯამი** კი დადუმებულებს ჭრის
+        // რიგის რიცხვი პატიოსანი რჩება, **ჯამი** კი დადუმებულებს ჭრის
         $muted = $this->chat->mutedConversationIds($me);
         $nicknames = $this->nicknamesFor($conversations, $me->id);
-        // PERF-16 — ერთი კითხვა სიაზე და არა თითო რიგზე
+        // ერთი კითხვა სიაზე და არა თითო რიგზე
         $blocked = $this->chat->blockedUserIds($me);
 
         return response()->json([
@@ -108,9 +108,9 @@ class ChatController extends Controller
                         'created_at' => $last->created_at?->toIso8601String(),
                     ] : null,
                     'unread' => $unread[$c->id] ?? 0,
-                    // §10.5 — გაჩუმებული საუბარი ბეჯს არ ანთებს, რიცხვს კი ინარჩუნებს
+                    // გაჩუმებული საუბარი ბეჯს არ ანთებს, რიცხვს კი ინარჩუნებს
                     'muted' => in_array($c->id, $muted, true),
-                    // §10.11 — ნიკნეიმი **ნამდვილ სახელს არ ანაცვლებს**; ორივე მიდის
+                    // ნიკნეიმი **ნამდვილ სახელს არ ანაცვლებს**; ორივე მიდის
                     'nickname' => $other ? ($nicknames[$c->id][$other->id] ?? null) : null,
                     'theme' => $c->theme,
                     'last_message_at' => $c->last_message_at?->toIso8601String(),
@@ -123,12 +123,12 @@ class ChatController extends Controller
     /** ჰედერის badge — მხოლოდ რიცხვი, იაფად */
     public function unread(Request $request)
     {
-        // §10.5 — დადუმებული საუბარი ბეჯში არ ითვლება
+        // დადუმებული საუბარი ბეჯში არ ითვლება
         return response()->json(['unread' => $this->chat->unreadTotal($request->user())]);
     }
 
     /**
-     * **ვის მივწერო ადმინისტრაციის საკითხზე** (Tasks §34.5) — აქტიური
+     * **ვის მივწერო ადმინისტრაციის საკითხზე** — აქტიური
      * სუპერადმინები, ჩემს გარდა. SPA `UploadLimitsCard`-ის „მიწერე ადმინს"
      * ღილაკით ხსნის; რამდენიმე ადმინის შემთხვევაში — სიიდან.
      *
@@ -163,7 +163,7 @@ class ChatController extends Controller
     private const PER_PAGE = 50;
 
     /**
-     * **შეტყობინებები — კურსორით და არა გვერდის ნომრით (Tasks §10.8).**
+     * **შეტყობინებები — კურსორით და არა გვერდის ნომრით.**
      *
      * ⚠️ **SPA ბოლო 50 წერილზე მეტს ვერ კითხულობდა** და ეს არავის
      * მოუთხოვია, თუმცა ყველაფერს სჭირდება: `fetchThread()` ყოველთვის
@@ -189,11 +189,11 @@ class ChatController extends Controller
             'per_page' => ['nullable', 'integer'],
         ]);
 
-        // ⚠️ `max(…, 1)` — უარყოფითს `limit()` ჩუმად უგულებელყოფს (§B4)
+        // ⚠️ `max(…, 1)` — უარყოფითს `limit()` ჩუმად უგულებელყოფს
         $limit = min(max((int) ($data['per_page'] ?? self::PER_PAGE), 1), 100);
 
         $base = fn () => $conversation->messages()
-            // §4.6 — წაშლილი რიგი ბაზაში რჩება; ხედი user-ის ჭრილშია
+            // წაშლილი რიგი ბაზაში რჩება; ხედი user-ის ჭრილშია
             ->visibleTo($me->id)
             ->with(['author:id,name,username,avatar_path', 'reactions']);
 
@@ -223,7 +223,7 @@ class ChatController extends Controller
 
         $other = $conversation->otherThan($me->id);
 
-        /* ⚠️ ისტორიაში ჩახტომა წაკითხვა არ არის (§10.8) — დანარჩენ
+        /* ⚠️ ისტორიაში ჩახტომა წაკითხვა არ არის — დანარჩენ
            შემთხვევაში კი გახსნა სწორედ „ჩატი გავხსენი"-ა. */
         if (! ($data['around_id'] ?? null)) {
             $this->chat->markRead($conversation, $me);
@@ -237,24 +237,24 @@ class ChatController extends Controller
                 'newest_id' => $items->max('id'),
             ],
             'profile' => $other ? $this->profiles->header($other) : null,
-            /* Tasks §34.5 — სუპერადმინთან საუბარში მეორე მხარე შეიძლება არასაჯარო
+            /* სუპერადმინთან საუბარში მეორე მხარე შეიძლება არასაჯარო
                იყოს; მისი `/u/{username}` 404-ია, ე.ი. სახელი ბმულად არ უნდა
                დაიხატოს (ბმული „პროფილი არ მოიძებნა"-ზე მიიყვანდა). */
             'profile_public' => $other !== null && $other->profile_visibility === 'public',
             'blocked_by_me' => $other ? $this->chat->iBlocked($me, $other) : false,
             // ⚠️ „საერთოდ დაბლოკილია" ≠ „მე დავბლოკე" — UI-ს ორივე სჭირდება
             'blocked' => $other ? $this->chat->blockedBetween($me, $other) : false,
-            // §10.3 — „ნანახია": მეორე მხარის `last_read_at` კლიენტს არასდროს მიდიოდა
+            // „ნანახია": მეორე მხარის `last_read_at` კლიენტს არასდროს მიდიოდა
             'other_read_at' => $other ? $this->otherReadAt($conversation, $other->id) : null,
             'muted' => $this->chat->isMuted($conversation, $me),
             'theme' => $conversation->theme,
-            // §10.11 — ნიკნეიმი ნამდვილ სახელს არ ანაცვლებს; ორივე მიდის
+            // ნიკნეიმი ნამდვილ სახელს არ ანაცვლებს; ორივე მიდის
             'nickname' => $other ? ($this->chat->nicknames($conversation, $me)[$other->id] ?? null) : null,
         ]);
     }
 
     /**
-     * **ძებნა ერთ საუბარში (Tasks §10.9)** — `GET /chat/{conversation}/search`.
+     * **ძებნა ერთ საუბარში** — `GET /chat/{conversation}/search`.
      *
      * ⚠️ **`scopeVisibleTo()`-ს გადის**: დამალული ან წაშლილი წერილი ძებნაში
      * არ უნდა ჩნდებოდეს — თორემ „წავშალე" მხოლოდ ბუშტს ეხებოდა.
@@ -297,7 +297,7 @@ class ChatController extends Controller
         ]);
     }
 
-    /** **პინების სია (§10.7)** — `scopeVisibleTo()`-ს გადის, ე.ი. წაშლილი თავისით ცვივა */
+    /** **პინების სია** — `scopeVisibleTo()`-ს გადის, ე.ი. წაშლილი თავისით ცვივა */
     public function pins(Request $request, Conversation $conversation)
     {
         $me = $request->user();
@@ -316,7 +316,7 @@ class ChatController extends Controller
     }
 
     /**
-     * **დაპინვა/მოხსნა (§10.7).**
+     * **დაპინვა/მოხსნა.**
      *
      * ⚠️ **`PATCH` და არა `POST`** — `EnsureModulePermission` POST-ს
      * `create`-ად კითხულობს (პროექტის არსებული წესი).
@@ -340,7 +340,7 @@ class ChatController extends Controller
     }
 
     /**
-     * **რეაქცია (§10.10)** — `PUT /chat/messages/{message}/reaction`.
+     * **რეაქცია** — `PUT /chat/messages/{message}/reaction`.
      *
      * ⚠️ **ცარიელი `emoji` მოხსნაა** და არა ვალიდაციის შეცდომა: იმავე
      * ემოჯის ხელახლა დაჭერაც მოხსნაა (Messenger-ის ქცევა).
@@ -360,7 +360,7 @@ class ChatController extends Controller
     }
 
     /**
-     * **დადუმება (§10.5)** — `PUT /chat/{conversation}/mute`.
+     * **დადუმება** — `PUT /chat/{conversation}/mute`.
      *
      * ⚠️ `until` არჩევითია: მისი არარსებობა **სამუდამოდ** ნიშნავს და არა
      * „ახლავე ჩაირთოს" — ჩართვა ცხადი `muted: false`-ია.
@@ -383,7 +383,7 @@ class ChatController extends Controller
     }
 
     /**
-     * **თემა (§10.6)** — `PUT /chat/{conversation}/theme`.
+     * **თემა** — `PUT /chat/{conversation}/theme`.
      *
      * ⚠️ **საუბრისაა და არა მონაწილის**: Messenger-ის სემანტიკა — ორივე
      * ერთსა და იმავე ფერს ხედავს.
@@ -403,7 +403,7 @@ class ChatController extends Controller
     }
 
     /**
-     * **ნიკნეიმი (§10.11)** — `PUT /chat/{conversation}/nickname`.
+     * **ნიკნეიმი** — `PUT /chat/{conversation}/nickname`.
      *
      * ⚠️ **მხოლოდ ჩემს ხედში**: მეორე მხარე ამას ვერ ხედავს და ნამდვილი
      * სახელიც პასუხში რჩება.
@@ -428,7 +428,7 @@ class ChatController extends Controller
     }
 
     /**
-     * გაგზავნა — ტექსტი/ემოჯი/GIF ან **ფაილი** (§16.3).
+     * გაგზავნა — ტექსტი/ემოჯი/GIF ან **ფაილი**.
      *
      * ⚠️ ერთი endpoint-ია და არა ორი: `file`-ის არსებობა წყვეტს, რომელია.
      * ცალკე „upload" route ორივეგან იმეორებდა დაბლოკვის/საჯაროობის კარიბჭეს.
@@ -443,7 +443,7 @@ class ChatController extends Controller
 
         $upload = $request->file('file');
 
-        /* ===== FEAT-13 — ჩანაწერის გაზიარება ბარათად =====
+        /* ===== ჩანაწერის გაზიარება ბარათად =====
            ⚠️ **იმავე endpoint-ზეა და არა ცალკე**: `file`-ის არსებობა უკვე
            წყვეტს ტექსტსა და ფაილს შორის, ე.ი. `domain` მესამე ტოტია — და
            ცალკე route დაბლოკვისა და საჯაროობის კარიბჭეს (`ChatService::guard()`)
@@ -471,7 +471,7 @@ class ChatController extends Controller
             'file' => match ($type) {
                 'image' => UploadLimits::rule('image', $me),
                 'video' => UploadLimits::rule('video', $me),
-                /* ⚠️ **ჩატის ფაილს ახლა ნამდვილი სია აქვს** (Tasks §34.3/§34.4) —
+                /* ⚠️ **ჩატის ფაილს ახლა ნამდვილი სია აქვს** —
                    აქამდე ფორმატი საერთოდ არ მოწმდებოდა და ზომაც `doc`-ისას
                    სესხულობდა. ნაგულისხმევი მთელი კატალოგია (აქტიური შიგთავსის
                    გარეშე), ე.ი. ჩვეულებრივი ფაილი ისევ იგზავნება; სხვა ფორმატი
@@ -480,7 +480,7 @@ class ChatController extends Controller
             },
         ]);
 
-        /* §16.4 — ადგილი **გამგზავნის** კვოტიდან იხარჯება. `storeUpload()`
+        /* ადგილი **გამგზავნის** კვოტიდან იხარჯება. `storeUpload()`
            თვითონ აგდებს 413-ს, ე.ი. ცალკე შემოწმება აქ ზედმეტია და
            ორ ადგილას განსხვავებულ პასუხს დაბადებდა. */
         $path = $this->meter->storeUpload($me, $upload, StorageFolder::chatFiles($type));
@@ -488,7 +488,7 @@ class ChatController extends Controller
         $message = $this->chat->send($conversation, $me, $type, $request->input('body'), [
             'attachment_path' => $path,
             'attachment_name' => $upload->getClientOriginalName(),
-            // ⚠️ SEC-04 — სერვერის `finfo`, და არასდროს კლიენტის ჰედერი
+            // ⚠️ სერვერის `finfo`, და არასდროს კლიენტის ჰედერი
             'attachment_mime' => SafeMime::ofUpload($upload),
             'attachment_size' => (int) $upload->getSize(),
         ]);
@@ -497,15 +497,15 @@ class ChatController extends Controller
     }
 
     /**
-     * ჩანაწერის გაგზავნა ბარათად (FEAT-13).
+     * ჩანაწერის გაგზავნა ბარათად.
      *
      * ⚠️ **მხოლოდ **ჩემი** ჩანაწერი იზიარება.** `owner` scope ისედაც
      * ჭრის, მაგრამ აქ ის ერთადერთი კარიბჭეა: სხვისი id-ის გაგზავნა
      * სხვაგვარად უცხო ბიბლიოთეკის სათაურს გაამხელდა — და სწორედ
      * სათაური ის ნაწილია, რომელიც პირად ჩანაწერზეც ჩანს.
      *
-     * ⚠️ **`note` ვერ გაიზიარება** — `PublicDomain::MATCH`-ში არ არის
-     * (§16.5); ცალკე შემოწმება ამიტომ არ სჭირდება.
+     * ⚠️ **`note` ვერ გაიზიარება** — `PublicDomain::MATCH`-ში არ არის;
+     * ცალკე შემოწმება ამიტომ არ სჭირდება.
      */
     private function sendRecord(Request $request, Conversation $conversation, User $me)
     {
@@ -539,7 +539,7 @@ class ChatController extends Controller
     }
 
     /**
-     * „დაამატე ჩემთანაც" (FEAT-13).
+     * „დაამატე ჩემთანაც".
      *
      * ⚠️ **`POST .../save` და არა `create`** — მისამართის ბოლო სეგმენტი
      * `EnsureModulePermission`-ისთვისაა კითხვადი; ჩატის მარშრუტებზე ის
@@ -589,7 +589,7 @@ class ChatController extends Controller
 
         abort_unless($disk->fileExists($message->attachment_path), 404);
 
-        /* ⚠️ SEC-04 — სურათი/ვიდეო ძაფშივე `inline` იხატება, **დანარჩენი
+        /* ⚠️ სურათი/ვიდეო ძაფშივე `inline` იხატება, **დანარჩენი
            ჩამოიტვირთება**. `attachment_mime` აქ **განზრახ არ იკითხება**: ის
            (ძველ რიგზე) კლიენტის ჰედერი იყო, და HTML-ფაილი `text/html`-ით აპის
            origin-ზე მეორე მონაწილის ქუქით ხატდებოდა — ჩატის ერთი შეტყობინებით
@@ -598,7 +598,7 @@ class ChatController extends Controller
     }
 
     /**
-     * ფაილის წაშლა (`DECISIONS.md` §1) — **ორივესთან** ქრება, შეტყობინება რჩება.
+     * ფაილის წაშლა — **ორივესთან** ქრება, შეტყობინება რჩება.
      * ავტორობას `ChatService` ამოწმებს.
      */
     public function deleteFile(Request $request, Message $message)
@@ -614,13 +614,13 @@ class ChatController extends Controller
     }
 
     /**
-     * **წერილის წაშლა (Tasks §4.6)** — „მხოლოდ შენთან თუ ორივესთან?".
+     * **წერილის წაშლა** — „მხოლოდ შენთან თუ ორივესთან?".
      *
      * ⚠️ **`scope` სავალდებულოა და ნაგულისხმევი არ აქვს.** კითხვა
-     * მომხმარებელს ეკითხება (§4.6), ე.ი. „ვივარაუდოთ `both`" ზუსტად ის
+     * მომხმარებელს ეკითხება, ე.ი. „ვივარაუდოთ `both`" ზუსტად ის
      * ქცევაა, რომლის შეცვლაც დაევალა.
      *
-     * ⚠️ **წაშლა ლოგზე დგას (§4.5).** რიგი `messages`-ში რჩება აღდგენისთვის,
+     * ⚠️ **წაშლა ლოგზე დგას.** რიგი `messages`-ში რჩება აღდგენისთვის,
      * ხოლო „ვინ, როდის, რა მეთოდით წაშალა" აუდიტ-ლოგში — და ის ჩანაწერი
      * ლოგის გასუფთავებას **არ ექვემდებარება** (`AuditLog::PROTECTED_ACTIONS`).
      */
@@ -642,7 +642,7 @@ class ChatController extends Controller
             'subject_type' => 'message',
             'subject_id' => $message->id,
             'subject_label' => $message->body ?? $message->attachment_name,
-            // §4.6 — შესანახია **ვინ ვის მისწერა, რა მისწერა, როდის**
+            // შესანახია **ვინ ვის მისწერა, რა მისწერა, როდის**
             'old_values' => [
                 'author_id' => $message->user_id,
                 'conversation_id' => $message->conversation_id,
@@ -668,7 +668,7 @@ class ChatController extends Controller
      */
     private function payload(Message $message, int $meId): array
     {
-        /* §10.10 — რეაქციები ემოჯებად დაჯგუფებული. ⚠️ `relationLoaded`
+        /* რეაქციები ემოჯებად დაჯგუფებული. ⚠️ `relationLoaded`
            შემოწმება იმიტომ, რომ ეს ფორმა გაგზავნის პასუხშიც გამოიყენება,
            სადაც კავშირი ჯერ არ წაკითხულა — უამისოდ 50-წერილიან გვერდზე
            50 დამატებითი შეკითხვა იქნებოდა. */
@@ -702,7 +702,7 @@ class ChatController extends Controller
             // ცალკე დროშა სქემაში არ არის — იხ. `Message::attachmentDeleted()`
             'attachment_deleted' => $message->attachmentDeleted(),
             'attachment_name' => $message->attachment_name,
-            /* FEAT-13 — ბარათი **კითხვის მომენტში** იგება და არა გაგზავნისას:
+            /* ბარათი **კითხვის მომენტში** იგება და არა გაგზავნისას:
                მოგვიანებით დაპრივატებული ჩანაწერი ძველ წერილში ღია დარჩებოდა. */
             'record' => $message->record ? $this->shared->view($message, $meId) : null,
             'created_at' => $message->created_at?->toIso8601String(),
@@ -734,7 +734,7 @@ class ChatController extends Controller
     }
 
     /**
-     * მეორე მხარის `last_read_at` (§10.3).
+     * მეორე მხარის `last_read_at`.
      *
      * ⚠️ **ორივე მხარისთვის ეს უკვე ინახებოდა და კლიენტს არასდროს მიდიოდა** —
      * ე.ი. „ნანახია" ნიშანი მხოლოდ ერთ ველს აკლდა და არა სქემას.
@@ -747,7 +747,7 @@ class ChatController extends Controller
     }
 
     /**
-     * ნიკნეიმები საუბრების სიისთვის — **ერთი შეკითხვით** (§10.11).
+     * ნიკნეიმები საუბრების სიისთვის — **ერთი შეკითხვით**.
      *
      * ⚠️ თითო საუბარზე ცალკე კითხვა N+1 იქნებოდა იმ სიაზე, რომელიც
      * 15 წამში ერთხელ თავიდან იკითხება.

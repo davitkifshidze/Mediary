@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import '@/i18n'
 
 /* ============================================================
-   **მთავარი ფოტოს ჩარჩო** (Tasks §14.1 → Tasks §38).
+   **მთავარი ფოტოს ჩარჩო**.
 
    ⚠️ მოწმდება კლასებით (snapshot-ის გარეშე; jsdom განლაგებას არ ითვლის):
    `fill` ჩარჩო `sm`-დან `absolute inset-0`-ია — ზომას სვეტი (`MediaRow`)
@@ -36,7 +36,7 @@ async function mount(props: Record<string, unknown>) {
 }
 
 describe('PosterUploader', () => {
-  it('fill: from sm up the frame fills the column (absolute) — the photo can no longer size it (§38.1)', async () => {
+  it('fill: from sm up the frame fills the column (absolute) — the photo can no longer size it', async () => {
     const el = await mount({ fill: true })
     const box = el.querySelector('[data-testid="poster-dropzone"]')!
     for (const cls of ['sm:absolute', 'sm:inset-0', 'sm:aspect-auto', 'sm:w-auto']) expect(box.className).toContain(cls)
@@ -47,7 +47,7 @@ describe('PosterUploader', () => {
     expect(box.className).not.toContain('sm:h-full')
   })
 
-  it('the empty frame says “upload or drop” and keeps the form’s own hint as a second line (§38.5)', async () => {
+  it('the empty frame says “upload or drop” and keeps the form’s own hint as a second line', async () => {
     const el = await mount({ fill: true, variant: 'wide', hint: 'თუ არ ატვირთე, BGG-დან ჩამოვა.' })
     const box = el.querySelector('[data-testid="poster-dropzone"]')!
     expect(box.className).toContain('aspect-video')
@@ -65,7 +65,7 @@ describe('PosterUploader', () => {
     expect(frame.querySelector('img')?.className).toContain('object-cover')
   })
 
-  it('a photo frame offers Change and Delete on hover — hidden buttons take no taps (§38.5)', async () => {
+  it('a photo frame offers Change and Delete on hover — hidden buttons take no taps', async () => {
     const onClear = vi.fn()
     const el = await mount({ fill: true, preview: 'https://img.test/p.jpg', onClear })
     const frame = el.querySelector('[data-testid="poster-preview"]')!

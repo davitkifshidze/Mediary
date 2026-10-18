@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Throwable;
 
 /**
- * ერთი ჩანაწერის თარგმნა (Tasks 7).
+ * ერთი ჩანაწერის თარგმნა.
  *
  * ორნაბიჯიანია და თანმიმდევრობა განზრახ ასეთია:
  *   1. **TMDB** — უფასოა და ავტორიტეტული. ქართული სათაური/აღწერა TMDB-ს ხშირად
@@ -115,8 +115,8 @@ class ItemTranslator
             return $this->result(false, false, [], $reason, $providers, SyncOutcome::FAILED);
         }
 
-        /* ⚠️ **არჩეული წყაროებიდან არცერთის გასაღები არ მაქვს — ესეც შეცდომაა**
-           (Tasks §30.6). §30-იდან გასაღები ანგარიშისაა, ე.ი. ეს ყოველდღიური
+        /* ⚠️ **არჩეული წყაროებიდან არცერთის გასაღები არ მაქვს — ესეც შეცდომაა**.
+           გასაღები ანგარიშისაა, ე.ი. ეს ყოველდღიური
            მდგომარეობაა ყველასთვის, ვისაც ჯერ არ ჩაუწერია; „გამოტოვებულად"
            ჩათვლა რიგს 300-ჯერ „შესრულდა"-ს ათქმევინებდა უთარგმნელ ბიბლიოთეკაზე. */
         if (! $changed && ! $this->anyConfigured($sources)) {
@@ -125,7 +125,7 @@ class ItemTranslator
             return $this->result(false, false, [], MissingCredential::CODE, $providers, SyncOutcome::FAILED);
         }
 
-        /* Tasks §31.1 — კვალი ჩანაწერზე: შეივსო (`updated`) თუ წყარომ არაფერი დააბრუნა
+        /* კვალი ჩანაწერზე: შეივსო (`updated`) თუ წყარომ არაფერი დააბრუნა
            (`empty` — გეგმა მას ისევ სთავაზობს). ⚠️ გამოტოვება (ნაკლული არაფერია) კვალს არ წერს. */
         $outcome = $changed ? SyncOutcome::UPDATED : SyncOutcome::EMPTY;
         SyncOutcome::stamp($item, 'translate', $outcome);
@@ -216,7 +216,7 @@ class ItemTranslator
         }
 
         $filled['description_ka'] = $fixed;
-        /* ⚠️ წყარო **`translation`-ია** (შენი პასუხი, 2026-09-14): ბარათზე
+        /* ⚠️ წყარო **`translation`-ია**: ბარათზე
            ორი რამ უნდა ითქვას — „TMDB-ისაა" თუ „მანქანამ თარგმნა", და
            გადამოწმებული ტექსტი უკვე Gemini-ის დაწერილია. `providers`-ში
            კი `review` რჩება, რომ ლოგმა „რა რითი" ზუსტად თქვას. */
@@ -250,7 +250,7 @@ class ItemTranslator
             return [];
         }
 
-        // ⚠️ TMDB-ის `/tv/*`-ზე ორი დომენი ზის (სერიალი და ანიმე, §7.1)
+        // ⚠️ TMDB-ის `/tv/*`-ზე ორი დომენი ზის (სერიალი და ანიმე)
         $isSeries = MediaDomain::isTv(MediaDomain::typeOf($item));
         $titleKey = $isSeries ? 'name' : 'title';
         $filled = [];
@@ -468,7 +468,7 @@ class ItemTranslator
             // „რა რითი ითარგმნა" — ველი => წყარო (ლოგისა და ინტერფეისისთვის)
             'providers' => $providers,
             'error' => $error,
-            // Tasks §31.4 — `updated` · `empty` · `failed`; გამოტოვებაზე `null`
+            // `updated` · `empty` · `failed`; გამოტოვებაზე `null`
             'result' => $result,
         ];
     }

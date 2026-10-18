@@ -10,7 +10,7 @@ import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   **კითხვის პროგრესი — თანამედროვედ** (Tasks §23.3).
+   **კითხვის პროგრესი — თანამედროვედ**.
 
    შენი სიტყვები: „ციტატისა და გვერდის ფუნქციონალიც უფრო გამითანამედროვე".
 
@@ -24,9 +24,9 @@ import { useToast } from '@/components/ui/feedback'
    „რატომ გახდა წაკითხული" კითხვას ტოვებდა.
 
    ⚠️ ერთი და იგივე ზოლი ორგან: დეტალის ბარათი (`ProgressCard`) და კონტექსტური
-   მენიუს „გვერდის განახლება" (`ProgressDialog`, §23.4).
+   მენიუს „გვერდის განახლება" (`ProgressDialog`).
 
-   ⚠️ **Tasks §40.6 — ორ რიგად.** საფეხურები, ველი, სლაიდერი, „შენახვა" და
+   ⚠️ **ორ რიგად.** საფეხურები, ველი, სლაიდერი, „შენახვა" და
    „დავასრულე" ერთ `flex-wrap` რიგში იდგა — ფანჯარაში (`max-w-xl`) რიგი არ
    ეტეოდა და „დავასრულე" მარტო ჩამოდიოდა ქვედა ხაზზე. ახლა ზემოთ მხოლოდ
    საფეხურები და სლაიდერია, ღილაკები კი ქვემოთ, ერთად: ფანჯარაში —
@@ -227,7 +227,7 @@ export function ProgressCard({ book }: { book: Book }) {
   )
 }
 
-/** Tasks §23.4 — „გვერდის განახლება" კონტექსტური მენიუდან: პატარა ფანჯარა იმავე კონტროლებით */
+/** „გვერდის განახლება" კონტექსტური მენიუდან: პატარა ფანჯარა იმავე კონტროლებით */
 export function ProgressDialog({ book, onClose }: { book: Book; onClose: () => void }) {
   const { t } = useTranslation()
   const save = useProgressSave(book, () => onClose())
@@ -238,7 +238,7 @@ export function ProgressDialog({ book, onClose }: { book: Book; onClose: () => v
       <div className="mt-4">
         <ProgressControls draft={draft} busy={save.isPending} />
       </div>
-      {/* §40.6 — ღილაკები ქვედა ზოლში, ერთად */}
+      {/* ღილაკები ქვედა ზოლში, ერთად */}
       <ModalFooter>
         <Button variant="ghost" onClick={onClose}>
           {t('actions.close')}

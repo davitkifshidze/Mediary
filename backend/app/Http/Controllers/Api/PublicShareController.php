@@ -23,10 +23,10 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
- * **გაზიარების ბმულის მიმღების მხარე — `/share/{token}` (Tasks §40.6–40.7).**
+ * **გაზიარების ბმულის მიმღების მხარე — `/share/{token}`.**
  *
- * ⚠️ **ავტორიზაციის გარეთ დგას** (Q46 — „ა"): ნახვა ყველას, ვისაც ბმული აქვს;
- * ბიბლიოთეკაში დამატება კი მხოლოდ შესულს (40.8). მთელი მექანიზმი ერთი
+ * ⚠️ **ავტორიზაციის გარეთ დგას**: ნახვა ყველას, ვისაც ბმული აქვს;
+ * ბიბლიოთეკაში დამატება კი მხოლოდ შესულს. მთელი მექანიზმი ერთი
  * გადამრთველით ითიშება — `SHARE_LINKS=false`.
  *
  * ⚠️ **ტოკენი მოდელზე არ ებმება** — `EnsureRecordOwnership` უცხოს 404-ს
@@ -39,7 +39,7 @@ use Illuminate\Support\Facades\DB;
  *
  * ⚠️ **ბარათი ყოველთვის ვიწროა** — `PublicDomain::card()` + ჟანრები, და
  * არასდროს `MovieResource`: სრული რესურსი პირად ველებს გაატარებდა, ხვალ
- * დამატებული ველი კი ჩუმად გაჟონავდა (§16.1). ჩანიშვნები, საკუთარი ველები,
+ * დამატებული ველი კი ჩუმად გაჟონავდა. ჩანიშვნები, საკუთარი ველები,
  * ფაილები, გალერეა, ყურების ჟურნალი და მსახიობების შენეული რიგი აქ არ გადის.
  */
 class PublicShareController extends Controller
@@ -86,9 +86,9 @@ class PublicShareController extends Controller
             'modules' => $this->profiles->moduleMeta(array_keys($domains)),
             'viewer' => [
                 'signed_in' => $viewer !== null,
-                // ⚠️ საკუთარი ბმული — „მიმღების თვალით" ნახვა; დამატება 409-ია (40.8)
+                // ⚠️ საკუთარი ბმული — „მიმღების თვალით" ნახვა; დამატება 409-ია
                 'own' => $own,
-                // §40.6 — რომელ სექციაში შეუძლია დამატება (მოდულის უქონელს — მოთხოვნის ღილაკი)
+                // რომელ სექციაში შეუძლია დამატება (მოდულის უქონელს — მოთხოვნის ღილაკი)
                 'sections' => $viewer !== null && ! $own
                     ? (object) ShareImporter::abilities($viewer, array_keys($domains))
                     : (object) [],
@@ -99,7 +99,7 @@ class PublicShareController extends Controller
     /**
      * ერთი სექციის ბარათები, გვერდებად — ძებნით (`q`) და ჟანრით (`genre`).
      *
-     * ⚠️ **`per_page` ორივე მხრიდან იზღუდება** (აუდიტი §B4): `?per_page=-1`
+     * ⚠️ **`per_page` ორივე მხრიდან იზღუდება**: `?per_page=-1`
      * `LIMIT`-ს ჩუმად აშორებდა, ეს კი ავტორიზაციის გარეშე endpoint-ია.
      */
     public function items(Request $request, string $token, string $domain): JsonResponse
@@ -137,8 +137,8 @@ class PublicShareController extends Controller
         $perPage = min(max((int) $request->integer('per_page', self::PER_PAGE), 1), 100);
         $page = max(1, (int) $request->integer('page', 1));
 
-        /* §40.13 — პლეილისტის ბარათი სიმღერების რიცხვით; ⚠️ `owner`-ის გარეშე და
-           მფლობელის ცხადი id-ით (§33.3-ის გაკვეთილი: შესულ უცხოს „0 სიმღერა" ეწერებოდა) */
+        /* პლეილისტის ბარათი სიმღერების რიცხვით; ⚠️ `owner`-ის გარეშე და
+           მფლობელის ცხადი id-ით (თორემ შესულ უცხოს „0 სიმღერა" ეწერებოდა) */
         if (ShareDomain::isList($domain)) {
             $this->profiles->withSongCount($query, $owner);
         }
@@ -166,9 +166,9 @@ class PublicShareController extends Controller
     }
 
     /**
-     * **ბმულში მყოფი პლეილისტის სიმღერები, მისივე რიგით (Tasks §40.13).**
+     * **ბმულში მყოფი პლეილისტის სიმღერები, მისივე რიგით.**
      *
-     * ⚠️ **ყველა სიმღერა ჩანს — პირადიც** (§33-ის Q24): სიმღერა მშობლის
+     * ⚠️ **ყველა სიმღერა ჩანს — პირადიც**: სიმღერა მშობლის
      * ხილვადობას იღებს, ბმული კი თვითონაა თანხმობა. „მხოლოდ საჯაროები"
      * პლეილისტს ეხება და არა მის სიმღერებს — ფანჯარა ამას წითლად ამბობს.
      * ⚠️ სიმღერები მფლობელისაა (`ownSongs()` — `owner`-ის გარეშე, ცხადი id-ით;
@@ -194,13 +194,13 @@ class PublicShareController extends Controller
 
         $viewer = $request->user();
         $own = $viewer !== null && (int) $viewer->id === (int) $owner->id;
-        // Tasks §10 → §43 — გაზიარების ბმულიდან გახსნა ჟურნალში `share`-ით; მფლობელი არ ითვლება
+        // გაზიარების ბმულიდან გახსნა ჟურნალში `share`-ით; მფლობელი არ ითვლება
         $this->audit->openFromPublic($record, $request, $owner, AuditLogger::OPEN_SHARE);
         $perPage = min(max((int) $request->integer('per_page', 100), 1), 100);
         $page = max(1, (int) $request->integer('page', 1));
 
         $songs = $this->profiles->playlistSongs($owner, $record)
-            // ⚠️ ჟანრი `owner`-ის გარეშე (`ShareDomain::withClassifier()`-ის მიზეზი, §1.2)
+            // ⚠️ ჟანრი `owner`-ის გარეშე (`ShareDomain::withClassifier()`-ის მიზეზი)
             ->with(['genres' => fn ($q) => $q->withoutGlobalScope('owner')])
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -313,8 +313,8 @@ class PublicShareController extends Controller
      * ვიწრო ბარათი + კლასიფიკატორი (+ შესულს `in_library`).
      *
      * ⚠️ **მთავარი ფოტოს გასაღები ითარგმნება** — ველების კატალოგი მას
-     * `poster`/`cover`/`thumbnail`/`photo`-ს ეძახის, ბარათი — `image`-ს (§33-ის
-     * ცნობილი შეუსაბამობა). აქ ის ითარგმნება, თორემ მფლობელის „ბარათზე არ
+     * `poster`/`cover`/`thumbnail`/`photo`-ს ეძახის, ბარათი — `image`-ს (ცნობილი
+     * შეუსაბამობა). აქ ის ითარგმნება, თორემ მფლობელის „ბარათზე არ
      * გამოჩნდეს" ფოტოზე არაფერს იზამდა.
      * ⚠️ **`genres` ყველა დომენზეა** — ჟანრი, კატეგორია თუ ტიპი, ერთი ფორმით
      * (`value` · სახელი ორივე ენაზე): მიმღების გვერდს ერთი ბარათი აქვს.
@@ -335,7 +335,7 @@ class PublicShareController extends Controller
             unset($card['status']);
         }
 
-        /* Tasks §9 (Q1) — გადამრთველი **მფლობელის** ქულას მალავს: მედიაზე ეს
+        /* გადამრთველი **მფლობელის** ქულას მალავს: მედიაზე ეს
            `my_rating`-ია, ბარათის `rating` კი TMDB-ის საშუალოა და საჯარო ფაქტად რჩება. */
         if (! $link->show_rating && ShareDomain::hasPersonalRating($domain)) {
             unset($card[ShareDomain::personalRatingKey($domain)]);

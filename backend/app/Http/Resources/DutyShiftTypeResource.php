@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * **მორიგეობის ტიპი (Tasks §34)** — კლასიფიკატორის ფორმა (`/dictionaries`):
+ * **მორიგეობის ტიპი** — კლასიფიკატორის ფორმა (`/dictionaries`):
  * `shifts_count` ლექსიკონის ბარათის „N მორიგეობას“ კითხულობს.
  */
 class DutyShiftTypeResource extends JsonResource

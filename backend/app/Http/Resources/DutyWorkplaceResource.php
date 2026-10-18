@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * **სამსახური (Tasks §34)** — ტარიფებით (`rates`: ტიპი → თანხა), რომ სწრაფი
+ * **სამსახური** — ტარიფებით (`rates`: ტიპი → თანხა), რომ სწრაფი
  * დამატების ფანჯარამ თანხა წინასწარ შეავსოს მეორე მოთხოვნის გარეშე.
  */
 class DutyWorkplaceResource extends JsonResource

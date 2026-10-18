@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * **რჩეული და ფრანჩაიზი** (Tasks §18).
+ * **რჩეული და ფრანჩაიზი**.
  *
  * ⚠️ ჩუმი გავრცელება აღარ არის: რჩეულში ჩასმა მხოლოდ ამ ფილმს ეხება, დანარჩენი
  * ნაწილები ცხადი `parts[]`-ით მოდის (პოპაპი); ახალი ნაწილი `from-tmdb`-ით
@@ -56,7 +56,7 @@ class MovieFavoriteTest extends TestCase
         return $movie->refresh();
     }
 
-    /** §18.2 — რჩეულში ჩასმა იმავე კოლექციის სხვა ნაწილს **აღარ** ეხება */
+    /** რჩეულში ჩასმა იმავე კოლექციის სხვა ნაწილს **აღარ** ეხება */
     public function test_favouriting_no_longer_spreads_over_the_franchise(): void
     {
         $a = $this->makeMovie($this->alice, 'Part 1', ['tmdb_collection_id' => 2344]);
@@ -69,7 +69,7 @@ class MovieFavoriteTest extends TestCase
         $this->assertFalse($b->fresh()->is_favorite);
     }
 
-    /** §18.2 — `parts[]` მხოლოდ ჩამოთვლილ, იმავე კოლექციის, საკუთარ ნაწილებს აფერადებს */
+    /** `parts[]` მხოლოდ ჩამოთვლილ, იმავე კოლექციის, საკუთარ ნაწილებს აფერადებს */
     public function test_listed_parts_of_the_same_collection_become_favourite_too(): void
     {
         $a = $this->makeMovie($this->alice, 'Part 1', ['tmdb_collection_id' => 2344]);
@@ -89,7 +89,7 @@ class MovieFavoriteTest extends TestCase
         $this->assertFalse(Movie::withoutGlobalScopes()->find($bobs->id)->is_favorite, 'სხვისი ჩანაწერი არ უნდა შეიცვალოს');
     }
 
-    /** §18.3 — მოხსნა მხოლოდ ამ ფილმს ეხება, `parts` იგნორირდება */
+    /** მოხსნა მხოლოდ ამ ფილმს ეხება, `parts` იგნორირდება */
     public function test_unfavouriting_touches_only_this_film(): void
     {
         $a = $this->makeMovie($this->alice, 'Part 1', ['tmdb_collection_id' => 2344, 'is_favorite' => true]);
@@ -113,7 +113,7 @@ class MovieFavoriteTest extends TestCase
             ->assertStatus(422);
     }
 
-    /** §18.3 — `from-tmdb` არჩეული სტატუსით და რჩეულად; უცნობი სტატუსი ჩუმად ვარდება */
+    /** `from-tmdb` არჩეული სტატუსით და რჩეულად; უცნობი სტატუსი ჩუმად ვარდება */
     public function test_a_part_added_from_tmdb_takes_the_chosen_status_and_favourite(): void
     {
         $this->giveCredential($this->alice, 'tmdb');

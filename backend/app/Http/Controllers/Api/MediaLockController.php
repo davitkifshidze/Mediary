@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
 /**
- * **ფილმის, სერიალისა და ანიმეს ჩაკეტვა პაროლით (Tasks §35.4–35.5).**
+ * **ფილმის, სერიალისა და ანიმეს ჩაკეტვა პაროლით.**
  *
  * სამი კარი `ManagesRecordLock`-იდან, ერთი მისამართი სამივე დომენზე —
  * `/media/{type}/{id}/lock|unlock` (`/media/cast/{type}/{id}`-ის წესი):

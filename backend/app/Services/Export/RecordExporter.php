@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * **FEAT-06 — ერთი მოდულის ჩანაწერები ფაილად.**
+ * **ერთი მოდულის ჩანაწერები ფაილად.**
  *
  * რიგების აგება ერთი და იგივეა ორივე ფორმატზე: `rows()` აბრუნებს
  * ტიპიზებულ მნიშვნელობებს, `json()`/`csv()` კი მხოლოდ **ხატავს** მათ.
@@ -27,7 +27,7 @@ use Illuminate\Database\Eloquent\Model;
  * და მომხმარებელს ფორმატის არჩევა შიგთავსზე იმოქმედებდა. ერთადერთი
  * განსხვავება **ტიპებია**: CSV-ს ტიპები საერთოდ არ აქვს, ე.ი. მასივი
  * იკვრება სტრიქონად და `true` ხდება `1`. ეს CSV-ის თვისებაა და არა
- * გადაწყვეტილება. ⚠️ Tasks §47 — მეორე განსხვავება: **აღწერა CSV-ში უბრალო
+ * გადაწყვეტილება. ⚠️ მეორე განსხვავება: **აღწერა CSV-ში უბრალო
  * ტექსტია** (`RichText::plain()`), JSON-ში კი Markdown რჩება — ცხრილში `**` და
  * `[..](..)` ხმაურია, JSON-ის ფაილი კი მონაცემია და ფორმატს არ კარგავს.
  *
@@ -39,15 +39,15 @@ use Illuminate\Database\Eloquent\Model;
  *
  * ⚠️ **id-ით პორციები და არა `chunk`** — `chunk()` ოფსეტს იყენებს, ე.ი. თუ
  * ექსპორტის მიმდინარეობისას ჩანაწერი წაიშალა, ყოველი შემდეგი პორცია
- * ერთ რიგს **ჩუმად გამოტოვებს** (ზუსტად ის ხაფანგი, რაც BUG-23-ის
- * მიგრაციას ეწერა).
+ * ერთ რიგს **ჩუმად გამოტოვებს** (ზუსტად ის ხაფანგი, რაც ერთ-ერთ
+ * ძველ მიგრაციას ეწერა).
  */
 class RecordExporter
 {
     /**
      * ველები, რომლებიც სვეტიდან **არ** იკითხება — რელაციიდან იკრიბება.
      *
-     * ⚠️ **`status` აქ იმიტომაა, რომ ის ორ სხვადასხვა რამეს ნიშნავს** (§6.4):
+     * ⚠️ **`status` აქ იმიტომაა, რომ ის ორ სხვადასხვა რამეს ნიშნავს**:
      * ექვს დომენზე ის `Status` **მოდელია** (`status_id` → ლექსიკონი), სამზე
      * კი ჩვეულებრივი enum-სვეტი. სიაში ჩაწერის გარეშე პირველ ჯგუფზე
      * ფაილში ობიექტი ჩაიწერებოდა და CSV-ში `Illuminate\...\Status`.
@@ -81,9 +81,9 @@ class RecordExporter
 
         return $model::withoutGlobalScope('owner')
             ->where('user_id', $user->getKey())
-            // ⚠️ §37 — პირადი მოდულის ჩანაწერები ერთ ცხრილშია: მოდულით ჭრა სავალდებულოა
+            // ⚠️ პირადი მოდულის ჩანაწერები ერთ ცხრილშია: მოდულით ჭრა სავალდებულოა
             ->when(CustomModules::isKey($module), fn (Builder $q) => $q->where('module', $module))
-            // Tasks §35.4 (Q9) — ექსპორტი ჩაკეტილს არ შეიცავს, სესიაში გახსნილსაც
+            // ექსპორტი ჩაკეტილს არ შეიცავს, სესიაში გახსნილსაც
             ->when(RecordLocks::hides($model), fn (Builder $q) => $q->withoutLocked())
             ->with($this->relations($module))
             ->orderBy('id');
@@ -92,8 +92,8 @@ class RecordExporter
     /**
      * წინასწარ ჩასატვირთი რელაციები.
      *
-     * ⚠️ Tasks §59.5 — **ჩაკეტილი მსახიობი ფილმის მსახიობებშიც არ გადის**
-     * (`withoutLocked()`, Tasks §35.4): `record_lock` scope მხოლოდ *დამალულს*
+     * ⚠️ **ჩაკეტილი მსახიობი ფილმის მსახიობებშიც არ გადის**
+     * (`withoutLocked()`): `record_lock` scope მხოლოდ *დამალულს*
      * ჭრის, ექსპორტის წესი კი „ყველა ჩაკეტილი გარეთ"-ია.
      *
      * @return array<int|string, mixed>
@@ -132,7 +132,7 @@ class RecordExporter
         $key = $query->getModel()->getQualifiedKeyName();
         $last = 0;
 
-        /* ⚠️ Tasks §59.5 — **პორციები ხელით და არა `lazyById()`-ით**: დამატებითი
+        /* ⚠️ **პორციები ხელით და არა `lazyById()`-ით**: დამატებითი
            ველები და ეპიზოდები რელაცია არ არის და პორციაზე ერთი query-ით
            იკითხება (`RecordExtras::preload()`); `lazyById` პორციის საზღვარს არ
            აჩენს. წესი იგივეა — id-ით წინ და არა ოფსეტით (წაშლა ვერ გამოტოვებს). */
@@ -168,7 +168,7 @@ class RecordExporter
      * თარიღები კედლის საათითაა (იხ. `date()`) და ოფსეტის გარეშე
      * ერთი და იგივე სტრიქონი ორ სხვადასხვა მომენტს ნიშნავდა.
      *
-     * ⚠️ Tasks §59.5 — `custom_field_definitions` და `statuses`: ჩანაწერში
+     * ⚠️ `custom_field_definitions` და `statuses`: ჩანაწერში
      * მხოლოდ ველის `key` და სტატუსის გასაღებია; სხვა ანგარიშზე (ან სხვა
      * სერვერზე) იმპორტს ველის ტიპი და სტატუსის როლი სჭირდება, რომ ისინი
      * თავიდან შექმნას (`MediaryImporter`).
@@ -217,7 +217,7 @@ class RecordExporter
     /**
      * JSON — ნაკადად, კონვერტთან ერთად (`envelope()`).
      *
-     * `$tap` — Tasks §59.5: „სრული ექსპორტი" ყოველ რიგს ხედავს, რომ მისი
+     * `$tap` — „სრული ექსპორტი" ყოველ რიგს ხედავს, რომ მისი
      * ფაილები ZIP-ში ჩადოს (`ExportDomain::paths()`), რიგების მეორედ აგების გარეშე.
      *
      * @param  (callable(array<string, mixed>): void)|null  $tap
@@ -263,7 +263,7 @@ class RecordExporter
         }
     }
 
-    /** Tasks §47 — Markdown-ის ველები (აღწერა) CSV-ის უჯრაში უბრალო ტექსტად */
+    /** Markdown-ის ველები (აღწერა) CSV-ის უჯრაში უბრალო ტექსტად */
     private function plainText(array $row): array
     {
         foreach (RichText::FIELDS as $field) {
@@ -289,7 +289,7 @@ class RecordExporter
             return $this->normalize($record->{$field});
         }
 
-        // Tasks §59.5 — ჩანაწერის „დამატებები" (დამატებითი ველები, ფაილები, გალერეა…)
+        // ჩანაწერის „დამატებები" (დამატებითი ველები, ფაილები, გალერეა…)
         if (in_array($field, ExportDomain::EXTRAS, true)) {
             return $this->extras->value($record, $field);
         }
@@ -299,7 +299,7 @@ class RecordExporter
             'genre' => $this->label($record->genre),
             'category' => $this->label($record->category),
             'type' => $this->label($record->type),
-            /* §6.4 — ექვს დომენზე ეს ლექსიკონის რიგია და გასაღები გვინდა,
+            /* ექვს დომენზე ეს ლექსიკონის რიგია და გასაღები გვინდა,
                სამზე კი enum-სვეტი, ე.ი. თვითონ სტრიქონი. */
             'status' => StatusDomain::usesDictionary($module)
                 ? $record->status_key
@@ -326,7 +326,7 @@ class RecordExporter
      * აქვს, Excel კი `2026-09-19T20:00:00Z`-ს არც კითხულობს და არც
      * გადაიყვანს — ე.ი. ქართული საღამო წინა დღედ წაიკითხებოდა. ზუსტად
      * იგივე მიზეზი, რის გამოც `lib/dates.ts` `sv-SE`-ს იყენებს და არა
-     * `toISOString()`-ს (BUG-15). ზონას კონვერტი ამბობს.
+     * `toISOString()`-ს. ზონას კონვერტი ამბობს.
      */
     private function normalize(mixed $value): mixed
     {
@@ -349,11 +349,11 @@ class RecordExporter
         }
 
         if (is_array($value)) {
-            /* ⚠️ Tasks §36.3 — **ობიექტების სია (ბუკმარკის `links`) JSON-ად იწერება**:
+            /* ⚠️ **ობიექტების სია (ბუკმარკის `links`) JSON-ად იწერება**:
                `strval()` მასივზე „Array to string conversion"-ით ვარდებოდა, ხოლო
                ბრტყელი წებო ლეიბლს, ბმულსა და ფასს ერთმანეთში აურევდა. `[`-ით
                დაწყებული უჯრა ფორმულად არ იკითხება, ე.ი. `deFormula()` არ სჭირდება. */
-            /* Tasks §59.5 — **ასოციაციური მასივიც** (დამატებითი ველები `key → მნიშვნელობა`):
+            /* **ასოციაციური მასივიც** (დამატებითი ველები `key → მნიშვნელობა`):
                ბრტყელი წებო გასაღებებს დაკარგავდა და უკან ვეღარ წაიკითხებოდა. */
             if (! array_is_list($value) || array_filter($value, 'is_array') !== []) {
                 return (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

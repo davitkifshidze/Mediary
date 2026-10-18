@@ -3,7 +3,7 @@ import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
 /* ============================================================
-   **მოდალის სიმაღლე** (Tasks §5 → Tasks §37).
+   **მოდალის სიმაღლე**.
 
    ⚠️ jsdom განლაგებას არ ითვლის, ამიტომ მოწმდება წმინდა ფუნქციები
    (`fitHeight`, `layoutHeight`, `shouldAnimate`) და `AutoHeight`-ის ქცევა
@@ -26,7 +26,7 @@ afterEach(() => {
 })
 
 describe('fitHeight', () => {
-  it('rounds a fractional height up — no extra pixel any more (§37.1)', async () => {
+  it('rounds a fractional height up — no extra pixel any more', async () => {
     const { fitHeight } = await import('@/components/ui/auto-height')
 
     expect(fitHeight(612.4)).toBe(613)
@@ -42,7 +42,7 @@ describe('fitHeight', () => {
   })
 })
 
-describe('layoutHeight (§37.1)', () => {
+describe('layoutHeight', () => {
   it('reads the layout height while the dialog is still scaled to 0.96', async () => {
     const { layoutHeight } = await import('@/components/ui/auto-height')
     const el = document.createElement('div')
@@ -56,7 +56,7 @@ describe('layoutHeight (§37.1)', () => {
   })
 })
 
-describe('shouldAnimate (§37.3)', () => {
+describe('shouldAnimate', () => {
   it('skips the first measurement and a few-pixel wobble, keeps a running animation going', async () => {
     const { shouldAnimate } = await import('@/components/ui/auto-height')
 
@@ -67,7 +67,7 @@ describe('shouldAnimate (§37.3)', () => {
   })
 })
 
-describe('AutoHeight (§37)', () => {
+describe('AutoHeight', () => {
   /** ყალბი `ResizeObserver` — `fire()` ცვლილებას ხელით აცნობებს */
   function stubObserver() {
     const observers: (() => void)[] = []
@@ -95,7 +95,7 @@ describe('AutoHeight (§37)', () => {
     return { outer, inner }
   }
 
-  it('keeps the first child top margin inside the measured box (§37.2)', async () => {
+  it('keeps the first child top margin inside the measured box', async () => {
     const { inner } = await mount(true)
 
     // `flow-root` — `mt-4` აღარ „გადმოდის" შიდა ყუთიდან
@@ -103,7 +103,7 @@ describe('AutoHeight (§37)', () => {
     expect(inner.firstElementChild?.className).toBe('mt-4')
   })
 
-  it('hides the scrollbar only visually while growing — the body never stops scrolling (§37.3/§37.5)', async () => {
+  it('hides the scrollbar only visually while growing — the body never stops scrolling', async () => {
     vi.useFakeTimers()
     const fire = stubObserver()
     const { outer, inner } = await mount(true)

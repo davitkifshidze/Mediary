@@ -25,7 +25,7 @@ import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   ფრენჩაიზის მოდალი (Tasks §5.1).
+   ფრენჩაიზის მოდალი.
 
    ⚠️ ფრენჩაიზი **ტექსტური ველი აღარაა** — ღილაკი ხსნის ამ მოდალს, სადაც
    ერთდროულად სამი რამ კეთდება:
@@ -83,7 +83,7 @@ export function GameFranchiseDialog({
   const [unavailable, setUnavailable] = useState(false)
   const [noKey, setNoKey] = useState(false)
 
-  /* Tasks §4.4 — სტატუსი და ჟანრი სავალდებულოა, ღილაკი კი ორივეს გარეშე
+  /* სტატუსი და ჟანრი სავალდებულოა, ღილაკი კი ორივეს გარეშე
      იძახებდა `createGame`-ს ⇒ ყოველთვის 422. სტატუსი ნაგულისხმევად
      „გასავლელია“, ჟანრი კი — ხელით არჩეული, ან RAWG-ის ჟანრი, თუ ის ჩემს
      ლექსიკონში არსებობს. ⚠️ ლექსიკონში თავისით არაფერი იქმნება. */
@@ -115,7 +115,7 @@ export function GameFranchiseDialog({
     },
     onError: (e) => {
       /* 503 = წყარო მიუწვდომელია; ეს „ვერაფერი მოიძებნა" **არ არის**.
-         409 `credential_missing` (§30.6) — ჩემი გასაღები არ მაქვს: სხვა ქმედებაა */
+         409 `credential_missing` — ჩემი გასაღები არ მაქვს: სხვა ქმედებაა */
       const missing = isApiCode(e, 'credential_missing')
       const blocked = isApiCode(e, 'rawg_unavailable')
       setNoKey(missing)
@@ -169,7 +169,7 @@ export function GameFranchiseDialog({
         rawg_slug: draft.rawg_slug ?? null,
         igdb_id: draft.igdb_id ?? null,
         igdb_slug: draft.igdb_slug ?? null,
-        // ყდა შენახვისას ჩამოიტვირთება; **კვოტაში არ ითვლება** (19.4/B)
+        // ყდა შენახვისას ჩამოიტვირთება; **კვოტაში არ ითვლება**
         rawg_cover_url: draft.cover_url ?? null,
       })
     },
@@ -411,7 +411,7 @@ export function GameFranchiseDialog({
   )
 }
 
-/** ახალი ნაწილის სტატუსი — „გასავლელი“ (Tasks §4.4) */
+/** ახალი ნაწილის სტატუსი — „გასავლელი“ */
 const DEFAULT_STATUS = 'to_play' as const
 
 /** ჟანრი ვერ გაირკვა — ეს ვალიდაციაა და არა ქსელის შეცდომა */

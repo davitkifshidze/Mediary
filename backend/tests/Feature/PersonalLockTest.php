@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **პირადი გალერეის ჩაკეტვა და საჯარო ალბომი (Tasks §33.7, Q7).**
+ * **პირადი გალერეის ჩაკეტვა და საჯარო ალბომი.**
  *
  * ⚠️ ჩაკეტილი ჩანაწერი **მოდელით** იქმნება და არა API-ით: API-ით დადებული
  * ლოკი იმავე სესიაში ღია რჩება (განზრახ — შენ ახლა დაადე), ე.ი. „დამალულს"
@@ -149,7 +149,7 @@ class PersonalLockTest extends TestCase
             $this->get("/api/personal/media/{$media->id}/thumb")->assertNotFound();
         }
 
-        // დამატებითი ველები და ძებნა (Q9)
+        // დამატებითი ველები და ძებნა
         $this->getJson("/api/custom-fields/personal/{$person->id}")->assertNotFound();
         $keys = collect($this->getJson('/api/search?q='.urlencode('ანანო'))->assertOk()->json('groups'))->pluck('key');
         $this->assertNotContains('personal', $keys);
@@ -216,7 +216,7 @@ class PersonalLockTest extends TestCase
         $this->assertSame([], $this->listedMedia());
     }
 
-    /** ⚠️ სესიის გარეშე სწორი პაროლიც 409-ია (BUG-02) — თორემ ჩუმად არაფერს გახსნიდა */
+    /** ⚠️ სესიის გარეშე სწორი პაროლიც 409-ია — თორემ ჩუმად არაფერს გახსნიდა */
     public function test_unlocking_needs_a_session(): void
     {
         $person = $this->person();
@@ -227,7 +227,7 @@ class PersonalLockTest extends TestCase
             ->assertJsonPath('message', 'session_required');
     }
 
-    /** 10 არასწორი ცდა → 15 წუთი ბლოკი; ბლოკის დროს სწორი პაროლიც 423-ია (FEAT-04) */
+    /** 10 არასწორი ცდა → 15 წუთი ბლოკი; ბლოკის დროს სწორი პაროლიც 423-ია */
     public function test_too_many_wrong_passwords_block_the_record(): void
     {
         $this->withoutMiddleware(ThrottleRequests::class);
@@ -388,7 +388,7 @@ class PersonalLockTest extends TestCase
         $this->assertSame(0, RecordLock::withoutGlobalScopes()->count(), 'საბოლოო წაშლა ადამიანის და მისი ალბომის ლოკსაც შლის');
     }
 
-    /* ---------- საჯარო (Q7) ---------- */
+    /* ---------- საჯარო ---------- */
 
     private function publicProfile(): void
     {

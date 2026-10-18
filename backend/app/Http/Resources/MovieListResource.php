@@ -11,7 +11,7 @@ class MovieListResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        // Tasks §35.5 — დამალული ჩანაწერი ბოქლომიანი ბარათია: სათაური და ლოკი, შიგთავსი არა
+        // დამალული ჩანაწერი ბოქლომიანი ბარათია: სათაური და ლოკი, შიგთავსი არა
         if (RecordLocks::hiddenRecord($this->resource)) {
             return $this->resource->lockedCard();
         }
@@ -24,7 +24,7 @@ class MovieListResource extends JsonResource
             'rating' => $this->rating,
             'my_rating' => $this->my_rating,
             'poster' => $this->poster_path ? asset('storage/'.$this->poster_path) : null,
-            /* §6.4 — სტატუსი per-user ლექსიკონის რიგია, ე.ი. **ობიექტი** და არა
+            /* სტატუსი per-user ლექსიკონის რიგია, ე.ი. **ობიექტი** და არა
                სტრიქონი: მხოლოდ გასაღები უცხო პროფილზე წასაკითხი არ იქნებოდა
                (სახელი მფლობელის ლექსიკონშია), ორივეს ცალკე ველად დაბრუნება კი
                ერთსა და იმავე ფაქტს ორ ადგილას გაიმეორებდა. */

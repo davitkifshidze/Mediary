@@ -2,7 +2,7 @@ import { Clapperboard, HardDrive, Link2, SquarePlay, Video, type LucideIcon } fr
 import type { VideoPlatform } from '@/api/videos'
 
 /* ============================================================
-   **ვიდეოს პლატფორმის რუკა** (Tasks §19.1) — აიქონი, ფერი, სახელი.
+   **ვიდეოს პლატფორმის რუკა** — აიქონი, ფერი, სახელი.
 
    ⚠️ **ფერი CSS-ცვლადია და არა hex** (`--platform-*`, `index.css`, ორივე
    თემაში): YouTube-ის წითელი მუქ ფონზე ოდნავ ღიაა, თორემ ჩამქრალ ფონზე
@@ -41,7 +41,7 @@ export function platformLabel(platform: string | null | undefined, t: (key: stri
   return look.i18n ? t(look.label) : look.label
 }
 
-/* Tasks §29.3 — **ჰოსტიდან პლატფორმა**: კურსის `platform` ჰოსტის სტრიქონია
+/* **ჰოსტიდან პლატფორმა**: კურსის `platform` ჰოსტის სტრიქონია
    („youtube.com“, `Course::applyUrl`), ვიდეოსი — enum. ერთი რუკა, რომ კურსის
    სიაშიც და ფანჯარაშიც ბრენდის სახელი და ფერი ეწეროს, უცნობ ჰოსტს კი
    თვითონ ჰოსტი („udemy.com“). */

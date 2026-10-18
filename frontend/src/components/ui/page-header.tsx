@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 /* ============================================================
    გვერდის ჰედერი — ერთი კომპონენტი ყველა გვერდისთვის (33 გამოძახება).
 
-   ⚠️ **ცენტრირებული ბანერი მოიხსნა (Tasks §2.2).** ის გაუგებრობით გაჩნდა:
+   ⚠️ **ცენტრირებული ბანერი მოიხსნა.** ის გაუგებრობით გაჩნდა:
    „სათაურის შეცვლაში" მარჯვენა ფილტრის პანელი იგულისხმებოდა და არა
    სათაური. შედეგად ყოველი სექცია (გადაუწყვეტელი · საყურებელი · რჩეული)
    ეკრანის მესამედს იკავებდა და სია ქვევით ეშვებოდა. ახლა **კომპაქტური,
@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils'
    მას ვერ დააგენერირებდა. `color-mix()` ფონს გამჭვირვალეს ხდის, ე.ი. მუქ
    და ნათელ თემაზე ერთნაირად კითხვადია.
 
-   ⚠️ **`tool` — არა-მოდულური სექციის ფერი (Tasks §23).** ლექსიკონები,
+   ⚠️ **`tool` — არა-მოდულური სექციის ფერი.** ლექსიკონები,
    სინქრონი, თარგმანები, ჩატი, აუდიტი და დანარჩენი თერთმეტი `modules`
    ცხრილში არ არიან, ე.ი. `module`-ით ფერს ვერასდროს მიიღებდნენ და
    თორმეტივე გვერდის სათაური ერთნაირად ნაცრისფერი იყო. ფერიც და ხატულაც
@@ -45,7 +45,7 @@ export function PageHeader({
   title,
   subtitle,
   /**
-   * გვერდის მუდმივი ახსნა — ლურჯი `i` და/ან წითელი სამკუთხედი (Tasks §3).
+   * გვერდის მუდმივი ახსნა — ლურჯი `i` და/ან წითელი სამკუთხედი.
    *
    * ⚠️ **სათაურის რიგშია და არა `subtitle`-ის სლოტში**: `subtitle`
    * `truncate`-ია, ე.ი. იქ ჩასმული ღილაკი ჩაიჭრებოდა.
@@ -58,7 +58,7 @@ export function PageHeader({
   hint,
   /** მოდულის key — აქედან მოდის ფონი, აიქონი და ზედა ხაზი (`undefined` = ნეიტრალური) */
   module,
-  /** არა-მოდულური სექციის key (`sync`, `audit`…) — ფერი და ხატულა §23-ის რეესტრიდან */
+  /** არა-მოდულური სექციის key (`sync`, `audit`…) — ფერი და ხატულა `lib/toolSections.ts`-იდან */
   tool,
   actions,
   /** მარცხნივ — უკან დაბრუნების ბმული და მისთანები */
@@ -88,7 +88,7 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        // `fb-header` — შემოსვლის ანიმაცია (`index.css`, §23)
+        // `fb-header` — შემოსვლის ანიმაცია (`index.css`)
         'fb-header mb-5 rounded-xl border border-border px-4 py-3',
         !color && 'bg-card',
         className,
@@ -108,7 +108,7 @@ export function PageHeader({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {(found || ToolIcon) && (
           <span
-            /* `fb-header-icon` — შემოსვლის ანიმაცია `index.css`-ში (§23):
+            /* `fb-header-icon` — შემოსვლის ანიმაცია `index.css`-ში:
                ერთ ადგილას, `prefers-reduced-motion`-ის დაცვით. */
             className="fb-header-icon grid size-10 shrink-0 place-items-center rounded-lg"
             style={color ? { backgroundColor: `color-mix(in oklab, ${color} 22%, transparent)`, '--mod': color } as CSSProperties : undefined}

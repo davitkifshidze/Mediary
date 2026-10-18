@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config'
 import path from 'node:path'
 
 /* ============================================================
-   ფრონტის ტესტები (Tasks §3).
+   ფრონტის ტესტები.
 
    ⚠️ **ცალკე კონფიგი და არა `vite.config.ts`-ის `test` ბლოკი**: აპლიკაციის
    კონფიგში `react()` და `tailwindcss()` პლაგინები ზის, რომლებიც ამ

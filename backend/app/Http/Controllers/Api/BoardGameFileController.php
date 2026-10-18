@@ -12,7 +12,7 @@ use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 
 /**
- * ბორდგეიმის ფაილები (Tasks §14) — **წესების PDF**, გალერეის ფოტოები
+ * ბორდგეიმის ფაილები — **წესების PDF**, გალერეის ფოტოები
  * (`kind = 'image'`) და სხვა დოკუმენტები.
  *
  * ⚠️ გალერეა აქაა და არა `gallery_images`-ში: ის ცხრილი TMDB-დან
@@ -47,7 +47,7 @@ class BoardGameFileController extends Controller
             },
         ]);
 
-        // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე
+        // კვოტა **მთელ პაკეტზე** ჩაწერამდე
         $files = $request->file('files');
         $this->meter->guard($request->user(), array_sum(array_map(
             fn ($file) => (int) $file->getSize(),
@@ -77,7 +77,7 @@ class BoardGameFileController extends Controller
 
     public function destroy(BoardGameFile $boardGameFile)
     {
-        /* ⚠️ **ურნა (Tasks §29)** — `delete()` კი არა, `moveToTrash()`: ფაილი
+        /* ⚠️ **ურნა** — `delete()` კი არა, `moveToTrash()`: ფაილი
            დისკზე და კვოტაში რჩება და ურნიდან ბრუნდება; ადგილი საბოლოო წაშლისას
            ან ვადის ამოწურვისას თავისუფლდება. სხვისი ფაილი global scope-ის
            გამო ისედაც 404-ია. */

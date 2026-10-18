@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * ჩანაწერების მოდული (`note`, Tasks §13).
+ * ჩანაწერების მოდული (`note`).
  *
  * მფლობელობა — `BelongsToUser` global scope (სხვისი ჩანაწერი 404), უფლებები —
  * `permission:note` middleware. გარე წყარო **არ არსებობს**: ეს user-ის
@@ -24,17 +24,17 @@ class NoteEntryController extends Controller
     public function index(Request $request)
     {
         $query = NoteEntry::query()->with('category')->withCount(['files', 'reminders']);
-        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'note', $request);
 
-        // §6.4 — სტატუსი per-user ლექსიკონია; ფილტრი გასაღებით რჩება
+        // სტატუსი per-user ლექსიკონია; ფილტრი გასაღებით რჩება
         foreach ($this->slugList($request->string('status')->toString()) as $key) {
             $query->statusKey($key);
         }
         if ($request->boolean('favorite')) {
             $query->where('is_favorite', true);
         }
-        // კატეგორიები/ტეგები — მძიმით გამოყოფილი სია (5.2-ის წესი)
+        // კატეგორიები/ტეგები — მძიმით გამოყოფილი სია
         if ($categories = $this->slugList($request->string('category_id')->toString())) {
             $query->whereIn('category_id', array_map('intval', $categories));
         }
@@ -42,20 +42,20 @@ class NoteEntryController extends Controller
             $query->whereJsonContains('tags', $tag);
         }
 
-        // „რა მელოდება" — ვადიანი ჩანაწერები (§13.1-ის deadline)
+        // „რა მელოდება" — ვადიანი ჩანაწერები
         if ($request->boolean('due')) {
             $query->whereNotNull('due_at');
         }
         if ($request->boolean('overdue')) {
-            /* ⚠️ „ვადაგადაცილებული" **როლით** იჭრება და არა `open` სახელით
-               (§6.4): სტატუსი გადაერქმევა, მნიშვნელობა კი `role`-შია. */
+            /* ⚠️ „ვადაგადაცილებული" **როლით** იჭრება და არა `open` სახელით:
+               სტატუსი გადაერქმევა, მნიშვნელობა კი `role`-შია. */
             $query->whereNotNull('due_at')->where('due_at', '<', now())->statusRole('todo');
         }
 
         if ($q = $request->string('q')->toString()) {
             $query->where(fn ($inner) => $inner
                 ->where('title', 'like', Like::contains($q))
-                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // §47 — ფორმატის გარეშე
+                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // ფორმატის გარეშე
                 ->orWhere('tags', 'like', Like::contains($q))
                 ->orWhere('links', 'like', Like::contains($q)));
         }
@@ -101,7 +101,7 @@ class NoteEntryController extends Controller
 
     public function destroy(NoteEntry $note)
     {
-        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+        /* ⚠️ **კალათა** — `delete()` კი არა, `moveToTrash()`.
            ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
            გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
            ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
@@ -153,7 +153,7 @@ class NoteEntryController extends Controller
             'tags' => ['nullable', 'array', 'max:20'],
             'tags.*' => ['string', 'max:60'],
 
-            // რამდენიმე ბმული (§13.1)
+            // რამდენიმე ბმული
             'links' => ['nullable', 'array', 'max:20'],
             'links.*.label' => ['nullable', 'string', 'max:60'],
             'links.*.url' => ['required_with:links', 'string', 'max:1000', 'url'],
@@ -161,8 +161,8 @@ class NoteEntryController extends Controller
             'due_at' => ['nullable', 'date'],
             'status' => [...$must, 'string', Status::rule('note')],
             'is_favorite' => ['nullable', 'boolean'],
-            // ⚠️ `public` აქაც დაშვებულია სქემის დონეზე, მაგრამ 16.1-ის მიხედვით
-            // ეს მოდული საჯარო პროფილზე მაინც არ ჩანს — ეს განზრახაა
+            // ⚠️ `public` აქაც დაშვებულია სქემის დონეზე, მაგრამ ეს მოდული
+            // საჯარო პროფილზე მაინც არ ჩანს — ეს განზრახაა
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
         ]);
     }

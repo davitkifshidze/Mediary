@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * **კალათა (FEAT-11).**
+ * **კალათა.**
  *
  * ⚠️ **მთავარი, რასაც ეს ტესტები იცავენ, ორი ურთიერთსაპირისპირო ფაქტია:**
  * ჩვეულებრივი წაშლა **არაფერს** ანადგურებს (ფაილი, კვოტა, მიბმები ადგილზეა,
@@ -99,7 +99,7 @@ class TrashTest extends TestCase
 
         $groups = $this->actingAs($this->me)->getJson('/api/trash')->assertOk()->json('data');
         $this->assertCount(1, $groups);
-        // Tasks §29 — ჯგუფი ურნის **სახეა** (`kind`); ჩანაწერზე ის მოდულის key-ს ემთხვევა
+        // ჯგუფი ურნის **სახეა** (`kind`); ჩანაწერზე ის მოდულის key-ს ემთხვევა
         $this->assertSame('movie', $groups[0]['kind']);
         $this->assertSame('record', $groups[0]['category']);
         $this->assertSame('Restored', $groups[0]['items'][0]['title']);
@@ -114,7 +114,7 @@ class TrashTest extends TestCase
     }
 
     /**
-     * Tasks §46 — ჯამური სია ჯგუფის პირველ გვერდს (10) აბრუნებს, დანარჩენი — `/trash/{kind}/items`:
+     * ჯამური სია ჯგუფის პირველ გვერდს (10) აბრუნებს, დანარჩენი — `/trash/{kind}/items`:
      * იგივე რიგი (ახალი ზემოთ), ჯამი და ბოლო გვერდი; უცნობი სახე 404-ია. ⚠️ ადრე 50-ის ზემოთ არაფერი ჩანდა.
      */
     public function test_a_trash_group_is_paged_past_the_first_page(): void
@@ -176,7 +176,7 @@ class TrashTest extends TestCase
     /* ---------- ის, რაც კალათას **უნდა** გვერდი აუაროს ---------- */
 
     /**
-     * ⚠️ **`/purge` ურნაში მყოფს ხელს აღარ ახლებს** (Tasks §29.8): ის თვითონ
+     * ⚠️ **`/purge` ურნაში მყოფს ხელს აღარ ახლებს**: ის თვითონ
      * ურნაში აგზავნის, ე.ი. უკვე ურნაში მყოფის ხელახლა „გადატანა" მის
      * `trashed_at`-ს განაახლებდა და ვადა თავიდან დაიწყებოდა. ანგარიშის
      * წაშლა კი მას ისევ ნამდვილად შლის (`PurgeService::FOR_GOOD`) — იხ.

@@ -10,7 +10,7 @@ import {
 } from '@/lib/shareLinks'
 
 /* ============================================================
-   გაზიარების ბმულის სუფთა წესები (Tasks §40, §40.10).
+   გაზიარების ბმულის სუფთა წესები.
    ============================================================ */
 
 describe('specComplete — ცარიელი არჩევანი „არაფერია" და არა „ყველაფერი"', () => {
@@ -30,7 +30,7 @@ describe('specComplete — ცარიელი არჩევანი „ა
     // მედია — გლობალური ჟანრის slug-ები
     expect(specComplete({ scope: 'genre', genres: ['drama'] }, 'movie')).toBe(true)
     expect(specComplete({ scope: 'genre', categories: [3] }, 'movie')).toBe(false)
-    // ეტაპი 2 — მფლობელის ლექსიკონის id-ები
+    // მფლობელის ლექსიკონის id-ები
     expect(specComplete({ scope: 'genre', categories: [3] }, 'book')).toBe(true)
     expect(specComplete({ scope: 'genre', genres: ['drama'] }, 'book')).toBe(false)
   })

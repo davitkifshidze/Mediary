@@ -17,11 +17,11 @@ import { LIST_PAGE_SIZE, useClientPages } from '@/lib/paged'
 import { PageHeader } from '@/components/ui/page-header'
 
 /* ============================================================
-   „ვისთან ჰგავს ჩემი გემოვნება" (Tasks §16.2) — საჯარო პროფილების
+   „ვისთან ჰგავს ჩემი გემოვნება" — საჯარო პროფილების
    კატალოგი, მსგავსების რეიტინგით.
 
-   ⚠️ **ეს კატალოგიცაა და არა მარტო რეიტინგი.** §16.2 ითხოვს „საჯარო
-   პროფილების ძებნა/კატალოგს", რომელიც 16.1-ს არ ჰქონდა — ე.ი. პროფილი,
+   ⚠️ **ეს კატალოგიცაა და არა მარტო რეიტინგი.** საჭიროა „საჯარო
+   პროფილების ძებნა/კატალოგი", რომელიც პირველ ვერსიას არ ჰქონდა — ე.ი. პროფილი,
    რომელთანაც ჯერ არაფერი გვაქვს საერთო, უნდა მოიძებნებოდეს. ასეთები
    ბოლოში ჩამოდიან, ნულოვანი დამთხვევით.
 
@@ -44,7 +44,7 @@ export function PeoplePage() {
     // ძებნისას სია არ „ციმციმებს" — ძველი შედეგი რჩება, სანამ ახალი მოვა
     placeholderData: keepPreviousData,
   })
-  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; ძებნის შეცვლა პირველ გვერდზე აბრუნებს
+  // გვერდზე 10: ნომრები + „მეტის ჩვენება"; ძებნის შეცვლა პირველ გვერდზე აბრუნებს
   const pager = useClientPages(ranking.data?.items ?? NO_ROWS, LIST_PAGE_SIZE)
   const { reset } = pager
   useEffect(() => reset(), [term, reset])
@@ -150,7 +150,7 @@ function ProfileRow({
   const p = row.profile
   const avatar = p.avatar_path ? storageUrl(p.avatar_path) : null
 
-  /* Tasks §7 — მარჯვენა ღილაკი: პროფილის გახსნა */
+  /* მარჯვენა ღილაკი: პროფილის გახსნა */
   const actions: MenuAction[] = [
     { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => navigate(`/u/${p.username}`) },
   ]
@@ -179,7 +179,7 @@ function ProfileRow({
               {row.domains.map((d) => {
                 // შედარებად დომენებზე key მოდულის key-ს ემთხვევა (`playlist` აქ არ არის)
                 const m = modules[d.domain]
-                // §37.4 — `custom` ფსევდო-დომენია: ყველა პირადი მოდული ერთად
+                // `custom` ფსევდო-დომენია: ყველა პირადი მოდული ერთად
                 const name =
                   d.domain === 'custom'
                     ? t('matches.customModules')

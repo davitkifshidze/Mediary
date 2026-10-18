@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** ადგილის შენახული მარშრუტი (Tasks §30.4) — გეომეტრია polyline-ად, კლიენტი შლის */
+/** ადგილის შენახული მარშრუტი — გეომეტრია polyline-ად, კლიენტი შლის */
 class PlaceRouteResource extends JsonResource
 {
     public function toArray(Request $request): array
@@ -20,7 +20,7 @@ class PlaceRouteResource extends JsonResource
             // ⚠️ `decimal` cast სტრიქონს აბრუნებს — Leaflet-ს რიცხვი უნდა
             'from_lat' => (float) $this->from_lat,
             'from_lng' => (float) $this->from_lng,
-            // Tasks §56.4 — „საიდან" (ძველ მარშრუტს არ აქვს — კლიენტი კოორდინატებს წერს)
+            // „საიდან" (ძველ მარშრუტს არ აქვს — კლიენტი კოორდინატებს წერს)
             'from_label' => $this->from_label,
             'geometry' => $this->geometry,
             'chosen_at' => $this->chosen_at?->toIso8601String(),

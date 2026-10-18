@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * I5 — ვიდეოს მოდული: ბმულის ამოცნობა, მფლობელობა და მიმაგრებული შიგთავსი.
+ * ვიდეოს მოდული: ბმულის ამოცნობა, მფლობელობა და მიმაგრებული შიგთავსი.
  */
 class VideoModuleTest extends TestCase
 {
@@ -117,7 +117,7 @@ class VideoModuleTest extends TestCase
         $this->actingAs($this->user)->getJson('/api/videos')->assertOk()->assertJsonCount(0, 'data');
     }
 
-    /** K3 — ფაილები/ჩანიშვნები და მათი გასუფთავება ვიდეოს წაშლისას */
+    /** ფაილები/ჩანიშვნები და მათი გასუფთავება ვიდეოს წაშლისას */
     public function test_files_and_notes_lifecycle(): void
     {
         Storage::fake('public');
@@ -156,7 +156,7 @@ class VideoModuleTest extends TestCase
         Storage::disk('public')->assertExists($path);
 
         // ვიდეოს წაშლა → ჩანაწერებიც და ფაილებიც ქრება
-        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+        /* ⚠️ **კალათა** — `DELETE /api/<module>/{id}` ჩანაწერს
            აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
            როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/videos/{$video->id}")->assertNoContent();
@@ -184,7 +184,7 @@ class VideoModuleTest extends TestCase
         $this->actingAs($this->user)->deleteJson("/api/video-files/{$file->id}")->assertStatus(404);
     }
 
-    /** Tasks 5.1 — ტიპების ლექსიკონი: დეფაულტები, CRUD და წაშლაზე გადატანა */
+    /** ტიპების ლექსიკონი: დეფაულტები, CRUD და წაშლაზე გადატანა */
     public function test_video_types_are_managed_per_user(): void
     {
         // პირველ მოთხოვნაზე დეფაულტები ჩნდება (ინფორმაციული + გასართობი)
@@ -211,7 +211,7 @@ class VideoModuleTest extends TestCase
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.type_id', $lesson)
-            // 5.6 — ხილვადობა ნაგულისხმევად პირადია
+            // ხილვადობა ნაგულისხმევად პირადია
             ->assertJsonPath('data.visibility', 'private')
             ->json('data.id');
 
@@ -255,7 +255,7 @@ class VideoModuleTest extends TestCase
         ])->assertStatus(422);
     }
 
-    /** Tasks 5.3 — ტეგების დუბლი backend-ზეც იჭრება */
+    /** ტეგების დუბლი backend-ზეც იჭრება */
     public function test_duplicate_tags_are_removed(): void
     {
         $this->actingAs($this->user)
@@ -269,7 +269,7 @@ class VideoModuleTest extends TestCase
     }
 
     /**
-     * Tasks 17.1/17.3 — კვოტა: ატვირთვა ითვლება, წაშლა ათავისუფლებს,
+     * კვოტა: ატვირთვა ითვლება, წაშლა ათავისუფლებს,
      * ამოწურვაზე იბლოკება (413).
      */
     public function test_storage_quota_counts_uploads_and_blocks_at_the_limit(): void
@@ -301,7 +301,7 @@ class VideoModuleTest extends TestCase
         // დაქეშილი მრიცხველი და დისკიდან გადათვლილი ერთი და იგივეა
         $this->assertSame($used, $meter->recalculate($this->user->refresh()));
 
-        // მიმაგრებული ფაილი მოდულის ჭრილშიც ჩანს (17.5-ის ბაზისი)
+        // მიმაგრებული ფაილი მოდულის ჭრილშიც ჩანს („ყველაზე დიდი ფაილების" ბაზისი)
         $this->actingAs($this->user)->getJson('/api/storage')
             ->assertOk()
             ->assertJsonPath('used', $used)
@@ -322,7 +322,7 @@ class VideoModuleTest extends TestCase
         $this->assertSame(1, VideoFile::withoutGlobalScope('owner')->count());
 
         // ვიდეოს წაშლა კასკადით ათავისუფლებს კვოტას
-        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+        /* ⚠️ **კალათა** — `DELETE /api/<module>/{id}` ჩანაწერს
            აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
            როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/videos/{$video->id}")->assertNoContent();
@@ -331,7 +331,7 @@ class VideoModuleTest extends TestCase
     }
 
     /**
-     * Tasks 4 → §9 — მასობრივი ოპერაცია: ტიპი, ტეგები და **სტატუსი**.
+     * მასობრივი ოპერაცია: ტიპი, ტეგები და **სტატუსი**.
      *
      * ⚠️ წყარო ახლა ცხადი `scope`-ია (`ids | type | tag | status | all`) —
      * იგივე ლექსიკა, რასაც `PurgeService::TARGET_MODES` იყენებს. სკოუპის
@@ -422,7 +422,7 @@ class VideoModuleTest extends TestCase
     }
 
     /**
-     * **§9.1 — ტეგის სკოუპი: „ვისაც ეს ტეგი აქვს".**
+     * **ტეგის სკოუპი: „ვისაც ეს ტეგი აქვს".**
      *
      * ⚠️ ქართული ტეგი JSON სვეტში **escape-ულად** ზის, ე.ი. `LIKE` ვერასდროს
      * დაემთხვეოდა — შედარება `Video::tagKey()`-ით PHP-შია.
@@ -460,7 +460,7 @@ class VideoModuleTest extends TestCase
     }
 
     /**
-     * **§9.6 — მასობრივი სტატუსი იმავე სკოუპებით.**
+     * **მასობრივი სტატუსი იმავე სკოუპებით.**
      *
      * ⚠️ `POST /videos/bulk-status` მხოლოდ `ids`/`from_status`-ს იცნობს,
      * ე.ი. SPA აქ მოდის — თორემ სკოუპის მეორე განმარტება დაიბადებოდა.
@@ -502,7 +502,7 @@ class VideoModuleTest extends TestCase
             ->assertStatus(403);
     }
 
-    /** Tasks 1.6 — მოდულის შიდა უფლება: წვდომა აქვს, წაშლის უფლება — არა */
+    /** მოდულის შიდა უფლება: წვდომა აქვს, წაშლის უფლება — არა */
     public function test_role_permissions_limit_module_actions(): void
     {
         $readonly = Role::create([
@@ -556,8 +556,8 @@ class VideoModuleTest extends TestCase
     }
 
     /**
-     * Tasks §45.2 — სიის ხედი (ბარათები · ბადე · სტრიქონები) მოდულზე ინახება:
-     * იმავე ბლობის სხვა ფენას (`pick`, §17) არ შლის და სხვა ადამიანს არ ეხება.
+     * სიის ხედი (ბარათები · ბადე · სტრიქონები) მოდულზე ინახება:
+     * იმავე ბლობის სხვა ფენას (`pick`) არ შლის და სხვა ადამიანს არ ეხება.
      */
     public function test_the_list_view_is_kept_per_module_next_to_other_settings(): void
     {
@@ -579,9 +579,9 @@ class VideoModuleTest extends TestCase
         $this->assertArrayNotHasKey('view', $theirs['user_settings'] ?? []);
     }
 
-    /* ---------- §6 (ფაზა 1) — ველების კონსტრუქტორი ---------- */
+    /* ---------- ველების კონსტრუქტორი ---------- */
 
-    /** ხანგრძლივობის ხელით ველი **გამორთულია** default-ად (§5) */
+    /** ხანგრძლივობის ხელით ველი **გამორთულია** default-ად */
     public function test_optional_field_is_off_by_default_and_can_be_enabled(): void
     {
         $res = $this->actingAs($this->user)->getJson('/api/modules/video/fields')->assertOk();
@@ -664,7 +664,7 @@ class VideoModuleTest extends TestCase
     }
 
     /**
-     * ფაზა 2 — ლეიბლი/placeholder/`required`.
+     * ლეიბლი/placeholder/`required`.
      * ⚠️ **ცარიელი ტექსტი გადახრას შლის** და არა ცარიელ ლეიბლს წერს:
      * user-ის ქმედება „დააბრუნე ნაგულისხმევი"-ა, ტექსტი კი ლოკალიზაციაშია.
      */
@@ -691,9 +691,9 @@ class VideoModuleTest extends TestCase
     }
 
     /**
-     * **§6.5 — თანმიმდევრობა კატალოგისაა და `sort_order` აღარ ისმენს.**
+     * **თანმიმდევრობა კატალოგისაა და `sort_order` აღარ ისმენს.**
      *
-     * ადრე რიგი UI-დან იცვლებოდა; §6.5-მ ის მოაშორა („დალაგება აქ არ
+     * ადრე რიგი UI-დან იცვლებოდა; შემდეგ ის მოიხსნა („დალაგება აქ არ
      * გვინდა"), ე.ი. გაგზავნილი `sort_order` ჩუმად უნდა დარჩეს უპასუხოდ —
      * 422 არ იყოს (ძველი ფრონტი არ უნდა გატყდეს), მაგრამ რიგიც არ შეიცვალოს.
      */
@@ -709,7 +709,7 @@ class VideoModuleTest extends TestCase
     }
 
     /**
-     * **§6.5 → §4 — `locked` ველი ჩანს, იმართება მხოლოდ მოხსნის შემდეგ.**
+     * **`locked` ველი ჩანს, იმართება მხოლოდ მოხსნის შემდეგ.**
      *
      * ვიდეოს `url`-ის გარეშე ჩანაწერი არ არსებობს, ამიტომ ველი სიაშია
      * (რომ სია არ ტყუოდეს) და მისი გამორთვა **backend-ზე** იგნორირდება —
@@ -728,7 +728,7 @@ class VideoModuleTest extends TestCase
         $url = collect($fields)->firstWhere('key', 'url');
 
         $this->assertTrue($url['locked']);
-        // ⚠️ მოხსნა `super_admin`-ს რჩება (Tasks §4) — უარი ჩუმია და არა 422
+        // ⚠️ მოხსნა `super_admin`-ს რჩება — უარი ჩუმია და არა 422
         $this->assertFalse($url['unlocked']);
         $this->assertTrue($url['enabled']);
         $this->assertTrue($url['required']);
@@ -741,7 +741,7 @@ class VideoModuleTest extends TestCase
     }
 
     /**
-     * **ჩაკეტილი → მოხსნილი → გამორთული → ისევ ჩაკეტილი** (Tasks §4.6).
+     * **ჩაკეტილი → მოხსნილი → გამორთული → ისევ ჩაკეტილი**.
      *
      * ⚠️ ბოლო ნაბიჯი ყველაზე მნიშვნელოვანია: ხელახლა ჩაკეტვამ დროშები
      * `true`-ზე უნდა დააბრუნოს, თორემ დარჩებოდა **დამალული და თან
@@ -783,7 +783,7 @@ class VideoModuleTest extends TestCase
     }
 
     /**
-     * **ნაგულისხმევზე დაბრუნება** — საგარანტიო გასასვლელი (Tasks §4).
+     * **ნაგულისხმევზე დაბრუნება** — საგარანტიო გასასვლელი.
      *
      * ⚠️ მხოლოდ `fields` იშლება: იმავე JSON ბლოკში გალერეის
      * ნაგულისხმევები და სტატუსების განლაგებაც ზის.
@@ -812,7 +812,7 @@ class VideoModuleTest extends TestCase
     }
 
     /**
-     * **probe `view` უფლებაა და არა `create` (Tasks GAP-04).**
+     * **probe `view` უფლებაა და არა `create`.**
      *
      * ⚠️ `POST /videos/metadata` მხოლოდ **კითხულობს** (oEmbed) და ჩანაწერს
      * არ ქმნის, მაგრამ POST-ის გამო `EnsureModulePermission` მას
@@ -847,7 +847,7 @@ class VideoModuleTest extends TestCase
 
     /* ============================================================
        მასობრივი ცვლილება — `GET /videos/bulk-preview`, `POST /videos/bulk`
-       (Tasks DEBT-14)
+
        ============================================================ */
 
     /** ორი ვიდეო: ერთი ტეგიანი, მეორე — არა; ორივე ერთსა და იმავე ტიპზე */
@@ -968,7 +968,7 @@ class VideoModuleTest extends TestCase
     }
 
     /* ============================================================
-       Tasks §19.6 / Q52 — არხი და გამოქვეყნების დღე
+       არხი და გამოქვეყნების დღე
        ============================================================ */
 
     /**

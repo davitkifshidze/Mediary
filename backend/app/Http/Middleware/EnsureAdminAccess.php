@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * **ადმინის სექციაზე წვდომა (Tasks 1.6)** — `admin_access:users`,
+ * **ადმინის სექციაზე წვდომა** — `admin_access:users`,
  * `admin_access:roles`, `admin_access:requests`.
  *
  * აქამდე ეს სამივე მყარად `super_admin`-ზე იყო. ახლა უფლება როლიდან მოდის
@@ -28,7 +28,7 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureAdminAccess
 {
     /** POST, რომელიც არსებულ ჩანაწერს ცვლის და არა ახალს ქმნის */
-    // ⚠️ `reset-link` (FEAT-16) — არსებულ ანგარიშზე აღდგენის ბმულის გაცემაა
+    // ⚠️ `reset-link` — არსებულ ანგარიშზე აღდგენის ბმულის გაცემაა
     // და არა ახალი ანგარიშის შექმნა; უამისოდ `admin:users.update`-ის მქონე
     // ადმინი ცრუ 403-ს იღებდა, `create`-ის მქონე კი — გაივლიდა.
     private const UPDATE_ENDPOINTS = ['approve', 'reject', 'modules', 'reset-link'];

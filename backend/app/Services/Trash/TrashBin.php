@@ -45,7 +45,7 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * **ურნა — ერთი ადგილი ყველაფრისთვის, რაც იშლება** (Tasks §29).
+ * **ურნა — ერთი ადგილი ყველაფრისთვის, რაც იშლება**.
  *
  * შენი სიტყვები: „იქ ყველა წაშლილი ჩავარდეს, ნებისმიერი რამ: ფოტო, ბმული,
  * ფილმი, სერიალი, გალერეიდან თუ საიდანაც იქნება — და 30 დღე აღდგენის
@@ -61,12 +61,12 @@ use Symfony\Component\HttpFoundation\Response;
  * ადგილი, რომელიც „რა არის ურნაში"-ს ცალ-ცალკე დაწერდა, პირველივე ახალ
  * სახეზე დაშორდებოდა.
  *
- * ⚠️ **ფაილი ურნაში ადგილს იკავებს** (29.4) — კვოტა მხოლოდ საბოლოო წაშლისას
+ * ⚠️ **ფაილი ურნაში ადგილს იკავებს** — კვოტა მხოლოდ საბოლოო წაშლისას
  * თავისუფლდება, ამიტომ სია თითო ელემენტის და მთელი ურნის მოცულობას ამბობს.
  * ჩანაწერის მოცულობაში მისი ფაილებიც ითვლება (პოსტერი, ფოტოები, ველის
  * ფაილები) — საბოლოო წაშლა სწორედ მათ ათავისუფლებს.
  *
- * ⚠️ **აღდგენის წესები (29.5)**: ელემენტი, რომლის ჩანაწერიც თვითონ ურნაშია,
+ * ⚠️ **აღდგენის წესები**: ელემენტი, რომლის ჩანაწერიც თვითონ ურნაშია,
  * ჩანაწერთან ერთად ბრუნდება (სხვაგვარად ის უხილავ ჩანაწერს მიებმებოდა);
  * გამორთული მოდულის ელემენტი ჩანს, მაგრამ აღდგენას მოდულის ჩართვა
  * სჭირდება; ჩაკეტილი ალბომის ფოტო ურნაშიც ჩაკეტილია (ესკიზი არ იგზავნება).
@@ -74,7 +74,7 @@ use Symfony\Component\HttpFoundation\Response;
 final class TrashBin
 {
     /**
-     * ჯამურ სიაში თითო ჯგუფის **პირველი გვერდი** (Tasks §46 — გვერდზე 10); დანარჩენი
+     * ჯამურ სიაში თითო ჯგუფის **პირველი გვერდი** (გვერდზე 10); დანარჩენი
      * გვერდები `page()`-დან მოდის. ⚠️ ადრე 50 იყო და 50-ზე მეტი ელემენტი საერთოდ არ ჩანდა.
      */
     public const PER_GROUP = 10;
@@ -105,7 +105,7 @@ final class TrashBin
     ];
 
     /**
-     * **რიგიანი ელემენტი, რომლის გადახედვა ფაილი კი არა, მისი ესკიზია** (Tasks §33).
+     * **რიგიანი ელემენტი, რომლის გადახედვა ფაილი კი არა, მისი ესკიზია**.
      *
      * ⚠️ პირადი გალერეის ფოტო 15 MB-მდეა, ვიდეო — 300 MB: ურნის სიაში ესკიზად
      * მთელი ფაილის გაგზავნა ზედმეტი (და ვიდეოზე უაზრო) იქნებოდა. ორივე პირად
@@ -137,7 +137,7 @@ final class TrashBin
      */
     public function listing(User $user): array
     {
-        // ⚠️ Tasks §29.6 — ვადა ამ ანგარიშისაა და არა კოდის მუდმივა
+        // ⚠️ ვადა ამ ანგარიშისაა და არა კოდის მუდმივა
         $days = UserSettings::trashDays($user);
         $modules = Module::all()->keyBy('key');
         $recordSizes = $this->recordSizes($user);
@@ -159,7 +159,7 @@ final class TrashBin
 
             $category = TrashDomain::category($kind);
             $groupBytes = match (true) {
-                // §37.7 — მოდულის ელემენტი: მისი ყველა ჩანაწერის ფაილები (`markTrash()`); §35.9 — მსახიობისაც
+                // მოდულის ელემენტი: მისი ყველა ჩანაწერის ფაილები (`markTrash()`); მსახიობისაც
                 $category === 'record', $kind === CustomModuleTrash::KIND, $kind === CastMemberTrash::KIND => array_sum(array_map(
                     fn (int $id) => $recordSizes["{$kind}:{$id}"] ?? 0,
                     (clone $query)->pluck('id')->map(fn ($id) => (int) $id)->all(),
@@ -179,7 +179,7 @@ final class TrashBin
                 'module' => $moduleKey ?? match ($kind) {
                     'database_backup' => 'backup',
                     'chat_file', 'chat_message' => 'chat',
-                    // ეტაპი 7 — აუდიტის ლოგის გასუფთავება (ფერი ინსტრუმენტისაა)
+                    // აუდიტის ლოგის გასუფთავება (ფერი ინსტრუმენტისაა)
                     AuditLogTrash::KIND => 'audit',
                     default => null,
                 },
@@ -204,7 +204,7 @@ final class TrashBin
     }
 
     /**
-     * **ერთი ჯგუფის გვერდი** (Tasks §46) — ურნის სექცია გვერდებად: ჯამური სია
+     * **ერთი ჯგუფის გვერდი** — ურნის სექცია გვერდებად: ჯამური სია
      * პირველ გვერდს აბრუნებს (`PER_GROUP`), ესენი — დანარჩენს, იმავე რიგით და
      * იმავე ფორმით (`item()`). უცნობი ან ამ ანგარიშისთვის დამალული სახე — 404.
      *
@@ -236,7 +236,7 @@ final class TrashBin
         ];
     }
 
-    /** ჯგუფის რიგები ერთი გვერდით — ახალი ზემოთ; ⚠️ ეტაპი 5 — ჩატის სათაური და „აღდგება?" ერთი ჩატვირთვით */
+    /** ჯგუფის რიგები ერთი გვერდით — ახალი ზემოთ; ⚠️ ჩატის სათაური და „აღდგება?" ერთი ჩატვირთვით */
     private function rows(Builder $query, ?string $category, int $page, int $perPage): Collection
     {
         $rows = (clone $query)->orderByDesc('trashed_at')->orderByDesc('id')->forPage($page, $perPage)->get();
@@ -249,7 +249,7 @@ final class TrashBin
     }
 
     /**
-     * **ვადის შეცვლის გადახედვა** (Tasks §29.6) — `/settings`-ის გაფრთხილება.
+     * **ვადის შეცვლის გადახედვა** — `/settings`-ის გაფრთხილება.
      *
      * ⚠️ ვადის შემოკლება ურნაში **უკვე მყოფზეც** მოქმედებს მომდევნო ღამის
      * გასუფთავებისას, ამიტომ შენახვამდე უნდა ითქვას, რამდენი წაიშლება.
@@ -278,7 +278,7 @@ final class TrashBin
             'saved_days' => $saved,
             'default_days' => TrashDomain::defaultDays(),
             'max_days' => TrashDomain::maxDays(),
-            // §34.1 — სუპერადმინის რედაქტორისთვის: რა იქნება, თუ ცვლილებას მოხსნის
+            // სუპერადმინის რედაქტორისთვის: რა იქნება, თუ ცვლილებას მოხსნის
             'default_max_days' => TrashDomain::configMaxDays(),
             'max_days_ceiling' => TrashDomain::MAX_DAYS_CEILING,
             'prune_at' => (string) config('mediary.trash.prune_at', '03:30'),
@@ -307,9 +307,9 @@ final class TrashBin
         $category = TrashDomain::category($kind);
         $isLocked = match (true) {
             $row instanceof GalleryImage => $row->album_id && isset($locked[(int) $row->album_id]),
-            // §33.7 — ჩაკეტილი ადამიანის/ალბომის ფოტო ურნაშიც ბოქლომიანია (ესკიზის გარეშე)
+            // ჩაკეტილი ადამიანის/ალბომის ფოტო ურნაშიც ბოქლომიანია (ესკიზის გარეშე)
             $row instanceof PersonalMedia => self::personalHidden($row),
-            // §35.5 — დამალული ფილმი/სერიალი/ანიმე ურნაშიც ბოქლომიანია
+            // დამალული ფილმი/სერიალი/ანიმე ურნაშიც ბოქლომიანია
             default => RecordLocks::hiddenRecord($row),
         };
         $blocked = $this->blocked($user, $kind, $row, $parent, strict: false);
@@ -321,9 +321,9 @@ final class TrashBin
             'title' => match (true) {
                 $chat => $this->messageTitle($row->message),
                 $byParent => $parent['title'],
-                // §37.7 — მოდულის სახელი ინტერფეისის ენაზე (ორივე `payload`-შია)
+                // მოდულის სახელი ინტერფეისის ენაზე (ორივე `payload`-შია)
                 $kind === CustomModuleTrash::KIND => CustomModuleTrash::title($row),
-                // §35.9 — მსახიობის სახელი (ქართულ ინტერფეისზე ქართულით)
+                // მსახიობის სახელი (ქართულ ინტერფეისზე ქართულით)
                 $kind === CastMemberTrash::KIND => CastMemberTrash::title($row),
                 default => $this->titleOf($kind, $row),
             },
@@ -353,28 +353,28 @@ final class TrashBin
                 'chat_message' => $row->message?->created_at?->toIso8601String(),
                 default => null,
             },
-            // ⚠️ ეტაპი 5 — „მხოლოდ ჩემთან" თუ „ორივესთან"; ტექსტი კლიენტისაა (ენა)
+            // ⚠️ „მხოლოდ ჩემთან" თუ „ორივესთან"; ტექსტი კლიენტისაა (ენა)
             'scope' => $chat ? $row->scope : null,
             // ალბომზე — რამდენ ფოტოს დააბრუნებს; კლასიფიკატორზე — რამდენ ჩანაწერს შემოგთავაზებს
             'count' => match (true) {
                 $kind === 'gallery_album' => count($row->trashed_photo_ids['ids'] ?? []),
-                // ეტაპი 7 — რამდენი ლოგის რიგი დაბრუნდება (სათაურს კლიენტი აწყობს — ენა)
+                // რამდენი ლოგის რიგი დაბრუნდება (სათაურს კლიენტი აწყობს — ენა)
                 $kind === AuditLogTrash::KIND => AuditLogTrash::count($row),
-                // §37.7 — რამდენი ჩანაწერი გადავიდა მოდულთან ერთად
+                // რამდენი ჩანაწერი გადავიდა მოდულთან ერთად
                 $kind === CustomModuleTrash::KIND => CustomModuleTrash::count($row),
-                // §35.9 — რამდენ ჩანაწერზე იყო მიბმული (აღდგენა იმდენ ბმულს დააბრუნებს)
+                // რამდენ ჩანაწერზე იყო მიბმული (აღდგენა იმდენ ბმულს დააბრუნებს)
                 $kind === CastMemberTrash::KIND => CastMemberTrash::count($row),
                 DictionaryTrash::has($kind) => DictionaryTrash::remembered($row),
                 default => null,
             },
             // მრავალმოდულიან ჯგუფში (სტატუსი, ნახვა, ველის ფაილი) — რომელ მოდულს ეკუთვნის
             'module' => $this->rowModule($kind, $row),
-            // ⚠️ კლასიფიკატორზე — შეიძლება თუ არა „ჩანაწერებთან ერთად" აღდგენა (ეტაპი 3)
+            // ⚠️ კლასიფიკატორზე — შეიძლება თუ არა „ჩანაწერებთან ერთად" აღდგენა
             'offers_records' => DictionaryTrash::has($kind) && DictionaryTrash::remembered($row) > 0,
             'parent' => $parent,
             'restorable' => $blocked === null,
             'blocked' => $blocked,
-            // ⚠️ ეტაპი 4 — სვეტი დაკავებულია, მაგრამ აღდგენა ახლანდელს ჩაანაცვლებს (ის თვითონ ურნაში გადავა)
+            // ⚠️ სვეტი დაკავებულია, მაგრამ აღდგენა ახლანდელს ჩაანაცვლებს (ის თვითონ ურნაში გადავა)
             'replaceable' => $blocked === 'slot_taken' && in_array($kind, ['record_photo', 'avatar'], true),
         ];
     }
@@ -391,14 +391,14 @@ final class TrashBin
         $userId = (int) $user->getKey();
 
         return match (TrashDomain::category($kind)) {
-            // ⚠️ §37 — პირადი მოდულის სახე მოდულითაც იჭრება (`TrashDomain::trashOf()`)
+            // ⚠️ პირადი მოდულის სახე მოდულითაც იჭრება (`TrashDomain::trashOf()`)
             'record' => TrashDomain::trashOf($kind, $userId),
             'item' => TrashDomain::ITEMS[$kind]['model']::trashOf($userId)
                 ->when(isset(TrashDomain::ITEMS[$kind]['module_column']), fn (Builder $q) => $q->whereIn(
                     TrashDomain::ITEMS[$kind]['module_column'],
                     $this->permitted($user, $this->columnModules($kind), 'delete'),
                 ))
-                /* §35.9 — ურნაში მყოფი მსახიობის ფოტოები და ვიდეოები მის ელემენტშია
+                /* ურნაში მყოფი მსახიობის ფოტოები და ვიდეოები მის ელემენტშია
                    (ერთად ბრუნდება) და ცალკე ელემენტად აღარ ჩანს */
                 ->when(in_array($kind, ['gallery_image', 'gallery_video'], true), fn (Builder $q) => $this->withoutTrashedActors($q, $kind, $user)),
             'file' => TrashedFile::withoutGlobalScope('owner')
@@ -413,13 +413,13 @@ final class TrashBin
                     'record_type',
                     $this->permitted($user, TrashDomain::domains(), 'update'),
                 )),
-            // ეტაპი 5 — ჩატის წერილი; მოდული და უფლება არ აქვს, ყველას თავისი ეკუთვნის
+            // ჩატის წერილი; მოდული და უფლება არ აქვს, ყველას თავისი ეკუთვნის
             'message' => TrashedMessage::withoutGlobalScope('owner')->where('user_id', $userId),
             default => TrashEntry::withoutGlobalScope('owner')
                 ->where('user_id', $userId)
                 ->where('kind', $kind)
                 /* ⚠️ აუდიტის ელემენტს მოდული არ აქვს — ის გამწმენდისაა (`AuditLogTrash`);
-                   §37.7 — პირადი მოდულის ელემენტი კი თვითონ მოდულია და მფლობელისაა */
+                   პირადი მოდულის ელემენტი კი თვითონ მოდულია და მფლობელისაა */
                 ->when(! in_array($kind, [AuditLogTrash::KIND, CustomModuleTrash::KIND, CastMemberTrash::KIND], true), fn (Builder $q) => $q->whereIn(
                     'record_type',
                     $this->permitted($user, MediaDomain::TYPES, (string) TrashDomain::ENTRIES[$kind]['permission']),
@@ -435,7 +435,7 @@ final class TrashBin
     private function columnModules(string $kind): array
     {
         return match ($kind) {
-            // §37 — პირადი მოდულის სტატუსიც იმავე ცხრილშია, თავისი გასაღებით
+            // პირადი მოდულის სტატუსიც იმავე ცხრილშია, თავისი გასაღებით
             'status' => [...array_keys(StatusDomain::DOMAINS), ...CustomModules::keys()],
             'custom_category', 'custom_record_file', 'custom_record_note' => CustomModules::keys(),
             default => MediaDomain::TYPES,
@@ -462,9 +462,9 @@ final class TrashBin
      * მშობლის აღდგენის **შემდეგ** რომ გაირკვეს, ჩანაწერი დაბრუნდებოდა,
      * ფაილი კი არა, და პასუხი მაინც შეცდომა იქნებოდა.
      *
-     * ⚠️ **`$withRecords` მხოლოდ კლასიფიკატორზე მოქმედებს** (Tasks §29, ეტაპი 3):
+     * ⚠️ **`$withRecords` მხოლოდ კლასიფიკატორზე მოქმედებს**:
      * წაშლამ გადატანილი ჩანაწერები ბრუნდება — ის, ვინც მას შემდეგ არ შეცვლილა.
-     * ნაგულისხმევი — მხოლოდ რიგი (Q21-ის „დ"-ს მიღებული შეზღუდვა).
+     * ნაგულისხმევი — მხოლოდ რიგი (შეგნებული შეზღუდვა).
      *
      * @return array{restored: true, with_parent: bool, records: int}
      */
@@ -475,7 +475,7 @@ final class TrashBin
 
         $reason = $this->blocked($user, $kind, $row, $parent, strict: true);
 
-        // ⚠️ ეტაპი 4 — დაკავებული სვეტი მხოლოდ ცხადი „ჩანაცვლებით" (29.2 — „სხვაგვარად ჯერ იკითხავს")
+        // ⚠️ დაკავებული სვეტი მხოლოდ ცხადი „ჩანაცვლებით" (სხვაგვარად ჯერ იკითხავს)
         if ($reason && ! ($reason === 'slot_taken' && $replace && in_array($kind, ['record_photo', 'avatar'], true))) {
             $this->fail($reason, 409);
         }
@@ -489,7 +489,7 @@ final class TrashBin
                 $withParent = true;
             }
 
-            // ეტაპი 7 — აუდიტის ლოგის რიგები ლოგში ბრუნდება, ელემენტი ქრება
+            // აუდიტის ლოგის რიგები ლოგში ბრუნდება, ელემენტი ქრება
             if ($row instanceof TrashEntry && $row->kind === AuditLogTrash::KIND) {
                 $count = AuditLogTrash::restore($row);
 
@@ -503,7 +503,7 @@ final class TrashBin
                 return;
             }
 
-            // §37.7 — პირადი მოდული ბრუნდება ჩანაწერებთან ერთად; ელემენტი ქრება
+            // პირადი მოდული ბრუნდება ჩანაწერებთან ერთად; ელემენტი ქრება
             if ($row instanceof TrashEntry && $row->kind === CustomModuleTrash::KIND) {
                 $reason = CustomModuleTrash::restore($row);
 
@@ -514,7 +514,7 @@ final class TrashBin
                 return;
             }
 
-            // §35.9 — მსახიობი ბრუნდება ბმულებითა და ფოტოებით; ელემენტი ქრება
+            // მსახიობი ბრუნდება ბმულებითა და ფოტოებით; ელემენტი ქრება
             if ($row instanceof TrashEntry && $row->kind === CastMemberTrash::KIND) {
                 $reason = CastMemberTrash::restore($row);
 
@@ -531,7 +531,7 @@ final class TrashBin
                 return;
             }
 
-            // ეტაპი 5 — დამალვის მოხსნა ან `removed_at`-ის გასუფთავება; ურნის რიგი ქრება
+            // დამალვის მოხსნა ან `removed_at`-ის გასუფთავება; ურნის რიგი ქრება
             if ($row instanceof TrashedMessage) {
                 $label = $this->messageTitle($row->message);
                 $reason = $this->chat->restoreMessage($row);
@@ -604,14 +604,14 @@ final class TrashBin
      * ე.ი. მოვლენები უნდა გაისროლოს: ფაილი დისკიდან, კვოტა, გალერეა და
      * pivot-ები სწორედ ახლა თავისუფლდება. ⚠️ მსახიობის ბმულზე მხოლოდ ურნის
      * ჩანაწერი იშლება — TMDB-ის საფლავის ქვა რჩება, თორემ სინქრონიზაცია მას
-     * დააბრუნებდა. ⚠️ ჩატის წერილზეც მხოლოდ ურნის რიგი იშლება (ეტაპი 5) —
-     * წერილი §4.6-ის წესით ბაზაში რჩება, უბრალოდ აღარ აღდგება.
+     * დააბრუნებდა. ⚠️ ჩატის წერილზეც მხოლოდ ურნის რიგი იშლება —
+     * წერილი ბაზაში რჩება, უბრალოდ აღარ აღდგება.
      */
     public function destroy(User $user, string $kind, int $id): void
     {
         $row = $this->find($user, $kind, $id);
 
-        /* Tasks §35.6 — დამალული ჩანაწერი სამუდამოდ არ იშლება (ალბომის წესი): ბრაუზერთან
+        /* დამალული ჩანაწერი სამუდამოდ არ იშლება (ალბომის წესი): ბრაუზერთან
            მისული პაროლის გარეშე ჩაკეტილს ვერ მოსპობს. აღდგენა კი ნებადართულია —
            ის ბიბლიოთეკაში ისევ ჩაკეტილი ბრუნდება. */
         abort_if(RecordLocks::hiddenRecord($row), 423, 'record_locked');
@@ -647,7 +647,7 @@ final class TrashBin
             }
 
             foreach ($this->query($user, $kind)->lazyById() as $row) {
-                // §35.6 — დამალული ურნაში რჩება (`destroy()`-ის წესი); ვადის ბოლოს prune მას მაინც შლის
+                // დამალული ურნაში რჩება (`destroy()`-ის წესი); ვადის ბოლოს prune მას მაინც შლის
                 if (RecordLocks::hiddenRecord($row)) {
                     continue;
                 }
@@ -681,14 +681,14 @@ final class TrashBin
 
         abort_if($row instanceof PersonalMedia && self::personalHidden($row), 404);
 
-        // §33 — ზოგიერთი სახე ესკიზს აჩვენებს და არა თვითონ ფაილს (`PREVIEW_PATH`)
+        // ზოგიერთი სახე ესკიზს აჩვენებს და არა თვითონ ფაილს (`PREVIEW_PATH`)
         $path = (string) $row->getAttribute(self::PREVIEW_PATH[$kind] ?? 'path');
         abort_if($path === '', 404);
 
         $disk = Storage::disk(StorageFolder::diskFor($path));
         abort_unless($disk->exists($path), 404);
 
-        // ⚠️ SEC-04/SEC-08 — ტიპი შიგთავსიდან, აქტიური შიგთავსი ჩამოიტვირთება
+        // ⚠️ ტიპი შიგთავსიდან, აქტიური შიგთავსი ჩამოიტვირთება
         return SafeMime::response($disk, $path, $row->getAttribute('original_name') ?? $row->getAttribute('name'));
     }
 
@@ -699,7 +699,7 @@ final class TrashBin
      * ათავისუფლებს ფაილს დისკიდან და კვოტას. ⚠️ ჩანაწერები პირველია: მათ
      * ნაწილებს მშობლის `deleting` თვითონ შლის.
      *
-     * ⚠️ **ვადა თითო ანგარიშისაა** (Tasks §29.6): ანგარიშები ვადის მიხედვით
+     * ⚠️ **ვადა თითო ანგარიშისაა**: ანგარიშები ვადის მიხედვით
      * ჯგუფდება (`retentionGroups()`) და თითო ჯგუფი თავისი ზღვრით იწმინდება.
      * `$days` ყველას ერთ ვადას აძალებს — ტესტისა და ხელით გაშვებისთვის (`--days`).
      *
@@ -792,9 +792,9 @@ final class TrashBin
     /**
      * ხილვადობა — ვის რა ეკუთვნის ურნაში.
      *
-     * ⚠️ **უფლება `delete`-ია და არა `view`** (FEAT-11): ურნა წაშლის
+     * ⚠️ **უფლება `delete`-ია და არა `view`**: ურნა წაშლის
      * გაგრძელებაა (მსახიობის ბმულზე — `update`, რადგან მისი მოხსნა ჩანაწერის
-     * რედაქტირებაა). ⚠️ **მოდულის ჩართულობა აქ არ მოწმდება** (29.5) —
+     * რედაქტირებაა). ⚠️ **მოდულის ჩართულობა აქ არ მოწმდება** —
      * გამორთული მოდულის ელემენტი ჩანს, მაგრამ აღდგენა მას ითხოვს
      * (`blocked()`). ბაზის ასლი მხოლოდ `super_admin`-ს ეკუთვნის.
      */
@@ -805,11 +805,11 @@ final class TrashBin
         return match (true) {
             $kind === 'database_backup' => $user->isSuperAdmin(),
             $category === 'file', $category === 'message' => true,
-            // ⚠️ აუდიტის ელემენტი ყოველთვის ჩანს — უფლება მხოლოდ აღდგენას ეკითხება (29.8)
+            // ⚠️ აუდიტის ელემენტი ყოველთვის ჩანს — უფლება მხოლოდ აღდგენას ეკითხება
             $kind === AuditLogTrash::KIND => true,
-            // §37.7 — საკუთარი მოდული; უფლება მფლობელობაა (`query()`-ის `user_id`)
+            // საკუთარი მოდული; უფლება მფლობელობაა (`query()`-ის `user_id`)
             $kind === CustomModuleTrash::KIND => true,
-            // §35.9 — საკუთარი (ხელით შექმნილი) მსახიობი; იგივე წესი
+            // საკუთარი (ხელით შექმნილი) მსახიობი; იგივე წესი
             $kind === CastMemberTrash::KIND => true,
             $category === 'entry' => $this->permitted($user, MediaDomain::TYPES, (string) TrashDomain::ENTRIES[$kind]['permission']) !== [],
             $category === 'item' && isset(TrashDomain::ITEMS[$kind]['module_column']) => $this->permitted($user, $this->columnModules($kind), 'delete') !== [],
@@ -831,10 +831,10 @@ final class TrashBin
     private function rowModule(string $kind, Model $row): ?string
     {
         return match (true) {
-            /* §37.7 — მოდულის ელემენტს „მოდულის ჩართულობა" არ ეკითხება: ის თვითონ
+            /* მოდულის ელემენტს „მოდულის ჩართულობა" არ ეკითხება: ის თვითონ
                ურნაში მყოფი მოდულია, ე.ი. `hasModule()` ყოველთვის `false` იქნებოდა */
             $row instanceof TrashEntry && $row->kind === CustomModuleTrash::KIND => null,
-            // §35.9 — მსახიობს მოდული არ აქვს (გლობალური ლექსიკონი)
+            // მსახიობს მოდული არ აქვს (გლობალური ლექსიკონი)
             $row instanceof TrashEntry && $row->kind === CastMemberTrash::KIND => null,
             $row instanceof TrashEntry => $row->record_type,
             $row instanceof TrashedFile => in_array($row->kind, ['field_file', 'record_photo'], true) ? $row->record_type : null,
@@ -921,19 +921,19 @@ final class TrashBin
             }
         }
 
-        // ⚠️ ეტაპი 7 — როლი რომ დაკარგოს, ელემენტი ჩანს, მაგრამ აღდგენა `admin:audit`-ს ითხოვს
+        // ⚠️ როლი რომ დაკარგოს, ელემენტი ჩანს, მაგრამ აღდგენა `admin:audit`-ს ითხოვს
         if ($row instanceof TrashEntry && $row->kind === AuditLogTrash::KIND) {
             return $user->hasAdminAccess('audit', 'delete') ? null : 'permission_missing';
         }
 
-        // §37.7 — მოდული ისევ უნდა არსებობდეს და ურნაში იყოს
+        // მოდული ისევ უნდა არსებობდეს და ურნაში იყოს
         if ($row instanceof TrashEntry && $row->kind === CustomModuleTrash::KIND) {
             return Module::withoutGlobalScope('trash')->whereKey($row->record_id)->whereNotNull('trashed_at')->exists()
                 ? null
                 : 'parent_missing';
         }
 
-        // §35.9 — მსახიობიც
+        // მსახიობიც
         if ($row instanceof TrashEntry && $row->kind === CastMemberTrash::KIND) {
             return CastMember::withoutGlobalScopes()->whereKey($row->record_id)->whereNotNull('trashed_at')->exists()
                 ? null
@@ -1111,7 +1111,7 @@ final class TrashBin
             return [$type, (int) $row->getAttribute($link->getForeignKeyName())];
         }
 
-        /* §37.5 — მრავალმოდულიანი სახე (პირადი მოდულის ფაილი/ჩანიშვნა): მშობლის
+        /* მრავალმოდულიანი სახე (პირადი მოდულის ფაილი/ჩანიშვნა): მშობლის
            ტიპი **რიგის** მოდულია და არა სახის — `ITEMS`-ში ის `null`-ია. */
         $type = isset(TrashDomain::ITEMS[$kind]['module_column'])
             ? (string) $row->getAttribute(TrashDomain::ITEMS[$kind]['module_column'])
@@ -1187,7 +1187,7 @@ final class TrashBin
     }
 
     /**
-     * **პირადი გალერეის ფოტო დამალული ადამიანის ან ალბომისაა?** (§33.7)
+     * **პირადი გალერეის ფოტო დამალული ადამიანის ან ალბომისაა?**
      *
      * ⚠️ ურნის query ყველა scope-ს თიშავს (`HasTrash::trashOf()`), ე.ი.
      * `personal_lock` აქ არ მუშაობს — ფოტო სიაში რჩება (ურნაშია და ვადა მასაც
@@ -1223,7 +1223,7 @@ final class TrashBin
         $category = TrashDomain::category($kind);
 
         if ($category === 'record') {
-            // ⚠️ §37 — პირადი მოდულის ჩანაწერი: ატვირთული ფოტო, მერე გვერდის og:image
+            // ⚠️ პირადი მოდულის ჩანაწერი: ატვირთული ფოტო, მერე გვერდის og:image
             $spec = self::RECORD_PREVIEW[$kind] ?? (TrashDomain::isCustom($kind) ? ['photo_path', 'image_url'] : null);
 
             // ⚠️ ჩანაწერს (`note`) მთავარი ფოტო შეიძლება საერთოდ არ ჰქონდეს
@@ -1260,7 +1260,7 @@ final class TrashBin
             return null;
         }
 
-        // §33 — ესკიზი (ვიდეოსაც აქვს კადრი); ესკიზის გარეშე — გადახედვის გარეშე
+        // ესკიზი (ვიდეოსაც აქვს კადრი); ესკიზის გარეშე — გადახედვის გარეშე
         if (isset(self::PREVIEW_PATH[$kind])) {
             $thumb = (string) $row->getAttribute(self::PREVIEW_PATH[$kind]);
 
@@ -1309,7 +1309,7 @@ final class TrashBin
     }
 
     /**
-     * §35.9 — ურნაში მყოფი მსახიობის ფოტოები/ვიდეოები ცალკე ელემენტად არ ჩანს:
+     * ურნაში მყოფი მსახიობის ფოტოები/ვიდეოები ცალკე ელემენტად არ ჩანს:
      * ისინი მსახიობთან ერთად წავიდა და მასთან ერთად ბრუნდება (`CastMemberTrash`).
      */
     private function withoutTrashedActors(Builder $query, string $kind, User $user): Builder

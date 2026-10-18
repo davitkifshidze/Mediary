@@ -5,7 +5,7 @@ namespace App\Services\Bookmarks;
 use App\Support\SafeHttp;
 
 /**
- * გვერდის მეტამონაცემი ბუკმარკის ფორმისთვის (Tasks §18 — ბუკმარკები).
+ * გვერდის მეტამონაცემი ბუკმარკის ფორმისთვის (ბუკმარკები).
  *
  * ბმულებზე გამამდიდრებელი API არ არსებობს (TMDB/RAWG/BGG-ის ანალოგი), ე.ი.
  * ერთადერთი წყარო თვითონ გვერდია: `<title>`, Open Graph და favicon.
@@ -17,11 +17,11 @@ use App\Support\SafeHttp;
  * კილობაიტშია და მთელი გვერდის ჩამოტვირთვას აზრი არ აქვს — ერთი უზარმაზარი
  * გვერდი `php artisan serve`-ს (ერთი რექვესთი ერთდროულად) დაბლოკავდა.
  *
- * ⚠️ **ეს ჭერი 2026-09-14-მდე ტყუილი იყო** (აუდიტი §A3): `$res->body()` მთელ
+ * ⚠️ **ეს ჭერი ადრე ტყუილი იყო**: `$res->body()` მთელ
  * პასუხს **უკვე** ჩამოტვირთავდა და `substr()` მხოლოდ ამის შემდეგ ჭრიდა.
  * ნამდვილ ჭერს ახლა `SafeHttp` აკეთებს — ნაკადს ლიმიტამდე კითხულობს და ჩერდება.
  *
- * ⚠️ **მისამართიც იქვე მოწმდება** (§A2): მომხმარებელს შეეძლო `http://127.0.0.1:3306`
+ * ⚠️ **მისამართიც იქვე მოწმდება**: მომხმარებელს შეეძლო `http://127.0.0.1:3306`
  * ან cloud-ის `169.254.169.254` მიეთითებინა და სერვერი შიდა ქსელის სკანერად
  * ექცია. redirect-ებს `SafeHttp` ხელით ყვება, ე.ი. **ყოველი** ნახტომი მოწმდება.
  *
@@ -34,7 +34,7 @@ class LinkMetadata
     /** რამდენი ბაიტი წავიკითხოთ — `<head>` ამაზე ბევრად ადრე მთავრდება */
     private const MAX_BYTES = 200_000;
 
-    /** აღწერის ჭერი (Tasks §44.4) — `LinkResolver::DESCRIPTION_MAX`-ის იგივე */
+    /** აღწერის ჭერი — `LinkResolver::DESCRIPTION_MAX`-ის იგივე */
     private const DESCRIPTION_MAX = 5000;
 
     public function __construct(private readonly SafeHttp $http) {}
@@ -80,7 +80,7 @@ class LinkMetadata
                 fn () => $this->meta($html, 'twitter:title'),
                 fn () => $this->title($html),
             ]),
-            // Tasks §44.4 — აღწერა 5 000-მდე (ადრე ყოველი სტრიქონი 500-ზე იჭრებოდა)
+            // აღწერა 5 000-მდე (ადრე ყოველი სტრიქონი 500-ზე იჭრებოდა)
             'description' => $this->firstOf($html, [
                 fn () => $this->meta($html, 'og:description', self::DESCRIPTION_MAX),
                 fn () => $this->meta($html, 'twitter:description', self::DESCRIPTION_MAX),
@@ -166,7 +166,7 @@ class LinkMetadata
      * შედარებითი გზა → აბსოლუტური (og:image ხშირად `/img/x.png`-ია).
      *
      * ⚠️ **დახრილის გარეშე დაწყებული გზა გვერდის საქაღალდეს ეკუთვნის და არა
-     * ჰოსტის ფესვს** (RFC 3986 §5.2 — Tasks BUG-25). `img/x.png` გვერდზე
+     * ჰოსტის ფესვს** (RFC 3986 §5.2). `img/x.png` გვერდზე
      * `https://site.ge/blog/post/` **`https://site.ge/blog/post/img/x.png`-ია**;
      * ძველი `$root.'/'.ltrim(...)` მას ფესვთან ითვლიდა და ბუკმარკის სურათი
      * (და favicon-იც, იმავე მეთოდზე რომ გადის) გატეხილი გამოდიოდა.

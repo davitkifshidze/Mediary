@@ -6,8 +6,7 @@ import en from '@/i18n/en.json'
 import ka from '@/i18n/ka.json'
 
 /* ============================================================
-   რეგრესია: **backend-ის მანქანური კოდი toast-ში snake_case-ად ჩანდა**
-   (Tasks GAP-01).
+   რეგრესია: **backend-ის მანქანური კოდი toast-ში snake_case-ად ჩანდა**.
 
    `errorMessage()` უცნობ კოდს სიტყვასიტყვით აბრუნებს, ე.ი. `CODES`-იდან
    ან ლოკალიდან გამორჩენილი კოდი ჩუმად „module_not_enabled"-ად
@@ -53,7 +52,7 @@ describe('CODES ⊆ ორივე ლოკალი', () => {
   })
 })
 
-describe('errorMessage — GAP-01', () => {
+describe('errorMessage — codes and their parameters', () => {
   it('translates registration_disabled in both languages', async () => {
     const e = apiError(403, { message: 'registration_disabled' })
 
@@ -84,10 +83,10 @@ describe('errorMessage — GAP-01', () => {
 })
 
 /* ============================================================
-   პასუხის გარეშე დარჩენილი მოთხოვნა (Tasks GAP-02).
+   პასუხის გარეშე დარჩენილი მოთხოვნა.
    ============================================================ */
 
-describe('errorMessage — GAP-02', () => {
+describe('errorMessage — a request without a response', () => {
   const noResponse = (code: string) => new AxiosError(code === 'ERR_CANCELED' ? 'canceled' : 'Network Error', code)
 
   it.each(['ka', 'en'] as const)('translates a network failure in %s', async (lang) => {
@@ -116,10 +115,10 @@ describe('errorMessage — GAP-02', () => {
 })
 
 /* ============================================================
-   კოდი და ვალიდაციის ჩანთა ერთ პასუხში (Tasks BUG-14).
+   კოდი და ვალიდაციის ჩანთა ერთ პასუხში.
    ============================================================ */
 
-describe('errorMessage — BUG-14', () => {
+describe('errorMessage — a code and a validation bag in one response', () => {
   /* ⚠️ `ValidationException`-ის ქვეკლასები **ორივეს** აგზავნიან: მანქანურ
      `message`-ს და `errors` ჩანთას. `first`-ს რომ უპირატესობა ჰქონდეს,
      მომხმარებელი ლოკალიზებული ტექსტის ნაცვლად ვალიდატორის ინგლისურ
@@ -170,7 +169,7 @@ describe('errorMessage — BUG-14', () => {
   })
 })
 
-describe('errorMessage — credential_missing (Tasks §30.6)', () => {
+describe('errorMessage — credential_missing', () => {
   it('names the source when the response carries it', async () => {
     await i18n.changeLanguage('en')
 

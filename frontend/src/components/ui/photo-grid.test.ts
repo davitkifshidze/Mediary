@@ -5,11 +5,11 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import '@/i18n'
 
 /* ============================================================
-   რეგრესია: **ყოველი გახსნილი blob მთელ ბადეს თავიდან ხატავდა** (Tasks PERF-13).
+   რეგრესია: **ყოველი გახსნილი blob მთელ ბადეს თავიდან ხატავდა**.
 
    `resolved` state-ში იყო და ყოველი უჯრის `onResolved` მთელ რუკას
    კლონავდა, ე.ი. N უჯრა = N სრული `PhotoGrid` რენდერი (და `slides` memo-ს
-   N გადათვლა). PERF-09-თან ერთად ეს კვადრატულად იზრდებოდა.
+   N გადათვლა). მეზობლების წინასწარ წამოღებასთან ერთად ეს კვადრატულად იზრდებოდა.
 
    ⚠️ რუკა რენდერისთვის საერთოდ არ იყო საჭირო: უჯრა თავის მისამართს
    თვითონ იღებს, რუკას კი მხოლოდ ლაითბოქსი და ჩამოტვირთვა კითხულობს.
@@ -74,7 +74,7 @@ vi.mock('@/components/PrivateFile', async () => {
 let root: Root | null = null
 let container: HTMLDivElement | null = null
 
-// ⚠️ lightbox და context-menu მძიმე მოდულებია — DEBT-12-ის გაკვეთილი
+// ⚠️ lightbox და context-menu მძიმე მოდულებია — წინასწარ ვათბობთ, ტესტის ბიუჯეტის გარეთ
 beforeAll(async () => {
   await import('@/components/ui/photo-grid')
 }, 60_000)
@@ -97,7 +97,7 @@ async function flush() {
 
 const TILES = 24
 
-describe('PhotoGrid — PERF-13', () => {
+describe('PhotoGrid — უჯრების გადახატვა', () => {
   it('does not re-render the grid once per resolved tile', async () => {
     const { PhotoGrid } = await import('@/components/ui/photo-grid')
 

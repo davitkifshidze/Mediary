@@ -33,26 +33,26 @@ import { useContentLang } from '@/lib/settings'
 import { formatBytes } from '@/lib/utils'
 
 /* ============================================================
-   ბორდგეიმის დეტალები — წესები, გალერეა და ჩანიშვნები (Tasks §14).
+   ბორდგეიმის დეტალები — წესები, გალერეა და ჩანიშვნები.
 
    ⚠️ **გალერეა `board_game_files.kind = 'image'`-შია** და არა
    `gallery_images`-ში: ის ცხრილი TMDB-დან ჩამოტვირთულ ფოტოებს ინახავს,
    user-ის ატვირთული კი სექციის ცხრილშია (ვიდეოს იგივე წესი).
 
-   ⚠️ **რიგი §26.4-ით (თამაშის §22.2-ის წესი)**: თავში მთავარი ფოტო,
+   ⚠️ **რიგი ყველა დეტალის ფანჯრის საერთოა**: თავში მთავარი ფოტო,
    ჟანრი, ქულა და მოკლე ცნობები; მერე ფოტოები ვიტრინად — აქამდე ისინი
    მაღაზიების ბმულების **ქვემოთ** იყო და მთავარი ფოტო საერთოდ არ ჩანდა.
    ============================================================ */
 
 export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: () => void }) {
-  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
+  // რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
   const favoriteQc = useQueryClient()
   const favorite = useMutation({
     mutationFn: () => toggleBoardGameFavorite(game.id),
     onSuccess: () => void favoriteQc.invalidateQueries({ queryKey: ['board-games'] }),
   })
   const { t, i18n } = useTranslation()
-  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  // გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen('board_game', game.id)
   const lang = useContentLang(i18n.language)
 
@@ -62,7 +62,7 @@ export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: (
   return (
     <ModalShell title={game.title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
-        {/* ---------- თავი: მთავარი ფოტო, ჟანრი, ქულა, მოკლე ცნობები (§26.4) ---------- */}
+        {/* ---------- თავი: მთავარი ფოტო, ჟანრი, ქულა, მოკლე ცნობები ---------- */}
         <DetailHero
           image={storageUrl(game.image)}
           alt={game.title}
@@ -70,9 +70,9 @@ export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: (
           fallback={<Dices className="size-8 text-muted-foreground" />}
           badges={
             <>
-              {/* Tasks §9 — ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
+              {/* ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
               <RatingStars value={game.rating} />
-              {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+              {/* ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={game.visibility} />
               <FavoriteButton active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
@@ -121,7 +121,7 @@ export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: (
           </DetailFacts>
         </DetailHero>
 
-        {/* ---------- ფოტოები — ზემოთ და დიდად (§26.4) ---------- */}
+        {/* ---------- ფოტოები — ზემოთ და დიდად ---------- */}
         <Gallery game={game} />
 
         {game.description && (
@@ -178,7 +178,7 @@ function useFiles(game: BoardGame, kind: BoardGameFile['kind']) {
   const done = () => {
     qc.invalidateQueries({ queryKey: ['board-game-files', game.id] })
     qc.invalidateQueries({ queryKey: ['board-games'] })
-    // 17.1 — ატვირთვა/წაშლა კვოტას ცვლის, ჰედერის ინდიკატორიც უნდა განახლდეს
+    // ატვირთვა/წაშლა კვოტას ცვლის, ჰედერის ინდიკატორიც უნდა განახლდეს
     qc.invalidateQueries({ queryKey: ['storage'] })
     qc.invalidateQueries({ queryKey: ['me'] })
   }
@@ -196,7 +196,7 @@ function useFiles(game: BoardGame, kind: BoardGameFile['kind']) {
 }
 
 /**
- * ფოტოები — ვიტრინა (§26.4, თამაშის §22.2-ის წესი). ⚠️ აქამდე `PhotoGrid`
+ * ფოტოები — ვიტრინა (როგორც თამაშის ფანჯარაში). ⚠️ აქამდე `PhotoGrid`
  * იყო ბმულების ქვემოთ; ვიტრინა ერთ ფოტოს დიდად აჩვენებს და დანარჩენს
  * ზოლად — ჩანაწერის ფანჯარაში ბიბლიოთეკის ბადე ზედმეტი იყო.
  */
@@ -227,7 +227,7 @@ function Files({ game }: { game: BoardGame }) {
   const { query, upload, remove } = useFiles(game, 'rules')
   const files = query.data ?? []
   /* ონლაინ მნახველი (2026-09-14) — ⚠️ `resolve: storageUrl` იმიტომაა, რომ ეს
-     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი (§17.5). */
+     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი. */
   const viewer = useFileViewer({ resolve: storageUrl, onDelete: (id) => remove.mutate(id) })
 
 
@@ -318,7 +318,7 @@ function Files({ game }: { game: BoardGame }) {
 function Notes({ game }: { game: BoardGame }) {
   const { t } = useTranslation()
 
-  /* ⚠️ სხეული გაზიარებულია (`components/RecordNotes.tsx`, Tasks §6.7) */
+  /* ⚠️ სხეული გაზიარებულია (`components/RecordNotes.tsx`) */
   return (
     <RecordNotes
       queryKey={['board-game-notes', game.id]}

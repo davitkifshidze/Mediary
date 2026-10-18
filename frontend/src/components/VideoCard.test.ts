@@ -7,14 +7,14 @@ import type { VideoCardProps } from '@/components/VideoCard'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **ვიდეოს ბარათი — სამი ბეჯი ერთი ზომით და სიმეტრიული სლოტები** (Tasks §19).
+   **ვიდეოს ბარათი — სამი ბეჯი ერთი ზომით და სიმეტრიული სლოტები**.
 
    ⚠️ მოწმდება: ტიპი · სტატუსი · პლატფორმა სამივე `h-7 min-w-24`-ია და ფერს
    ატარებს (YouTube — `--platform-youtube`, ტიპი — თავისი ფერი); უტიპო ვიდეოზე
    სლოტი მაინც სამია; ტეგების სლოტი ტეგების გარეშეც ადგილზეა (`min-h-7`);
    მოქმედებების ზოლში ყველა კონტროლი `h-9`-ია და ჩამოტვირთვა ერთი ღილაკია
    (მზაზე — ბმული ლოკალურ ფაილზე, თორემ — ჩამოტვირთვის ღილაკი).
-   Tasks §53 (Q14) — ზოლში ზუსტად ოთხი ღილაკია (რჩეული · ჩამოტვირთვა ·
+   ზოლში ზუსტად ოთხი ღილაკია (რჩეული · ჩამოტვირთვა ·
    რედაქტირება · წაშლა), „წყარო" კონტექსტურ მენიუშია, ესკიზი და სათაური
    ფანჯარას ხსნის.
    ============================================================ */
@@ -122,7 +122,7 @@ describe('VideoCard', () => {
     expect(meta.textContent).toContain('Studio')
   })
 
-  it('the actions bar sits at the bottom with four h-9 controls that never get cut (§53.2)', async () => {
+  it('the actions bar sits at the bottom with four h-9 controls that never get cut', async () => {
     const { el, props } = await mount(video())
 
     const bar = el.querySelector<HTMLElement>('[data-testid="video-actions"]')!
@@ -159,7 +159,7 @@ describe('VideoCard', () => {
     expect(badge.className).toContain('bg-[var(--status-watched)]')
     expect(badge.textContent).toContain(i18n.t('videos.local.ready'))
 
-    // Tasks §21.2 — მზა ასლი ცალკე ფლეერში იხსნება, არა ბრაუზერის მნახველში
+    // მზა ასლი ცალკე ფლეერში იხსნება, არა ბრაუზერის მნახველში
     const control = el.querySelector<HTMLButtonElement>('button[data-testid="download-control"][data-local="ready"]')!
     expect(control.getAttribute('aria-label')).toBe(i18n.t('videos.local.play'))
     expect(el.querySelector('a[href*="/download"]')).toBeNull()
@@ -168,7 +168,7 @@ describe('VideoCard', () => {
     expect(props.download.onStart).not.toHaveBeenCalled()
   })
 
-  it('the thumbnail and the title open the window; the source link lives in the context menu (§53, Q14)', async () => {
+  it('the thumbnail and the title open the window; the source link lives in the context menu', async () => {
     const openSource = vi.fn()
     const { el, props } = await mount(video(), {
       actions: [

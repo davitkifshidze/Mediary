@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * **ფილმების მოდული (აუდიტი 2026-09-14, §D).**
+ * **ფილმების მოდული.**
  *
  * ⚠️ **ცხრავე ახალ მოდულს თავისი `*ModuleTest` ჰქონდა — უძველეს ორს არა.**
  * ფილმები მხოლოდ სხვისი ტესტების გვერდით ჩნდებოდა (`GalleryTest`,
@@ -276,7 +276,7 @@ class MovieModuleTest extends TestCase
         $this->assertSame(1, abs(array_search('Part 2', $titles, true) - array_search('Part 1', $titles, true)));
     }
 
-    /** ⚠️ `group=0` კლასტერს **თიშავს** — სუფთა დალაგება (Tasks D1) */
+    /** ⚠️ `group=0` კლასტერს **თიშავს** — სუფთა დალაგება */
     public function test_grouping_can_be_switched_off(): void
     {
         $this->makeMovie($this->alice, 'Part 1', ['year' => 1999, 'tmdb_collection_id' => 2344]);
@@ -357,7 +357,7 @@ class MovieModuleTest extends TestCase
 
     /**
      * ⚠️ TMDB-ის პირადი გასაღების გარეშე **409 `credential_missing` და არა 500**
-     * (Tasks §30.6) — „წყარო მიუწვდომელია" (503) სხვა ფაქტია და სხვა ქმედებას ითხოვს.
+     * — „წყარო მიუწვდომელია" (503) სხვა ფაქტია და სხვა ქმედებას ითხოვს.
      */
     public function test_adding_from_tmdb_without_a_key_asks_for_the_users_own_key(): void
     {
@@ -369,11 +369,11 @@ class MovieModuleTest extends TestCase
     }
 
     /**
-     * **`%` ძებნის ტექსტში ლიტერალია და არა შაბლონი (Tasks DEBT-13).**
+     * **`%` ძებნის ტექსტში ლიტერალია და არა შაბლონი.**
      *
      * ⚠️ `'like', "%{$q}%"` ნიშნავდა, რომ შაბლონის სიმბოლო ძებნაში პირდაპირ
      * SQL-ში გადადიოდა: `%`-ის ძებნა `%%%`-ად მიდიოდა და **მთელ ცხრილს**
-     * აბრუნებდა. წესი `GlobalSearch`-ისთვის დაიწერა (§D6) და სექციების
+     * აბრუნებდა. წესი `GlobalSearch`-ისთვის დაიწერა და სექციების
      * საკუთარ ძებნებზე 13 კონტროლერში არ გავრცელებულა.
      *
      * ⚠️ **საძებნი ტერმინი მარტო `%`-ია და არა „50%"**: ლიტერალი პრეფიქსი

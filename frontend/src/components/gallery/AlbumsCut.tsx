@@ -28,7 +28,7 @@ import { AlbumDialog } from '@/components/gallery/AlbumDialog'
 import { AlbumUnlockDialog } from '@/components/gallery/AlbumUnlockDialog'
 
 /* ============================================================
-   **ალბომების ჭრილი (Tasks §26.4 → 2026-09-16).**
+   **ალბომების ჭრილი.**
 
    შენი პირველი მითითება: „გალერიაში მქონდეს ასევე უკატეგორიო სექციაც,
    სადაც შეგეძლება ფოტოების გადატანა, დახარისხება, დაჯგუფება".
@@ -77,7 +77,7 @@ export function AlbumsCut() {
   /** `null` — დახურულია · `{album: null}` — ახალი · `{album}` — რედაქტირება */
   const [editing, setEditing] = useState<{ album: GalleryAlbum | null } | null>(null)
   const [unlocking, setUnlocking] = useState<GalleryAlbum | null>(null)
-  /** §28 — ალბომების დასტები თუ ყველა უკატეგორიო ფოტო ერთ ბადეზე */
+  /** ალბომების დასტები თუ ყველა უკატეგორიო ფოტო ერთ ბადეზე */
   const [layout, setLayout] = useState<GalleryLayout>('grouped')
 
   const groupsQ = useQuery({
@@ -92,7 +92,7 @@ export function AlbumsCut() {
       (key) => qc.invalidateQueries({ queryKey: [key] }),
     )
 
-  /* Tasks §11 — ალბომების რიგი drag & drop-ით (API `reorderGalleryAlbums` უკვე იყო, UI — არა);
+  /* ალბომების რიგი drag & drop-ით (API `reorderGalleryAlbums` უკვე იყო, UI — არა);
      ოპტიმისტურად ჯგუფების ქეშში, პასუხი ალბომების სიას ანახლებს */
   const reorderAlbums = useMutation({
     mutationFn: reorderGalleryAlbums,
@@ -173,7 +173,7 @@ export function AlbumsCut() {
           onBack={() => setOpen(null)}
           showOwner
           emptyText={t('gallery.albumEmpty')}
-          /* §7.15 — ჩაკეტილი ალბომი ბლარიან ფილებად იხატება და პაროლს
+          /* ჩაკეტილი ალბომი ბლარიან ფილებად იხატება და პაროლს
              აქვე ითხოვს; ადრე აქ 423 ჩერდებოდა და ბადე საერთოდ არ ჩანდა */
           onUnlock={() => {
             const album = albumOf(open.id)
@@ -198,7 +198,7 @@ export function AlbumsCut() {
         </div>
       </div>
 
-      {/* §28 — „არეული": ყველა უმშობლო ფოტო ერთ ბრტყელ ბადეზე.
+      {/* „არეული": ყველა უმშობლო ფოტო ერთ ბრტყელ ბადეზე.
           ⚠️ ალბომებში დახარისხებულებიც აქ ჩანს, რადგან ალბომი მშობელს არ
           ცვლის — ე.ი. ჭრილი იგივე რჩება, მხოლოდ გამოსახულება იცვლება.
           ⚠️ ჩაკეტილის ფოტოები აქაც არ ჩანს: მათ სერვერი არ გზავნის. */}
@@ -248,11 +248,11 @@ export function AlbumsCut() {
                      პაროლის ღილაკი** (შენი მითითება: „დააჭერ → ბლარი →
                      პაროლი → ნამდვილი"). აქ აღამავალი განშტოება პირდაპირ
                      პაროლის ფანჯარას ხსნიდა — ეს მაშინ იყო სწორი, როდესაც სერვერი
-                     423-ს აბრუნებდა და ბადე ცარიელი იყო; §7.15-ის შემდეგ `lockedPhotos()`
+                     423-ს აბრუნებდა და ბადე ცარიელი იყო; ახლა `lockedPhotos()`
                      ბლარიან რიგებს აბრუნებს (`path` არასდროს), ე.ი. აქ გაჩერება
                      ბლარიან ბადესთან ერთად პაროლის ღილაკსაც ანდებდა. */
                   onClick={() => setOpen({ id: group.id, title: titleOf(group.id) })}
-                  /* Tasks §7 — მარჯვენა ღილაკი: გახსნა · (განბლოკვა/ჩაკეტვა) · — · რედაქტირება ·
+                  /* მარჯვენა ღილაკი: გახსნა · (განბლოკვა/ჩაკეტვა) · — · რედაქტირება ·
                      ფოტოების წაშლა · ალბომის წაშლა — იგივე, რაც ქვედა ზოლის ღილაკებია */
                   menu={contextMenuItems([
                     { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpen({ id: group.id, title: titleOf(group.id) }) },

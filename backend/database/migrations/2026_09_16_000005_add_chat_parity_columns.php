@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **ჩატი Messenger-ის დონემდე: დადუმება, თემა, დაპინვა (Tasks §10.5–§10.7).**
+ * **ჩატი Messenger-ის დონემდე: დადუმება, თემა, დაპინვა.**
  *
  * შენი სიტყვები: „ჩატის დადუმება/ჩართვა … წერილების დაპინვა, პინების
  * ლისტი, ჩატის სხვადასხვა თემები".

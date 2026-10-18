@@ -3,7 +3,7 @@ import { FORM_TEXT_ROWS } from '@/components/ui/form-layout'
 import { richTextMinHeight } from '@/lib/richText'
 
 /* ============================================================
-   **ფორმატიანი ტექსტის ველი** (Tasks §47.2) — აღწერა, ჩანაწერის ტექსტი,
+   **ფორმატიანი ტექსტის ველი** — აღწერა, ჩანაწერის ტექსტი,
    ჩანიშვნა. ღირებულება Markdown-ის სტრიქონია (`lib/richText.ts`).
 
    ⚠️ **რედაქტორი ზარმაცად იტვირთება** (TipTap + ProseMirror — ასეულობით KB):

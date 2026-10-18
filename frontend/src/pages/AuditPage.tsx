@@ -35,13 +35,13 @@ import { Tabs, type TabItem } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   აუდიტ-ლოგი (Tasks §4.4/§4.7) — `/audit`, `admin:audit` უფლებით.
+   აუდიტ-ლოგი — `/audit`, `admin:audit` უფლებით.
 
    ⚠️ **სია ყოველთვის გვერდებზეა.** ლოგი სამუდამოდ ინახება და თვეში
-   ათასობით რიგით იზრდება (§4.1) — „ყველაფრის ერთად ჩვენება" აქ არც
+   ათასობით რიგით იზრდება — „ყველაფრის ერთად ჩვენება" აქ არც
    ერთხელ არ ხდება.
 
-   ⚠️ **„ყველას მონიშვნა" გაფილტრულის ფარგლებშია** (§4.7), მაგრამ მონიშვნა
+   ⚠️ **„ყველას მონიშვნა" გაფილტრულის ფარგლებშია**, მაგრამ მონიშვნა
    მხოლოდ **მიმდინარე გვერდის** რიგებს ეხება — სწორედ ამიტომ არსებობს
    ცალკე „ყველაფრის წაშლა ამ ფილტრით", რომელიც id-ებს საერთოდ არ აგზავნის.
    ორივე ერთსა და იმავე ფილტრზე დგას, ე.ი. ვერასდროს გასცდება ნაჩვენებს.
@@ -49,11 +49,11 @@ import { useToast } from '@/components/ui/feedback'
    ⚠️ **წაშლა შეუქცევადია** — `purge`-ის სტილით, სიტყვის ჩაწერით.
 
    ⚠️ **მოდულისა და მოქმედების ჭრილები `components/audit/AuditScope.tsx`-შია**
-   (ეტაპი 10) — ტაბები და ფერადი ბარათები, თითოეული თავისი რიცხვით და
+  — ტაბები და ფერადი ბარათები, თითოეული თავისი რიცხვით და
    ცალკე „ყველათი". აქ დარჩა ის სამი, რაც ჭრილი არ არის და ჭრილის
    **შიგნით** მუშაობს: ვისი · რა პერიოდის · ტექსტური ძებნა.
 
-   ⚠️ **Tasks §43 — სამი ხედი**: „ჟურნალი" (ეს სია), „გახსნები" (ვინ რა გახსნა და
+   ⚠️ **სამი ხედი**: „ჟურნალი" (ეს სია), „გახსნები" (ვინ რა გახსნა და
    რამდენჯერ — `AuditOpens`, იმავე ფილტრით) და „პარამეტრები" (რა იწერება —
    `AuditSettingsPanel`, **მხოლოდ სუპერადმინს**: გადამრთველი ყველა ანგარიშს ეხება).
    ============================================================ */
@@ -63,7 +63,7 @@ const CONFIRM_WORD = 'DELETE'
 
 /**
  * მოქმედების ფერი — ლოგი სწრაფად უნდა იკითხებოდეს, არა აიწერებოდეს.
- * ⚠️ Tasks §43.3 — **ყველა** ტიპი (`AUDIT_ACTIONS`): ადრე ნახევარი ნაცრისფრად რჩებოდა.
+ * ⚠️ **ყველა** ტიპი (`AUDIT_ACTIONS`): ადრე ნახევარი ნაცრისფრად რჩებოდა.
  */
 const ACTION_TONE: Record<AuditAction, string> = {
   login: 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
@@ -97,7 +97,7 @@ export function AuditPage() {
   const qc = useQueryClient()
   const fmt = useDateFormat()
 
-  /** §43 — ჟურნალი · გახსნები · პარამეტრები (ბოლო — მხოლოდ სუპერადმინს) */
+  /** ჟურნალი · გახსნები · პარამეტრები (ბოლო — მხოლოდ სუპერადმინს) */
   const [view, setView] = useState<AuditView>('log')
   /** გამოყენებული ფილტრი — სია, გეგმა და წაშლა სამივე მასზე დგას */
   const [filters, setFilters] = useState<AuditFilters>({})
@@ -116,7 +116,7 @@ export function AuditPage() {
     enabled: allowed,
   })
 
-  /** ჭრილების რიცხვები — იმავე ფილტრზე, `page`-ის გარეშე (ეტაპი 10) */
+  /** ჭრილების რიცხვები — იმავე ფილტრზე, `page`-ის გარეშე */
   const { data: summary } = useQuery({
     queryKey: ['audit-summary', filters],
     queryFn: () => fetchAuditSummary(filters),
@@ -124,7 +124,7 @@ export function AuditPage() {
     placeholderData: keepPreviousData,
   })
 
-  /* Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება". ფილტრი გვერდის მდგომარეობაშია (და არა
+  /* გვერდზე 10: ნომრები + „მეტის ჩვენება". ფილტრი გვერდის მდგომარეობაშია (და არა
      მისამართში), ამიტომ გვერდიც — `usePages`; ფილტრის შეცვლა პირველ გვერდზე აბრუნებს */
   const log = usePages({
     queryKey: ['audit', filters],
@@ -171,7 +171,7 @@ export function AuditPage() {
     if (!found) return key
     // ფსევდო-მოდულს (`account`, `chat`…) `modules` რიგი არ აქვს — სახელი i18n-იდან
     const localised = i18n.language === 'ka' ? found.name_ka : found.name_en
-    // §37.6 — სხვისი პირადი მოდული მფლობელით: ორ ადამიანს ერთი სახელი შეიძლება ჰქონდეს
+    // სხვისი პირადი მოდული მფლობელით: ორ ადამიანს ერთი სახელი შეიძლება ჰქონდეს
     if (localised && found.owner && found.owner !== me?.username) return `${localised} · @${found.owner}`
     return localised || t(`audit.modules.${key}`, key)
   }
@@ -198,7 +198,7 @@ export function AuditPage() {
         <AuditSettingsPanel />
       ) : (
         <>
-          {/* ---------- ჭრილები: მოქმედების ტაბები + მოდულის ბარათები (ეტაპი 10) ---------- */}
+          {/* ---------- ჭრილები: მოქმედების ტაბები + მოდულის ბარათები ---------- */}
           {view === 'log' && (
             <AuditScope
               meta={meta}
@@ -262,7 +262,7 @@ export function AuditPage() {
             <AuditOpens filters={filters} moduleName={moduleName} />
           ) : (
             <>
-              {/* ---------- მოქმედებები მონიშნულებზე (§4.7) ---------- */}
+              {/* ---------- მოქმედებები მონიშნულებზე ---------- */}
               <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
                 <span className="text-muted-foreground">{t('audit.total', { count: total })}</span>
                 {canDelete && (
@@ -331,7 +331,7 @@ export function AuditPage() {
                         <td className="p-2" onClick={(e) => e.stopPropagation()}>
                           {canDelete &&
                             (row.is_protected ? (
-                              // §4.6 — ეს რიგი აღდგენის აღრიცხვაა და არ იშლება
+                              // ეს რიგი აღდგენის აღრიცხვაა და არ იშლება
                               <Lock className="size-4 text-muted-foreground" aria-label={t('audit.protected')} />
                             ) : (
                               <Checkbox
@@ -397,7 +397,7 @@ export function AuditPage() {
               </span>
             </p>
             {confirming === 'filter' && (plan?.protected ?? 0) > 0 && (
-              // §4.6 — ცხადად ითქმის, რატომ არ ემთხვევა რიცხვები
+              // ცხადად ითქმის, რატომ არ ემთხვევა რიცხვები
               <p className="text-xs text-muted-foreground">
                 {t('audit.protectedNote', { count: plan?.protected ?? 0 })}
               </p>
@@ -431,7 +431,7 @@ export function AuditPage() {
 }
 
 /* ============================================================
-   diff — ძველი და ახალი **გვერდიგვერდ** (§4.1-ის პირდაპირი მოთხოვნა).
+   diff — ძველი და ახალი **გვერდიგვერდ** (შენი პირდაპირი მოთხოვნა).
 
    ⚠️ გასაღებების სია ორივე მხრიდან იკრიბება: `update`-ზე ისინი ემთხვევა,
    `create`/`delete`-ზე კი მხოლოდ ერთი მხარეა შევსებული.

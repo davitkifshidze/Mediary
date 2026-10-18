@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **სინქრონიზაციისა და თარგმანის კვალი ჩანაწერზე** (Tasks §31.1/§31.3).
+ * **სინქრონიზაციისა და თარგმანის კვალი ჩანაწერზე**.
  *
  * `last_synced_at` / `last_sync_result` — ბოლო მასობრივი ან ერთეულოვანი
  * სინქრონი და მისი შედეგი (`updated` · `unchanged` · `empty` · `failed`,

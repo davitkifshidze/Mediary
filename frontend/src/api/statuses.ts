@@ -4,7 +4,7 @@ import type { Status, StatusRole } from '@/api/types'
 import { isCustomModuleKey, type CustomModuleKey } from '@/lib/customModules'
 
 /* ============================================================
-   **სტატუსების ლექსიკონი (Tasks §6.2/§6.4).**
+   **სტატუსების ლექსიკონი.**
 
    ექვს დომენს — ფილმი · სერიალი · ანიმე · **ვიდეო** · ჩანაწერი · ბუკმარკი —
    სტატუსი per-user ლექსიკონად აქვს: ემატება, გადაერქმევა, იშლება და ლაგდება.
@@ -19,14 +19,14 @@ export const STATUS_DOMAINS = ['movie', 'series', 'anime', 'video', 'note', 'boo
 
 /**
  * **საბაზისო** დომენები — სტატიკური რუკების გასაღები (`PSEUDO_SECTIONS`,
- * სათაურები, მარშრუტები). ⚠️ პირადი მოდული (§37) აქ **არ** არის: მისი
+ * სათაურები, მარშრუტები). ⚠️ პირადი მოდული აქ **არ** არის: მისი
  * გასაღები ბაზაშია — `StatusDomainKey` მასაც იღებს.
  */
 export type StatusDomain = (typeof STATUS_DOMAINS)[number]
 
 /**
  * **ნებისმიერი დომენი, რომელსაც სტატუსის ლექსიკონი აქვს** — საბაზისო ან
- * პირადი მოდული (Tasks §37). API-ის ფუნქციები ამას იღებენ; სტატიკური რუკები
+ * პირადი მოდული. API-ის ფუნქციები ამას იღებენ; სტატიკური რუკები
  * კი `StatusDomain`-ს, რომ პირად გასაღებზე ჩუმად `undefined` არ დაიბრუნონ.
  */
 export type StatusDomainKey = StatusDomain | CustomModuleKey
@@ -76,7 +76,7 @@ export async function updateStatus(
 }
 
 /**
- * გადატანა · ცარიელად დატოვება · **ჩანაწერების წაშლაც** (ეტაპი 8) —
+ * გადატანა · ცარიელად დატოვება · **ჩანაწერების წაშლაც** —
  * ტანი `api/dictionary.ts`-ში იწყობა, რვავე ლექსიკონის ერთ ფორმით.
  */
 export async function deleteStatus(
@@ -106,7 +106,7 @@ export interface RestoredDefaults {
 }
 
 /**
- * **„ნაგულისხმევი სტატუსების აღდგენა" (2026-10-02 §1)** — ამატებს მხოლოდ იმას,
+ * **„ნაგულისხმევი სტატუსების აღდგენა"** — ამატებს მხოლოდ იმას,
  * რაც აკლია, და არაფერს შლის (`Status::restoreDefaults()`).
  *
  * ⚠️ მხოლოდ ღილაკით — გვერდის გახსნა არაფერს აბრუნებს (`ensureDefaults()`
@@ -117,7 +117,7 @@ export async function restoreDefaultStatuses(domain: StatusDomainKey): Promise<R
   return data
 }
 
-/* ---------- საიდბარის განლაგება (ეტაპი 8) ---------- */
+/* ---------- საიდბარის განლაგება ---------- */
 
 /** ფსევდო-განყოფილების ადგილი: `start` · `end` · მეზობელ სტატუსის `key` */
 export interface SectionPlacement {

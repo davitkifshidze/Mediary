@@ -35,9 +35,9 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
 
 /**
- * **ჯვარედინი ძებნა — ერთი კითხვა მთელ ბიბლიოთეკაზე** (2026-09-14).
+ * **ჯვარედინი ძებნა — ერთი კითხვა მთელ ბიბლიოთეკაზე**.
  *
- * პირველი ვერსია (აუდიტი §D6) მხოლოდ **სათაურებს** ეძებდა და ჯგუფში სამიოდე
+ * პირველი ვერსია მხოლოდ **სათაურებს** ეძებდა და ჯგუფში სამიოდე
  * სტრიქონს აბრუნებდა — ე.ი. „სად ვახსენე ეს სიტყვა" კითხვას **ვერ** პასუხობდა:
  * აღწერა, შენიშვნა, ციტატა, ტეგი, მსახიობი, ფაილის სახელი და მორგებული ველი
  * ძებნის მიღმა რჩებოდა. ახლა თითოეული დომენი აცხადებს **რომელ ტექსტებში**
@@ -84,7 +84,7 @@ class GlobalSearch
     public const MIN_TERM = 2;
 
     /**
-     * Tasks §47 — **Markdown-ის ველები** (აღწერა, ჩანიშვნა): SQL სიტყვებით
+     * **Markdown-ის ველები** (აღწერა, ჩანიშვნა): SQL სიტყვებით
      * ეძებს (`RichText::whereWords` — `**` სიტყვებს შორის ფრაზას აღარ არღვევს),
      * ნაჭერი კი უბრალო ტექსტიდან იჭრება — ბარათზე `**` და `[..](..)` არ ჩანს.
      */
@@ -183,7 +183,7 @@ class GlobalSearch
                 'model' => Video::class,
                 'custom' => 'video',
                 'title_rank' => ['columns' => ['title']],
-                // Q52 — არხიც იძებნება („Warner Bros." → მისი ყველა ტრეილერი)
+                // არხიც იძებნება („Warner Bros." → მისი ყველა ტრეილერი)
                 'columns' => [
                     'title' => ['title'], 'description' => ['description'], 'channel' => ['channel'], 'url' => ['url'],
                 ],
@@ -206,7 +206,7 @@ class GlobalSearch
             ],
 
             'playlist' => [
-                // ⚠️ პლეილისტი **მოდული არაა** — ის სიმღერების შიგნით ცხოვრობს (§15)
+                // ⚠️ პლეილისტი **მოდული არაა** — ის სიმღერების შიგნით ცხოვრობს
                 'module' => 'song',
                 'model' => Playlist::class,
                 'title_rank' => ['columns' => ['name']],
@@ -344,10 +344,10 @@ class GlobalSearch
                 'image_url' => 'thumbnail_url',
             ],
 
-            /* Tasks §33 — პირადი გალერეა: ადამიანი (სახელი, შენიშვნა, დამატებითი
+            /* პირადი გალერეა: ადამიანი (სახელი, შენიშვნა, დამატებითი
                ველები), ალბომი და ფოტოს წარწერა. ⚠️ სურათი ძებნის ბარათს **არ**
                ახლავს — ესკიზი პირად დისკზეა და `/storage/*`-ით ვერ დაიხატება.
-               ⚠️ §33.7 (Q9) — ჩაკეტილი და დაუხსნელი ადამიანი/ალბომი ძებნაში არ
+               ⚠️ ჩაკეტილი და დაუხსნელი ადამიანი/ალბომი ძებნაში არ
                ჩანს (`exceptHidden`); ფოტოს `personal_lock` scope თვითონ მალავს. */
             'personal' => [
                 'module' => 'personal',
@@ -373,7 +373,7 @@ class GlobalSearch
                 'columns' => ['title' => ['caption'], 'file' => ['original_name']],
             ],
 
-            /* Tasks §34 — მორიგეობა: შენიშვნა და დამატებითი ველები („შემცვლელი“);
+            /* მორიგეობა: შენიშვნა და დამატებითი ველები („შემცვლელი“);
                სათაური თარიღი · სამსახური · საათებია (`DutyShift::$title`). */
             'duty' => [
                 'module' => 'duty',
@@ -401,7 +401,7 @@ class GlobalSearch
             ],
         ];
 
-        /* **Tasks §37 — ინტერფეისიდან შექმნილი მოდულები**: თითო მოდული თავისი
+        /* **ინტერფეისიდან შექმნილი მოდულები**: თითო მოდული თავისი
            ჯგუფია (სახელი, ფერი, აიქონი — მისი), ჩანაწერები კი ერთ ცხრილში.
            ⚠️ `scope` მოდულით ჭრის — თორემ ყველა პირადი მოდულის ჩანაწერი
            თითოეულ ჯგუფში გამოჩნდებოდა. ⚠️ მხოლოდ **საკუთარი** (`of()`) —
@@ -418,7 +418,7 @@ class GlobalSearch
                     'url' => ['url'],
                 ],
                 'json' => ['tags' => 'tags'],
-                // §37.5 — ჩანიშვნები და ატვირთული ფაილის სახელი (საბაზისო მოდულის ფორმა)
+                // ჩანიშვნები და ატვირთული ფაილის სახელი (საბაზისო მოდულის ფორმა)
                 'relations' => [
                     ['relation' => 'notes', 'fields' => ['note' => ['body']]],
                     ['relation' => 'files', 'fields' => ['file' => ['original_name']]],
@@ -560,7 +560,7 @@ class GlobalSearch
      */
     private function relationWhere(Builder|Relation $query, array $rel, string $like, string $term): void
     {
-        // Tasks §47 — ჩანიშვნის/აღწერის სვეტი სიტყვებით (იხ. `RICH_FIELDS`)
+        // ჩანიშვნის/აღწერის სვეტი სიტყვებით (იხ. `RICH_FIELDS`)
         $rich = array_merge([], ...array_values(array_intersect_key($rel['fields'], array_flip(self::RICH_FIELDS))));
 
         $query->where(function (Builder $q) use ($rel, $like, $term, $rich) {
@@ -590,14 +590,14 @@ class GlobalSearch
     }
 
     /**
-     * **მორგებული ველები** (§6 ფაზა 3/4b) — `<module>_field_values`.
+     * **მორგებული ველები** — `<module>_field_values`.
      *
      * ⚠️ ეს კავშირი არაა: ცხრილი მოდულისაა და არა მოდელის, ე.ი. `whereHas`
      * ვერ დაიწერება. ქვე-მოთხოვნა ერთია და იმავეს ეკითხება, რასაც ნაჭერი.
      */
     private function customWhere(Builder $query, string $module, string $like): void
     {
-        // ⚠️ §37 — `table()` და არა `TABLE_BY_MODULE`: პირადი მოდულის ცხრილი საერთოა
+        // ⚠️ `table()` და არა `TABLE_BY_MODULE`: პირადი მოდულის ცხრილი საერთოა
         $table = CustomFields::table($module);
         if (! $table) {
             return;
@@ -706,7 +706,7 @@ class GlobalSearch
     }
 
     /**
-     * Tasks §47 — Markdown-ის ველის ნაჭერი **უბრალო ტექსტიდან**; სიტყვებად
+     * Markdown-ის ველის ნაჭერი **უბრალო ტექსტიდან**; სიტყვებად
      * ნაპოვნ ფრაზას (სიტყვები ერთად არ დგას) ნაჭერი პირველი ნაპოვნი
      * სიტყვის გარშემო აქვს — თორემ ჩანაწერი აუხსნელად გამოჩნდებოდა.
      */
@@ -793,7 +793,7 @@ class GlobalSearch
             'movie', 'series', 'anime', 'book', 'game' => $record->title_ka ?: $record->title_en,
             'cast' => $record->name_ka ?: $record->name,
             'playlist', 'personal', 'personal_album' => $record->name,
-            // §33 — წარწერის გარეშე ფოტო ფაილის სახელით ჩანს
+            // წარწერის გარეშე ფოტო ფაილის სახელით ჩანს
             'personal_media' => $record->caption ?: $record->original_name,
             default => $record->title,
         };
@@ -803,7 +803,7 @@ class GlobalSearch
 
     private function subtitleOf(string $domain, Model $record): ?string
     {
-        // §37 — პირადი მოდულის ჩანაწერი: ბმულის ჰოსტი (ბუკმარკის წესი)
+        // პირადი მოდულის ჩანაწერი: ბმულის ჰოსტი (ბუკმარკის წესი)
         if ($record instanceof CustomRecord) {
             return $record->domain();
         }
@@ -816,9 +816,9 @@ class GlobalSearch
             'bookmark' => $record->domain,
             'cast' => $record->known_for,
             'gallery' => $record->channel,
-            // §33 — ფოტო/ვიდეოს გადაღების თარიღი
+            // ფოტო/ვიდეოს გადაღების თარიღი
             'personal_media' => $record->taken_at?->toDateString(),
-            // §34 — მორიგეობის სამსახური
+            // მორიგეობის სამსახური
             'duty' => $record->workplace?->name,
             default => null,
         };
@@ -828,7 +828,7 @@ class GlobalSearch
 
     /* ---------- helpers ---------- */
 
-    /** ⚠️ შაბლონი `App\Support\Like`-შია (§10.9) — ჩატის ძებნას იგივე სჭირდება */
+    /** ⚠️ შაბლონი `App\Support\Like`-შია — ჩატის ძებნას იგივე სჭირდება */
     private function like(string $term): string
     {
         return Like::contains($term);

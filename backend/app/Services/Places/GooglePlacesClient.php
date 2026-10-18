@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 /**
- * **Google Places API (New)** (Tasks §57.2) — ადგილების ყველაზე სრული ბაზა.
+ * **Google Places API (New)** — ადგილების ყველაზე სრული ბაზა.
  *
  * შენი მაგალითი: „პიქტოგრამა" (სახინკლე) — OSM-ში არ არის, Google Maps კი
  * წერისთანავე სთავაზობს. აქედან სამი გამოძახებაა:

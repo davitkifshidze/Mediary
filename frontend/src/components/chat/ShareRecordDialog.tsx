@@ -12,7 +12,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   ჩანაწერის გაზიარება ჩატში (FEAT-13).
+   ჩანაწერის გაზიარება ჩატში.
 
    ⚠️ **საუბარს ვირჩევთ და არა ადამიანს.** ახალი საუბრის დაწყება
    `POST /chat/with/{username}`-ია და ის თავისი კარიბჭეებით (ორივე

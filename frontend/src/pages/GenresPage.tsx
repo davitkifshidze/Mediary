@@ -62,7 +62,7 @@ export function GenresPage() {
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           {genres.map((g) => {
-            /* Tasks §7 — მარჯვენა ღილაკი: რედაქტირება · — · წაშლა */
+            /* მარჯვენა ღილაკი: რედაქტირება · — · წაშლა */
             const actions: MenuAction[] = [
               { key: 'edit', label: t('genres.edit'), icon: MENU_ICONS.edit, run: () => setEditing(g) },
               { key: 'delete', label: t('confirm.delete'), icon: MENU_ICONS.delete, danger: true, separator: true, run: () => setDeleting(g) },
@@ -76,7 +76,7 @@ export function GenresPage() {
                   {lang === 'ka' ? g.name_en : g.name_ka || '—'}
                 </div>
               </div>
-              {/* ორი მთვლელი ერთმანეთის ქვეშ, თითო თავის ჩარჩოში, ერთი სიგანით (Tasks K10) */}
+              {/* ორი მთვლელი ერთმანეთის ქვეშ, თითო თავის ჩარჩოში, ერთი სიგანით */}
               <div className="flex w-28 shrink-0 flex-col gap-1">
                 <span className="rounded-[5px] border border-border bg-muted/60 px-2 py-0.5 text-center text-xs text-muted-foreground">
                   {t('genres.moviesCount', { count: g.movies_count ?? 0 })}
@@ -137,7 +137,7 @@ function GenreFormDialog({
   const [nameEn, setNameEn] = useState(genre?.name_en ?? '')
   const [lang, setLang] = useState<'ka' | 'en'>(i18n.language === 'en' ? 'en' : 'ka')
   const [error, setError] = useState<string | null>(null)
-  // C2 — ახალ ჟანრში მაშინვე მიბმული ჩანაწერები (ჟანრი ჯერ არ არსებობს)
+  // ახალ ჟანრში მაშინვე მიბმული ჩანაწერები (ჟანრი ჯერ არ არსებობს)
   const [attach, setAttach] = useState<Record<MediaType, number[]>>(emptyMediaIds)
   const [tab, setTab] = useState<GenreSection>('names')
 
@@ -146,7 +146,7 @@ function GenreFormDialog({
       const payload = { name_ka: nameKa.trim(), name_en: nameEn.trim() }
       if (genre) return updateGenre(genre.id, payload)
 
-      // შექმნა → მონიშნული ჩანაწერების მიბმა (ყველა დომენი, სადაც რამე არჩეულია — §54-დან ანიმეც)
+      // შექმნა → მონიშნული ჩანაწერების მიბმა (ყველა დომენი, სადაც რამე არჩეულია — ანიმეც)
       const created = await createGenre(payload)
       for (const type of Object.keys(attach) as MediaType[]) {
         if (attach[type].length) {
@@ -168,10 +168,10 @@ function GenreFormDialog({
     },
   })
 
-  // K1 — რედაქტირებაში ბევრი ფუნქციონალია, ამიტომ ჩანართებად დაიყო.
-  // L5 — „ჩანაწერები" და „ქმედებები" ერთ ჩანართადაა: მონიშვნა და ქმედება ერთ ეკრანზე.
+  // რედაქტირებაში ბევრი ფუნქციონალია, ამიტომ ჩანართებად დაიყო.
+  // „ჩანაწერები" და „ქმედებები" ერთ ჩანართადაა: მონიშვნა და ქმედება ერთ ეკრანზე.
   // ახალი ჟანრი მარტივია (სახელი + წინასწარი მონიშვნა), იქ ჩანართები არ გვჭირდება.
-  // Tasks §54.1 — შენი ბარათ-ჩანართები (`CutTabs`, ხატულა და ფერი `lib/cutStyle.ts`-იდან)
+  // შენი ბარათ-ჩანართები (`CutTabs`, ხატულა და ფერი `lib/cutStyle.ts`-იდან)
   const TABS: { key: GenreSection; label: string }[] = [
     { key: 'names', label: t('genres.tabNames') },
     { key: 'records', label: t('genres.tabItems') },
@@ -215,7 +215,7 @@ function GenreFormDialog({
             </div>
             {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
 
-            {/* C2 — ახალ ჟანრზე ჩანაწერების წინასწარი მონიშვნა (ტაბები აქ არ არის) */}
+            {/* ახალ ჟანრზე ჩანაწერების წინასწარი მონიშვნა (ტაბები აქ არ არის) */}
             {!genre && <GenreItemsPicker value={attach} onChange={setAttach} />}
           </>
         )}
@@ -224,8 +224,8 @@ function GenreFormDialog({
         {tab === 'add' && <TabInfo>{t('genres.infoAdd')}</TabInfo>}
       </div>
 
-      {/* C1 — ყოველთვის დამონტაჟებული, რომ მონიშვნა ჩანართებს შორის არ დაიკარგოს;
-          §54.2 — „ჩანაწერებისა" და „დამატების" ქვედა ზოლს თვითონ ხატავს */}
+      {/* ყოველთვის დამონტაჟებული, რომ მონიშვნა ჩანართებს შორის არ დაიკარგოს;
+          „ჩანაწერებისა" და „დამატების" ქვედა ზოლს თვითონ ხატავს */}
       {genre && <GenreItemsManager genre={genre} allGenres={allGenres} section={tab} />}
 
       {tab === 'names' && (
@@ -233,7 +233,7 @@ function GenreFormDialog({
           <Button variant="outline" onClick={onClose}>
             {t('confirm.cancel')}
           </Button>
-          {/* Tasks 4 — განმარტება tooltip-ია და არა `title`: hover-ზე მაშინვე ჩანს */}
+          {/* განმარტება tooltip-ია და არა `title`: hover-ზე მაშინვე ჩანს */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -270,7 +270,7 @@ function GenreDeleteDialog({
   const qc = useQueryClient()
   const { toast } = useToast()
   /* ჟანრი გაზიარებულია — სამივე დომენი უნდა ჩაითვალოს, თორემ „უჟანროდ"
-     დარჩენა შეუმჩნევლად წაშლიდა მიბმას. ⚠️ ანიმე აქ **აკლდა** (Tasks BUG-19):
+     დარჩენა შეუმჩნევლად წაშლიდა მიბმას. ⚠️ ანიმე აქ **აკლდა**:
      მხოლოდ ანიმეზე მიბმული ჟანრი „0"-ს აჩვენებდა და ფორმა პირდაპირ
      `deleteGenre(id)`-ს უშვებდა, გადატანის შეთავაზების გარეშე. */
   const count = (genre.movies_count ?? 0) + (genre.series_count ?? 0) + (genre.animes_count ?? 0)
@@ -289,7 +289,7 @@ function GenreDeleteDialog({
       qc.invalidateQueries({ queryKey: ['movie'] })
       qc.invalidateQueries({ queryKey: ['series'] })
       qc.invalidateQueries({ queryKey: ['my-requests'] })
-      // ჟანრი გლობალურია — არაადმინის წაშლა ადმინთან მიდის დასადასტურებლად (I7)
+      // ჟანრი გლობალურია — არაადმინის წაშლა ადმინთან მიდის დასადასტურებლად
       toast(
         res?.approvalRequired
           ? { title: t('genres.deleteRequested'), description: t('genres.deleteRequestedHint'), variant: 'info' }

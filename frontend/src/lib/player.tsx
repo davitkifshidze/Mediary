@@ -20,7 +20,7 @@ import { PLAYER_MAX_WIDTH_OPTIONS, useSettings } from '@/lib/settings'
 import { safeGet, safeRemove, safeSet } from '@/lib/storage'
 
 /* ============================================================
-   ერთიანი დამკვრელი — მუსიკაც და ვიდეოც (Tasks §7.2 → §35).
+   ერთიანი დამკვრელი — მუსიკაც და ვიდეოც.
 
    ⚠️ **რატომ არის გლობალური.** ამოცანის არსი „პლეილისტში ერთი დამთავრდება →
    შემდეგი ჩაირთოს"-ია, ე.ი. დაკვრა გვერდის გადართვას უნდა გადაურჩეს.
@@ -28,16 +28,16 @@ import { safeGet, safeRemove, safeSet } from '@/lib/storage'
    მდგომარეობა `AppShell`-ის დონეზეა, სცენა კი `components/Player.tsx`-შია.
 
    ⚠️ **ერთი წყარო უკრავს.** ორი ერთდროული embed ერთმანეთს ხმას აფარებს,
-   ამიტომ `VideoDetail`-ს საკუთარი ჩაშენება აღარ აქვს (§35.6) — ის ჩანაწერს
+   ამიტომ `VideoDetail`-ს საკუთარი ჩაშენება აღარ აქვს — ის ჩანაწერს
    ამ რიგს გადასცემს.
 
-   §35 — **ორი განლაგება, ერთი სცენა.** ფართო ეკრანზე დამკვრელი მარჯვენა
+   **ორი განლაგება, ერთი სცენა.** ფართო ეკრანზე დამკვრელი მარჯვენა
    პანელია (ზემოთ ვიდეო 16:9, ქვემოთ რიგი — YouTube-ის ფლეილისტივით) და
    გვერდს **აწვება** (`--player-w`); ვიწრო ეკრანზე და ჩაკეცილზე — ქვედა ზოლი
    (`--player-h`). განლაგებას აქ ვითვლით და მხოლოდ CSS იცვლება — იხ.
    `components/Player.tsx`.
 
-   Tasks §48 — **ვიდეო და სიმღერა სხვადასხვაგვარად დგას:**
+   **ვიდეო და სიმღერა სხვადასხვაგვარად დგას:**
    - **ვიდეო** (`video`/`link`) მარჯვენა პანელს აღარ იყენებს: ფანჯარაში
      (`inline`) უკრავს — დამკვრელი ფანჯრის ესკიზზე ჯდება (`usePlayerAnchor`);
      „გატანა" (ან ფანჯრის დახურვა/ჩანართის შეცვლა) — **მოტივტივე ჩარჩო**
@@ -50,7 +50,7 @@ export interface PlayerItem {
   /**
    * რომელი მოდულიდან — მხოლოდ „მოსმენილად/ნანახად" ჩათვლა ჰკიდია.
    *
-   * ⚠️ **`link` = მრიცხველი არ არსებობს** (§8.4): გალერეის ვიდეო ბმულია და
+   * ⚠️ **`link` = მრიცხველი არ არსებობს**: გალერეის ვიდეო ბმულია და
    * არა ვიდეოს მოდულის ჩანაწერი, ე.ი. მისი id `videos`-ში საერთოდ არ დევს —
    * `markVideoWatched()` სხვის ჩანაწერს დაუწერდა ნახვას ან 404-ს მიიღებდა.
    */
@@ -66,7 +66,7 @@ export interface PlayerItem {
   thumbnail: string | null
   duration: number | null
   /**
-   * Tasks §48.2 — ჩანაწერის ფანჯარა (`/videos?open=12`): მოტივტივე ჩარჩოს
+   * ჩანაწერის ფანჯარა (`/videos?open=12`): მოტივტივე ჩარჩოს
    * „ფანჯარაში დაბრუნება" აქ მიდის; `null` — ფანჯარა არ აქვს (გალერეის ვიდეო).
    */
   href?: string | null
@@ -82,8 +82,8 @@ export interface QueueEntry extends PlayerItem {
 }
 
 /**
- * სად დგას დამკვრელი: მარჯვენა პანელი · ქვედა ზოლი · ფანჯრის ესკიზზე (§48.1) ·
- * მოტივტივე ჩარჩო (§48.2) · სიმღერის ბუშტი (§48.4)
+ * სად დგას დამკვრელი: მარჯვენა პანელი · ქვედა ზოლი · ფანჯრის ესკიზზე ·
+ * მოტივტივე ჩარჩო · სიმღერის ბუშტი
  */
 export type PlayerLayout = 'side' | 'bar' | 'inline' | 'float' | 'bubble'
 
@@ -92,16 +92,16 @@ export function itemKey(item: Pick<PlayerItem, 'kind' | 'id'>): string {
   return `${item.kind}-${item.id}`
 }
 
-/** Tasks §48.1 — ფანჯრის ესკიზი, რომელზეც ვიდეო ჯდება */
+/** ფანჯრის ესკიზი, რომელზეც ვიდეო ჯდება */
 interface PlayerAnchor {
   key: string
   el: HTMLElement
 }
 
-/** ვიწრო (მობილური) ეკრანი — მოტივტივე ჩარჩო იქ ქვედა ზოლია (48.5) */
+/** ვიწრო (მობილური) ეკრანი — მოტივტივე ჩარჩო იქ ქვედა ზოლია */
 const NARROW_QUERY = '(min-width: 640px)'
 
-/* ---------- Tasks §48.4 — დაკვრის პროგრესი (ბუშტის რგოლი) ----------
+/* ---------- დაკვრის პროგრესი (ბუშტის რგოლი) ----------
    ⚠️ **კონტექსტის გარეთაა**: YouTube წამში რამდენჯერმე გზავნის `currentTime`-ს,
    კონტექსტში ჩაწერა კი მთელ აპს ყოველ ჯერზე თავიდან დახატავდა. ერთი ნაკადი,
    ერთი მომხმარებელი (ბუშტი) — `useSyncExternalStore`. */
@@ -130,7 +130,7 @@ export function usePlaybackProgress(): number | null {
 /**
  * საიდან ჩნდება გვერდითა პანელი (px).
  *
- * ⚠️ **ზღვარი დათვლილია და არა შერჩეული** (Q26): პანელი გვერდს აწვება, ე.ი.
+ * ⚠️ **ზღვარი დათვლილია და არა შერჩეული**: პანელი გვერდს აწვება, ე.ი.
  * შევიწროებული გვერდი არ უნდა იყოს იმაზე ვიწრო, ვიდრე დღევანდელი ყველაზე
  * ვიწრო `xl`-განლაგებაა — 1280px ეკრანი, სადაც ბადეები უკვე 6/3/5 სვეტზეა
  * და ფილტრის პანელიც დგას. ⚠️ ბადეები **ეკრანის** სიგანეს კითხულობენ და არა
@@ -140,7 +140,7 @@ export function usePlaybackProgress(): number | null {
  */
 export const PANEL_MIN_VIEWPORT = 1664
 
-/* ---------- Tasks §20 — პანელის სიგანე რეგულირდება ----------
+/* ---------- პანელის სიგანე რეგულირდება ----------
    შენი სიტყვები: „მარჯვენა კონტექსტის ფანჯარა შეიძლებოდეს რეგულირება —
    გაზარდო უფრო სიგანეში, ოღონდ რაღაც ფიქსირებული ზომა იყოს, რაზეც მეტად ვერ
    გაზრდი — ეგ იწერებოდეს პარამეტრებში; და ბოლოს რაც ხელით გაზარდე, ეგ
@@ -153,7 +153,7 @@ export const PANEL_MIN_VIEWPORT = 1664
    ჭერის შემცირება შენახულ სიგანეს ჭრის და არა შლის — ჭერის უკან აწევაზე
    ძველი სიგანე ბრუნდება.
 
-   ⚠️ **გვერდითა განლაგების ზღვარი სიგანეზეა დამოკიდებული** (§20.4): 1280 +
+   ⚠️ **გვერდითა განლაგების ზღვარი სიგანეზეა დამოკიდებული**: 1280 +
    მიმდინარე სიგანე, და არა მუდმივი 1664 — ფართო პანელი ვიწრო ეკრანზე გვერდს
    1280-ზე ქვემოთ ჩაწურავდა. */
 
@@ -196,7 +196,7 @@ export const PANEL_WIDTH = 'clamp(24rem, 22vw, 30rem)'
 const BAR_HEIGHT = { compact: '5.5rem', expanded: '11rem' } as const
 
 /**
- * ფართო ეკრანზე მომხმარებლის არჩევანი — პანელი თუ ზოლი (Q26: „ახსოვს").
+ * ფართო ეკრანზე მომხმარებლის არჩევანი — პანელი თუ ზოლი („ახსოვს").
  * ⚠️ `localStorage` და არა `users.settings`: ეს **მოწყობილობის** განლაგებაა
  * (ლეპტოპზე ზოლი, დიდ ეკრანზე პანელი), და იქ შენახვა პარამეტრების
  * გვერდის „შესანახ" ზოლს აანთებდა.
@@ -218,23 +218,23 @@ interface PlayerApi {
   source: string | null
   /** სად დგას ახლა (`null` — არაფერი უკრავს) */
   layout: PlayerLayout | null
-  /** Tasks §48.1 — მიმდინარე ვიდეოს ფანჯრის ესკიზი (`inline`-ის ადგილი) */
+  /** მიმდინარე ვიდეოს ფანჯრის ესკიზი (`inline`-ის ადგილი) */
   anchor: HTMLElement | null
   /** ფანჯრის ესკიზის რეგისტრაცია (`usePlayerAnchor`) */
   registerAnchor: (key: string, el: HTMLElement | null) => void
-  /** Tasks §48.2 — „გატანა": ვიდეო ფანჯრიდან მოტივტივე ჩარჩოში */
+  /** „გატანა": ვიდეო ფანჯრიდან მოტივტივე ჩარჩოში */
   popped: boolean
   popOut: () => void
   /** ფანჯარაში დაბრუნება (ფანჯარა ღია თუ არაა, `Player` მას `href`-ით ხსნის) */
   popIn: () => void
-  /** Tasks §48.4 — სიმღერის პანელი ბუშტად ჩაკეცილია */
+  /** სიმღერის პანელი ბუშტად ჩაკეცილია */
   bubbled: boolean
   setBubbled: (value: boolean) => void
   /** ეკრანი საკმარისად ფართოა პანელისთვის */
   wide: boolean
   /** ფართო ეკრანზე არჩეული განლაგება */
   dock: PlayerLayout
-  /** Tasks §20 — ხელით დაყენებული სიგანე (px) ან `null` = ნაგულისხმევი */
+  /** ხელით დაყენებული სიგანე (px) ან `null` = ნაგულისხმევი */
   width: number | null
   /** პანელის ჭერი (px) — `users.settings.playerMaxWidth` */
   maxWidth: number
@@ -254,7 +254,7 @@ interface PlayerApi {
   close: () => void
   setExpanded: (value: boolean) => void
   setDock: (value: PlayerLayout) => void
-  /** Tasks §20.1/§20.3 — სიგანე px-ში (ზღვრებში ჩაიჭრება და მოწყობილობაზე ინახება) */
+  /** სიგანე px-ში (ზღვრებში ჩაიჭრება და მოწყობილობაზე ინახება) */
   setWidth: (px: number) => void
   /** ორმაგი დაწკაპუნება სახელურზე — ნაგულისხმევზე დაბრუნება */
   resetWidth: () => void
@@ -301,12 +301,12 @@ export function videoItem(video: Video, subtitle: string | null = null): PlayerI
 }
 
 /**
- * **პირადი მოდულის ჩანაწერი (Tasks §37.5)** — ბმული, რომელიც `VideoUrl`-მა
+ * **პირადი მოდულის ჩანაწერი** — ბმული, რომელიც `VideoUrl`-მა
  * ამოიცნო (`platform` არა-`null`; `file` — პირდაპირი ფაილი `<video>`-ით).
  *
  * ⚠️ `kind: 'link'` — მრიცხველი არ არსებობს: „ნანახად ჩათვლა" ვიდეოს/სიმღერის
  * მოდულის ცნებაა, და პირადი ჩანაწერის id `videos`-ში არ დევს (გალერეის
- * ვიდეოს იგივე წესი, §8.4).
+ * ვიდეოს იგივე წესი).
  */
 export function customRecordItem(record: CustomRecord): PlayerItem {
   return {
@@ -337,10 +337,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = useState(false)
   const [source, setSource] = useState<string | null>(null)
   const [dock, setDockState] = useState<PlayerLayout>(() => (safeGet(DOCK_KEY) === 'bar' ? 'bar' : 'side'))
-  /* Tasks §20 — სიგანე მოწყობილობისაა, ჭერი — ანგარიშისა (იხ. ზემოთ) */
+  /* სიგანე მოწყობილობისაა, ჭერი — ანგარიშისა (იხ. ზემოთ) */
   const [width, setWidthState] = useState<number | null>(readSavedWidth)
   const [resizing, setResizing] = useState(false)
-  /* Tasks §48 — ფანჯრის ესკიზი, „გატანა" და ბუშტი */
+  /* ფანჯრის ესკიზი, „გატანა" და ბუშტი */
   const [anchor, setAnchor] = useState<PlayerAnchor | null>(null)
   const [popped, setPopped] = useState(false)
   const [bubbled, setBubbled] = useState(false)
@@ -348,7 +348,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const maxWidth = panelCeiling(useSettings().settings.playerMaxWidth)
   const panelWidth = panelWidthValue(width, maxWidth)
   const effectiveWidth = width === null ? PANEL_MIN_WIDTH : clampPanelWidth(width, maxWidth)
-  // §20.4 — ზღვარი მიმდინარე სიგანეს მიჰყვება: 1280 + პანელი
+  // ზღვარი მიმდინარე სიგანეს მიჰყვება: 1280 + პანელი
   const wide = useMediaQuery(`(min-width: ${PANEL_MIN_VIEWPORT - PANEL_MIN_WIDTH + effectiveWidth}px)`)
 
   const setWidth = useCallback(
@@ -380,7 +380,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const index = useMemo(() => queue.findIndex((entry) => entry.uid === currentUid), [queue, currentUid])
   const current = index >= 0 ? queue[index] : null
-  /* Tasks §48 — ვიდეო: ფანჯრის ესკიზი თუ მისია და „გატანილი" არაა — ფანჯარაში,
+  /* ვიდეო: ფანჯრის ესკიზი თუ მისია და „გატანილი" არაა — ფანჯარაში,
      სხვაგან — მოტივტივე ჩარჩო (ვიწროზე — ზოლი); სიმღერა: ბუშტი · პანელი · ზოლი. */
   const here = !!current && !!anchor && anchor.key === itemKey(current)
   const layout: PlayerLayout | null = !current
@@ -405,7 +405,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   /* ⚠️ ახალი რიგი „გატანას" აუქმებს: ბარათის „დაკვრა" ფანჯარას ხსნის და ვიდეო
-     იქ უნდა ჩაჯდეს (Q14) — წინა ვიდეოს „გატანა" ახალზე არ ვრცელდება. */
+     იქ უნდა ჩაჯდეს — წინა ვიდეოს „გატანა" ახალზე არ ვრცელდება. */
   const play = useCallback(
     (items: PlayerItem[], startAt = 0, label: string | null = null) => {
       if (!items.length) return
@@ -537,7 +537,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /* ---------- დამკვრელის ადგილი გვერდისთვის ----------
      ⚠️ `--player-w` / `--player-h` **ერთადერთი** გზაა, რომლითაც დანარჩენი გვერდი
      გებულობს, სად დგას დამკვრელი: `<main>` და ჰედერი მარჯვენა `padding`-ად
-     კითხულობენ (პანელი გვერდს აწვება და არაფერს ფარავს — Q26), ტოსტები
+     კითხულობენ (პანელი გვერდს აწვება და არაფერს ფარავს), ტოსტები
      საკუთარ `right`/`bottom`-ს ამით წევენ. ორივე ერთდროულად არასდროს დგას.
      ⚠️ `useLayoutEffect` და არა `useEffect`: პანელის სიგანეც ამ ცვლადიდანაა,
      ე.ი. დახატვის შემდეგ რომ ჩაწერილიყო, ერთი კადრი ნულოვანი სიგანით გამოჩნდებოდა. */
@@ -637,7 +637,7 @@ export function usePlayer(): PlayerApi {
 }
 
 /**
- * Tasks §48.1 — **ფანჯრის ესკიზი, რომელზეც ვიდეო ჯდება** (ref-callback).
+ * **ფანჯრის ესკიზი, რომელზეც ვიდეო ჯდება** (ref-callback).
  *
  * ესკიზი ყოველთვის ირეგისტრირებს — „დაკვრაზე" ვიდეო მაშინვე იქ ჯდება;
  * ფანჯრის დახურვაზე ან ჩანართის შეცვლაზე რეგისტრაცია ქრება და ვიდეო

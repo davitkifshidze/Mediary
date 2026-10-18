@@ -61,10 +61,10 @@ import { RecordActionBar } from '@/components/RecordActionBar'
 import { EnumStatusMenu } from '@/components/StatusMenu'
 
 /* ============================================================
-   წიგნების მოდული (`book`, Tasks §12).
+   წიგნების მოდული (`book`).
 
    იგივე მოდელი, რაც სიმღერებზე: **სტატუსი საიდბარის სექციაა** (`?view=`)
-   და არა ფილტრების პანელის ნაწილი (Tasks 3-ის წესი), პანელი კი ჟანრებსა
+   და არა ფილტრების პანელის ნაწილი, პანელი კი ჟანრებსა
    და ტეგებს ფილტრავს. მოქმედი ფილტრი მისამართშია — back და გაზიარებული
    ბმული ერთსა და იმავეს აჩვენებს.
    ============================================================ */
@@ -84,7 +84,7 @@ export function BooksPage() {
   const navigate = useNavigate()
 
   const [params, setParams] = useSearchParams()
-  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
   const [layout, setLayout] = useRecordLayout('book', 'rows')
   const search = params.toString()
   const view = params.get('view') ?? 'all'
@@ -104,7 +104,7 @@ export function BooksPage() {
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<Book | 'new' | null>(null)
   const [opened, setOpened] = useState<Book | null>(null)
-  /* Tasks §23.4 — კონტექსტური მენიუს დიალოგები სიიდან */
+  /* კონტექსტური მენიუს დიალოგები სიიდან */
   const [quoteFor, setQuoteFor] = useState<Book | null>(null)
   const [progressFor, setProgressFor] = useState<Book | null>(null)
 
@@ -122,11 +122,11 @@ export function BooksPage() {
     // „რჩეული" და „ყველა" სტატუსს არ ნიშნავს — დანარჩენი სექცია სტატუსია
     status: (BOOK_STATUSES as readonly string[]).includes(view) ? view : undefined,
     sort: sort === 'newest' ? undefined : sort,
-    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
   }
 
-  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['books', filters],
     fetchPage: (page) => fetchBooks({ ...filters, page, per_page: LIST_PAGE_SIZE }),
@@ -151,7 +151,7 @@ export function BooksPage() {
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
   const favorite = useMutation({ mutationFn: toggleBookFavorite, onSuccess: invalidate, onError: fail })
-  // Tasks §7 — სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
+  // სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
   const status = useMutation({
     mutationFn: ({ id, next }: { id: number; next: (typeof BOOK_STATUSES)[number] }) => setBookStatus(id, next),
     onSuccess: invalidate,
@@ -232,7 +232,7 @@ export function BooksPage() {
         subtitle={t('books.count', { count: total })}
         actions={
           <>
-            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             <Tooltip>
               <TooltipTrigger asChild>
@@ -284,7 +284,7 @@ export function BooksPage() {
       <div className="flex gap-6">
         <div className="min-w-0 flex-1">
           {query.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
-          {/* ⚠️ §2.4 — ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
+          {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !books.length && (
             <EmptyState
@@ -309,7 +309,7 @@ export function BooksPage() {
           <RecordList layout={layout}>
             {books.map((book) => {
               const cover = storageUrl(book.cover)
-              /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+              /* მარჯვენა ღილაკის მენიუ: გახსნა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
                 { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpened(book) },
                 {
@@ -323,7 +323,7 @@ export function BooksPage() {
                   })),
                 },
                 favoriteAction(book.is_favorite, () => favorite.mutate(book.id), t),
-                /* Tasks §23.4 — წიგნის პუნქტები: ციტატა · გვერდი · გალერეა (დეტალში) */
+                /* წიგნის პუნქტები: ციტატა · გვერდი · გალერეა (დეტალში) */
                 { key: 'quote', label: t('books.menuAddQuote'), icon: Quote, separator: true, run: () => setQuoteFor(book) },
                 { key: 'progress', label: t('books.menuProgress'), icon: BookOpenCheck, run: () => setProgressFor(book) },
                 { key: 'gallery', label: t('books.menuGallery'), icon: Images, run: () => setOpened(book) },
@@ -376,7 +376,7 @@ export function BooksPage() {
                           {book.files_count}
                         </span>
                       )}
-                      {/* Tasks §6.8 — ბრჭყალების აიქონი **ციტატებს** ითვლის; `notes_count` ყველა ჩანიშვნას შეიცავდა */}
+                      {/* ბრჭყალების აიქონი **ციტატებს** ითვლის; `notes_count` ყველა ჩანიშვნას შეიცავდა */}
                       {(book.quotes_count ?? 0) > 0 && (
                         <span className="inline-flex items-center gap-1">
                           <Quote className="size-3" />
@@ -406,7 +406,7 @@ export function BooksPage() {
                   tags={book.tags}
                   actions={actions}
                   onEdit={() => setEditing(book)}
-                  /* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: ქულა · სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები · ბმული · რედაქტირება · წაშლა */
+                  /* ერთი ზოლი ყველა სიაზე: ქულა · სტატუსი (ჩამოსაშლელი) · რჩეული · ფაილები · ბმული · რედაქტირება · წაშლა */
                   bar={
                     <RecordActionBar
                       before={
@@ -429,7 +429,7 @@ export function BooksPage() {
                         onToggle: () => favorite.mutate(book.id),
                       }}
                       files={{ count: book.files_count ?? 0, onOpen: () => setOpened(book) }}
-                      /* §5.7 — ახალი `source_url` უპირატესია; `links[0]` ძველი ჩანაწერებისთვის რჩება */
+                      /* ახალი `source_url` უპირატესია; `links[0]` ძველი ჩანაწერებისთვის რჩება */
                       link={{
                         href: book.source_url || book.links[0]?.url,
                         label: t('actions.link'),
@@ -464,7 +464,7 @@ export function BooksPage() {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
-          {/* სტატუსი აქ განზრახ არ არის (Tasks 3) — ის საიდბარის სექციაა */}
+          {/* სტატუსი აქ განზრახ არ არის — ის საიდბარის სექციაა */}
           <FilterGroup title={t('filter.genres')} count={draft.genres.length}>
             <FilterOptionList>
               {allGenres.map((genre) => (

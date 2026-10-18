@@ -1,7 +1,7 @@
 import type { CustomClassification, ModuleInfo } from '@/api/account'
 
 /* ============================================================
-   **ინტერფეისიდან შექმნილი (პირადი) მოდული — Tasks §37.**
+   **ინტერფეისიდან შექმნილი (პირადი) მოდული.**
 
    საბაზისო ცამეტი მოდული კოდია, პირადი კი **ჩანაწერია**: მისი გასაღები
    `c{owner}-{slug}` ფორმისაა (სარკე `App\Support\CustomModules::PATTERN`-ისა),
@@ -28,7 +28,7 @@ export function isCustomModule(m: Pick<ModuleInfo, 'key' | 'is_custom'> | null |
 
 /**
  * **კლასიფიკაციის ნაგულისხმევი სახელი** (ჟანრი · ტიპი · კატეგორია) —
- * i18n-ის გასაღები. ⚠️ მფლობელის გადარქმევა (Q30) ველების კონსტრუქტორის
+ * i18n-ის გასაღები. ⚠️ მფლობელის გადარქმევა ველების კონსტრუქტორის
  * ლეიბლია (`fields.label('category')`) და მას ეს ნაგულისხმევი ეთმობა.
  */
 export function classificationKey(kind: CustomClassification | null | undefined): string {

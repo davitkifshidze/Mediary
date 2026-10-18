@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  * TV-ეკვივალენტი. TV-ს ველები განსხვავებულია: `name` / `first_air_date` /
  * `number_of_seasons` / `external_ids.imdb_id`.
  *
- * ⚠️ **აბსტრაქტულია, რადგან TV-დომენი ორია** — `series` და `anime` (§7.1).
+ * ⚠️ **აბსტრაქტულია, რადგან TV-დომენი ორია** — `series` და `anime`.
  * ორივეს **თავისი** ცხრილი, კონტროლერი და გამამდიდრებელი აქვს, მაგრამ
  * TMDB-სთან საუბარი ერთი და იგივეა: მისი მეორედ დაწერა 300 ხაზის ასლს
  * ნიშნავდა და ერთი შესწორება ერთ ასლში ოდესმე დარჩებოდა. განსხვავება
@@ -119,7 +119,7 @@ abstract class TvEnricher
     }
 
     /**
-     * TMDB-ის ქართული პასუხი (Tasks BUG-17).
+     * TMDB-ის ქართული პასუხი.
      *
      * ⚠️ **ქართული TMDB-დან მოდის და არა Gemini-დან.** აქამდე `draftFromId()`
      * და `enrichSeries()` თითო ჩანაწერზე **ორ** Gemini-გამოძახებას ხარჯავდნენ
@@ -164,7 +164,7 @@ abstract class TvEnricher
     }
 
     /**
-     * ოფიციალური ტრეილერი TMDB-დან, ka→en კასკადით (Tasks 9).
+     * ოფიციალური ტრეილერი TMDB-დან, ka→en კასკადით.
      * ჩავარდნაზე `null` — ტრეილერის უქონლობა გამდიდრებას არ აჩერებს.
      */
     private function trailer(int $id): ?string
@@ -212,12 +212,12 @@ abstract class TvEnricher
             $series->imdb_url = "https://www.imdb.com/title/{$series->imdb_id}/";
         }
         $series->rating = $series->rating ?: (isset($d['vote_average']) ? round((float) $d['vote_average'], 1) : null);
-        // ტრეილერი (Tasks 9) — მხოლოდ ცარიელზე
+        // ტრეილერი — მხოლოდ ცარიელზე
         $series->trailer_url = $series->trailer_url ?: $this->trailer($id);
         $series->runtime = $series->runtime ?: $this->runtime($d);
         $series->seasons = $series->seasons ?: ($d['number_of_seasons'] ?? null);
         $series->episodes = $series->episodes ?: ($d['number_of_episodes'] ?? null);
-        /* FEAT-10 — შემდეგი ეპიზოდის ეთერი.
+        /* შემდეგი ეპიზოდის ეთერი.
            ⚠️ **`?:`-ით არ ივსება, არამედ ყოველთვის გადაიწერება.** დანარჩენი
            ველები „მხოლოდ ცარიელზე" იწერება, რადგან მომხმარებლის ტექსტს ვერ
            გადავაწერთ; ეს კი **მოძრავი ფაქტია** — ეპიზოდი გავა ეთერში და
@@ -271,7 +271,7 @@ abstract class TvEnricher
             }
             if ($isNew) {
                 $genre->setTranslation('en', $g['name']);
-                // ⚠️ `ka` განზრახ არ იწერება — იხ. `MovieEnricher` (BUG-23)
+                // ⚠️ `ka` განზრახ არ იწერება — იხ. `MovieEnricher`
             }
             $genreIds[] = $genre->id;
         }
@@ -284,7 +284,7 @@ abstract class TvEnricher
         foreach (array_slice($credits['cast'] ?? [], 0, 12) as $i => $c) {
             $member = CastMember::firstOrNew(['tmdb_person_id' => $c['id']]);
             $member->name = $c['name'];
-            // Tasks 10 — სქესი გალერეის „ქალი/კაცი მსახიობები" ფილტრს სჭირდება
+            // სქესი გალერეის „ქალი/კაცი მსახიობები" ფილტრს სჭირდება
             if (isset($c['gender'])) {
                 $member->gender = (int) $c['gender'];
             }
@@ -354,7 +354,7 @@ abstract class TvEnricher
     }
 
     /**
-     * TMDB-ის `next_episode_to_air` → ჩანაწერის სამი სვეტი (FEAT-10).
+     * TMDB-ის `next_episode_to_air` → ჩანაწერის სამი სვეტი.
      *
      * ⚠️ **ეს დამატებით გამოძახებას არ ითხოვს** — `tvDetails()`-ის პასუხშივე
      * მოდის, ე.ი. „მალე" კალენდარი ჩვეულებრივი სინქრონის გვერდითი

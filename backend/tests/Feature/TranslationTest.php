@@ -21,7 +21,7 @@ use Mockery;
 use Tests\TestCase;
 
 /**
- * Tasks 7 — თარგმანები.
+ * თარგმანები.
  *
  * ცოცხალ TMDB/Gemini-ს არ ვაკითხავთ: `TmdbClient` კონფიგურირებული არაა ტესტში
  * (გასაღები არ არის), `Translator` კი mock-დება — ე.ი. ვამოწმებთ **ლოგიკას**:
@@ -97,7 +97,7 @@ class TranslationTest extends TestCase
 
         $res->assertJsonPath('movie', 1)->assertJsonPath('series', 1);
         /* გასაღები არ არის → ინტერფეისმა უნდა თქვას, რომ თარჯიმანი არ მუშაობს.
-           ⚠️ Tasks §30 — გასაღები **მომხმარებლისაა** (`user_credentials`), ე.ი.
+           ⚠️ გასაღები **მომხმარებლისაა** (`user_credentials`), ე.ი.
            დეველოპერის `.env`-ის `GEMINI_API_KEY` ამ ტესტს ვეღარ შეეხება. */
         $res->assertJsonPath('translator_configured', false);
 
@@ -135,7 +135,7 @@ class TranslationTest extends TestCase
     public function test_plan_filters_by_status_and_favorite(): void
     {
         $watched = $this->movie([], ['title' => 'Watched']);
-        // §6.4 — სტატუსი ლექსიკონის რიგია, ე.ი. `update()`-ით ვეღარ დაიწერება
+        // სტატუსი ლექსიკონის რიგია, ე.ი. `update()`-ით ვეღარ დაიწერება
         $watched->applyStatusKey('watched');
         $watched->save();
         $this->movie([], ['title' => 'Other']);
@@ -184,7 +184,7 @@ class TranslationTest extends TestCase
 
         // თარჯიმანს თარგმანი უნდა, მაგრამ არჩევანში არ არის — არ უნდა გამოიძახოს
         $this->mockTranslator(['The Matrix' => 'მატრიცა']);
-        /* ⚠️ TMDB-ის გასაღები **აქვს** (Tasks §30): მის გარეშე პასუხი
+        /* ⚠️ TMDB-ის გასაღები **აქვს**: მის გარეშე პასუხი
            `credential_missing` იქნებოდა, ტესტი კი გამოტოვებას ამოწმებს —
            ჩანაწერს `tmdb_id` არ აქვს, ე.ი. TMDB-ს ამ ჩანაწერზე სათქმელი არაფერი აქვს. */
         $this->giveCredential($this->user, 'tmdb');
@@ -235,7 +235,7 @@ class TranslationTest extends TestCase
     {
         $this->giveCredential($this->user, 'gemini', [], ['daily' => 10]);
 
-        // ⚠️ Tasks §30 — მრიცხველი **ჩემს** რიგებს ითვლის (გასაღები ჩემია)
+        // ⚠️ მრიცხველი **ჩემს** რიგებს ითვლის (გასაღები ჩემია)
         TranslationUsage::create(['user_id' => $this->user->id, 'provider' => 'gemini', 'target_lang' => 'ka', 'chars' => 5]);
 
         $this->actingAs($this->user)->getJson('/api/translations/usage')
@@ -399,7 +399,7 @@ class TranslationTest extends TestCase
             ->assertJsonPath('permission', 'series.update');
     }
 
-    /* ---------- §7 — ტექსტის წყარო ---------- */
+    /* ---------- ტექსტის წყარო ---------- */
 
     /**
      * ⚠️ **ხელით გადაწერილი აღწერა `manual`-ია.** უამისოდ ჩანაწერი
@@ -450,7 +450,7 @@ class TranslationTest extends TestCase
      */
     public function test_translator_without_a_key_calls_nothing(): void
     {
-        /* ⚠️ Tasks §30.9 — `config`/`.env`-ში ჩაწერილი გასაღები **იგნორირდება**:
+        /* ⚠️ `config`/`.env`-ში ჩაწერილი გასაღები **იგნორირდება**:
            საერთო ფენა აღარ არსებობს, ე.ი. ესეც „გასაღების გარეშეა". */
         config(['services.gemini.key' => 'installation-key']);
         $this->actingAs($this->user);
@@ -489,7 +489,7 @@ class TranslationTest extends TestCase
     }
 
     /**
-     * Tasks §47 — აღწერა Markdown-ია: პრომპტი ფორმატისა და მისამართების
+     * აღწერა Markdown-ია: პრომპტი ფორმატისა და მისამართების
      * შენარჩუნებას ითხოვს (თარგმანშიც და გადამოწმებაშიც).
      */
     public function test_the_prompt_keeps_markdown_and_links(): void
@@ -751,7 +751,7 @@ class TranslationTest extends TestCase
 
     /**
      * გასაღების გარეშე გადამოწმება არ ხდება (და არ ცდილობს) — ⚠️ და ეს **ცხადად
-     * ითქმის** (Tasks §30.6): არჩეული წყაროებიდან არცერთის გასაღები არ მაქვს,
+     * ითქმის**: არჩეული წყაროებიდან არცერთის გასაღები არ მაქვს,
      * ე.ი. „გამოტოვდა" რიგს ჩუმ „შესრულდა"-ს ათქმევინებდა.
      */
     public function test_review_does_nothing_without_a_gemini_key(): void
@@ -816,7 +816,7 @@ class TranslationTest extends TestCase
     /* ---------- helpers ---------- */
 
     /**
-     * Gemini-ის **პირადი** გასაღები + ტესტი ამ მომხმარებლის სახელით (Tasks §30).
+     * Gemini-ის **პირადი** გასაღები + ტესტი ამ მომხმარებლის სახელით.
      *
      * ⚠️ `actingAs` აუცილებელია: `new Translator` პირდაპირ იძახება (HTTP-ის
      * გარეშე), გასაღები კი `Auth::id()`-ის მომხმარებლისაა — CLI-ში, მომხმარებლის
@@ -854,7 +854,7 @@ class TranslationTest extends TestCase
     }
 
     /**
-     * **badge ბიბლიოთეკას აღარ ტვირთავს (Tasks PERF-17).**
+     * **badge ბიბლიოთეკას აღარ ტვირთავს.**
      *
      * ⚠️ `summary()` ყველა ჩანაწერს თარგმანებითურთ კითხულობდა და PHP-ში
      * ითვლიდა. ეს აპის **ყველაზე ხშირად შესრულებული** მძიმე მოთხოვნაა:
@@ -884,8 +884,8 @@ class TranslationTest extends TestCase
     }
 
     /**
-     * ⚠️ **badge და გეგმის სია ერთსა და იმავეს უნდა ითვლიდნენ.** PERF-17-ის
-     * შემდეგ `summary()` SQL-ში ითვლის, `plan()` კი `missing()`-ით რიგ-რიგობით —
+     * ⚠️ **badge და გეგმის სია ერთსა და იმავეს უნდა ითვლიდნენ.**
+     * `summary()` SQL-ში ითვლის, `plan()` კი `missing()`-ით რიგ-რიგობით —
      * ორი განსაზღვრება ერთ კითხვაზე, ე.ი. მათი დაშორება ჩუმი იქნებოდა.
      */
     public function test_the_badge_matches_the_plan(): void

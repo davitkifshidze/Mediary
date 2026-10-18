@@ -33,11 +33,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
- * დეშბორდი (Tasks 2) — მთავარი გვერდის ქარდები.
+ * დეშბორდი — მთავარი გვერდის ქარდები.
  *
  * ერთი მოთხოვნა თითო მოდულზე ცალკე რექვესთის ნაცვლად. მთვლელები
  * `BelongsToUser`-ის `owner` scope-ზე გადის, ე.ი. თითოეული მხოლოდ თავისას ითვლის.
- * გადაწყდა (19.10): **ჯერ მხოლოდ რაოდენობა** — სტატუსებად დაშლა მოგვიანებით.
+ * გადაწყდა: **ჯერ მხოლოდ რაოდენობა** — სტატუსებად დაშლა მოგვიანებით.
  */
 class DashboardController extends Controller
 {
@@ -45,7 +45,7 @@ class DashboardController extends Controller
      * მოდულის key → მოდელი (ან მოდელების სია), რომლის ჩანაწერებსაც ითვლის.
      *
      * ⚠️ **სია მხოლოდ `gallery`-ს სჭირდება** და ეს განზრახაა: მისი შიგთავსი
-     * ორ ცხრილშია (`gallery_images` + `gallery_videos`, §8.1), ერთი კი
+     * ორ ცხრილშია (`gallery_images` + `gallery_videos`), ერთი კი
      * მეორეს დამალავდა — მხოლოდ ფოტოების თვლისას ვიდეოებიანი და
      * ფოტოების გარეშე დარჩენილი ბიბლიოთეკა „0"-ს აჩვენებდა, ე.ი. იგივე
      * ჩუმი ხარვეზი, რასაც ეს ბარათი ახლა ასწორებს.
@@ -59,17 +59,17 @@ class DashboardController extends Controller
         'book' => Book::class,
         'board_game' => BoardGame::class,
         'game' => Game::class,
-        // ⚠️ §13/§18 — ორივე აქ **გამორჩენილი იყო** და ბარათი მთვლელის გარეშე
+        // ⚠️ ორივე აქ **გამორჩენილი იყო** და ბარათი მთვლელის გარეშე
         // იხატებოდა (`count: null`). შეცდომა ჩუმია: მოდული ჩანს, რიცხვი კი არა.
         'note' => NoteEntry::class,
         'bookmark' => Bookmark::class,
         'course' => Course::class,
         'place' => Place::class,
-        /* Tasks §33 — ბარათი **ფოტოებსა და ვიდეოებს** ითვლის და არა ადამიანებს:
+        /* ბარათი **ფოტოებსა და ვიდეოებს** ითვლის და არა ადამიანებს:
            „რა მაქვს გალერეაში" ფაილების რიცხვია. `owner`/`trash`/`personal_parent`
            scope-ები თავისით მოქმედებს (ქვე-query მოდელიდანაა). */
         'personal' => PersonalMedia::class,
-        /* Tasks §34 — **მიმდინარე პერიოდის** მორიგეობები (`counterScope()`): „რამდენი
+        /* **მიმდინარე პერიოდის** მორიგეობები (`counterScope()`): „რამდენი
            მაქვს ამ თვეში“ — ყველა დროის ჯამი დეშბორდზე არაფერს ამბობს. */
         'duty' => DutyShift::class,
         /* ⚠️ `gallery` აქ **არ იყო** და ბარათი `—`-ს აჩვენებდა მაშინაც, როცა
@@ -84,8 +84,8 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        // Tasks §36.2 — ბარათები მენიუსა და `/modules`-ის რიგით (თითო მომხმარებლის)
-        // ⚠️ §37 — სხვისი პირადი მოდული ბარათადაც არ ჩანს (`visibleTo`)
+        // ბარათები მენიუსა და `/modules`-ის რიგით (თითო მომხმარებლის)
+        // ⚠️ სხვისი პირადი მოდული ბარათადაც არ ჩანს (`visibleTo`)
         $modules = ModuleOrder::sort(Module::where('is_active', true)->visibleTo($user)->get(), $user);
 
         // ჩაურთველი მოდული ქარდადაც არ ჩანს — ისევე, როგორც მენიუში
@@ -107,7 +107,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * **ყველა მთვლელი ერთ query-ში (Tasks PERF-05).**
+     * **ყველა მთვლელი ერთ query-ში.**
      *
      * ⚠️ **ადრე თითო მოდული თითო `SELECT COUNT(*)`-ს იხდიდა** (გალერეა ორს),
      * ე.ი. აპის **საწყისი** გვერდი 13 სერიულ query-ს აკეთებდა თვლაზე. ახლა
@@ -134,7 +134,7 @@ class DashboardController extends Controller
         $query = DB::query();
 
         foreach ($keys as $key) {
-            /* ⚠️ §37 — პირადი მოდულის ჩანაწერები ერთ ცხრილშია, ე.ი. მთვლელი
+            /* ⚠️ პირადი მოდულის ჩანაწერები ერთ ცხრილშია, ე.ი. მთვლელი
                **მოდულით იჭრება** — თორემ ყველა პირადი მოდულის ბარათი
                მფლობელის ყველა პირადი ჩანაწერის ჯამს აჩვენებდა. */
             if (CustomModules::isKey($key)) {
@@ -172,16 +172,16 @@ class DashboardController extends Controller
     }
 
     /**
-     * **Tasks §34 — მორიგეობის ბარათი მიმდინარე პერიოდს ითვლის.**
+     * **მორიგეობის ბარათი მიმდინარე პერიოდს ითვლის.**
      *
      * ⚠️ პერიოდის წესი `module_user.settings`-შია, და ის **უკვე ჩატვირთულია** —
-     * `hasModule()` მოდულებს pivot-ით ერთხელ კითხულობს (PERF-01). ე.ი. აქ ახალი
-     * query არ ჩნდება და PERF-05-ის „≤ 4 query“ ხელუხლებელია; `DutySettings::read()`
+     * `hasModule()` მოდულებს pivot-ით ერთხელ კითხულობს. ე.ი. აქ ახალი
+     * query არ ჩნდება და დაფის „≤ 4 query“ ზღვარი ხელუხლებელია; `DutySettings::read()`
      * (ორი query) აქ სწორედ ამიტომ არ იძახება.
      */
     private function counterScope(string $key, Builder $query, User $user): Builder
     {
-        /* Tasks §35.4 (Q9) — **ჯამი ჩაკეტილის გარეშე**, სესიის მიუხედავად: მთვლელი
+        /* **ჯამი ჩაკეტილის გარეშე**, სესიის მიუხედავად: მთვლელი
            გახსნილობაზე არ უნდა „ხტებოდეს". ⚠️ `not exists` — ახალი query არ ემატება. */
         if (RecordLocks::hides($query->getModel())) {
             return $query->withoutLocked();

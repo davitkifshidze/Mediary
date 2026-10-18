@@ -5,7 +5,7 @@ import { LOCKED_PHOTO_PLACEHOLDER } from '@/lib/lockedPhoto'
 import { Button } from '@/components/ui/button'
 
 /* ============================================================
-   **ჩაკეტილი ალბომის ბადე (Tasks §7.10/§7.11/§7.15).**
+   **ჩაკეტილი ალბომის ბადე.**
 
    შენი სიტყვები: „ჩაკეტილ ფოტოებს ბლარიანი ფოტო დაუდგეს — აჯობებს ერთი
    სტატიკური ბლარის ფოტო; თუ პაროლს შეიყვანს, მერე გამოჩნდეს რეალური".
@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button'
    პროპორციისაა — ზომა კი ფოტოს შინაარსზე არაფერს ამბობს.
 
    ⚠️ **ეს არ არის „დაბუნდოვნებული ნამდვილი ფოტო".** ფაილი პასუხში
-   საერთოდ არ მოსულა (და თვითონაც პირად დისკზე გადავიდა, §7.9), ე.ი.
+   საერთოდ არ მოსულა (და თვითონაც პირად დისკზე გადავიდა), ე.ი.
    ინსპექტორში კლასის მოხსნას გასაშიშვლებელი არაფერი აქვს.
    ============================================================ */
 
@@ -52,7 +52,7 @@ export function LockedPhotos({
 
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {photos.map((photo) => (
-          /* §25.3 — ფიქსირებული ჩარჩო (`aspect-video`), როგორც ჩვეულებრივ უჯრას: განბლოკვის შემდეგ ზომა არ იცვლება */
+          /* ფიქსირებული ჩარჩო (`aspect-video`), როგორც ჩვეულებრივ უჯრას: განბლოკვის შემდეგ ზომა არ იცვლება */
           <li key={photo.id} className="aspect-video overflow-hidden rounded-md border border-border bg-muted">
             <img src={LOCKED_PHOTO_PLACEHOLDER} alt="" aria-hidden className="size-full object-cover" />
           </li>

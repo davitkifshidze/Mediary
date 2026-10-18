@@ -41,7 +41,7 @@ import {
 } from 'lucide-react'
 
 /* ============================================================
-   **ჭრილის ხატულა და ტონი — ერთი რეესტრი** (Tasks §2).
+   **ჭრილის ხატულა და ტონი — ერთი რეესტრი**.
 
    შენი სიტყვები: „ყველგან სადაც არის ტაბების მსგავსი რამ ან გადამრთველი,
    იყოს ქარდის სტილის ტაბი შესაბამისი ფერით და აიქონებით".
@@ -96,7 +96,7 @@ const CUT_STYLE: Record<string, CutStyle> = {
   record: { icon: Film, color: 'var(--tool-bulk)' },
   actors: { icon: Users, color: 'var(--tool-people)' },
   module: { icon: Boxes, color: 'var(--tool-modules)' },
-  /* ---- გალერეის ჭრილები საჯარო პროფილზე (Tasks §32) ----
+  /* ---- გალერეის ჭრილები საჯარო პროფილზე ----
      ⚠️ ხატულას გამომძახებელი `GALLERY_CUTS`-იდან აწვდის — იგივე, რასაც
      მფლობელის გალერეის ქვე-მენიუ ხატავს; აქ ფერია მთავარი. */
   albums: { icon: Folders, color: 'var(--gold)' },
@@ -118,7 +118,7 @@ const CUT_STYLE: Record<string, CutStyle> = {
   paused: { icon: BellOff, color: 'var(--status-undecided)' },
   done: { icon: CheckCheck, color: 'var(--icon-ok)' },
 
-  /* ---- ხილვადობა (Tasks §16.1) ---- */
+  /* ---- ხილვადობა ---- */
   public: { icon: Globe, color: 'var(--icon-ok)' },
   private: { icon: Lock, color: 'var(--status-undecided)' },
 
@@ -134,19 +134,19 @@ const CUT_STYLE: Record<string, CutStyle> = {
   chat: { icon: MessageSquare, color: 'var(--tool-chat)' },
   backup: { icon: DatabaseBackup, color: 'var(--tool-backups)' },
 
-  /* ---- „ექსპორტ & იმპორტი"-ს ჩანართები (Tasks §31) ----
+  /* ---- „ექსპორტ & იმპორტი"-ს ჩანართები ----
      ⚠️ ჩამოტვირთვა და ატვირთვის ხატულები განზრახ: ჰოვერზე ერთი ქვევით
      მიდის, მეორე — ზევით (`index.css`), ე.ი. მიმართულება მოძრაობითაც
      იკითხება. იმპორტს სექციის ვარდისფერი აქვს — ის ამ სექციის პირველი
      ნახევარი იყო. */
   export: { icon: Download, color: 'var(--tool-backups)' },
   import: { icon: Upload, color: 'var(--tool-transfer)' },
-  // Tasks §59.2 — „ბაზა": მთლიანი ბაზა, ცხრილები, ასლები (სუპერადმინი)
+  // „ბაზა": მთლიანი ბაზა, ცხრილები, ასლები (სუპერადმინი)
   database: { icon: DatabaseBackup, color: 'var(--destructive)' },
 
-  /* ---- სტატისტიკის ჩანართები (Tasks §27.4 → §28.1) ---- */
+  /* ---- სტატისტიკის ჩანართები ---- */
   calendar: { icon: CalendarClock, color: 'var(--tool-sync)' },
-  // ფილმი, სერიალი და ანიმე ერთად (§28.1) — მოდულების ჩანართებს თავიანთი ფერი აქვთ
+  // ფილმი, სერიალი და ანიმე ერთად — მოდულების ჩანართებს თავიანთი ფერი აქვთ
   media: { icon: Clapperboard, color: 'var(--tool-stats)' },
 
   /* ---- საცავის ფაილის სახეობა ---- */
@@ -155,12 +155,12 @@ const CUT_STYLE: Record<string, CutStyle> = {
   doc: { icon: FileText, color: 'var(--muted-foreground)' },
   book: { icon: BookOpen, color: 'var(--tool-dictionaries)' },
 
-  /* ---- ჟანრის ფანჯრის ჩანართები (Tasks §54.1) ----
+  /* ---- ჟანრის ფანჯრის ჩანართები ----
      „ჩანაწერები" `records`-ია (ზემოთ) — იგივე ცნება, იგივე სახე. */
   names: { icon: Languages, color: 'var(--tool-translations)' },
   add: { icon: ListPlus, color: 'var(--icon-ok)' },
 
-  /* ---- მარშრუტის საწყისი (Tasks §56.1) ---- */
+  /* ---- მარშრუტის საწყისი ---- */
   here: { icon: Navigation, color: 'var(--icon-info)' },
   home: { icon: Home, color: 'var(--gold)' },
   address: { icon: Search, color: 'var(--tool-sync)' },

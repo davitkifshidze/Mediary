@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { PANEL_MIN_WIDTH, PANEL_WIDTH, clampPanelWidth, panelCeiling, panelWidthValue, readSavedWidth } from '@/lib/player'
 
 /* ============================================================
-   **დამკვრელის პანელის სიგანე — ზღვრები** (Tasks §20.2/§20.3).
+   **დამკვრელის პანელის სიგანე — ზღვრები**.
 
    ⚠️ მოწმდება წმინდა არითმეტიკა: ჭერი პარამეტრებიდან (უცნობი → 560, სიიდან
    გარეთ → უახლოესი ზღვარი), სიგანე მინიმუმსა და ჭერს შორის იჭრება, შენახული

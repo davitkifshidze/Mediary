@@ -11,16 +11,16 @@ import { personalPhotoItem } from '@/lib/personal'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **პირადი გალერეა (Tasks §33.5/§33.6).**
+   **პირადი გალერეა.**
 
    მოწმდება: ადამიანების ბარათები მთვლელებით; „ფოტო & ვიდეო"-ს დაჯგუფება
    სერვერის ჯგუფებს ითხოვს და თვის სახელს ხატავს; ატვირთვა **სათითაოდ** მიდის,
    ადამიანის კონტექსტით, ზედმეტად დიდი კი სერვერამდე არ მიდის; ბადის უჯრა —
    ესკიზი ბადეში, სრული ფოტო ლაითბოქსში, ვიდეო პირდაპირი მისამართით.
 
-   §33.7 — ჩაკეტილი ადამიანი ბოქლომიანი ბარათია: დაჭერა პაროლს ითხოვს და არა
+   ჩაკეტილი ადამიანი ბოქლომიანი ბარათია: დაჭერა პაროლს ითხოვს და არა
    გვერდს ხსნის, გვერდი კი მხოლოდ ბოქლომს ხატავს (ბადე საერთოდ არ ითხოვება).
-   Q7 — საჯარო ალბომის ყდა საჯარო ფაილის მარშრუტიდან მოდის.
+   საჯარო ალბომის ყდა საჯარო ფაილის მარშრუტიდან მოდის.
    ============================================================ */
 
 function person(id: number, over: Partial<Person> = {}): Person {
@@ -328,7 +328,7 @@ function typeInto(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
-describe('locks (§33.7)', () => {
+describe('locks', () => {
   const hidden = person(3, { name: 'ანა', locked: true, unlocked: false, lock_hint: 'ზღვა', photos: 5 })
 
   it('draws a hidden person as a padlock card and asks for the password instead of opening it', async () => {
@@ -352,7 +352,7 @@ describe('locks (§33.7)', () => {
     await act(async () => (document.getElementById('record-unlock-form') as HTMLFormElement).requestSubmit())
     await flush()
 
-    // §35.5 — ზოგადი ლოკი: ჩანაწერის მისამართი + პაროლი
+    // ზოგადი ლოკი: ჩანაწერის მისამართი + პაროლი
     expect(mocks.unlockRecord).toHaveBeenCalledWith('/personal/people/3', 'secret1')
   })
 

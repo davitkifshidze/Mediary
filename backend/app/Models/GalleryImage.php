@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
- * გალერეის ფოტო (Tasks 10) — საკუთარი ცხრილი `gallery_images`.
+ * გალერეის ფოტო — საკუთარი ცხრილი `gallery_images`.
  *
  * **polymorphic განზრახაა**: ერთი და იგივე ფოტო-ლოგიკა ჰკიდია ფილმს,
  * სერიალს, **მსახიობს** და სიმღერას. `collection` სვეტი აღარ არსებობს —
@@ -23,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class GalleryImage extends Model
 {
     /**
-     * ⚠️ **ურნა (Tasks §29)** — ფოტოს წაშლა მას ურნაში გადააქვს: რიგი, ფაილი
+     * ⚠️ **ურნა** — ფოტოს წაშლა მას ურნაში გადააქვს: რიგი, ფაილი
      * და კვოტა ადგილზე რჩება. სამი scope ერთად დგას (`owner`, `album_lock`,
      * `trash`) და ყველა ადგილი, რომელიც ფოტოს **ნამდვილად** შლის (მშობლის
      * საბოლოო წაშლა, `/purge`, ანგარიშის წაშლა), სამივეს თიშავს.
@@ -71,7 +71,7 @@ class GalleryImage extends Model
                 ->orWhereNotIn($table.'.album_id', $hidden));
         });
 
-        /* §37.4 — პირადი მოდულის ჩანაწერზე მიბმული ფოტოს `imageable_type`
+        /* პირადი მოდულის ჩანაწერზე მიბმული ფოტოს `imageable_type`
            მოდულის გასაღებია (`CustomRecord::getMorphClass()`). ⚠️ `retrieved`
            და არა `imageable()`-ში: eager-load (`with('imageable')`) კავშირს
            ცარიელ ინსტანციაზე აგებს და მერე `Model::getActualClassNameForMorph()`-ს
@@ -107,7 +107,7 @@ class GalleryImage extends Model
     }
 
     /**
-     * **ფაილი პირად დისკზეა?** (Tasks §7.9 — ჩაკეტილი ალბომის `gallery/locked`).
+     * **ფაილი პირად დისკზეა?** (ჩაკეტილი ალბომის `gallery/locked`).
      *
      * ⚠️ დისკს `StorageFolder` წყვეტს და არა აქაური `str_starts_with`: ერთი
      * წესი, ერთი ადგილი (`StorageMeter::disk()`-ის იგივე მიზეზი).
@@ -129,7 +129,7 @@ class GalleryImage extends Model
      * პაროლის შეყვანის შემდეგ SPA `/storage/gallery/locked/…`-ს აწყობდა,
      * რომელიც პირად დისკზე **არ არსებობს**, და გახსნილი ალბომი გატეხილ
      * `<img>`-ებად იხატებოდა („პაროლი შევიყვანე და ფოტოები არ ჩანს").
-     * მისამართს backend ამბობს (§17.5-ის წესი) — `PRIVATE_FOLDERS`-ის ასლი
+     * მისამართს backend ამბობს — `PRIVATE_FOLDERS`-ის ასლი
      * SPA-ში ერთ დღეს დაშორდებოდა.
      */
     public function servedUrl(): string
@@ -154,7 +154,7 @@ class GalleryImage extends Model
     }
 
     /**
-     * ალბომი (Tasks §26) — user-ის თავისი დახარისხება.
+     * ალბომი — user-ის თავისი დახარისხება.
      *
      * ⚠️ **მშობლისგან დამოუკიდებელია**: ფოტოს შეიძლება ჰქონდეს ორივე,
      * ერთი ან არცერთი. უმშობლო ფოტო „უკატეგორიოა" და სწორედ იქ აქვს

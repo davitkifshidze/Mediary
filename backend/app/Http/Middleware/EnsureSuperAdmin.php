@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/** /api/admin/* — მხოლოდ სუპერ-ადმინი (I4) */
+/** /api/admin/* — მხოლოდ სუპერ-ადმინი */
 class EnsureSuperAdmin
 {
     public function handle(Request $request, Closure $next): Response

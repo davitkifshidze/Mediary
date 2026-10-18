@@ -20,7 +20,7 @@ use RuntimeException;
 use Tests\TestCase;
 
 /**
- * **ფონური პარტია (აუდიტი 2026-09-14, §D1).**
+ * **ფონური პარტია.**
  *
  * ⚠️ **რას ხსნის:** სინქრონი/გალერეა/თარგმანი ბრაუზერის ტაბში ტრიალებდა და
  * ტაბის დახურვაზე ჩერდებოდა. აქ იგივე გეგმა სერვერს გადაეცემა.
@@ -45,7 +45,7 @@ class BatchQueueTest extends TestCase
         $this->alice = $this->makeUser('alice');
         $this->bob = $this->makeUser('bob');
 
-        /* Tasks §30.6 — ⚠️ პარტია **გასაღების გარეშე აღარ იწყება** (`credential_missing`
+        /* ⚠️ პარტია **გასაღების გარეშე აღარ იწყება** (`credential_missing`
            დისპეჩამდე), ე.ი. ორივეს TMDB-ის პირადი გასაღები სჭირდება. */
         $this->giveCredential($this->alice, 'tmdb');
         $this->giveCredential($this->bob, 'tmdb');
@@ -117,7 +117,7 @@ class BatchQueueTest extends TestCase
     }
 
     /**
-     * Tasks §30.6 — ⚠️ **გასაღების გარეშე პარტია საერთოდ არ იქმნება.** §30-იდან
+     * ⚠️ **გასაღების გარეშე პარტია საერთოდ არ იქმნება.**
      * გასაღები ანგარიშისაა, ე.ი. მის გარეშე 300-ერთეულიანი პარტია 300-ჯერ
      * ერთსა და იმავე მიზეზზე ჩავარდებოდა და ეს მხოლოდ ბოლოს გამოჩნდებოდა.
      */
@@ -185,7 +185,7 @@ class BatchQueueTest extends TestCase
     /**
      * ⚠️ **უფლება გაშვებამდე მოწმდება და არა job-ში**: job-ში გვიანია —
      * პასუხი უკვე გაცემულია და უარი არსად ჩანს. სამივე ოპერაცია არსებულ
-     * ჩანაწერს ცვლის, ე.ი. `update` სჭირდება (§A4-ის იგივე წესი).
+     * ჩანაწერს ცვლის, ე.ი. `update` სჭირდება.
      */
     public function test_creating_a_batch_needs_update_permission(): void
     {
@@ -243,7 +243,7 @@ class BatchQueueTest extends TestCase
     }
 
     /**
-     * **დიდი პარტია ნაწილებად იწერება და სრულად** (Tasks §39).
+     * **დიდი პარტია ნაწილებად იწერება და სრულად**.
      *
      * ⚠️ `Batch::add()` მთელ სიას ერთი INSERT-ით წერს, ერთი job კი ~800
      * ბაიტია — MySQL-ის 1 MB-იანი `max_allowed_packet`-ზე ~1270-ზე მეტი
@@ -275,7 +275,7 @@ class BatchQueueTest extends TestCase
     }
 
     /**
-     * **ჩავარდნილი ერთეული ჩავარდნილად ითვლება** (Tasks BUG-08).
+     * **ჩავარდნილი ერთეული ჩავარდნილად ითვლება**.
      *
      * ⚠️ აქამდე `handle()` ყველა გამონაკლისს ყლაპავდა, ე.ი. `failedJobs`
      * **ყოველთვის 0** იყო და `processedJobs == totalJobs`: SPA „300/300
@@ -286,7 +286,7 @@ class BatchQueueTest extends TestCase
      * ⚠️ ტესტი **ნამდვილ worker-ს** უშვებს (`queue:work --stop-when-empty`)
      * და არა `handle()`-ს პირდაპირ: `failed_jobs`-ის ჩანაწერსა და პარტიის
      * მრიცხველს მხოლოდ რიგის მანქანერია წერს, ე.ი. პირდაპირი გამოძახება
-     * სწორედ იმას ვერ ამოწმებდა, რაზეც ტასქია.
+     * სწორედ იმას ვერ ამოწმებდა, რასაც ეს ტესტი იცავს.
      */
     public function test_a_failed_item_is_counted_and_the_rest_still_run(): void
     {
@@ -390,7 +390,7 @@ class BatchQueueTest extends TestCase
     }
 
     /**
-     * **სხვისი პარტია 404-ია — არც პროგრესი და არც გაუქმება** (Tasks SEC-09).
+     * **სხვისი პარტია 404-ია — არც პროგრესი და არც გაუქმება**.
      *
      * ⚠️ `Illuminate\Bus\Batch` **Eloquent-მოდელი არ არის**, ე.ი. არც
      * `EnsureRecordOwnership` ხედავს მას და არც `BelongsToUser`-ის `owner`
@@ -419,12 +419,12 @@ class BatchQueueTest extends TestCase
             ->assertJsonPath('cancelled', false);
     }
 
-    /* ================= FEAT-03: თითო ერთეულის შედეგი ================= */
+    /* ================= თითო ერთეულის შედეგი ================= */
 
     /**
-     * **„300/300"-ის შემდეგ ჩანს, რომელი ჩავარდა და რატომ** (Tasks FEAT-03).
+     * **„300/300"-ის შემდეგ ჩანს, რომელი ჩავარდა და რატომ**.
      *
-     * ⚠️ BUG-08-ის შემდეგაც პასუხი მხოლოდ `processed/total` იყო: მიზეზი
+     * ⚠️ პასუხი მხოლოდ `processed/total` იყო: მიზეზი
      * მხოლოდ `sources.log`-ში ჩანდა, მაშინ როცა **კლიენტური** რიგი იმავე
      * ოპერაციაზე თითოზე შედეგს აჩვენებს — ერთ ოპერაციას ორ რეჟიმში ორი
      * სხვადასხვა პასუხი ჰქონდა.
@@ -505,7 +505,7 @@ class BatchQueueTest extends TestCase
         );
     }
 
-    /* ================= შედეგი და არა მხოლოდ გამონაკლისი (Tasks §6.2) ================= */
+    /* ================= შედეგი და არა მხოლოდ გამონაკლისი ================= */
 
     /**
      * ⚠️ `ItemSyncer` გამონაკლისს **შიგნით** იჭერს და `ok:false`-ს აბრუნებს — ე.ი.
@@ -570,7 +570,7 @@ class BatchQueueTest extends TestCase
         $this->assertSame('skipped', $items[0]['status']);
     }
 
-    /* ================= Tasks §31.4/§31.6 — შედეგი სერვერულ რიგში ================= */
+    /* ================= შედეგი სერვერულ რიგში ================= */
 
     /** ცარიელი და უცვლელი **გამოტოვებაა მიზეზით** — ✓-ად აღარ ითვლება */
     public function test_an_empty_or_unchanged_result_is_skipped_with_its_reason(): void
@@ -600,7 +600,7 @@ class BatchQueueTest extends TestCase
         $this->assertSame('unchanged', $items[$same->id]['error']);
     }
 
-    /** Tasks §31.3 — „აღარ განაახლო" ჩანაწერი პარტიაშიც გამოტოვებაა, სერვისს არც ეხება */
+    /** „აღარ განაახლო" ჩანაწერი პარტიაშიც გამოტოვებაა, სერვისს არც ეხება */
     public function test_a_paused_record_is_skipped_by_the_worker(): void
     {
         $paused = $this->makeMovie($this->alice, 'Paused');

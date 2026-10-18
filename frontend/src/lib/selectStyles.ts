@@ -7,7 +7,7 @@ export interface Option {
 }
 
 /**
- * react-select-ის მენიუ **portal-ით `<body>`-ში** (Tasks §1.1).
+ * react-select-ის მენიუ **portal-ით `<body>`-ში**.
  *
  * ⚠️ ორი ბაგი ერთდროულად: `ModalShell`-ის შიგნით მენიუს
  * `overflow-y-auto` **კვეთდა** (ველი მოდალის ბოლოშია → სია არ ჩანდა), და
@@ -31,7 +31,7 @@ export function reactSelectStyles<IsMulti extends boolean>(): StylesConfig<Optio
       ...base,
       minHeight: 40,
       backgroundColor: 'var(--card)',
-      /* Tasks §5.1 — ფოკუსის ნიშანი არსად: ჩარჩოს ფერი ფოკუსზე არ იცვლება და
+      /* ფოკუსის ნიშანი არსად: ჩარჩოს ფერი ფოკუსზე არ იცვლება და
          2px რგოლიც მოიხსნა (ღია მენიუს დროს ველს სქელი შავი ჩარჩო ეკრა). */
       borderColor: 'var(--border)',
       borderRadius: 5,
@@ -42,7 +42,7 @@ export function reactSelectStyles<IsMulti extends boolean>(): StylesConfig<Optio
     dropdownIndicator: (base) => ({ ...base, cursor: 'pointer' }),
     clearIndicator: (base) => ({ ...base, cursor: 'pointer' }),
     valueContainer: (base) => ({ ...base, padding: '2px 8px', gap: 4 }),
-    // Tasks 2.3 — გრძელი placeholder ვიწრო ველში იჭრებოდა; ახლა ერთ ხაზზე
+    // გრძელი placeholder ვიწრო ველში იჭრებოდა; ახლა ერთ ხაზზე
     // ილექება და ჭარბი „…"-ით იკვეცება, ველი აღარ იზრდება
     placeholder: (base) => ({
       ...base,

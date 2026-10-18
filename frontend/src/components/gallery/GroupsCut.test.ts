@@ -7,7 +7,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import '@/i18n'
 
 /* ============================================================
-   რეგრესია: **ჯგუფში შესვლისას ვებძებნა უნდა გაიხსნას** (ეტაპი 3).
+   რეგრესია: **ჯგუფში შესვლისას ვებძებნა უნდა გაიხსნას**.
 
    ⚠️ ხარვეზი ისეთი იყო, რომ არც `tsc`-ს, არც lint-ს და არც სუფთა ფუნქციის
    ტესტს ვერ დაენახა: დიალოგები მხოლოდ ჯგუფების **სიის** დაბრუნებაში იდო,
@@ -67,7 +67,7 @@ afterEach(() => {
 async function mountGroupsCut(initialPath = '/gallery/actors') {
   const { GroupsCut } = await import('@/components/gallery/GroupsCut')
   const { useLocation } = await import('react-router-dom')
-  // URL-ის „ზონდი" — `?open=`-ის შემოწმებისთვის (§3.1)
+  // URL-ის „ზონდი" — `?open=`-ის შემოწმებისთვის
   const Probe = () => h('span', { 'data-testid': 'search' }, useLocation().search)
 
   container = document.createElement('div')
@@ -153,7 +153,7 @@ describe('GroupsCut', () => {
     expect(dialogs()).toBe(0)
   })
 
-  /* Tasks §3.1 — გახსნილი ჯგუფი URL-შია: შესვლა `?open=`-ს წერს, „უკან" შლის,
+  /* გახსნილი ჯგუფი URL-შია: შესვლა `?open=`-ს წერს, „უკან" შლის,
      ხოლო `?open=`-ით მოსული გვერდი ჯგუფს თავიდანვე გახსნილს აჩვენებს. */
   it('ჯგუფში შესვლა URL-ში `open`-ს წერს და „უკან" მას შლის', async () => {
     const node = await openGroup()

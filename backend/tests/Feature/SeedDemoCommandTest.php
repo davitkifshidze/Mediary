@@ -15,9 +15,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **`mediary:seed-demo`** (Tasks FEAT-02).
+ * **`mediary:seed-demo`**.
  *
- * ⚠️ SEC-01-მდე „სწრაფი აწყობა" კომიტებულ პროდ-dump-ს ეყრდნობოდა; მისი
+ * ⚠️ ადრე „სწრაფი აწყობა" კომიტებულ პროდ-dump-ს ეყრდნობოდა; მისი
  * ამოღების შემდეგ ახალი კლონი **სრულიად ცარიელ** აპს იღებდა. ეს ბრძანება
  * იმავე შედეგს იძლევა პერსონალური მონაცემის გარეშე.
  */
@@ -46,7 +46,7 @@ class SeedDemoCommandTest extends TestCase
         $this->assertSame(1, NoteEntry::withoutGlobalScope('owner')->where('user_id', $demo->id)->count());
         $this->assertSame(1, Bookmark::withoutGlobalScope('owner')->where('user_id', $demo->id)->count());
 
-        // Tasks §4.9 — სვეტები `players_min`/`players_max`-ია; `min_players` ჩუმად არ იწერებოდა
+        // სვეტები `players_min`/`players_max`-ია; `min_players` ჩუმად არ იწერებოდა
         $board = BoardGame::withoutGlobalScope('owner')->where('user_id', $demo->id)->firstOrFail();
         $this->assertSame([2, 4], [$board->players_min, $board->players_max]);
 
@@ -98,7 +98,7 @@ class SeedDemoCommandTest extends TestCase
     /**
      * ⚠️ **პერსონალური მონაცემი არსად**: ელფოსტა `example.com`-ზეა
      * (RFC 2606) — სწორედ ეს განასხვავებს მას იმ dump-ისგან, რომელიც
-     * SEC-01-მა ამოიღო.
+     * რეპოდან ამოიღეს.
      */
     public function test_the_demo_account_carries_no_real_identity(): void
     {

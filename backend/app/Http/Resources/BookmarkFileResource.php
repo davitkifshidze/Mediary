@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
 
-/** ბუკმარკზე მიმაგრებული ფოტო (Tasks §36.4) */
+/** ბუკმარკზე მიმაგრებული ფოტო */
 class BookmarkFileResource extends JsonResource
 {
     public function toArray(Request $request): array
@@ -16,7 +16,7 @@ class BookmarkFileResource extends JsonResource
             'id' => $this->id,
             'kind' => $this->kind,
             'path' => $this->path,
-            // ⚠️ დისკს **საქაღალდე** წყვეტს და არა გამომძახებელი (§17.5)
+            // ⚠️ დისკს **საქაღალდე** წყვეტს და არა გამომძახებელი
             'url' => Storage::disk(StorageFolder::diskFor($this->path))->url($this->path),
             'original_name' => $this->original_name,
             'mime' => $this->mime,

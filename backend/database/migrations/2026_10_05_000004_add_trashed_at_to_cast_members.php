@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **Tasks §35.9 (Q17) — ხელით შექმნილი მსახიობი ურნაში.**
+ * **ხელით შექმნილი მსახიობი ურნაში.**
  *
  * `cast_members` გლობალური ლექსიკონია და ურნის რეესტრი მოდულებზეა აწყობილი,
  * ამიტომ მსახიობს `trashed_at` აქამდე არ სჭირდებოდა. ურნაში მხოლოდ **კერძო**

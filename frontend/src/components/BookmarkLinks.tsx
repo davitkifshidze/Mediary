@@ -19,15 +19,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   **ბუკმარკის დამატებითი ბმულები** (Tasks §36.3, §36.5).
+   **ბუკმარკის დამატებითი ბმულები**.
 
    შენი სიტყვები: „თუ შოპინგია ან რამე ისეთი, კონკრეტული ლინკის დამატებაც
    იყოს დამატებით".
 
    ოთხი ნაწილი, ერთი ფორმა (`BookmarkLink`):
    - `BookmarkLinkRow` — ერთი რიგის რედაქტორი: ტიპი (აიქონი + ფერი), წარწერა,
-     ფასი (მხოლოდ მაღაზიასა და ფასზე) და ბმულის ველი §15-ის მეტა-მონაცემით;
-   - `BookmarkLinksEditor` — სია ფორმაში + „ბმულის დამატება" (§24.4-ის ღილაკი);
+     ფასი (მხოლოდ მაღაზიასა და ფასზე) და ბმულის ველი გვერდის მეტა-მონაცემით;
+   - `BookmarkLinksEditor` — სია ფორმაში + „ბმულის დამატება"-ს ღილაკი;
    - `BookmarkLinkDialog` — ერთი ბმული ფორმის გარეშე (დეტალი, მარჯვენა კლიკი);
    - `BookmarkLinkCards` — დეტალის ბარათები: favicon, წარწერა, დომენი, ფასი.
 
@@ -116,7 +116,7 @@ export function BookmarkLinkRow({
           </Button>
         )}
       </div>
-      {/* §15 — ჩასმისას: ცარიელი წარწერა სათაურით, favicon, ვიდეო-ბმული „ვიდეოდ" */}
+      {/* ჩასმისას: ცარიელი წარწერა სათაურით, favicon, ვიდეო-ბმული „ვიდეოდ" */}
       <LinkField
         value={link.url}
         invalid={!!error}
@@ -161,7 +161,7 @@ export function BookmarkLinksEditor({
           onRemove={() => onChange((all) => all.filter((x) => x._key !== link._key))}
         />
       ))}
-      {/* Tasks §24.4 — „დამატება" ღილაკია (`outline sm`, `Plus` + ტექსტი) და არა ლეიბლის ბმული */}
+      {/* „დამატება" ღილაკია (`outline sm`, `Plus` + ტექსტი) და არა ლეიბლის ბმული */}
       <Button type="button" variant="outline" size="sm" onClick={() => onChange((all) => [...all, keyRow(emptyLink())])}>
         <Plus className="size-3.5" />
         {t('bookmarks.addLink')}
@@ -173,7 +173,7 @@ export function BookmarkLinksEditor({
 const DIALOG_FORM = 'bookmark-link-form'
 
 /**
- * **ერთი ბმულის დამატება ფორმის გარეშე** (Tasks §36.5) — დეტალის ფანჯრიდან და
+ * **ერთი ბმულის დამატება ფორმის გარეშე** — დეტალის ფანჯრიდან და
  * სიის მარჯვენა კლიკიდან. ⚠️ სია მთლიანად იგზავნება (`setBookmarkLinks`):
  * სერვერზე `links` ერთი სვეტია და მისი ნაწილობრივი ცვლილება არ არსებობს.
  */

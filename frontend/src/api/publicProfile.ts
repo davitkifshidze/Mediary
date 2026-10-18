@@ -6,7 +6,7 @@ import type { StackPreview } from '@/components/ui/photo-stack'
 import type { MediaType } from '@/lib/media'
 
 /* ============================================================
-   საჯარო პროფილი (Tasks §16.1).
+   საჯარო პროფილი.
 
    ⚠️ სამი ფენა უნდა იყოს ღია, რომ ჩანაწერი გამოჩნდეს:
    პროფილი (`users.profile_visibility`) → მოდული (`module_user.is_public`) →
@@ -18,12 +18,12 @@ export type Visibility = 'private' | 'public'
 /**
  * დომენი — **მოდულის ტოლი არაა**: `playlist` ცალკე დომენია, მაგრამ `song`
  * მოდულში ცხოვრობს. სარკეა backend-ის `PublicDomain::DOMAINS`-ისა.
- * ⚠️ `note` აქ განზრახ არ არის (16.5 — პირადი დოკუმენტები არასდროს საჯაროვდება).
+ * ⚠️ `note` აქ განზრახ არ არის (პირადი დოკუმენტები არასდროს საჯაროვდება).
  */
 export const PUBLIC_DOMAINS = [
   'movie',
   'series',
-  // §7.1 — მესამე მედია-დომენი
+  // მესამე მედია-დომენი
   'anime',
   'game',
   'book',
@@ -31,24 +31,24 @@ export const PUBLIC_DOMAINS = [
   'video',
   'song',
   'playlist',
-  // §18 — ბუკმარკები; იდენტობა თვითონ ბმულია (`PublicDomain::MATCH`)
+  // ბუკმარკები; იდენტობა თვითონ ბმულია (`PublicDomain::MATCH`)
   'bookmark',
-  // Tasks §2 — ორივე აკლდა და „რომელი ჩანაწერი ჩანს"-ში მათი ჩანართი არ იხატებოდა.
+  // ორივე აკლდა და „რომელი ჩანაწერი ჩანს"-ში მათი ჩანართი არ იხატებოდა.
   // ⚠️ სია `RegistryConsistencyTest`-ით `PublicDomain::DOMAINS`-ს ედარება.
   'course',
   'place',
-  /* §7.5 — გალერეის **ალბომი**. ⚠️ ეს „ჩანაწერი" არ არის: ფოტო მშობლის
+  /* გალერეის **ალბომი**. ⚠️ ეს „ჩანაწერი" არ არის: ფოტო მშობლის
      ხილვადობას იმემკვიდრებს, ე.ი. ფილმის კადრს ცალკე გადამრთველი არ
      სჭირდება — **უმშობლო** ფოტოს კი მემკვიდრეობით არაფერი მოსდის და
      ერთადერთი, რითიც ის შეიძლება გაზიარდეს, ალბომია. */
   'gallery_album',
-  /* Tasks §33 (Q7) — პირადი გალერეიდან მხოლოდ **ალბომი** ხდება საჯარო, თავისი
+  /* პირადი გალერეიდან მხოლოდ **ალბომი** ხდება საჯარო, თავისი
      ჩამრთველით; ჩაკეტილი — არასდროს. */
   'personal_album',
 ] as const
 type BasePublicDomainKey = (typeof PUBLIC_DOMAINS)[number]
 /**
- * დომენი — საბაზისოები და (§37.4) **პირადი მოდული, თავისი გასაღებით**.
+ * დომენი — საბაზისოები და **პირადი მოდული, თავისი გასაღებით**.
  * ⚠️ `PUBLIC_DOMAINS` მხოლოდ საბაზისოებს ჩამოთვლის (ტესტი მას ადარებს):
  * პირადი მოდულები ანგარიშისაა და პროფილის `domains`-ით / `useModules()`-ით მოდის.
  */
@@ -56,7 +56,7 @@ export type PublicDomainKey = BasePublicDomainKey | CustomModuleKey
 
 /**
  * დომენი → **რომელი მოდულის ჩართვა სჭირდება**.
- * ⚠️ `playlist` მოდული არაა (ის `song`-ის შიგნითაა, §15) — სწორედ ამიტომ
+ * ⚠️ `playlist` მოდული არაა (ის `song`-ის შიგნითაა) — სწორედ ამიტომ
  * არსებობს ეს რუკა და არა `domain === module` დაშვება. სარკეა backend-ის
  * `PublicDomain::DOMAINS[...]['module']`-ისა.
  */
@@ -74,11 +74,11 @@ export const DOMAIN_MODULE: Record<BasePublicDomainKey, string> = {
   course: 'course',
   place: 'place',
   gallery_album: 'gallery',
-  // Tasks §33 — პირადი გალერეის ალბომი
+  // პირადი გალერეის ალბომი
   personal_album: 'personal',
 }
 
-/** დომენის მოდული — პირადი მოდულის დომენი თვითონ მოდულის გასაღებია (§37.4) */
+/** დომენის მოდული — პირადი მოდულის დომენი თვითონ მოდულის გასაღებია */
 export function domainModule(domain: PublicDomainKey): string {
   return isCustomModuleKey(domain) ? domain : DOMAIN_MODULE[domain]
 }
@@ -93,18 +93,18 @@ export interface PublicCard {
   year?: number | null
   image?: string | null
   /**
-   * ⚠️ **ლექსიკონიან დომენებზე ობიექტია** (§6.4) — სახელი **მფლობელისაა**
+   * ⚠️ **ლექსიკონიან დომენებზე ობიექტია** — სახელი **მფლობელისაა**
    * და უცხო მნახველი მას სხვაგან ვერსად წაიკითხავდა. `enum`-იან სამზე
    * (წიგნი · თამაში · ბორდგეიმი) კვლავ სტრიქონია და i18n-ით ითარგმნება.
    */
   status?: Status | string | null
   rating?: number | string | null
-  /** Tasks §9 — მედიაზე მფლობელის ქულა (`rating` იქ TMDB-ის საშუალოა); `lib/rating.ts` `cardRatings()` */
+  /** მედიაზე მფლობელის ქულა (`rating` იქ TMDB-ის საშუალოა); `lib/rating.ts` `cardRatings()` */
   my_rating?: number | null
   url?: string | null
   songs_count?: number
   /**
-   * სიმღერის დაკვრა (Tasks §33.2) — `embed_url` backend-ის allowlist-ით ნაშენია,
+   * სიმღერის დაკვრა — `embed_url` backend-ის allowlist-ით ნაშენია,
    * ფრონტი ჰოსტს მაინც ხელახლა ამოწმებს (`lib/embed.ts`). ⚠️ დამალულ ბმულთან
    * ერთად ისიც ქრება (`PublicDomain::DERIVED`), ე.ი. ორივე არჩევითია.
    */
@@ -112,9 +112,9 @@ export interface PublicCard {
   embed_url?: string | null
   /** წამებში */
   duration?: number | null
-  /** §37.4 — პირადი მოდულის ბარათი: რომელ მოდულს ეკუთვნის (დამთხვევაში სხვადასხვა მოდულიდან მოდის) */
+  /** პირადი მოდულის ბარათი: რომელ მოდულს ეკუთვნის (დამთხვევაში სხვადასხვა მოდულიდან მოდის) */
   module?: string | null
-  /** Tasks §33 — პირადი გალერეის ალბომი: ფოტო · ვიდეო და ყდის ფოტოს id (`publicPersonalUrl()`) */
+  /** პირადი გალერეის ალბომი: ფოტო · ვიდეო და ყდის ფოტოს id (`publicPersonalUrl()`) */
   photos?: number
   videos?: number
   cover_id?: number | null
@@ -158,12 +158,12 @@ export async function fetchPublicItems(
   return data
 }
 
-/* ---------- საჯარო ფლეილისტის შიგთავსი (Tasks §33) ---------- */
+/* ---------- საჯარო ფლეილისტის შიგთავსი ---------- */
 
 /**
  * ფლეილისტი და მისი სიმღერები, ფლეილისტისავე რიგით.
  *
- * ⚠️ **პირადი სიმღერაც აქაა** (Q24 — ფლეილისტის შიგნით სიმღერა მშობლის
+ * ⚠️ **პირადი სიმღერაც აქაა** (ფლეილისტის შიგნით სიმღერა მშობლის
  * ხილვადობას იღებს); „სიმღერების" ჩანართში კი მხოლოდ თავად საჯარო ჩანს.
  * სიმღერა **ვიწრო ბარათია** — იგივე, რასაც „სიმღერების" ჩანართი ხატავს.
  */
@@ -187,7 +187,7 @@ export async function fetchPublicPlaylist(
   return data
 }
 
-/* ---------- პირადი გალერეის საჯარო ალბომი (Tasks §33, Q7) ---------- */
+/* ---------- პირადი გალერეის საჯარო ალბომი ---------- */
 
 /**
  * ერთი ფოტო/ვიდეო საჯარო ალბომში. ⚠️ `thumb`/`url` **საჯარო API-ის გზებია**
@@ -240,7 +240,7 @@ export function publicPersonalThumb(username: string, mediaId: number): string {
   return publicPersonalUrl(`/public/profiles/${encodeURIComponent(username)}/personal-media/${mediaId}/thumb`)
 }
 
-/* ---------- დამთხვევები (Tasks §16.2) ---------- */
+/* ---------- დამთხვევები ---------- */
 
 /**
  * შედარებადი დომენები — ⚠️ **`playlist` აქ არ არის**: მას საერთო იდენტობა
@@ -250,19 +250,19 @@ export function publicPersonalThumb(username: string, mediaId: number): string {
 export const MATCH_DOMAINS = [
   'movie',
   'series',
-  // §7.1 — იდენტობა `tmdb_id`-ია, ისევე როგორც სერიალზე
+  // იდენტობა `tmdb_id`-ია, ისევე როგორც სერიალზე
   'anime',
   'game',
   'book',
   'board_game',
   'video',
   'song',
-  // §18 — იდენტობა თვითონ ბმულია, ე.ი. ერთი გვერდი ორივესთან ერთი და იგივეა
+  // იდენტობა თვითონ ბმულია, ე.ი. ერთი გვერდი ორივესთან ერთი და იგივეა
   'bookmark',
-  // FEAT-25/26 — backend-ში დიდი ხანია დგას, აქ აკლდა (ტესტი ახლა ადარებს)
+  // backend-ში დიდი ხანია დგას, აქ აკლდა (ტესტი ახლა ადარებს)
   'course',
   'place',
-  /* §37.4 — **ყველა პირადი მოდული ერთად**: ორი ადამიანის მოდულს სხვადასხვა
+  /* **ყველა პირადი მოდული ერთად**: ორი ადამიანის მოდულს სხვადასხვა
      გასაღები აქვს, ე.ი. ერთმანეთს მხოლოდ აქ ხვდება; იდენტობა ბმულია. */
   'custom',
 ] as const
@@ -316,7 +316,7 @@ export async function fetchMatchItems(
   return data.data
 }
 
-/* ---------- „ვისთან ჰგავს ჩემი გემოვნება" (Tasks §16.2) ---------- */
+/* ---------- „ვისთან ჰგავს ჩემი გემოვნება" ---------- */
 
 /** ერთი პროფილი კატალოგში — კომპაქტური, სრული დაშლა `/u/{username}`-ზეა */
 export interface MatchRankingRow {
@@ -363,7 +363,7 @@ export async function setRecordVisibility(
   return data.visibility as Visibility
 }
 
-/* ---------- §6.1 — ხილვადობის ცენტრალური მართვა (პროფილზე) ---------- */
+/* ---------- ხილვადობის ცენტრალური მართვა (პროფილზე) ---------- */
 
 export interface VisibilityCard extends PublicCard {
   visibility: Visibility
@@ -413,7 +413,7 @@ export async function setModulePublic(key: string, isPublic: boolean): Promise<v
   await api.put(`/modules/${key}/public`, { is_public: isPublic })
 }
 
-/* ---------- საჯარო გალერეა (Tasks §7.4) ---------- */
+/* ---------- საჯარო გალერეა ---------- */
 
 interface PublicGalleryPhotoBase {
   id: number
@@ -423,7 +423,7 @@ interface PublicGalleryPhotoBase {
 }
 
 /**
- * **ჩაკეტილ ალბომში მდგომი ფოტო — ფაილის გარეშე** (§7.11): მხოლოდ `id`,
+ * **ჩაკეტილ ალბომში მდგომი ფოტო — ფაილის გარეშე**: მხოლოდ `id`,
  * ზომები და `locked: true`. ე.ი. ინსპექტორში საპოვნელი არაფერია.
  */
 export interface PublicLockedPhoto extends PublicGalleryPhotoBase {
@@ -437,15 +437,15 @@ export interface PublicOpenPhoto extends PublicGalleryPhotoBase {
    * (`/public/profiles/{u}/gallery-photos/{id}/file`, `private: true`).
    * გახსნილი ჩაკეტილი ალბომის ფაილი `gallery/locked`-შია, სადაც `/storage/*`
    * ვერ წვდება — ე.ი. `storageUrl()`-ში გატარებული ეს მისამართი 404-ია და
-   * ფილა ცარიელი რჩება (Tasks §1: „პაროლი შევიყვანე და ფოტოები მაინც არ
+   * ფილა ცარიელი რჩება („პაროლი შევიყვანე და ფოტოები მაინც არ
    * ჩაიტვირთა").
    */
   path: string
-  /** ფაქტი სერვერისაა (§17.5) — `PRIVATE_ROOTS`-ის ასლი SPA-ში ერთ დღეს დაშორდებოდა */
+  /** ფაქტი სერვერისაა — `PRIVATE_ROOTS`-ის ასლი SPA-ში ერთ დღეს დაშორდებოდა */
   private: boolean
   category: string | null
   /**
-   * ვისია ფოტო (§32) — **მხოლოდ საჯარო მშობელზე**.
+   * ვისია ფოტო — **მხოლოდ საჯარო მშობელზე**.
    *
    * ⚠️ `null` ნორმაა: საჯარო ალბომში შეიძლება პირადი ფილმის კადრი იდოს და
    * მისი სათაური ალბომით არ უნდა გაჟონოს. ძველ პასუხს ეს ველი საერთოდ არ აქვს.
@@ -453,7 +453,7 @@ export interface PublicOpenPhoto extends PublicGalleryPhotoBase {
   owner?: PublicGalleryOwner | null
 }
 
-/** ფოტოს/ვიდეოს მშობელი საჯარო პროფილზე — ჩანაწერი ან მსახიობი (§32) */
+/** ფოტოს/ვიდეოს მშობელი საჯარო პროფილზე — ჩანაწერი ან მსახიობი */
 export interface PublicGalleryOwner {
   kind: GalleryParentKind | 'actor'
   id: number
@@ -464,7 +464,7 @@ export interface PublicGalleryOwner {
 /**
  * ერთი ფოტო საჯარო პროფილზე.
  *
- * ⚠️ **ორი ფორმაა და არა ერთი არჩევითი ველებით** (Tasks §1): ღია ფოტოს
+ * ⚠️ **ორი ფორმაა და არა ერთი არჩევითი ველებით**: ღია ფოტოს
  * `path` ყოველთვის აქვს, ჩაკეტილს — არასდროს. არჩევითი `path?` და `private`-ის
  * არქონა სწორედ ის იყო, რის გამოც `tsc` ხარვეზს ვერ ხედავდა
  * (`GalleryLockedImage`-ის იგივე მიზეზი).
@@ -479,7 +479,7 @@ export interface PublicGalleryMeta {
 }
 
 /**
- * ერთი ალბომის თავი (§32) — მხოლოდ `owner=album:N`-ზე მოდის.
+ * ერთი ალბომის თავი — მხოლოდ `owner=album:N`-ზე მოდის.
  *
  * ⚠️ **ორი ცალკე ფაქტი**: `locked` — პაროლი ადევს, `unlocked` — ამ სესიაში
  * უკვე გახსნეს. მარტო პირველით გახსნილ ალბომზე „პაროლის შეყვანა" დარჩებოდა.
@@ -499,7 +499,7 @@ export interface PublicGalleryPage {
 }
 
 /**
- * **ფოტოების ფილტრი — მფლობელის გალერეის გრამატიკა** (Tasks §32.1).
+ * **ფოტოების ფილტრი — მფლობელის გალერეის გრამატიკა**.
  *
  * `owner` — ერთი ჯგუფი (`movie:12` · `actor:5` · `album:3`); `parent` —
  * ხილვადობის წესი, `type`/`from` მას ერთ დომენზე ჭრის; `album: 'any'` —
@@ -529,7 +529,7 @@ export async function fetchPublicGalleryPhotos(
   return data
 }
 
-/* ---------- §32 — ჭრილები, ჯგუფები, ვიდეოები ---------- */
+/* ---------- ჭრილები, ჯგუფები, ვიდეოები ---------- */
 
 /**
  * ჭრილების მთვლელები — **ერთი გამოძახება**.
@@ -575,7 +575,7 @@ export interface PublicGalleryGroup {
 export interface PublicGalleryGroups {
   by: PublicGalleryGroupBy
   groups: PublicGalleryGroup[]
-  /** ⚠️ ფასეტური — ჭრილი საკუთარ თავს არ ითვლის (§24-ის წესი) */
+  /** ⚠️ ფასეტური — ჭრილი საკუთარ თავს არ ითვლის */
   facets?: {
     types?: Partial<Record<string, number>>
     gender?: { all: number; female: number; male: number }

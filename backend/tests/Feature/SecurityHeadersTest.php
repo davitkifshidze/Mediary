@@ -9,7 +9,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * **უსაფრთხოების ჰედერები ყოველ პასუხზე (Tasks SEC-16).**
+ * **უსაფრთხოების ჰედერები ყოველ პასუხზე.**
  *
  * ⚠️ ტესტი **ავტორიზაციის გარეშე** და **404-ზეც** ამოწმებს: `SetSecurityHeaders`
  * `append`-ითაა დარეგისტრირებული სწორედ იმიტომ, რომ ჯგუფის middleware

@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { pageContainer } from '@/components/ui/page'
 
 /* ============================================================
-   „ასეთი გვერდი არ არის" (Tasks GAP-21).
+   „ასეთი გვერდი არ არის".
 
    ⚠️ **აქამდე უცნობი მისამართი უხმოდ დეშბორდზე გადადიოდა.** გაზიარებული
    ძველი ბმული (`/gallery/uncategorized`), წაშლილი ჩანაწერის URL ან უბრალოდ

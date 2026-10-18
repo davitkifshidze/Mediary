@@ -6,7 +6,7 @@ use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * **გალერეის ფოტოების რიგი — „ახალი · ძველი · არეული" (§8.3 → Tasks §32).**
+ * **გალერეის ფოტოების რიგი — „ახალი · ძველი · არეული".**
  *
  * ⚠️ **ცალკე ფაილშია, რადგან ორი მკითხველი ჰყავს**: მფლობელის გალერეა
  * (`GalleryController::photos()`) და საჯარო პროფილის გალერეა

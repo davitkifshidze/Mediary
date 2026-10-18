@@ -7,7 +7,7 @@ import type { Game } from '@/api/games'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **თამაშის დეტალი — პლატფორმები, რეჟიმები, ჟანრები ბარათებად** (Tasks §24.5).
+   **თამაშის დეტალი — პლატფორმები, რეჟიმები, ჟანრები ბარათებად**.
 
    ⚠️ მოწმდება: სამი სექცია ბარათებით; რეჟიმები **ჩანს** (აქამდე არსად არ
    ჩანდა); „ჩემი პლატფორმა" სავსე ფონით და ✓-ით, ბარათზე დაჭერა
@@ -94,7 +94,7 @@ async function mount() {
 
 const cards = () => [...document.querySelectorAll<HTMLElement>('[data-testid="game-meta"] [data-testid="meta-card"]')]
 
-describe('GameDetail — ბარათები (§24)', () => {
+describe('GameDetail — ბარათები', () => {
   it('shows platforms, modes and genres as cards with their colours', async () => {
     await mount()
 

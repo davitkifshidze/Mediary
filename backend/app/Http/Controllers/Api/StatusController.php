@@ -17,7 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * **სტატუსების ლექსიკონი (Tasks §6.2/§6.4)** — დამატება · გადარქმევა ·
+ * **სტატუსების ლექსიკონი** — დამატება · გადარქმევა ·
  * წაშლა · სორტირება, ექვსივე დომენზე.
  *
  * ⚠️ **ერთი კონტროლერი და არა ექვსი** (`/visibility/{domain}`-ის ნიმუში):
@@ -31,7 +31,7 @@ use Illuminate\Validation\Rule;
  */
 class StatusController extends Controller
 {
-    /** `module_user.settings`-ის გასაღები — საიდბარის განლაგება (ეტაპი 8) */
+    /** `module_user.settings`-ის გასაღები — საიდბარის განლაგება */
     public const SECTIONS_KEY = 'status_sections';
 
     /**
@@ -52,9 +52,9 @@ class StatusController extends Controller
 
         abort_unless($userId === (int) $request->user()->id || $request->user()->isSuperAdmin(), 403);
 
-        /* §37.5 — `/purge` **სამიზნე ანგარიშის** პირადი მოდულის სტატუსებს
+        /* `/purge` **სამიზნე ანგარიშის** პირადი მოდულის სტატუსებს
            კითხულობს (super_admin + `user_id`). ⚠️ მოდული **სამიზნისა** უნდა
-           იყოს — სხვაგვარად ისევ 404 (Q28); საკუთარ მოთხოვნაზე კი ჩვეულებრივი
+           იყოს — სხვაგვარად ისევ 404; საკუთარ მოთხოვნაზე კი ჩვეულებრივი
            კარია (`guard()` — მოდული, უფლება, მფლობელი). */
         if ($userId !== (int) $request->user()->id && CustomModules::isKey($domain)) {
             abort_unless(CustomModules::owns(User::find($userId), $domain), 404);
@@ -122,7 +122,7 @@ class StatusController extends Controller
     /**
      * წაშლა. `move_to` — რომელ სტატუსზე გადავიდნენ ეს ჩანაწერები;
      * მითითების გარეშე სტატუსის გარეშე რჩებიან (`status_id = null`);
-     * `delete_records` — ჩანაწერებიც იშლება (ეტაპი 8, `DictionaryRecords`).
+     * `delete_records` — ჩანაწერებიც იშლება (`DictionaryRecords`).
      *
      * ⚠️ **ბოლო სტატუსიც იშლება** — „ყველაფერი იშლება" მომხმარებლის
      * ცხადი პასუხია (2026-09-12). ცარიელ ლექსიკონზე ახალი ჩანაწერი
@@ -147,7 +147,7 @@ class StatusController extends Controller
 
         $model = StatusDomain::model($domain);
         $records = $model::query()->where('status_id', $status->id);
-        // Tasks §29, ეტაპი 3 — ვინ გადავა, **გადატანამდე**: აღდგენა მათ დაბრუნებას შემოგთავაზებს
+        // ვინ გადავა, **გადატანამდე**: აღდგენა მათ დაბრუნებას შემოგთავაზებს
         $ids = [];
         $targetId = null;
 
@@ -158,8 +158,8 @@ class StatusController extends Controller
             $deleted = 0;
             $ids = (clone $records)->pluck('id')->all();
 
-            /* ⚠️ **`applyStatus()` და არა `update(['status_id' => …])`**
-               (Tasks BUG-05): `watched_at`-ს მხოლოდ ის წერს, ე.ი. `done`
+            /* ⚠️ **`applyStatus()` და არა `update(['status_id' => …])`**:
+               `watched_at`-ს მხოლოდ ის წერს, ე.ი. `done`
                სტატუსის წაშლა `todo`-ზე გადატანით ყველა ჩანაწერს შევსებული
                „როდის ვნახე"-თი ტოვებდა. მასობრივი `update()` `AuditObserver`-საც
                გვერდს უვლიდა — ე.ი. ასი ფილმის სტატუსის შეცვლა ლოგში არსად ჩანდა. */
@@ -177,7 +177,7 @@ class StatusController extends Controller
             ->last()?->key;
 
         $wasDefault = $status->is_default;
-        // ⚠️ ურნა (Tasks §29, ეტაპი 3) — `DictionaryTrash` ნაგულისხმევის ნიშანსაც ხსნის
+        // ⚠️ ურნა — `DictionaryTrash` ნაგულისხმევის ნიშანსაც ხსნის
         DictionaryTrash::trash($status, 'status', $ids, $targetId);
 
         // ნაგულისხმევი წაიშალა → პირველივე დარჩენილი იკავებს მის ადგილს,
@@ -192,7 +192,7 @@ class StatusController extends Controller
     }
 
     /**
-     * **საიდბარის განლაგება (ეტაპი 8)** — რომელი განყოფილება იმალება და
+     * **საიდბარის განლაგება** — რომელი განყოფილება იმალება და
      * სად დგას „ყველა"/„რჩეული"/„ჩამოწერილები" სტატუსებს შორის.
      *
      * ⚠️ **ორი ფაქტი, ორი ადგილი, და ეს განზრახაა.** სტატუსების *ურთიერთ*
@@ -286,7 +286,7 @@ class StatusController extends Controller
         $module = StatusDomain::module($domain);
         $user = $request->user();
 
-        /* ⚠️ §37 — **სხვისი პირადი მოდული 404-ია** (და არა 403 — არსებობა
+        /* ⚠️ **სხვისი პირადი მოდული 404-ია** (და არა 403 — არსებობა
            თავად ინფორმაციაა). `StatusDomain::usesDictionary()` ბაზას
            მხოლოდ არსებობაზე ეკითხება და მფლობელს არ იცნობს. */
         abort_if(CustomModules::isKey($module) && ! CustomModules::owns($user, $module), 404);
@@ -294,7 +294,7 @@ class StatusController extends Controller
         abort_unless($user?->hasModule($module), 403, 'module_not_enabled');
 
         /* ⚠️ `permission` **ყოველ** `forbidden_permission`-ს ახლავს
-           (`EnsureModulePermission`-ის ფორმა, Tasks GAP-01): SPA-ს ტექსტი
+           (`EnsureModulePermission`-ის ფორმა): SPA-ს ტექსტი
            „უფლება არ გაქვს ({{permission}})"-ია, და მის გარეშე ცარიელ
            ფრჩხილებს ხატავდა. */
         if (! $user->hasPermission($module, $action)) {
@@ -396,7 +396,7 @@ class StatusController extends Controller
             // ⚠️ სავალდებულოა: სამი სერვისი მნიშვნელობას ეკითხება და არა სახელს
             'role' => ['required', Rule::in(StatusDomain::ROLES)],
             'icon' => ['nullable', 'string', 'max:60'],
-            // Tasks §16 — პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; სხვა არაფერი, თორემ ბეჭდვითი შეცდომა ბეჯს უფეროდ დატოვებდა
+            // პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; სხვა არაფერი, თორემ ბეჭდვითი შეცდომა ბეჯს უფეროდ დატოვებდა
             'color' => ['nullable', 'string', 'max:20', 'regex:/^(c([1-9]|1[0-2])|#[0-9a-fA-F]{6})$/'],
             'is_default' => ['nullable', 'boolean'],
         ]);

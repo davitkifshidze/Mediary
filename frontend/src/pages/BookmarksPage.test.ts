@@ -11,20 +11,20 @@ import type { Status } from '@/api/types'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **ბუკმარკის რიგი — სტატუსი ნიშნიდან და მარჯვენა კლიკიდან** (Tasks §24).
+   **ბუკმარკის რიგი — სტატუსი ნიშნიდან და მარჯვენა კლიკიდან**.
 
    ⚠️ სელექთი ქრება და სტატუსი ნიშნით იცვლება; იგივე ცვლილება კონტექსტური
    მენიუდანაც. ორივე გზამ **ერთი და იგივე** `setBookmarkStatus(id, key)`
    უნდა დაუძახოს — ეს მხოლოდ მონტირებით ჩანს.
 
-   Tasks §28 — რიგზე ერთი სიგანის სტატუს-ჩამოსაშლელი (§16.4) და ტექსტიანი
-   რჩეული (§8); ფორმა ორ სვეტად — სქროლის გარეშე.
+   რიგზე ერთი სიგანის სტატუს-ჩამოსაშლელი და ტექსტიანი
+   რჩეული; ფორმა ორ სვეტად — სქროლის გარეშე.
 
-   Tasks §36 — სათაურსა და ფოტოზე დაჭერა **ფანჯარას** ხსნის და არა ბმულს;
-   გარე ბმული §29-ის ზოლის „ბმულით" იხსნება და „გახსნის" მთვლელს ზრდის;
+   სათაურსა და ფოტოზე დაჭერა **ფანჯარას** ხსნის და არა ბმულს;
+   გარე ბმული მოქმედებების ზოლის „ბმულით" იხსნება და „გახსნის" მთვლელს ზრდის;
    `?open=<id>` ფილტრს მიღმა მდგომ ბუკმარკსაც ხსნის; ფორმას ბმულების სია აქვს.
 
-   Tasks §41 — ფორმა: ბმული თავში (`paste` წამოღებას იწყებს), მარცხნივ ფოტო და
+   ფორმა: ბმული თავში (`paste` წამოღებას იწყებს), მარცხნივ ფოტო და
    მარჯვნივ ბადე, ქვემოთ აღწერა/ტეგები, ბმულები და გალერეა ბარათებად; ახალ
    ბუკმარკზე ვებიდან არჩეული ფოტო/ვიდეო შექმნისთანავე იგზავნება.
    ============================================================ */
@@ -70,10 +70,10 @@ const mocks = vi.hoisted(() => ({
   statuses: { data: [] as unknown[] },
   categories: [] as unknown[],
   gallery: false,
-  // §45 — მოდულის შენახული ხედი (`module_user.settings.view`) და მისი ჩუმი შენახვა
+  // მოდულის შენახული ხედი (`module_user.settings.view`) და მისი ჩუმი შენახვა
   modules: [] as { key: string; user_settings?: Record<string, unknown> }[],
   updateModuleSettings: vi.fn(),
-  // §41.3 — ძებნის ფანჯრების სტაბი ამ ორს „არჩევს"
+  // ძებნის ფანჯრების სტაბი ამ ორს „არჩევს"
   webImage: { engine: 'serper', source: 'serper', title: 'Docs logo', original: 'https://img.test/logo.png', thumbnail: 'https://img.test/logo-s.png', link: 'https://laravel.com', domain: 'laravel.com', width: 400, height: 300, engines: ['serper'] },
   webVideo: { engine: 'youtube', source: 'serpapi', title: 'Laravel in 100 seconds', link: 'https://youtu.be/l100', channel: 'Fireship', duration: 100, views: null, published: null, thumbnail: null, description: null, engines: ['youtube'] },
 }))
@@ -89,12 +89,12 @@ vi.mock('@/api/bookmarks', async (original) => ({
   createBookmark: mocks.createBookmark,
 }))
 
-/* §41.1 — ბმულის ველი (`LinkField`) `POST /links/metadata`-ს ეკითხება */
+/* ბმულის ველი (`LinkField`) `POST /links/metadata`-ს ეკითხება */
 vi.mock('@/api/links', async (original) => ({
   ...(await original<typeof import('@/api/links')>()),
   fetchLinkPreview: mocks.fetchLinkPreview,
 }))
-/* §41.3 — შექმნის შემდეგ ვებიდან არჩეული იგზავნება */
+/* შექმნის შემდეგ ვებიდან არჩეული იგზავნება */
 vi.mock('@/api/web', async (original) => ({
   ...(await original<typeof import('@/api/web')>()),
   importWebImages: mocks.importWebImages,
@@ -118,7 +118,7 @@ vi.mock('@/components/WebVideoDialog', async () => {
       createElement('button', { type: 'button', 'data-testid': 'stub-video-pick', onClick: () => { props.onPick?.(mocks.webVideo); props.onClose() } }, 'pick'),
   }
 })
-/* §28.1 — ფორმა იხსნება: ველების კატალოგი და დამატებითი ველები ცარიელი მოდის */
+/* ფორმა იხსნება: ველების კატალოგი და დამატებითი ველები ცარიელი მოდის */
 vi.mock('@/api/account', async (original) => ({
   ...(await original<typeof import('@/api/account')>()),
   fetchModuleFields: vi.fn().mockResolvedValue([]),
@@ -132,7 +132,7 @@ vi.mock('@/lib/statuses', async (original) => ({
   useStatuses: () => mocks.statuses,
 }))
 
-/* §36.4 — ფანჯრის გალერეა: მოდული გამორთულია, ე.ი. ქსელში არაფერი მიდის */
+/* ფანჯრის გალერეა: მოდული გამორთულია, ე.ი. ქსელში არაფერი მიდის */
 vi.mock('@/lib/modules', async (original) => ({
   ...(await original<typeof import('@/lib/modules')>()),
   useModules: () => ({
@@ -141,7 +141,7 @@ vi.mock('@/lib/modules', async (original) => ({
     mediaModules: [],
     pageModules: [],
     customModules: [],
-    // §41.3 — გალერეის მოდული მხოლოდ იმ ტესტში ირთვება, სადაც ვებიდან არჩევა მოწმდება
+    // გალერეის მოდული მხოლოდ იმ ტესტში ირთვება, სადაც ვებიდან არჩევა მოწმდება
     has: (key: string) => key === 'gallery' && mocks.gallery,
     loading: false,
   }),
@@ -157,10 +157,10 @@ if (!('ResizeObserver' in globalThis)) {
   }
 }
 
-// §41 — Radix `Select` არჩეულ რიგს ხედში აბრუნებს; jsdom-ს ეს მეთოდი არ აქვს
+// Radix `Select` არჩეულ რიგს ხედში აბრუნებს; jsdom-ს ეს მეთოდი არ აქვს
 if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = () => {}
 
-/* მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ (DEBT-12-ის წესი) — გვერდი ახლა
+/* მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ — გვერდი ახლა
    დეტალის ფანჯარასაც და გალერეასაც იწევს */
 beforeAll(async () => {
   await import('@/pages/BookmarksPage')
@@ -283,9 +283,9 @@ describe('BookmarksPage row', () => {
   })
 })
 
-/* Tasks §28.2/§28.3 — რიგზე სტატუსი ერთი სიგანის ჩამოსაშლელია, რჩეული ტექსტით და ერთი სიმაღლით;
+/* რიგზე სტატუსი ერთი სიგანის ჩამოსაშლელია, რჩეული ტექსტით და ერთი სიმაღლით;
    შიშველი აიქონ-ვარსკვლავი აღარ არის */
-describe('BookmarksPage row — status width and favourite (§28)', () => {
+describe('BookmarksPage row — status width and favourite', () => {
   it('draws the wide status dropdown and the labelled favourite button', async () => {
     const el = await mount()
 
@@ -299,8 +299,8 @@ describe('BookmarksPage row — status width and favourite (§28)', () => {
   })
 })
 
-/* Tasks §36.1/§36.2 — სათაური ფანჯარას ხსნის; გარე ბმული ზოლის „ბმულით" და მთვლელით */
-describe('BookmarksPage row — detail window (§36)', () => {
+/* სათაური ფანჯარას ხსნის; გარე ბმული ზოლის „ბმულით" და მთვლელით */
+describe('BookmarksPage row — detail window', () => {
   it('the title is a button that opens the detail window, not a link', async () => {
     const el = await mount()
 
@@ -355,9 +355,9 @@ describe('BookmarksPage row — detail window (§36)', () => {
   })
 })
 
-/* Tasks §41 — „ბმული ყოველთვის, ყველგან თავშია; მერე მარცხნივ ფოტო და მარჯვნივ ინფუთები,
+/* „ბმული ყოველთვის, ყველგან თავშია; მერე მარცხნივ ფოტო და მარჯვნივ ინფუთები,
    ზოგი ქვევით" — დამატებაც და რედაქტირებაც ერთი განლაგებით */
-describe('BookmarksPage form (§41)', () => {
+describe('BookmarksPage form', () => {
   async function openAdd() {
     const el = await mount()
     const add = [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === i18n.t('bookmarks.add'))!
@@ -376,7 +376,7 @@ describe('BookmarksPage form (§41)', () => {
     const media = form.querySelector<HTMLElement>('[data-testid="form-media-row"]')!
     expect(media.querySelector('[data-testid="form-media"] input[type="file"]')).not.toBeNull()
     for (const id of ['#b-title', '#b-category', '#b-status']) expect(media.querySelector(id)).not.toBeNull()
-    // ⚠️ ლეიბლი ჩარჩოს ზემოთაა — ჩარჩო მას (და ქვემოთ მდგარ „ტეგებს") აღარ ფარავს (§38.2)
+    // ⚠️ ლეიბლი ჩარჩოს ზემოთაა — ჩარჩო მას (და ქვემოთ მდგარ „ტეგებს") აღარ ფარავს
     const column = media.querySelector('[data-testid="form-media"]')!
     expect(column.firstElementChild?.tagName).toBe('LABEL')
     expect(column.querySelector('[data-testid="form-media-frame"] [data-testid="poster-dropzone"]')).not.toBeNull()
@@ -421,11 +421,11 @@ describe('BookmarksPage form (§41)', () => {
 
     expect(mocks.fetchLinkPreview).toHaveBeenCalledWith('https://laravel.com/docs')
     expect((document.getElementById('b-title') as HTMLInputElement).value).toBe('Laravel')
-    // Tasks §47 — აღწერა ფორმატიანი რედაქტორია (contenteditable), არა textarea
+    // აღწერა ფორმატიანი რედაქტორია (contenteditable), არა textarea
     expect(document.getElementById('b-desc')?.textContent).toBe('The PHP framework')
   })
 
-  it('a web photo and video picked before saving are sent right after the bookmark is created (§41.3)', async () => {
+  it('a web photo and video picked before saving are sent right after the bookmark is created', async () => {
     mocks.gallery = true
     mocks.categories = [{ id: 3, key: 'article', name_ka: 'სტატია', name_en: 'Article', icon: null, sort_order: 0 }]
     mocks.createBookmark.mockResolvedValue({ ...bookmark, id: 42 })
@@ -464,7 +464,7 @@ describe('BookmarksPage form (§41)', () => {
     expect(mocks.saveSerpVideo).toHaveBeenCalledWith('bookmark', 42, mocks.webVideo)
   })
 
-  /* Tasks §36.3 — დამატებითი ბმულების სია: „ბმულის დამატება" ახალ რიგს ამატებს ტიპით,
+  /* დამატებითი ბმულების სია: „ბმულის დამატება" ახალ რიგს ამატებს ტიპით,
      წარწერითა და ბმულის ველით; ფასის ველი მხოლოდ მაღაზიასა და ფასზე ჩანს */
   it('adds extra link rows below the fields', async () => {
     const el = await mount()
@@ -493,9 +493,9 @@ describe('BookmarksPage form (§41)', () => {
   })
 })
 
-/* Tasks §45 — ხედის გადამრთველი: ნაგულისხმევად ახლანდელი სტრიქონები; გადართვა მოდულზე ინახება,
+/* ხედის გადამრთველი: ნაგულისხმევად ახლანდელი სტრიქონები; გადართვა მოდულზე ინახება,
    შენახული ხედი კი გვერდის გახსნისას აღდგება */
-describe('BookmarksPage view toggle (§45)', () => {
+describe('BookmarksPage view toggle', () => {
   const layoutOf = (el: HTMLElement) => el.querySelector('[data-testid="record-list"]')?.getAttribute('data-layout')
   const toggle = (label: string) =>
     [...document.querySelectorAll<HTMLButtonElement>('[data-testid="view-toggle"] button')].find((b) => b.textContent === label)!

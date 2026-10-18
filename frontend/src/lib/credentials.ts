@@ -1,15 +1,14 @@
 import type { Credential, CredentialUsage } from '@/api/credentials'
 
 /* ============================================================
-   **გარე წყაროები — სია, სახელები, ჯგუფები და ბარათის მდგომარეობა
-   (Tasks §21 → §30).**
+   **გარე წყაროები — სია, სახელები, ჯგუფები და ბარათის მდგომარეობა.**
 
    ⚠️ **`CREDENTIAL_PROVIDERS` backend-ის `CredentialProviders::keys()`-ის
    სარკეა** და `RegistryConsistencyTest` მას წყაროდან კითხულობს — ახალი
    წყარო ერთ მხარეს რომ დაემატოს, ბარათი ან ჩუმად არ გამოჩნდებოდა, ან
    უცნობ სახელს დახატავდა.
 
-   ⚠️ **§30-იდან (Q38) გასაღები მხოლოდ მომხმარებლისაა** — „საერთო"
+   ⚠️ **გასაღები მხოლოდ მომხმარებლისაა** — „საერთო"
    მდგომარეობა აღარ არსებობს. ბარათი ხუთ რამეს არჩევს, რადგან ხუთივე სხვა
    ქმედებას ითხოვს: ჩემია (მუშაობს) · გამორთულია (ჩართე) · შეუვსებელია
    (მეორე ველი აკლია) · არ არის (ჩაწერე) · ვერ იშიფრება (ხელახლა ჩაწერე).
@@ -68,7 +67,7 @@ export function credentialShortName(provider: string): string {
 }
 
 /**
- * **გვერდის ჯგუფები (§30.3)** — რისთვის სჭირდება ადამიანს ეს გასაღები.
+ * **გვერდის ჯგუფები** — რისთვის სჭირდება ადამიანს ეს გასაღები.
  * ⚠️ ყოველი წყარო ზუსტად ერთ ჯგუფშია; `credentials.test.ts` ამას ამოწმებს,
  * თორემ ახალი წყარო ჩუმად გაქრებოდა გვერდიდან.
  */
@@ -76,7 +75,7 @@ export const CREDENTIAL_GROUPS = [
   { key: 'media', providers: ['tmdb', 'rawg', 'igdb', 'youtube'] },
   { key: 'translation', providers: ['gemini'] },
   { key: 'web', providers: ['serpapi', 'serper'] },
-  // Tasks §57.2 — ადგილების ძებნა (SerpApi/Serper-იც ადგილებს ეძებს — `web`-ში რჩებიან)
+  // ადგილების ძებნა (SerpApi/Serper-იც ადგილებს ეძებს — `web`-ში რჩებიან)
   { key: 'places', providers: ['google_maps'] },
   { key: 'notify', providers: ['telegram'] },
 ] as const satisfies readonly { key: string; providers: readonly CredentialProvider[] }[]

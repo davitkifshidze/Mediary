@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
-   **საუბრის პარამეტრები ერთ ფანჯარაში (Tasks §10.5/§10.6/§10.11).**
+   **საუბრის პარამეტრები ერთ ფანჯარაში.**
 
    დადუმება, თემა, ნიკნეიმი და დაბლოკვა ერთი კითხვის ოთხი პასუხია —
    „ამ საუბარს როგორ ვინახავ". ჰედერში ოთხი ღილაკი ძაფს ხმაურს მატებდა.
@@ -85,7 +85,7 @@ export function ChatThreadMenu({
   return (
     <ModalShell title={t('chat.settingsTitle')} onClose={onClose}>
       <div className="mt-4 space-y-5">
-        {/* ---------- დადუმება (§10.5) ---------- */}
+        {/* ---------- დადუმება ---------- */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 text-sm font-medium">
@@ -104,7 +104,7 @@ export function ChatThreadMenu({
           </Button>
         </div>
 
-        {/* ---------- თემა (§10.6) ---------- */}
+        {/* ---------- თემა ---------- */}
         <div>
           <div className="flex items-center gap-1.5 text-sm font-medium">
             <Palette className="size-4" />
@@ -133,7 +133,7 @@ export function ChatThreadMenu({
           </div>
         </div>
 
-        {/* ---------- ნიკნეიმი (§10.11) ---------- */}
+        {/* ---------- ნიკნეიმი ---------- */}
         <div>
           <Label htmlFor="chat-nickname" className="flex items-center gap-1.5">
             <SquarePen className="size-4" />

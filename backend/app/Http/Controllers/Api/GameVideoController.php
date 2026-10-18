@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * თამაშზე მიბმული ვიდეოები (Tasks §11.2) — walkthrough, თრეილერი,
+ * თამაშზე მიბმული ვიდეოები — walkthrough, თრეილერი,
  * მიმოხილვა, გაიდი.
  *
  * ⚠️ **ბმული `VideoUrl`-ის allowlist-ს გადის** და embed სერვერზე იგება;
@@ -64,7 +64,7 @@ class GameVideoController extends Controller
 
     public function destroy(GameVideo $gameVideo)
     {
-        // ⚠️ ურნა (Tasks §29, ეტაპი 2) — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
+        // ⚠️ ურნა — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
         $gameVideo->moveToTrash();
 
         return response()->noContent();

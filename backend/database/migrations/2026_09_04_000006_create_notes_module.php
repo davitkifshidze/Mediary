@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **მოდული „ჩანაწერები"** (Tasks §13) — საჭირო ინფორმაცია + შეხსენებები.
+ * **მოდული „ჩანაწერები"** — საჭირო ინფორმაცია + შეხსენებები.
  *
  * ⚠️ **მოდულის key `note`-ია, ცხრილი კი `note_entries`.** 2026-09-03-ის წესით
  * უნივერსალური `notes` ცხრილი აღარ არსებობს (თითო სექციას თავისი აქვს:
@@ -15,15 +15,15 @@ use Illuminate\Support\Facades\Schema;
  * ის „სხვა ჩანაწერზე მიმაგრებულ ჩანიშვნას" ნიშნავს და არა დამოუკიდებელ ერთეულს.
  *
  * ხუთი ცხრილი:
- *  · `note_categories` — **per-user ლექსიკონი** („რას ეხება", §13.1);
- *  · `note_entries` — ჩანაწერი; `visibility` თავიდანვე (16.5);
- *  · `note_entry_files` — სქრინშოტი/ფოტო/ვიდეო/დოკუმენტი (§13.1, კვოტაზე გადის);
- *  · `note_reminders` — შეხსენებები (§13.2);
- *  · `note_notifications` — მიწოდების რიგი და ჟურნალი (§13.3).
+ *  · `note_categories` — **per-user ლექსიკონი** („რას ეხება");
+ *  · `note_entries` — ჩანაწერი; `visibility` თავიდანვე;
+ *  · `note_entry_files` — სქრინშოტი/ფოტო/ვიდეო/დოკუმენტი (კვოტაზე გადის);
+ *  · `note_reminders` — შეხსენებები;
+ *  · `note_notifications` — მიწოდების რიგი და ჟურნალი.
  *
- * ⚠️ **`visibility` აქ სხვა მნიშვნელობისაა** (§13.1): ეს მოდული პირად
+ * ⚠️ **`visibility` აქ სხვა მნიშვნელობისაა**: ეს მოდული პირად
  * დოკუმენტებს ინახავს, ე.ი. `private` არა მხოლოდ default-ია — საჯარო პროფილზე
- * მოდული **საერთოდ არ გამოჩნდება** და „დამთხვევებში" არასდროს მონაწილეობს (16.1).
+ * მოდული **საერთოდ არ გამოჩნდება** და „დამთხვევებში" არასდროს მონაწილეობს.
  *
  * ⚠️ **შეხსენების დროს სასაათე სარტყელი თან ახლავს** (`timezone`). აპლიკაცია
  * UTC-ზე მუშაობს (`config/app.php`), ე.ი. „ყოველ დღე 09:00" სარტყლის გარეშე
@@ -62,7 +62,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
 
-            // §13.1: სახელი · რას ეხება (კატეგორია + ტეგები) · აღწერა „რისთვისაა"
+            // სახელი · რას ეხება (კატეგორია + ტეგები) · აღწერა „რისთვისაა"
             $table->string('title');
             $table->foreignId('category_id')->nullable()->constrained('note_categories')->nullOnDelete();
             $table->json('tags')->nullable();
@@ -78,7 +78,7 @@ return new class extends Migration
             $table->string('status', 20)->default('open');
             $table->boolean('is_favorite')->default(false);
 
-            // ⚠️ §13: აქ პირადი დოკუმენტებია — `private` მკაცრი წესია და არა უბრალოდ default
+            // ⚠️ აქ პირადი დოკუმენტებია — `private` მკაცრი წესია და არა უბრალოდ default
             $table->string('visibility', 20)->default('private');
             $table->integer('sort_order')->default(0);
             $table->timestamps();
@@ -94,7 +94,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('note_entry_id')->constrained()->cascadeOnDelete();
-            // სქრინშოტი/ფოტო = image, ვიდეო = video, დანარჩენი = doc (§13.1)
+            // სქრინშოტი/ფოტო = image, ვიდეო = video, დანარჩენი = doc
             $table->enum('kind', ['image', 'video', 'doc'])->default('doc');
             $table->string('path');
             $table->string('original_name')->nullable();
@@ -112,11 +112,11 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('note_entry_id')->constrained()->cascadeOnDelete();
 
-            // ერთჯერადი | ინტერვალი | ყოველდღიური | ყოველკვირეული (§13.2)
+            // ერთჯერადი | ინტერვალი | ყოველდღიური | ყოველკვირეული
             $table->string('mode', 20)->default('once');
             // `once` — აბსოლუტური მომენტი UTC-ში
             $table->dateTime('remind_at')->nullable();
-            // ⚠️ პერიოდი **ველია და არა ჩაშენებული კონსტანტა** (§13.2)
+            // ⚠️ პერიოდი **ველია და არა ჩაშენებული კონსტანტა**
             $table->unsignedInteger('interval_minutes')->nullable();
             // `daily`/`weekly` — დღის დრო + კვირის დღე (0 = კვირა, ISO-ს გარეშე, Carbon-ის წესი)
             $table->time('time_of_day')->nullable();
@@ -124,7 +124,7 @@ return new class extends Migration
             // ⚠️ სარტყელი ჩანაწერზეა — აპლიკაცია UTC-ია, user კი არა
             $table->string('timezone', 64)->default('UTC');
 
-            // ბრაუზერი | ტელეგრამი | ელფოსტა (§13.3)
+            // ბრაუზერი | ტელეგრამი | ელფოსტა
             $table->json('channels')->nullable();
             $table->boolean('is_active')->default(true);
 

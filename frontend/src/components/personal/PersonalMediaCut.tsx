@@ -26,7 +26,7 @@ import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { PersonalMediaGrid } from '@/components/personal/PersonalMediaGrid'
 
 /* ============================================================
-   **„ფოტო & ვიდეო" (Tasks §33.5)** — ყველაფერი ერთად, დაჯგუფებით:
+   **„ფოტო & ვიდეო"** — ყველაფერი ერთად, დაჯგუფებით:
    **ყველა · ადამიანით · ალბომით · თვეებით · უჯგუფო**; ფილტრი — ფოტო/ვიდეო/
    რჩეული, ძებნა წარწერაში.
 

@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   მორგებული ველების რედაქტორი (Tasks §6, ფაზა 3 · `DECISIONS.md` §2).
+   მორგებული ველების რედაქტორი.
 
    ⚠️ **მთელი სია ერთ `PUT`-ში მიდის** — დამატება, გადარქმევა, გადალაგება და
    წაშლა ერთი ოპერაციაა. სხვაგვარად თანმიმდევრობა და შემადგენლობა შეიძლება
@@ -34,14 +34,14 @@ import { useToast } from '@/components/ui/feedback'
    ⚠️ **წაშლა მნიშვნელობასაც შლის** — backend სიიდან ამოღებულ key-ს
    `<module>_field_values`-იდანაც იღებს. ტექსტში ეს ცხადად წერია.
 
-   ⚠️ **`ფაილი` ტიპზე წაშლა და ტიპის შეცვლაც ატვირთულ ფაილს იტანს** (ფაზა 4b):
+   ⚠️ **`ფაილი` ტიპზე წაშლა და ტიპის შეცვლაც ატვირთულ ფაილს იტანს**:
    ის დისკზეა და კვოტიდან იხარჯება, ე.ი. „უბრალოდ აღარ იკითხება" აქ არ
    კმარა — ფაილი ობლად დარჩებოდა. ამიტომ გამაფრთხილებელი ტექსტი ორივეს ეხება.
    ============================================================ */
 
 /** ლოკალური სამუშაო ასლი — `sort_order` სიის რიგიდან გამოითვლება */
 type Draft = Omit<CustomFieldDefinition, 'sort_order'> & {
-  /** Tasks §11 — სტაბილური id drag & drop-ისთვის: ახალ ველს `key` ჯერ არ აქვს */
+  /** სტაბილური id drag & drop-ისთვის: ახალ ველს `key` ჯერ არ აქვს */
   uid: string
 }
 
@@ -56,7 +56,7 @@ export function CustomFieldsEditor({
   const qc = useQueryClient()
   const { toast } = useToast()
 
-  // ⚠️ §37 — პირადი მოდულიც (`supportsCustomFields`); საბაზისო სია backend-ის სარკეა
+  // ⚠️ პირადი მოდულიც (`supportsCustomFields`); საბაზისო სია backend-ის სარკეა
   const supported = supportsCustomFields(moduleKey)
 
   const { data: fields = [] } = useQuery({
@@ -113,7 +113,7 @@ export function CustomFieldsEditor({
     ])
   }
 
-  // Tasks §11 — drag & drop იმავე სიას ალაგებს, რასაც ისრები
+  // drag & drop იმავე სიას ალაგებს, რასაც ისრები
   const onReorder = (uids: string[]) => {
     setDirty(true)
     setDraft((d) => sortByIds(d, uids, (f) => f.uid))
@@ -198,7 +198,7 @@ export function CustomFieldsEditor({
                 </label>
 
                 <span className="ml-auto flex items-center gap-1">
-                  {/* Tasks §12 — ისრები წავიდა: რიგი სახელურითაა (მაუსი და კლავიატურა, §11) */}
+                  {/* ისრები წავიდა: რიგი სახელურითაა (მაუსი და კლავიატურა) */}
                   <SortableHandle />
                   <Button
                     variant="ghost"

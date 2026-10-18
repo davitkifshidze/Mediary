@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
- * სუპერ-ადმინის პანელი — მომხმარებლები, როლები, მოდულების ჩართვა/გამორთვა (I4).
+ * სუპერ-ადმინის პანელი — მომხმარებლები, როლები, მოდულების ჩართვა/გამორთვა.
  * ⚠️ მთვლელები `owner` scope-ის გარეშე ითვლება — თორემ ადმინის სესია სხვისი
  * ჩანაწერების დათვლას ხელს შეუშლიდა.
  */
@@ -36,7 +36,7 @@ class AdminUserController extends Controller
     ) {}
 
     /**
-     * L4: სია იმავე ინფოს იძლევა, რასაც შიდა გვერდი — შიგთავსის სტატისტიკა,
+     * სია იმავე ინფოს იძლევა, რასაც შიდა გვერდი — შიგთავსის სტატისტიკა,
      * ბოლო აქტივობა და დაკავებული ადგილი — რომ ყოველი წვრილმანისთვის
      * `/admin/users/:id`-ზე შესვლა არ დასჭირდეს.
      */
@@ -60,11 +60,11 @@ class AdminUserController extends Controller
             ->groupBy('user_id')
             ->pluck(DB::raw('max(last_activity)'), 'user_id');
 
-        /* ⚠️ **სია სრულ ინვენტარს არ ითვლის** (Tasks PERF-14). `storageUsage()`
+        /* ⚠️ **სია სრულ ინვენტარს არ ითვლის**. `storageUsage()`
            `StorageMeter::files()`-ს იძახებს — ~30 query პლუს დისკის `size()`
            ზომის გარეშე დარჩენილ რიგებზე —, და ის აქ **თითო მომხმარებელზე**
-           ეშვებოდა: 3 ანგარიშზე ~100 query, 30-ზე ~1000. PERF-01/PERF-04-მა
-           იმავე endpoint-ს N+1 მოხსნა, ეს კი დარჩა.
+           ეშვებოდა: 3 ანგარიშზე ~100 query, 30-ზე ~1000. იმავე
+           endpoint-ის N+1 ადრე მოიხსნა, ეს კი დარჩა.
            ⚠️ რიცხვები არ იკარგება: `UserResource` `usage()`-ზე ჩამოდის,
            რომელიც `users.storage_used_bytes`/`storage_quota_bytes`-ს
            კითხულობს (**query-ს არ აკეთებს**) — სწორედ ის `used`/`quota`, რასაც
@@ -81,7 +81,7 @@ class AdminUserController extends Controller
     }
 
     /**
-     * **მისანიჭებელი როლების სია (Tasks GAP-10).**
+     * **მისანიჭებელი როლების სია.**
      *
      * ⚠️ **რატომ არსებობს ცალკე**: როლის მინიჭება მომხმარებლების მართვის
      * ნაწილია, `GET /admin/roles` კი `admin_access:roles`-ის უკანაა — ე.ი.
@@ -111,7 +111,7 @@ class AdminUserController extends Controller
     }
 
     /**
-     * მომხმარებლის შიდა გვერდი (K14) — უფლებები, მოდულები, შიგთავსი,
+     * მომხმარებლის შიდა გვერდი — უფლებები, მოდულები, შიგთავსი,
      * დაკავებული ადგილი და მოთხოვნების ისტორია.
      */
     public function show(User $user)
@@ -125,10 +125,10 @@ class AdminUserController extends Controller
         $pivots = $user->modules()->get()->keyBy('id');
         $enabled = $user->enabledModules()->pluck('id')->flip();
 
-        /* ⚠️ §37.6 — **მხოლოდ საბაზისო მოდულები**: სია მინიჭებისთვისაა, პირადი
+        /* ⚠️ **მხოლოდ საბაზისო მოდულები**: სია მინიჭებისთვისაა, პირადი
            მოდული კი არავის ენიჭება (მფლობელს ავტომატურად აქვს). `Module::`-ის
            უფილტრო სია ყველა ანგარიშის პირად მოდულს სახელით ჩამოთვლიდა —
-           ზედამხედველობა აგრეგატებია და `/modules`-ის ცალკე ჯგუფშია (37.8). */
+           ზედამხედველობა აგრეგატებია და `/modules`-ის ცალკე ჯგუფშია. */
         $modules = Module::base()->orderBy('sort_order')->orderBy('id')->get()->map(fn (Module $m) => [
             'id' => $m->id,
             'key' => $m->key,
@@ -138,7 +138,7 @@ class AdminUserController extends Controller
             'is_active' => $m->is_active,
             'granted' => $user->isGrantedModule($m->key),
             'enabled' => isset($enabled[$m->id]),
-            // მომხმარებელმა თვითონ დამალა (K13)
+            // მომხმარებელმა თვითონ დამალა
             'hidden_by_user' => (bool) $pivots->get($m->id)?->pivot?->is_hidden,
             'enabled_at' => $pivots->get($m->id)?->pivot?->enabled_at,
         ]);
@@ -155,9 +155,9 @@ class AdminUserController extends Controller
                     + $user->series()->withoutGlobalScope('owner')->where('is_favorite', true)->count(),
             ],
             'storage' => $this->storageUsage($user),
-            // 1.3 — ატვირთული ფაილების სია (ნახვა/გადმოწერა ადმინიდან).
+            // ატვირთული ფაილების სია (ნახვა/გადმოწერა ადმინიდან).
             // ყველაზე მძიმეები თავში, რომ „რა ჭამს ადგილს" მაშინვე ჩანდეს.
-            // ⚠️ Tasks §29 — ურნაში მყოფის გარეშე, user-ის საკუთარი სიის იგივე წესით
+            // ⚠️ ურნაში მყოფის გარეშე, user-ის საკუთარი სიის იგივე წესით
             'files' => $this->meter->library($user)['files']
                 ->sortByDesc('size')
                 ->take(200)
@@ -165,7 +165,7 @@ class AdminUserController extends Controller
                 ->all(),
             'last_activity' => $lastActivity ? Carbon::createFromTimestamp($lastActivity)->toIso8601String() : null,
             'modules' => $modules,
-            /* Tasks §34.6 — ატვირთვის **პირადი გამონაკლისები**. ⚠️ აქ ჩანს და
+            /* ატვირთვის **პირადი გამონაკლისები**. ⚠️ აქ ჩანს და
                იხსნება — თორემ ერთხელ მიცემული ნებართვა სამუდამოდ უხილავი
                დარჩებოდა. `(object)`, რომ ცარიელი რუკა JSON-ში `{}` იყოს და არა `[]`. */
             'upload_overrides' => (object) (UploadLimits::cleanOverrides($user->upload_overrides) ?? []),
@@ -180,7 +180,7 @@ class AdminUserController extends Controller
     }
 
     /**
-     * დაკავებული ადგილი. „რა ითვლება" **`StorageMeter`-ის განმარტებაა** (19.4/B),
+     * დაკავებული ადგილი. „რა ითვლება" **`StorageMeter`-ის განმარტებაა**,
      * რომ ადმინის ხედი და user-ის მრიცხველი ერთი და იმავე რიცხვს აჩვენებდეს.
      */
     private function storageUsage(User $user): array
@@ -202,13 +202,13 @@ class AdminUserController extends Controller
     public function update(Request $request, User $user)
     {
         $data = $request->validate([
-            // Tasks 1.6 — როლი ცხრილიდან აირჩევა და არა enum-იდან
+            // როლი ცხრილიდან აირჩევა და არა enum-იდან
             'role_id' => ['sometimes', 'integer', Rule::exists('roles', 'id')],
             'is_active' => ['sometimes', 'boolean'],
-            // 17.1 — კვოტა ადმინის მიერ ცვლადია (min 10 MB, max 1 TB)
+            // კვოტა ადმინის მიერ ცვლადია (min 10 MB, max 1 TB)
             'storage_quota_bytes' => ['sometimes', 'integer', 'min:10485760', 'max:1099511627776'],
             /*
-             * Tasks 1.3 (🔗 16) — **იძულებითი დაპრივატება abuse-ის შემთხვევაში.**
+             * **იძულებითი დაპრივატება abuse-ის შემთხვევაში.**
              * ⚠️ ეს განზრახ ორმხრივი გადამრთველია და არა მხოლოდ „ჩაკეტვა":
              * შემთხვევით დაპრივატებულის უკან დაბრუნება ადმინს უნდა შეეძლოს,
              * თორემ user-ის მხრიდან ჩართვა ერთადერთი გზა იქნებოდა.
@@ -220,16 +220,16 @@ class AdminUserController extends Controller
 
         $actor = $request->user();
 
-        // SEC-02 — საკუთარ უფლებებზე მაღლა მდგომ ანგარიშს არ ეხება
+        // საკუთარ უფლებებზე მაღლა მდგომ ანგარიშს არ ეხება
         if ($this->outranks($user->effectiveRole(), $actor)) {
             return response()->json(['message' => 'role_escalation'], 403);
         }
 
         if (array_key_exists('role_id', $data)) {
-            /* ⚠️ SEC-02 — **ჯერ ესკალაცია, მერე „საკუთარი"**: საკუთარ თავს
-               `super_admin`-ად მინიჭება ესკალაციაა (403), და ეს სწორედ ის
-               პასუხია, რომელიც აუდიტის მოთხოვნაა — 422 „საკუთარ როლს ნუ
-               ცვლი" ხვრელის ბუნებას დამალავდა. */
+            /* ⚠️ **ჯერ ესკალაცია, მერე „საკუთარი"**: საკუთარ თავს
+               `super_admin`-ად მინიჭება ესკალაციაა (403), და სწორედ ეს
+               პასუხი უნდა მოვიდეს — 422 „საკუთარ როლს ნუ ცვლი" ხვრელის
+               ბუნებას დამალავდა. */
             if ($this->outranks(Role::find($data['role_id']), $actor)) {
                 return response()->json(['message' => 'role_escalation'], 403);
             }
@@ -259,19 +259,19 @@ class AdminUserController extends Controller
     /** მოდულების ჩართვა/გამორთვა კონკრეტულ user-ზე */
     public function syncModules(Request $request, User $user)
     {
-        /* ⚠️ §37.6 — პირადი მოდულის გასაღები **უცნობის** პასუხს იღებს (422): ის
+        /* ⚠️ პირადი მოდულის გასაღები **უცნობის** პასუხს იღებს (422): ის
            არავის ენიჭება, და სხვაგვარი პასუხი მის არსებობას გაამხელდა. */
         $data = $request->validate([
             'module_keys' => ['present', 'array'],
             'module_keys.*' => ['string', Rule::exists('modules', 'key')->whereNull('owner_id')],
         ]);
 
-        // SEC-02 — საკუთარ უფლებებზე მაღლა მდგომ ანგარიშს არ ეხება
+        // საკუთარ უფლებებზე მაღლა მდგომ ანგარიშს არ ეხება
         if ($this->outranks($user->effectiveRole(), $request->user())) {
             return response()->json(['message' => 'role_escalation'], 403);
         }
 
-        /* ⚠️ **`enabled_at` ყოველ შენახვაზე ხელახლა იწერებოდა** (Tasks §4.2):
+        /* ⚠️ **`enabled_at` ყოველ შენახვაზე ხელახლა იწერებოდა**:
            `sync($ids)` უკვე მიბმულ რიგზე `updateExistingPivot`-ს იძახებს, ე.ი.
            ადმინი, რომელიც მომხმარებელს **ერთ** მოდულს ამატებდა, ყველა
            დანარჩენს „ახლა ჩაირთოო" აწერდა — სვეტი კი ზუსტად იმ კითხვას
@@ -285,7 +285,7 @@ class AdminUserController extends Controller
 
            ამიტომ ნამდვილი სხვაობა ითვლება: **მოხსნა მხოლოდ მოხსნილს**,
            **მიბმა მხოლოდ ახალს**; უცვლელ რიგს ხელი საერთოდ არ ეხება. */
-        /* ⚠️ **§37.6 — „ახლანდელიც" მხოლოდ საბაზისოა**, და ეს აუცილებელია და არა
+        /* ⚠️ **„ახლანდელიც" მხოლოდ საბაზისოა**, და ეს აუცილებელია და არა
            სისუფთავე: SPA საბაზისო სიას აგზავნის, ე.ი. მფლობელის საკუთარი
            პირადი მოდულის პივოტი `array_diff`-ში „მოხსნილად" ჩაითვლებოდა —
            ადმინის ერთი შენახვა მომხმარებელს საკუთარ მოდულს ჩუმად წაართმევდა. */
@@ -302,14 +302,14 @@ class AdminUserController extends Controller
     }
 
     /**
-     * **ატვირთვის პირადი გამონაკლისების ჩასწორება (Tasks §34.6)** — `/users/{id}`.
+     * **ატვირთვის პირადი გამონაკლისების ჩასწორება** — `/users/{id}`.
      *
      * ⚠️ **მთელი რუკა მოდის** (`PUT`), და არა ერთი სახეობის `DELETE`: ერთი
      * ფორმატის მოხსნაც ამ გზით ხდება, `DELETE`-ს კი `EnsureAdminAccess`
      * `delete` მოქმედებად წაიკითხავდა — `admin:users.update`-ის მქონე
      * ადმინი ცრუ 403-ს მიიღებდა.
      *
-     * ⚠️ **SEC-02-ის იგივე კარი** (`outranks()`), და ფორმატი ისევ სიიდანაა —
+     * ⚠️ **რანგის იგივე კარი** (`outranks()`), და ფორმატი ისევ სიიდანაა —
      * აქტიური შიგთავსი ამ გზითაც ვერ ჩაირთვება (422).
      */
     public function updateUploadOverrides(Request $request, User $user)
@@ -346,9 +346,9 @@ class AdminUserController extends Controller
     }
 
     /**
-     * **ერთჯერადი აღდგენის ბმული (FEAT-16).**
+     * **ერთჯერადი აღდგენის ბმული.**
      *
-     * ამ აპს ელფოსტის არხი არ აქვს (§8.2), ე.ი. დავიწყებული პაროლი აქამდე
+     * ამ აპს ელფოსტის არხი არ აქვს, ე.ი. დავიწყებული პაროლი აქამდე
      * ადმინის ხელით დაწერილ SQL-ს ნიშნავდა. ადმინი ბმულს აგენერირებს და
      * თვითონ გადასცემს — არხი ადამიანია.
      *
@@ -356,7 +356,7 @@ class AdminUserController extends Controller
      * და ძველს კლავს, ე.ი. ეს ცვლილებაა და არა წაკითხვა — გვერდის
      * გადატვირთვა მოქმედ ბმულს არ უნდა აუქმებდეს.
      *
-     * ⚠️ **SEC-02-ის იგივე კარი**: შენზე მაღლა მდგომი ანგარიშის პაროლის
+     * ⚠️ **რანგის იგივე კარი**: შენზე მაღლა მდგომი ანგარიშის პაროლის
      * აღდგენის ბმული მისი ანგარიშის აღებაა. `admin:users`-ის მქონე
      * ადმინი ამით სუპერ-ადმინად იქცეოდა — ზუსტად ის ესკალაცია, რომელსაც
      * `outranks()` აჩერებს.
@@ -400,7 +400,7 @@ class AdminUserController extends Controller
             return response()->json(['message' => 'cannot_delete_self'], 422);
         }
 
-        // SEC-02 — `admin:users.delete` სუპერ-ადმინის ბიბლიოთეკას არ შლის
+        // `admin:users.delete` სუპერ-ადმინის ბიბლიოთეკას არ შლის
         if ($this->outranks($user->effectiveRole(), $request->user())) {
             return response()->json(['message' => 'role_escalation'], 403);
         }
@@ -410,7 +410,7 @@ class AdminUserController extends Controller
             return response()->json(['message' => 'last_super_admin'], 422);
         }
 
-        /* ⚠️ **ყველა მოდული და არა სამი** (Tasks BUG-21). აქ ადრე მხოლოდ
+        /* ⚠️ **ყველა მოდული და არა სამი**. აქ ადრე მხოლოდ
            ფილმი/სერიალი იშლებოდა მოდელით (პლუს ვიდეოს ესკიზი), დანარჩენი
            რვა მოდულის ფაილები კი დისკზე ობლად რჩებოდა — SQL-კასკადი
            მოდელის ივენთს არ ისვრის. ლოგიკა `AccountEraser`-შია, რომ
@@ -421,7 +421,7 @@ class AdminUserController extends Controller
     }
 
     /**
-     * **SEC-02 — `$role` მოქმედის უფლებებს აღემატება?**
+     * **`$role` მოქმედის უფლებებს აღემატება?**
      *
      * `admin_access:users` ამბობს „მომხმარებლებს მართავ", მაგრამ **არა** „ნებისმიერ
      * უფლებას ნებისმიერს აძლევ" — თორემ ერთ `PATCH`-ით (`role_id =
@@ -441,7 +441,7 @@ class AdminUserController extends Controller
         return $role->exceedsAdmin($actor->effectiveRole() ?? new Role(['permissions' => []]));
     }
 
-    /** დარჩება თუ არა სისტემა სუპერ-ადმინის გარეშე (1.6 — როლი ცხრილშია) */
+    /** დარჩება თუ არა სისტემა სუპერ-ადმინის გარეშე (როლი ცხრილშია) */
     private function wouldOrphanAdmins(User $user, array $data): bool
     {
         if (! $user->isSuperAdmin()) {

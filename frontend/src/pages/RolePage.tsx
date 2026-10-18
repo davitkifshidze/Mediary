@@ -20,7 +20,7 @@ import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   როლის შიდა გვერდი (Tasks 1.6 → UI/UX 2026-09-15).
+   როლის შიდა გვერდი.
 
    რას აკეთებს: სახელი + **უფლებების მატრიცა**. მოდულები `GET /modules`-იდან
    მოდის (ე.ი. ახალი მოდული თვითონ ჩნდება), მოქმედებები — backend-იდან.
@@ -69,14 +69,14 @@ export function RolePage() {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
-  /* ⚠️ **`canAdmin('roles')` და არა `isAdmin` (Tasks GAP-10).** `/roles`-ის
+  /* ⚠️ **`canAdmin('roles')` და არა `isAdmin`.** `/roles`-ის
      სია და მარშრუტი უკვე `canAdmin('roles')`-ზეა, ე.ი. `admin:roles`-ის
      მქონე (თუმცა არა სუპერ-ადმინი) სიას ხედავდა, როლზე დაჭერით კი
      **ცარიელ გვერდს** — `isAdmin` ხომ `is_super_admin`-ია. CLAUDE.md-ის
      წესიც ეს არის: სექციის ბმულს, მარშრუტსა და გვერდის შიდა დამცავს
      `canAdmin()` წყვეტს და არა `is_super_admin`. */
   const { user: me, isAdmin, canAdmin } = useAuth()
-  /* ⚠️ §37.6 — **პირადი მოდული მატრიცაში არ ჩანს**: როლი საერთოა, პირად
+  /* ⚠️ **პირადი მოდული მატრიცაში არ ჩანს**: როლი საერთოა, პირად
      მოდულზე კი უფლება მხოლოდ მფლობელს აქვს და როლს საერთოდ არ ეკითხება —
      backend მის გასაღებს შენახვისას ისედაც აგდებს (`cleanPermissions()`). */
   const { all } = useModules()
@@ -155,13 +155,13 @@ export function RolePage() {
 
   const locked = role.is_super_admin
 
-  /* ---------- სამი საკეტი, სამივე SEC-02/SEC-03-ის სარკეა (Tasks GAP-10) ----------
+  /* ---------- სამი საკეტი, სამივე სერვერის შემოწმების სარკეა ----------
      ⚠️ **ეს მოხერხებულობაა და არა დაცვა** — სერვერი ორივეს თვითონ ამოწმებს
      (`role_escalation` 403 და `cannot_edit_own_role` 422); UI მხოლოდ იმას
      აკეთებს, რომ ღილაკი, რომელიც აუცილებლად ჩავარდება, საერთოდ არ იყოს
      აქტიური და მიზეზი ეწეროს. */
 
-  /** ადმინის სექციებს **მხოლოდ სუპერ-ადმინი** ცვლის (SEC-03) */
+  /** ადმინის სექციებს **მხოლოდ სუპერ-ადმინი** ცვლის */
   const adminLocked = !isAdmin
   /** საკუთარი როლის **უფლებებს** სხვა ადმინი ცვლის; სახელი კი — შეიძლება */
   const mineLocked = !isAdmin && me?.role_id === role.id
@@ -295,7 +295,7 @@ export function RolePage() {
           </p>
         ) : (
           <div className="mt-5 space-y-5">
-            {/* ⚠️ **საკუთარი როლი read-only (SEC-03 / Tasks GAP-10)** — სერვერი
+            {/* ⚠️ **საკუთარი როლი read-only** — სერვერი
                 მას 422 `cannot_edit_own_role`-ით უარყოფს, ე.ი. აქტიური
                 გადამრთველი მხოლოდ ჩავარდნამდე მიგვიყვანდა. სახელი კი
                 იცვლება, ამიტომ ველები ზემოთ ღიაა. */}
@@ -402,10 +402,10 @@ export function RolePage() {
                 />
               </p>
 
-              {/* ⚠️ **SEC-03-ის სარკე (Tasks GAP-10)**: ადმინ-სექციების
+              {/* ⚠️ **სერვერის სარკე**: ადმინ-სექციების
                   დამატებაც **და მოხსნაც** მხოლოდ სუპერ-ადმინს შეუძლია
                   (403 `role_escalation`) — როლი ყველა თავის მფლობელს
-                  სწვდება, ამიტომ SEC-02-ის „საკუთარ ჭერამდე" აქ განზრახ
+                  სწვდება, ამიტომ „საკუთარ ჭერამდე" წესი აქ განზრახ
                   არ მოქმედებს. */}
               {adminLocked && (
                 <p className="mb-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
@@ -439,7 +439,7 @@ export function RolePage() {
       </section>
 
       {/* ---------- შენახვა ----------
-          ⚠️ `--player-h` — ქვედა დამკვრელი ამ ზოლს ფარავდა (Tasks §35.4) */}
+          ⚠️ `--player-h` — ქვედა დამკვრელი ამ ზოლს ფარავდა */}
       <div className="sticky bottom-[calc(1rem+var(--player-h,0px))] z-30 mt-6">
         <div
           className={cn(
@@ -449,7 +449,7 @@ export function RolePage() {
         >
           <span className="min-w-0 flex-1 text-sm text-muted-foreground">
             {/* ⚠️ ნახვის უფლებით შენახვა არ არსებობს — ზოლი „შეუნახავს"
-                ნაცვლად მიზეზს ამბობს (Tasks GAP-10) */}
+                ნაცვლად მიზეზს ამბობს */}
             {!canSave ? t('roles.readOnly') : dirty ? t('settings.unsaved') : t('settings.noChanges')}
           </span>
           <Button
@@ -503,7 +503,7 @@ function PermCard({
   strike?: boolean
   actions: string[]
   /**
-   * მდგომარეობა ჩანს, ცვლილება კი — არა (Tasks GAP-10).
+   * მდგომარეობა ჩანს, ცვლილება კი — არა.
    *
    * ⚠️ **ბარათი არ იმალება**: „რა უფლება აქვს ამ როლს" ნახვის უფლების
    * მქონესაც ეკუთვნის — იმალება მხოლოდ *ცვლილება*, და მიზეზი ბლოკის
@@ -593,7 +593,7 @@ function PermToggle({
 }: {
   action: string
   on: boolean
-  /** მონიშნულობა ჩანს, დაჭერა კი აღარ მუშაობს (Tasks GAP-10) */
+  /** მონიშნულობა ჩანს, დაჭერა კი აღარ მუშაობს */
   readOnly?: boolean
   onChange: (on: boolean) => void
 }) {

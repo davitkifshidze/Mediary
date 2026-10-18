@@ -1,5 +1,5 @@
 /**
- * **ბრაუზერის საცავი, რომელიც აპს ვერასდროს ჩააგდებს (Tasks BUG-24).**
+ * **ბრაუზერის საცავი, რომელიც აპს ვერასდროს ჩააგდებს.**
  *
  * ⚠️ **საქმე მხოლოდ `QuotaExceededError`-ში არაა.** Safari-ს private
  * რეჟიმში `setItem` ისვრის, ხოლო „ყველა ქუქის/საიტის მონაცემის ბლოკირებაზე"
@@ -33,7 +33,7 @@ export function safeSet(key: string, value: string): void {
   }
 }
 
-/** Tasks §20.3 — ხელით დაყენებულის მოხსნა (დამკვრელის სიგანე ნაგულისხმევზე) */
+/** ხელით დაყენებულის მოხსნა (დამკვრელის სიგანე ნაგულისხმევზე) */
 export function safeRemove(key: string): void {
   try {
     window.localStorage.removeItem(key)

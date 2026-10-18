@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * **ბაზის ერთი დამპი** (Tasks §22).
+ * **ბაზის ერთი დამპი**.
  *
  * ⚠️ **`StoredFile` და არა ხელით წაშლა.** ტრეიტი ორ გარანტიას იძლევა
  * ერთდროულად — ჩანაწერის წაშლა ფაილს დისკიდანაც შლის და **ჩაწერილ**
@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class DatabaseBackup extends Model
 {
     /**
-     * ⚠️ **ურნა (Tasks §29)** — წაშლილი ასლი ურნაში გადადის; იქიდან **სიაში
+     * ⚠️ **ურნა** — წაშლილი ასლი ურნაში გადადის; იქიდან **სიაში
      * დაბრუნება** შეიძლება, ბაზის აღდგენა კი არა — `trash` scope-ის გამო
      * `/admin/backups/{backup}/restore` მას 404-ით ხვდება.
      */
@@ -42,7 +42,7 @@ class DatabaseBackup extends Model
     public const SOURCE_UPLOAD = 'upload';
 
     /**
-     * დაგეგმილი ასლი (FEAT-12).
+     * დაგეგმილი ასლი.
      *
      * ⚠️ **ცალკე წყაროა და არა `dump`-ის დროშა** — სწორედ ის გამოარჩევს,
      * რომელი ასლების წაშლა შეიძლება ავტომატურად: `keep`-ის ზემოთ მხოლოდ
@@ -52,7 +52,7 @@ class DatabaseBackup extends Model
     public const SOURCE_SCHEDULE = 'schedule';
 
     /**
-     * მიტოვებული `running`-ის ზღვარი (§7.1-ის `downloadStale()`-ის წესი).
+     * მიტოვებული `running`-ის ზღვარი (`Video::downloadStale()`-ის წესი).
      *
      * ⚠️ ფონური პროცესი შეიძლება მოკვდეს — ტერმინალი დაიხურა, კომპიუტერი
      * გადაიტვირთა — და `status` სამუდამოდ `running` დარჩეს. ასეთი რიგი
@@ -69,7 +69,7 @@ class DatabaseBackup extends Model
         'error',
         'driver',
         'tables',
-        // §11.1 — ცხრილი → [bytes, inserts]; დამპის ერთი გავლიდან
+        // ცხრილი → [bytes, inserts]; დამპის ერთი გავლიდან
         'table_map',
         'note',
         'source',
@@ -82,17 +82,17 @@ class DatabaseBackup extends Model
         return [
             'size' => 'integer',
             'tables' => 'integer',
-            // §11.1 — ცხრილი → [bytes, inserts]; იმპორტირებულზე `null`, სანამ არ წაიკითხება
+            // ცხრილი → [bytes, inserts]; იმპორტირებულზე `null`, სანამ არ წაიკითხება
             'table_map' => 'array',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
-            // GAP-16 — ვიუერის ბოლო გახსნა; მიტოვებული ბაზის ვადა ამაზე ითვლება
+            // ვიუერის ბოლო გახსნა; მიტოვებული ბაზის ვადა ამაზე ითვლება
             'inspected_at' => 'datetime',
         ];
     }
 
     /**
-     * **ვიუერის დროებითი ბაზაც ქრება ჩანაწერთან ერთად (Tasks GAP-16).**
+     * **ვიუერის დროებითი ბაზაც ქრება ჩანაწერთან ერთად.**
      *
      * ⚠️ `StoredFile` მხოლოდ **ფაილს** შლის, ე.ი. `<db>_inspect_<id>` MySQL-ში
      * რჩებოდა — და სამუდამოდ: ჩანაწერი აღარაა, ე.ი. ვიუერის დახურვის ღილაკიც
@@ -113,7 +113,7 @@ class DatabaseBackup extends Model
      *
      * ⚠️ **`null` საწყისი დრო მიტოვებულად ითვლება** — ეს ან მიგრაციამდელი
      * რიგია, ან ხელით ჩაწერილი, და ორივეზე „სამუდამოდ მიმდინარეობს"
-     * მცდარი პასუხია (§7.1-ის იგივე დასკვნა).
+     * მცდარი პასუხია (`Video::downloadStale()`-ის იგივე დასკვნა).
      */
     public function stale(): bool
     {

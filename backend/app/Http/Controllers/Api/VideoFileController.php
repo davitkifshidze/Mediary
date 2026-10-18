@@ -12,7 +12,7 @@ use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 
 /**
- * ვიდეოზე მიმაგრებული ფაილები (K3) — ფოტოები და დოკუმენტები.
+ * ვიდეოზე მიმაგრებული ფაილები — ფოტოები და დოკუმენტები.
  *
  * ⚠️ ცხრილი **სექციისაა** (`video_files`) და არა უნივერსალური: სხვა მოდულს
  * ფაილები რომ დასჭირდეს, საკუთარი ცხრილი და კონტროლერი მოაქვს
@@ -38,7 +38,7 @@ class VideoFileController extends Controller
                 : UploadLimits::rule('image', $request->user()),
         ]);
 
-        // 17.3 — კვოტა **მთელ პაკეტზე** მოწმდება ჩაწერამდე, რომ ატვირთვა
+        // კვოტა **მთელ პაკეტზე** მოწმდება ჩაწერამდე, რომ ატვირთვა
         // ნახევრად არ გავიდეს; `storeUpload()` მერე თითოზეც ამოწმებს
         $files = $request->file('files');
         $this->meter->guard($request->user(), array_sum(array_map(
@@ -70,7 +70,7 @@ class VideoFileController extends Controller
 
     public function destroy(VideoFile $videoFile)
     {
-        /* ⚠️ **ურნა (Tasks §29)** — `delete()` კი არა, `moveToTrash()`: ფაილი
+        /* ⚠️ **ურნა** — `delete()` კი არა, `moveToTrash()`: ფაილი
            დისკზე და კვოტაში რჩება და ურნიდან ბრუნდება; ადგილი საბოლოო წაშლისას
            ან ვადის ამოწურვისას თავისუფლდება. სხვისი ფაილი global scope-ის
            გამო ისედაც 404-ია. */

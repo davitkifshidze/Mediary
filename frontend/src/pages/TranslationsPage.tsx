@@ -17,7 +17,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   თარგმანები (Tasks 7) — ცალკე გვერდი, სინქრონის ანალოგიით.
+   თარგმანები — ცალკე გვერდი, სინქრონის ანალოგიით.
 
    რიცხვები „რამდენი ჩანაწერია ნაკლული თარგმანით" და არა „რამდენი ჩანაწერია".
    ⚠️ ჩანაწერი მხოლოდ მაშინ ითვლება, თუ ტექსტი **ერთ ენაზე მაინც არის** —
@@ -41,7 +41,7 @@ export function TranslationsPage() {
   const usageQ = useQuery({ queryKey: ['translations', 'usage'], queryFn: fetchTranslationUsage })
   const gemini = usageQ.data?.gemini
   const recent = usageQ.data?.recent ?? []
-  // Tasks §31.4 — ბოლო გაშვებებზე ვერაფერი შეივსო (ცარიელი · ჩავარდნილი)
+  // ბოლო გაშვებებზე ვერაფერი შეივსო (ცარიელი · ჩავარდნილი)
   const unfilled = usageQ.data?.unfilled ?? []
 
   const rows: { key: string; label: string; count: number }[] = [
@@ -112,7 +112,7 @@ export function TranslationsPage() {
           <li>{t('translate.sourceNever')}</li>
           <li>{t('translate.sourceReview')}</li>
         </ul>
-        {/* Tasks §30.6 — გასაღები ანგარიშისაა: შეტყობინებას „მონაცემების" ბმულიც ახლავს */}
+        {/* გასაღები ანგარიშისაა: შეტყობინებას „მონაცემების" ბმულიც ახლავს */}
         {data && !data.translator_configured && (
           <CredentialMissingNotice provider="gemini" className="mt-3">
             {t('translate.noKey')}
@@ -203,7 +203,7 @@ export function TranslationsPage() {
         </section>
       )}
 
-      {/* Tasks §31.4 — **ცარიელი და ჩავარდნილი გაშვებებიც ჩანს**: ზემოთა სია ლოგიდან მხოლოდ
+      {/* **ცარიელი და ჩავარდნილი გაშვებებიც ჩანს**: ზემოთა სია ლოგიდან მხოლოდ
           შეცვლილს აჩვენებს, ეს კი ჩანაწერის კვალიდან მოდის — რაც ვერ შეივსო, ქარვისფერია,
           რაც ჩავარდა — წითელი; ორივე გეგმაში ისევ ზის. */}
       {unfilled.length > 0 && (

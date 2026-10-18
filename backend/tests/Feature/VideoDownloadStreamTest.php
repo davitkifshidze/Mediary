@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **ლოკალური ასლის მიწოდება — `SafeMime`-ით და Range-ით** (Tasks §6.4).
+ * **ლოკალური ასლის მიწოდება — `SafeMime`-ით და Range-ით**.
  *
  * ⚠️ აქამდე `$disk->response()` იყო: `StreamedResponse` `Range`-ს არ იცნობდა, ე.ი.
  * `<video>`-ში გადახვევა მთელ ფაილს თავიდან ითხოვდა. `BinaryFileResponse` 206-ს

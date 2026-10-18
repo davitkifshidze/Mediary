@@ -29,7 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
 
         /*
-         * **მოთხოვნების ჭერი მთელ `/api`-ზე** (აუდიტი 2026-09-14, §A1).
+         * **მოთხოვნების ჭერი მთელ `/api`-ზე**.
          *
          * ⚠️ აქამდე `throttle` პროექტში **არსად არ იყო** — ღია რეგისტრაციის
          * პირობებში ეს იმას ნიშნავდა, რომ პაროლის ბრუტფორსს არაფერი აჩერებდა.
@@ -44,7 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->throttleApi('api');
 
         /*
-         * **მფლობელობის მეორე ფენა** (აუდიტი 2026-09-14, §A5).
+         * **მფლობელობის მეორე ფენა**.
          *
          * ⚠️ **`append` და არა `prepend`**: შემოწმებას route-ზე მიბმული
          * **მოდელები** სჭირდება, ისინი კი `SubstituteBindings`-მდე ჯერ კიდევ
@@ -60,7 +60,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: [EnsureRecordOwnership::class]);
 
         /*
-         * GAP-12 — Laravel-ის საკუთარი ვალიდაცია ინტერფეისის ენაზე.
+         * Laravel-ის საკუთარი ვალიდაცია ინტერფეისის ენაზე.
          *
          * ⚠️ **`prepend`**: ენა ვალიდაციისა და ავტორიზაციის შეცდომებსაც
          * სჭირდება, ე.ი. მანამდე დაყენებული უნდა იყოს — თორემ 422
@@ -68,14 +68,14 @@ return Application::configure(basePath: dirname(__DIR__))
          */
         $middleware->prepend(SetAppLocale::class);
 
-        // SEC-04 — `nosniff` ყოველ პასუხზე; ⚠️ გლობალურად (იხ. კლასის docblock)
+        // `nosniff` ყოველ პასუხზე; ⚠️ გლობალურად (იხ. კლასის docblock)
         $middleware->append(SetSecurityHeaders::class);
 
         $middleware->alias([
             'module' => EnsureModuleEnabled::class,
-            // მოდულის შიდა CRUD უფლება (Tasks 1.6) — `module`-ი წვდომაა, ეს კი უფლება
+            // მოდულის შიდა CRUD უფლება — `module`-ი წვდომაა, ეს კი უფლება
             'permission' => EnsureModulePermission::class,
-            // ადმინის სექციაზე წვდომა როლიდან (Tasks 1.6) — `super_admin` ისედაც გადის
+            // ადმინის სექციაზე წვდომა როლიდან — `super_admin` ისედაც გადის
             'admin_access' => EnsureAdminAccess::class,
             'super_admin' => EnsureSuperAdmin::class,
         ]);
@@ -86,7 +86,7 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         /*
-         * ⚠️ **CSRF-ის ვადის ამოწურვა ინგლისურ წინადადებად ჩანდა** (Tasks GAP-02).
+         * ⚠️ **CSRF-ის ვადის ამოწურვა ინგლისურ წინადადებად ჩანდა**.
          * Laravel 419-ს `'CSRF token mismatch.'` ტექსტით აბრუნებს, ე.ი. `message`
          * წინადადებაა და არა მანქანური კოდი — SPA-ს `errorMessage()` უცნობ
          * `message`-ს სიტყვასიტყვით ხატავს, ამიტომ ღია ტაბში ორი საათის შემდეგ
@@ -109,15 +109,15 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         /*
-         * ⚠️ **ვადაგასულ სესიაზე 401 419-ზე ადრე მოდის** (Tasks GAP-02), ამიტომ
+         * ⚠️ **ვადაგასულ სესიაზე 401 419-ზე ადრე მოდის**, ამიტომ
          * მხოლოდ CSRF-ის გასწორება სიმპტომს ადგილზე დატოვებდა: `SESSION_LIFETIME`-ის
          * გასვლის შემდეგ პირველი მოთხოვნა, როგორც წესი, SPA-ს ფონური poll-ია
          * (ჩატი 30 წმ, შეხსენებები) — ე.ი. **GET**, რომელსაც CSRF საერთოდ არ ეკითხება
          * და პირდაპირ `auth:sanctum`-ზე ცვივა.
          *
          * Laravel აქ `message`-ად `'Unauthenticated.'`-ს წერს — ესეც ინგლისური
-         * წინადადებაა და არა მანქანური კოდი (იგივე დარღვევა, რასაც GAP-01 მთელი
-         * ტასკი დაუთმო), ე.ი. toast-ში ინგლისურად ჩანდა UI-ს ენის მიუხედავად.
+         * წინადადებაა და არა მანქანური კოდი, ე.ი. toast-ში ინგლისურად ჩანდა UI-ს
+         * ენის მიუხედავად.
          *
          * ⚠️ **`render()` აქ მუშაობს და `map()` საჭირო არ არის**: `prepareException()`
          * `AuthenticationException`-ს არ გარდაქმნის (`default => $e`) — `TokenMismatchException`-ს

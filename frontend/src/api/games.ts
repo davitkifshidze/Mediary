@@ -3,17 +3,16 @@ import { readPage, type ListParams, type Page } from '@/lib/paged'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
-   თამაშების მოდული (`game`, Tasks §11; ველების სია დამტკიცდა 19.1-ში).
+   თამაშების მოდული (`game`).
 
    ⚠️ ჟანრი **მრავალია** (`genre_ids`) და არა ერთი `genre_id`, როგორც წიგნზე/
-   ბორდგეიმზე — 11.1 „ჟანრებს" მრავლობითში წერს და თამაში მართლაც
-   ერთდროულად Action + RPG + Adventure-ია.
+   ბორდგეიმზე — თამაში ხშირად ერთდროულად Action + RPG + Adventure-ია.
 
    ⚠️ `year` **სერვერზე გამოთვლილია** `release_date`-იდან (აქსესორი) — ე.ი.
    read-only ველია და ფორმაში არ იგზავნება.
    ============================================================ */
 
-/** Tasks §13 — გასავლელი · ვთამაშობ · დახურული (`finished` — გასაღები რჩება) */
+/** გასავლელი · ვთამაშობ · დახურული (`finished` — გასაღები რჩება) */
 export const GAME_STATUSES = ['to_play', 'playing', 'finished'] as const
 export type GameStatus = (typeof GAME_STATUSES)[number]
 
@@ -24,7 +23,7 @@ export const GAME_MODES = ['single', 'multiplayer', 'coop_local', 'coop_online',
 export type GameMode = (typeof GAME_MODES)[number]
 
 /**
- * **ბმულის „რა არის"** (Tasks §22.3) — `Game::LINK_KINDS`-ის სარკე.
+ * **ბმულის „რა არის"** — `Game::LINK_KINDS`-ის სარკე.
  *
  * ⚠️ ორი ღერძი: „რა" აქ, „სად" (მაღაზია) — `GAME_LINK_STORES`-ში და მხოლოდ
  * `store`-ისთვის. აქამდე ეს ერთი სია იყო და „DLC Steam-ზე" გამოუთქმელი იყო.
@@ -109,7 +108,7 @@ export interface GameFilters extends ListParams {
   platform?: string
   /** რეჟიმები — მძიმით გამოყოფილი key-ები (AND) */
   mode?: string
-  /** ფრენჩაიზი — **ზუსტი** სახელი (§5.1-ის მოდალი) */
+  /** ფრენჩაიზი — **ზუსტი** სახელი (ფრენჩაიზის მოდალი) */
   franchise?: string
   sort?: string
 }
@@ -163,7 +162,7 @@ function toFormData(input: GameInput): FormData {
   const numbers: (keyof GameInput)[] = [
     'opencritic', 'users_score', 'rating', 'size_gb', 'rawg_id', 'igdb_id',
   ]
-  /* Tasks §4.8 — `null` („გაასუფთავე“) ცარიელ სტრიქონად იგზავნება და მხოლოდ
+  /* `null` („გაასუფთავე“) ცარიელ სტრიქონად იგზავნება და მხოლოდ
      `undefined` („არ შეეხო“) რჩება გამოტოვებული; ადრე გასუფთავებული ქულა
      საერთოდ არ იგზავნებოდა და შენახვის შემდეგ ძველი უკან ბრუნდებოდა. */
   numbers.forEach((key) => {
@@ -173,7 +172,7 @@ function toFormData(input: GameInput): FormData {
 
   if (input.status) fd.append('status', input.status)
   if (input.visibility) fd.append('visibility', input.visibility)
-  // Tasks §6.9 — `null` = „ჩემი პლატფორმის მოხსნა“: ცარიელი სტრიქონი backend-ზე `null` ხდება, `undefined` არ იგზავნება
+  // `null` = „ჩემი პლატფორმის მოხსნა“: ცარიელი სტრიქონი backend-ზე `null` ხდება, `undefined` არ იგზავნება
   if (input.my_platform !== undefined) fd.append('my_platform', input.my_platform ?? '')
   ;(input.platforms ?? []).forEach((p) => fd.append('platforms[]', p))
   ;(input.modes ?? []).forEach((m) => fd.append('modes[]', m))
@@ -226,7 +225,7 @@ export async function updateGame(id: number, input: GameInput): Promise<Game> {
   return data.data
 }
 
-/* ---------- ფრენჩაიზები (§5.1) ---------- */
+/* ---------- ფრენჩაიზები ---------- */
 
 export interface GameFranchise {
   name: string
@@ -257,7 +256,7 @@ export async function setGameStatus(id: number, status: GameStatus): Promise<Gam
   return data.data
 }
 
-/* ---------- RAWG (§11.4-ის enrichment) ---------- */
+/* ---------- RAWG (enrichment) ---------- */
 
 export interface RawgScreenshot {
   url: string
@@ -268,7 +267,7 @@ export interface RawgScreenshot {
 export interface RawgCandidate {
   /**
    * საიდან მოვიდა რიგი. ⚠️ `undefined` = RAWG (ძველი პასუხების თავსებადობა);
-   * `'igdb'` კი სათადარიგო წყაროა (`DECISIONS.md` §7).
+   * `'igdb'` კი სათადარიგო წყაროა.
    */
   source?: 'rawg' | 'igdb'
   rawg_id: number | null
@@ -313,7 +312,7 @@ export async function fetchRawgDraft(candidate: RawgCandidate): Promise<RawgCand
   return data.draft
 }
 
-/* ---------- ვიდეოები (§11.2) ---------- */
+/* ---------- ვიდეოები ---------- */
 
 export const GAME_VIDEO_KINDS = ['walkthrough', 'trailer', 'review', 'guide', 'other'] as const
 export type GameVideoKind = (typeof GAME_VIDEO_KINDS)[number]
@@ -410,7 +409,7 @@ export async function createGameNote(gameId: number, body: string): Promise<Game
 
 /**
  * ⚠️ **`PATCH` მარშრუტი დასაწყისიდან არსებობდა, ფრონტის ჰელპერი კი არა** —
- * ე.ი. ჩანიშვნის რედაქტირება UI-ში შეუძლებელი იყო (Tasks §6.5).
+ * ე.ი. ჩანიშვნის რედაქტირება UI-ში შეუძლებელი იყო.
  */
 export async function updateGameNote(id: number, body: string): Promise<GameNote> {
   const { data } = await api.patch(`/game-notes/${id}`, { body })
@@ -429,7 +428,7 @@ export interface GameGenre {
   name_ka: string
   name_en: string
   icon: string | null
-  /** Tasks §24.3 — ჟანრის ფერი: პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; `null` — ნაცრისფერი */
+  /** ჟანრის ფერი: პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; `null` — ნაცრისფერი */
   color: string | null
   sort_order: number
   games_count?: number

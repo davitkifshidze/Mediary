@@ -21,10 +21,9 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **ბმულიდან საკუთარ ბიბლიოთეკაში დამატება (Tasks §40.8).**
+ * **ბმულიდან საკუთარ ბიბლიოთეკაში დამატება.**
  *
- * ⚠️ სტატუსი **როლით** გადმოდის და არა გასაღებით/სახელით — FEAT-07-ის ტესტის
- * წესი: მიმღების ლექსიკონი აქ განზრახ გადარქმეულია, თორემ ტესტი იმიტომაც
+ * ⚠️ სტატუსი **როლით** გადმოდის და არა გასაღებით/სახელით: მიმღების ლექსიკონი აქ განზრახ გადარქმეულია, თორემ ტესტი იმიტომაც
  * გაივლიდა, რომ ორივეს ერთი და იგივე ნაგულისხმევი ლექსიკონი აქვს.
  */
 class ShareImportTest extends TestCase
@@ -177,7 +176,7 @@ class ShareImportTest extends TestCase
 
     /* ================= დამატება ================= */
 
-    /** ⚠️ Q49 — მხოლოდ „რა ფილმია": TMDB-დან თავიდან ივსება, გამზიარებლის პირადი ნაწილი არ გადმოდის */
+    /** ⚠️ მხოლოდ „რა ფილმია": TMDB-დან თავიდან ივსება, გამზიარებლის პირადი ნაწილი არ გადმოდის */
     public function test_a_tmdb_record_is_refilled_from_tmdb_and_the_private_part_stays(): void
     {
         $theirs = $this->movie($this->owner, 'Owner Typed Title', ['tmdb_id' => 603, 'is_favorite' => true]);
@@ -282,7 +281,7 @@ class ShareImportTest extends TestCase
         $this->assertSame(0, Movie::withoutGlobalScopes()->where('user_id', $this->viewer->id)->count());
     }
 
-    /** ⚠️ Q48 — როლით და გამზიარებლის თარიღით; მიმღების ლექსიკონი გადარქმეულია */
+    /** ⚠️ როლით და გამზიარებლის თარიღით; მიმღების ლექსიკონი გადარქმეულია */
     public function test_the_owners_status_travels_by_role_with_its_date(): void
     {
         $theirs = $this->movie($this->owner, 'Seen', ['tmdb_id' => 51], 'watched');
@@ -399,7 +398,7 @@ class ShareImportTest extends TestCase
         $this->add($token, $theirs->id)->assertStatus(410)->assertJson(['message' => 'share_expired']);
     }
 
-    /** §40.6 — მოდულის უქონელს გვერდი მოთხოვნის ღილაკს აჩვენებს */
+    /** მოდულის უქონელს გვერდი მოთხოვნის ღილაკს აჩვენებს */
     public function test_the_head_says_which_sections_can_take_records(): void
     {
         $this->movie($this->owner, 'X', ['tmdb_id' => 71]);

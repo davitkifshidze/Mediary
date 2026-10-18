@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
- * **გასაღები არც პასუხში ჩანს და არც ლოგში** (Tasks SEC-14).
+ * **გასაღები არც პასუხში ჩანს და არც ლოგში**.
  *
  * ⚠️ **პრობლემა ჩვენი ტექსტი არ იყო — Guzzle-ისა იყო.** კავშირის ჩავარდნაზე
  * ის გამონაკლისს **სრულ URL-ს** უწერს (`… for https://api.themoviedb.org/3/…?api_key=…`),
@@ -48,7 +48,7 @@ class SecretRedactionTest extends TestCase
         $this->user->modules()->sync(Module::where('key', 'movie')->pluck('id')->all());
         $this->user->refresh();
 
-        // Tasks §30 — გასაღები ანგარიშისაა; ჟონვის საფრთხე კი იგივე რჩება
+        // გასაღები ანგარიშისაა; ჟონვის საფრთხე კი იგივე რჩება
         $this->giveCredential($this->user, 'tmdb', ['key' => self::KEY]);
     }
 

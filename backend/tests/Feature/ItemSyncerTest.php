@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * **ერთი ჩანაწერის სინქრონის შედეგი** (Tasks §31.1/§31.6).
+ * **ერთი ჩანაწერის სინქრონის შედეგი**.
  *
  * ⚠️ აქამდე `sync()` ცარიელ TMDB-პასუხზეც `ok:true, changed:[]`-ს აბრუნებდა
  * და `sync_status='synced'`-ს წერდა — სიაში მწვანე ✓, განახლებულის იდენტური.

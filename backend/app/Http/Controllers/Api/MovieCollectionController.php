@@ -27,7 +27,7 @@ class MovieCollectionController extends Controller
             $parts = $data['parts'] ?? [];
             usort($parts, fn ($a, $b) => strcmp($a['release_date'] ?? '9999', $b['release_date'] ?? '9999'));
 
-            /* Tasks §51.2 — `is_favorite`-იც: უკვე რჩეული ნაწილი ფანჯარაში ჩაკეტილია
+            /* `is_favorite`-იც: უკვე რჩეული ნაწილი ფანჯარაში ჩაკეტილია
                (რჩეულიდან მოხსნა აქედან არ ხდება — მხოლოდ ფილმის გვერდიდან ან ბარათიდან) */
             $ownedByTmdb = Movie::whereNotNull('tmdb_id')->get(['id', 'tmdb_id', 'is_favorite'])->keyBy('tmdb_id');
 
@@ -42,7 +42,7 @@ class MovieCollectionController extends Controller
                     'title' => $p['title'] ?? ($p['original_title'] ?? ''),
                     'year' => ! empty($p['release_date']) ? (int) substr($p['release_date'], 0, 4) : null,
                     'rating' => isset($p['vote_average']) ? round((float) $p['vote_average'], 1) : null,
-                    // Tasks §18.3 — პოპაპის ორხაზიანი აღწერა
+                    // პოპაპის ორხაზიანი აღწერა
                     'overview' => $p['overview'] ?? null,
                     'poster' => 'https://image.tmdb.org/t/p/w342'.$p['poster_path'],
                     'owned' => $own !== null,

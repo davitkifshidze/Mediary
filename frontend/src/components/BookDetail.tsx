@@ -45,35 +45,35 @@ import { useContentLang } from '@/lib/settings'
 import { formatBytes } from '@/lib/utils'
 
 /* ============================================================
-   წიგნის დეტალები — პროგრესი, ფაილები (pdf/epub) და ციტატები (Tasks §12).
+   წიგნის დეტალები — პროგრესი, ფაილები (pdf/epub) და ციტატები.
 
    ცალკე გვერდის ნაცვლად მოდალია: სია ბიბლიოთეკის მთავარი ხედია და
    ჩანაწერზე დაბრუნება ერთი Esc-ია.
 
-   ⚠️ **რიგი §26.4-ით (თამაშის §22.2-ის წესი)**: თავში ყდა, სტატუსი, ჟანრი
+   ⚠️ **რიგი ყველა დეტალის ფანჯრის საერთოა**: თავში ყდა, სტატუსი, ჟანრი
    და მოკლე ცნობები — აქამდე ფანჯარა მათ **საერთოდ არ აჩვენებდა**; მერე
    კითხვის პროგრესი, ფოტოები, აღწერა, ბმულები, ფაილები და ციტატები.
    ⚠️ ფოტოები ფაილების სიიდან ამოვიდა და ზემოთ ვიტრინად დგას — ერთი ფოტო
    ორ ადგილას აღარ ჩანს.
    ============================================================ */
 
-/** §22.2 — სწრაფი ჩიპები ვებძებნისთვის (`books.webChips.*`) */
+/** სწრაფი ჩიპები ვებძებნისთვის (`books.webChips.*`) */
 const BOOK_WEB_TERMS = ['characters', 'author', 'adaptation', 'covers', 'illustrations'] as const
 
 export function BookDetail({ book, onClose }: { book: Book; onClose: () => void }) {
-  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
+  // რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
   const favoriteQc = useQueryClient()
   const favorite = useMutation({
     mutationFn: () => toggleBookFavorite(book.id),
     onSuccess: () => void favoriteQc.invalidateQueries({ queryKey: ['books'] }),
   })
   const { t, i18n } = useTranslation()
-  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  // გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen('book', book.id)
   const lang = useContentLang(i18n.language)
-  // §22.2 — ვებძებნის ჩიპები შინაარსის ენაზე და არა ინტერფეისისაზე
+  // ვებძებნის ჩიპები შინაარსის ენაზე და არა ინტერფეისისაზე
   const fixedT = i18n.getFixedT(lang)
-  /* Tasks §23.4 — ციტატის/გვერდის დიალოგები მენიუდან */
+  /* ციტატის/გვერდის დიალოგები მენიუდან */
   const [quoteOpen, setQuoteOpen] = useState(false)
   const [progressOpen, setProgressOpen] = useState(false)
   const { toast: notify } = useToast()
@@ -86,13 +86,13 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
   const title = book.title_en || book.title_ka || '—'
   const description =
     lang === 'ka' ? book.description_ka || book.description_en : book.description_en || book.description_ka
-  // §5.7 — წყაროს ბმული + ძველი ჩანაწერის `links` (ფორმიდან მოხსნილი, მაგრამ შენახული)
+  // წყაროს ბმული + ძველი ჩანაწერის `links` (ფორმიდან მოხსნილი, მაგრამ შენახული)
   const links = [
     ...(book.source_url ? [{ label: t('fields.name.book.source_url'), url: book.source_url }] : []),
     ...book.links,
   ]
 
-  /* Tasks §23.4 — კონტექსტური მენიუ დეტალის სათაურზე: სტატუსი ▸ · რჩეული ·
+  /* კონტექსტური მენიუ დეტალის სათაურზე: სტატუსი ▸ · რჩეული ·
      ციტატის დამატება · გვერდის განახლება (იგივე პუნქტები, რაც სიის სტრიქონს აქვს) */
   const heroActions: MenuAction[] = [
     {
@@ -113,7 +113,7 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
   return (
     <ModalShell title={title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
-        {/* ---------- თავი: ყდა, სტატუსი, ჟანრი, მოკლე ცნობები (§26.4) ---------- */}
+        {/* ---------- თავი: ყდა, სტატუსი, ჟანრი, მოკლე ცნობები ---------- */}
         <RecordContextMenu actions={heroActions}>
         <DetailHero
           image={storageUrl(book.cover)}
@@ -122,9 +122,9 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
           badges={
             <>
               <EnumStatusBadge domain="book" status={book.status} size="row" />
-              {/* Tasks §9 — ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
+              {/* ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
               <RatingStars value={book.rating} />
-              {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+              {/* ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={book.visibility} />
               <FavoriteButton active={book.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
@@ -153,7 +153,7 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
 
         <ProgressCard book={book} />
 
-        {/* ---------- გალერეა (Tasks §22) — ორი საცავი ერთ ხედად: შენი ატვირთული
+        {/* ---------- გალერეა — ორი საცავი ერთ ხედად: შენი ატვირთული
             ფოტოები (`book_files image`) და ვებიდან ჩამოტვირთული (`gallery_images`,
             გალერეის მოდული) ბეჯებით „ატვირთული" / „ვებიდან" ---------- */}
         <DetailSection title={t('books.galleryTitle')} hint={t('books.galleryHint')}>
@@ -208,9 +208,9 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
   )
 }
 
-/* ---------- ფოტოები (§26.4) ---------- */
+/* ---------- ფოტოები ---------- */
 
-/** ფაილების ატვირთვის/წაშლის შემდეგ — სია, კვოტა და ჰედერის ინდიკატორი (17.1) */
+/** ფაილების ატვირთვის/წაშლის შემდეგ — სია, კვოტა და ჰედერის ინდიკატორი */
 function useBookFilesRefresh(book: Book) {
   const qc = useQueryClient()
 
@@ -243,7 +243,7 @@ function Photos({ book }: { book: Book }) {
 
   return (
     <DetailPhotos
-      /* §22.3 — ორი საცავი ერთ ხედად: ეს ბლოკი „ატვირთულია", ქვემოთ — „ვებიდან" */
+      /* ორი საცავი ერთ ხედად: ეს ბლოკი „ატვირთულია", ქვემოთ — „ვებიდან" */
       title={
         <span className="inline-flex items-center gap-2">
           {t('books.photosTitle')}
@@ -268,7 +268,7 @@ function Photos({ book }: { book: Book }) {
 /* ---------- ფაილები ---------- */
 
 /**
- * Tasks §23.1 — **„ფაილის მიმაგრება"**: ერთი კომპაქტური ზონა „ჩააგდე ან აირჩიე"
+ * **„ფაილის მიმაგრება"**: ერთი კომპაქტური ზონა „ჩააგდე ან აირჩიე"
  * და სია. სახის ჩიპები ქრება — სერვერი სახეს გაფართოებით ხვდება (`pdf/epub/…` →
  * წიგნი, დანარჩენი → დოკუმენტი; ფოტო ზემოთ ვიტრინად დგას); `accept` ორივე სიის
  * გაერთიანებაა, ლიმიტი სახეზე, როგორც იყო.
@@ -289,7 +289,7 @@ function FilesCard({ book }: { book: Book }) {
   })
   const files = all.filter((file) => file.kind !== 'image')
 
-  // 17.1 — ატვირთვა/წაშლა კვოტას ცვლის, ჰედერის ინდიკატორიც უნდა განახლდეს
+  // ატვირთვა/წაშლა კვოტას ცვლის, ჰედერის ინდიკატორიც უნდა განახლდეს
   const done = useBookFilesRefresh(book)
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
@@ -304,7 +304,7 @@ function FilesCard({ book }: { book: Book }) {
 
   const remove = useMutation({ mutationFn: deleteBookFile, onSuccess: done, onError: fail })
   /* ონლაინ მნახველი (2026-09-14) — ⚠️ `resolve: storageUrl` იმიტომაა, რომ ეს
-     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი (§17.5). */
+     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი. */
   const viewer = useFileViewer({ resolve: storageUrl, onDelete: (id) => remove.mutate(id) })
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
@@ -414,7 +414,7 @@ function NotesCard({ book, onAddQuote }: { book: Book; onAddQuote: () => void })
   const quotes = notes.filter((n) => n.is_quote).length
   const plain = notes.length - quotes
 
-  /* Tasks §23.2 — ⚠️ **ორი ჩანართი, ერთი ცხრილი**: `book_notes` ჩანიშვნასაც და
+  /* ⚠️ **ორი ჩანართი, ერთი ცხრილი**: `book_notes` ჩანიშვნასაც და
      ციტატასაც ინახავს (`is_quote`), მაგრამ ეკრანზე ისინი სხვადასხვა რამაა.
      ჩანიშვნების სხეული საერთოა (`RecordNotes`, ოთხი სხვა მოდულიც მას იყენებს),
      ციტატები — `BookQuotes`. ⚠️ ქეშის გასაღებები: ყველა ჩანიშვნა `['book-notes', id]`,

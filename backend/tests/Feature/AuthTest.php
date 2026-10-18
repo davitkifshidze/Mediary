@@ -16,7 +16,7 @@ use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Tests\TestCase;
 
 /**
- * **ავტორიზაცია (აუდიტი 2026-09-14, §D).**
+ * **ავტორიზაცია.**
  *
  * ⚠️ **პროექტს 456 ტესტი ჰქონდა და ეს კონტროლერი დაფარული არ იყო.** ის
  * ყველაზე უსაფრთხოებრივად კრიტიკულია — „პირველი ანგარიში super_admin-ია",
@@ -113,7 +113,7 @@ class AuthTest extends TestCase
     }
 
     /**
-     * **SEC-15 — „ეს პირველი ანგარიშია?" ჩაკეტილი წაკითხვაა ტრანზაქციაში.**
+     * **„ეს პირველი ანგარიშია?" ჩაკეტილი წაკითხვაა ტრანზაქციაში.**
      *
      * ⚠️ ორი მართლა პარალელური რექვესთი PHPUnit-ში არ იმართება, ამიტომ
      * მექანიზმი ორ ნაწილად მოწმდება: (ა) კითხვა ტრანზაქციის შიგნით სმება —
@@ -147,14 +147,14 @@ class AuthTest extends TestCase
         $this->assertGreaterThan($baseline, $levels[0], 'შემოწმება ტრანზაქციის გარეთაა — ლოკს აზრი არ აქვს');
     }
 
-    /** SEC-15 — ლოკი მართლა იბმება (sqlite-ზე SQL-ში ვერ ჩანს, ბილდერზე — ჩანს) */
+    /** ლოკი მართლა იბმება (sqlite-ზე SQL-ში ვერ ჩანს, ბილდერზე — ჩანს) */
     public function test_the_first_account_check_asks_for_a_row_lock(): void
     {
         $this->assertTrue(User::accountsLocked()->getQuery()->lock);
     }
 
     /**
-     * SEC-15 — `FIRST_USER_IS_ADMIN=false`-ზე პირველიც ჩვეულებრივი `user`-ია.
+     * `FIRST_USER_IS_ADMIN=false`-ზე პირველიც ჩვეულებრივი `user`-ია.
      *
      * ეს საჯარო სერვერის რეკომენდებული რეჟიმია: ღია რეგისტრაციაზე პირველის
      * მოპოვება ინსტალაციის დაპატრონებაა, ადმინს კი `mediary:bootstrap-admin` ქმნის.
@@ -284,7 +284,7 @@ class AuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.username', 'alice')
             /* ⚠️ `role` რესურსში **სტრიქონია** (`roleKey()`) და არა ობიექტი —
-               ძველი `users.role` enum-ის თავსებადობა (Tasks 1.6). */
+               ძველი `users.role` enum-ის თავსებადობა. */
             ->assertJsonPath('data.role', 'user')
             ->assertJsonCount(1, 'data.modules');
     }
@@ -404,7 +404,7 @@ class AuthTest extends TestCase
     /* ================= CSRF (419) ================= */
 
     /**
-     * **419-ის პასუხი მანქანური კოდია** (Tasks GAP-02).
+     * **419-ის პასუხი მანქანური კოდია**.
      *
      * ⚠️ Laravel `TokenMismatchException`-ს `HttpException(419, 'CSRF token
      * mismatch.')`-ად აქცევს, ე.ი. `message` **წინადადებაა** — SPA-ს
@@ -434,7 +434,7 @@ class AuthTest extends TestCase
     }
 
     /**
-     * **401-იც მანქანური კოდია** (Tasks GAP-02).
+     * **401-იც მანქანური კოდია**.
      *
      * ⚠️ ვადაგასული სესიის **პირველი** მოთხოვნა, როგორც წესი, ფონური poll-ია —
      * GET, რომელსაც CSRF არ ეკითხება — ე.ი. 419-მდე 401 მოდის. Laravel აქ

@@ -35,7 +35,7 @@ use Illuminate\Support\Facades\Storage;
  *  3. თუ ფაილი დისკზე აღარაა, მიგრაცია **არ ჩავარდება** — სვეტი მაინც
  *     ახალ გზაზე მიუთითებს (ისედაც გატეხილი ბმული იყო).
  *  4. რაც ძველ საქაღალდეში დარჩა, ბაზაში არავის ეკუთვნის — ე.ი. **ობოლია**
- *     და 17.5-ის სკანერი აჩვენებს (`StorageFolder::LEGACY_ROOTS`).
+ *     და ობოლი ფაილების სკანერი აჩვენებს (`StorageFolder::LEGACY_ROOTS`).
  */
 return new class extends Migration
 {

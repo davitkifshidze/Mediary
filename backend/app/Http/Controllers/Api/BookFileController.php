@@ -14,16 +14,16 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 
 /**
- * წიგნის ფაილები (Tasks §12) — `book` = pdf/epub, `image`/`doc` = თანმხლები.
+ * წიგნის ფაილები — `book` = pdf/epub, `image`/`doc` = თანმხლები.
  *
- * ⚠️ **ერთეულზე ყველაზე მძიმე ატვირთვა მთელ პროექტში** (§12-ის შენიშვნა:
+ * ⚠️ **ერთეულზე ყველაზე მძიმე ატვირთვა მთელ პროექტში** (ერთი ფაილი
  * 10–50 MB), ამიტომ კვოტა **პაკეტზეც** მოწმდება და თითოზეც — ნახევრად
  * გასული ატვირთვა აქ განსაკუთრებით მტკივნეულია.
  */
 class BookFileController extends Controller
 {
     /** თვითონ წიგნის ფაილები — მხოლოდ საკითხავი ფორმატები */
-    /** 50 MB — §12-ის „ყველაზე მძიმეა ერთეულზე (10–50 MB)" */
+    /** 50 MB — ყველაზე მძიმეა ერთეულზე (10–50 MB) */
     public function __construct(private StorageMeter $meter) {}
 
     public function index(Book $book)
@@ -32,7 +32,7 @@ class BookFileController extends Controller
     }
 
     /**
-     * Tasks §23.1 — ⚠️ **`kind` არჩევითია: სახეს სერვერი გაფართოებით ხვდება.**
+     * ⚠️ **`kind` არჩევითია: სახეს სერვერი გაფართოებით ხვდება.**
      * ფორმაში ერთი ზონაა („ჩააგდე ან აირჩიე"), სახის ჩიპები აღარ არის — `pdf/epub/
      * mobi/azw3/djvu/txt` → `book`, სურათი → `image`, დანარჩენი → `doc`; ENUM და
      * საქაღალდეები (`StorageFolder::bookFiles`) უცვლელია, ლიმიტი სახეზეა, როგორც იყო
@@ -55,7 +55,7 @@ class BookFileController extends Controller
             $kinds[$i] = $kind;
         }
 
-        // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე
+        // კვოტა **მთელ პაკეტზე** ჩაწერამდე
         $this->meter->guard($request->user(), array_sum(array_map(
             fn ($file) => (int) $file->getSize(),
             $files,
@@ -98,7 +98,7 @@ class BookFileController extends Controller
 
     public function destroy(BookFile $bookFile)
     {
-        /* ⚠️ **ურნა (Tasks §29)** — `delete()` კი არა, `moveToTrash()`: ფაილი
+        /* ⚠️ **ურნა** — `delete()` კი არა, `moveToTrash()`: ფაილი
            დისკზე და კვოტაში რჩება და ურნიდან ბრუნდება; ადგილი საბოლოო წაშლისას
            ან ვადის ამოწურვისას თავისუფლდება. სხვისი ფაილი global scope-ის
            გამო ისედაც 404-ია. */

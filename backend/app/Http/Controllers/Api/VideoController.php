@@ -23,7 +23,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * ვიდეოს მოდული (I5).
+ * ვიდეოს მოდული.
  *
  * მფლობელობა — `BelongsToUser` global scope (სხვისი ჩანაწერი 404).
  */
@@ -38,7 +38,7 @@ class VideoController extends Controller
         $query = Video::query()
             ->with('type')
             ->withCount(['images', 'documents', 'notes']);
-        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'video', $request);
 
         if ($platform = $request->string('platform')->toString()) {
@@ -47,31 +47,31 @@ class VideoController extends Controller
         if ($request->boolean('favorite')) {
             $query->where('is_favorite', true);
         }
-        /* §7.1 — „ჩამოწერილები" ცალკე სექციაა.
+        /* „ჩამოწერილები" ცალკე სექციაა.
            ⚠️ პირობა `download_status`-ზეა და არა `download_path`-ზე: მიმდინარე
            ჩამოწერას ჯერ გზა არ აქვს, სექციაში კი უნდა ჩანდეს — თორემ ღილაკზე
            დაჭერის შემდეგ ვიდეო სიიდან ქრებოდა და „სად წავიდა" ისმებოდა. */
         if ($request->boolean('downloaded')) {
             $query->whereIn('download_status', [Video::DOWNLOAD_READY, Video::DOWNLOAD_RUNNING]);
         }
-        // ტეგები — მძიმით გამოყოფილი სია; თითოეული ცალკე პირობაა, ე.ი. ფილტრი ვიწროვდება (5.2)
+        // ტეგები — მძიმით გამოყოფილი სია; თითოეული ცალკე პირობაა, ე.ი. ფილტრი ვიწროვდება
         foreach ($this->slugList($request->string('tag')->toString()) as $tag) {
             $query->whereJsonContains('tags', $tag);
         }
-        // ტიპი — საიდბარის სექციები მართვადი ლექსიკონიდან (Tasks 5.1);
-        // მძიმით გამოყოფილი სია ფილტრების პანელს ემსახურება (5.2)
+        // ტიპი — საიდბარის სექციები მართვადი ლექსიკონიდან;
+        // მძიმით გამოყოფილი სია ფილტრების პანელს ემსახურება
         if ($types = $this->slugList($request->string('type_id')->toString())) {
             $query->whereIn('type_id', array_map('intval', $types));
         }
-        /* §6.4 — სტატუსი: ამ მოდულს ის ახლა გაუჩნდა. საიდბარის სექციაც
+        /* სტატუსი: ამ მოდულს ის ახლა გაუჩნდა. საიდბარის სექციაც
            `?status=<key>`-ით მოდის, ე.ი. ფილმის/სერიალის იგივე ნიმუშია. */
-        /* Tasks §17.5 — ⚠️ რამდენიმე სტატუსი **ან**-ითაა და არა „და"-თი: ჩანაწერს
+        /* ⚠️ რამდენიმე სტატუსი **ან**-ითაა და არა „და"-თი: ჩანაწერს
            ერთი სტატუსი აქვს, ე.ი. თითო გასაღებზე ცალკე `whereHas` ყოველთვის
            ცარიელს დააბრუნებდა (ასე იყო მძიმით გამოყოფილ სიაზეც). */
         if ($keys = $this->statusKeys($request)) {
             $query->statusKey($keys);
         }
-        /* Tasks §17 (Q4) — „რა ვნახო დღეს" ვიდეოებზეც. ⚠️ **ფილტრების შემდეგ და
+        /* „რა ვნახო დღეს" ვიდეოებზეც. ⚠️ **ფილტრების შემდეგ და
            დალაგებამდე**, ფილმის იგივე წესით; ძებნა აქ უბრალო `LIKE`-ია და არა
            `VideoSearch` — ის კოლექციას აბრუნებს, შემთხვევითი არჩევა კი ბაზაში ხდება. */
         if ($request->string('pick')->toString() === 'random') {
@@ -86,13 +86,13 @@ class VideoController extends Controller
             'title' => $query->orderBy('title'),
             'oldest' => $query->orderBy('id'),
             'watched' => $query->orderByDesc('watched_at'),
-            // Tasks §21.3 — „ჩამოტვირთული" სექციის დახარისხება ზომით / ჩამოტვირთვის თარიღით
+            // „ჩამოტვირთული" სექციის დახარისხება ზომით / ჩამოტვირთვის თარიღით
             'size' => $query->orderByDesc('download_size')->orderByDesc('id'),
             'downloaded' => $query->orderByDesc('downloaded_at')->orderByDesc('id'),
             default => $query->orderByDesc('id'),
         };
 
-        // ძებნა ბოლოს: ყველა ველზე + „ახლო სიტყვებზე", relevance-ით დალაგებული (K4).
+        // ძებნა ბოლოს: ყველა ველზე + „ახლო სიტყვებზე", relevance-ით დალაგებული.
         // თანაბარ relevance-ზე არჩეული სორტირება რჩება ძალაში.
         $q = $request->string('q')->toString();
 
@@ -103,7 +103,7 @@ class VideoController extends Controller
     }
 
     /**
-     * „მსგავსი ვიდეოები" (K4) — მხოლოდ **ჩემი ბიბლიოთეკიდან**: საერთო ტეგები,
+     * „მსგავსი ვიდეოები" — მხოლოდ **ჩემი ბიბლიოთეკიდან**: საერთო ტეგები,
      * სათაურის მსგავსება, იგივე პლატფორმა/ტიპი. (YouTube-ის related API გაუქმებულია.)
      */
     public function similar(Video $video, VideoSearch $search)
@@ -122,10 +122,10 @@ class VideoController extends Controller
     }
 
     /**
-     * ბმულის მეტამონაცემი — ფორმა ამით ივსება ჩასმისთანავე (Tasks K2).
+     * ბმულის მეტამონაცემი — ფორმა ამით ივსება ჩასმისთანავე.
      * ჩანაწერს არ ქმნის.
      *
-     * ⚠️ **`existing` აქვე მოდის და ცალკე endpoint არაა** (FEAT-17): ეს
+     * ⚠️ **`existing` აქვე მოდის და ცალკე endpoint არაა**: ეს
      * ერთი კითხვის ორი ნახევარია („რა არის ამ ბმულის უკან და ხომ არ მაქვს
      * უკვე"), და ორი მოთხოვნა ფორმას ორ ცალკე მდგომარეობას შეაძენინებდა.
      * გაფრთხილებაა და არა აკრძალვა — შენახვა მაინც შესაძლებელია.
@@ -134,7 +134,7 @@ class VideoController extends Controller
      * საკუთარ მისამართს ხელახლა ამოწმებს და უამისოდ ყოველთვის იტყოდა
      * „ეს უკვე გაქვს".
      *
-     * Tasks §44.1 — **ერთი წყარო** (`LinkResolver`, 24-საათიანი ქეშით),
+     * **ერთი წყარო** (`LinkResolver`, 24-საათიანი ქეშით),
      * იგივე პასუხი, რაც ყველა ბმულიან ფორმას აქვს (სათაური, აღწერა, ფოტო, ტეგები,
      * თარიღი, ხანგრძლივობა) + ვიდეოს საკუთარი: გასაღები, `yt-dlp` და ბმულის დუბლი.
      */
@@ -147,7 +147,7 @@ class VideoController extends Controller
 
         return response()->json($links->resolve($data['url']) + [
             'youtube_key' => $meta->hasYoutubeKey(),
-            // §44.3 — გასაღების გარეშეც სრული ინფო; „წამოღება ვებიდან" მაშინ აღარ სჭირდება
+            // გასაღების გარეშეც სრული ინფო; „წამოღება ვებიდან" მაშინ აღარ სჭირდება
             'ytdlp' => $meta->hasYtDlp(),
             'existing' => DuplicateLink::find(Video::class, $data['url'], $data['exclude'] ?? null),
         ]);
@@ -177,7 +177,7 @@ class VideoController extends Controller
 
     public function destroy(Video $video)
     {
-        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+        /* ⚠️ **კალათა** — `delete()` კი არა, `moveToTrash()`.
            ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
            გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
            ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
@@ -217,20 +217,20 @@ class VideoController extends Controller
         $must = $video ? ['sometimes', 'required'] : ['required'];
 
         return $request->validate([
-            // სათაური არასავალდებულოა — ცარიელზე ბმულიდან წამოვა (K2)
+            // სათაური არასავალდებულოა — ცარიელზე ბმულიდან წამოვა
             'title' => ['nullable', 'string', 'max:255'],
             'url' => [$video ? 'sometimes' : 'required', 'string', 'max:1000', 'url'],
             'description' => RichText::rules(),
-            // Q52 — არხი და გამოქვეყნების თარიღი (ვებძებნიდან, oEmbed-იდან ან ხელით)
+            // არხი და გამოქვეყნების თარიღი (ვებძებნიდან, oEmbed-იდან ან ხელით)
             'channel' => ['nullable', 'string', 'max:255'],
             'published_at' => ['nullable', 'date'],
-            // ტიპი მხოლოდ **საკუთარი** ლექსიკონიდან (5.1)
+            // ტიპი მხოლოდ **საკუთარი** ლექსიკონიდან
             'type_id' => [
                 ...$must,
                 'integer',
                 Rule::exists('video_types', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
-            // §6.4 — სტატუსი **საკუთარი** ლექსიკონიდან, ტიპის ზუსტი ანალოგი
+            // სტატუსი **საკუთარი** ლექსიკონიდან, ტიპის ზუსტი ანალოგი
             'status' => [...$must, 'string', Status::rule('video')],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'duration' => ['nullable', 'integer', 'min:0', 'max:864000'],
@@ -239,7 +239,7 @@ class VideoController extends Controller
             'is_favorite' => ['nullable', 'boolean'],
             'thumbnail' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_thumbnail' => ['nullable', 'boolean'],
-            // Tasks §44.2 — ფორმის ჩარჩოში ნაჩვენები ფოტო (ბმულიდან; ატვირთულზე იგნორირდება)
+            // ფორმის ჩარჩოში ნაჩვენები ფოტო (ბმულიდან; ატვირთულზე იგნორირდება)
             'thumbnail_url' => ['nullable', 'string', 'max:1000', 'url'],
         ]);
     }
@@ -261,7 +261,7 @@ class VideoController extends Controller
             $video->visibility = $data['visibility'];
         }
         if (array_key_exists('tags', $data)) {
-            // დუბლის მოჭრა (Tasks 5.3) — ერთი წყარო მოდელზეა, bulk-იც იმას იყენებს
+            // დუბლის მოჭრა — ერთი წყარო მოდელზეა, bulk-იც იმას იყენებს
             $video->tags = Video::normalizeTags($data['tags'] ?? []);
         }
         if ($request->has('is_favorite')) {
@@ -273,7 +273,7 @@ class VideoController extends Controller
             $video->url = $data['url'];
 
             // ბმულიდან რაც მოდის: ჯერ ლოკალური ამოცნობა (მყისიერი), მერე —
-            // მხოლოდ ცარიელი ველებისთვის — oEmbed/API (K2)
+            // მხოლოდ ცარიელი ველებისთვის — oEmbed/API
             $parsed = VideoUrl::parse($data['url']);
             $video->platform = $parsed['platform'];
             $video->external_id = $parsed['external_id'];
@@ -287,20 +287,20 @@ class VideoController extends Controller
             }
         }
 
-        // Tasks §44.2 — ჩარჩოში ნაჩვენები ფოტო: ფორმამ რაც აჩვენა, ის ინახება (ატვირთული უპირატესია)
+        // ჩარჩოში ნაჩვენები ფოტო: ფორმამ რაც აჩვენა, ის ინახება (ატვირთული უპირატესია)
         if (! empty($data['thumbnail_url']) && ! $video->thumbnail_path) {
             $video->thumbnail_url = $data['thumbnail_url'];
         }
 
         if ($request->boolean('remove_thumbnail')) {
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($video, 'thumbnail_path');
             $video->thumbnail_path = null;
         }
 
         if ($request->hasFile('thumbnail')) {
-            // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($video, 'thumbnail_path');
             $video->thumbnail_path = $this->meter
                 ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::VIDEO_THUMBNAILS);
@@ -309,7 +309,7 @@ class VideoController extends Controller
     }
 
     /**
-     * ცარიელი ველების შევსება ბმულიდან (K2). არასდროს გადააწერს იმას, რაც
+     * ცარიელი ველების შევსება ბმულიდან. არასდროს გადააწერს იმას, რაც
      * მომხმარებელმა შეავსო; ჩავარდნაზე ჩუმად გადის (`VideoMetadata` თვითონ ლოგავს).
      * `autofill=0`-ით გამორთვადია.
      */
@@ -319,7 +319,7 @@ class VideoController extends Controller
             return;
         }
 
-        /* Tasks §44.3 — პლატფორმის ნაგულისხმევი ესკიზი (`hqdefault`, 480×360) ცარიელად
+        /* პლატფორმის ნაგულისხმევი ესკიზი (`hqdefault`, 480×360) ცარიელად
            ითვლება: Data API-ს/`yt-dlp`-ს საუკეთესო (`maxres`) აქვს */
         $defaultThumb = ! $video->thumbnail_path
             && (! $video->thumbnail_url || $video->thumbnail_url === VideoUrl::parse($video->url)['thumbnail_url']);
@@ -330,7 +330,7 @@ class VideoController extends Controller
             return;
         }
 
-        // §44.1 — იგივე წყარო და იგივე ქეში, რაც ფორმის probe-ს: შენახვა ბმულს მეორედ არ კითხულობს
+        // იგივე წყარო და იგივე ქეში, რაც ფორმის probe-ს: შენახვა ბმულს მეორედ არ კითხულობს
         $meta = app(LinkResolver::class)->resolve($video->url);
 
         if ($needsTitle) {
@@ -345,8 +345,8 @@ class VideoController extends Controller
         if (! $video->tags && $meta['tags']) {
             $video->tags = $meta['tags'];
         }
-        /* Q52 — არხი oEmbed-ის `author_name`-ია (YouTube-ის API-ით `channelTitle`).
-           §44.3 — თარიღი Data API-დან ან `yt-dlp`-დან (oEmbed-ს არ აქვს). */
+        /* არხი oEmbed-ის `author_name`-ია (YouTube-ის API-ით `channelTitle`).
+           თარიღი Data API-დან ან `yt-dlp`-დან (oEmbed-ს არ აქვს). */
         if (! $video->channel && $meta['author']) {
             $video->channel = mb_substr((string) $meta['author'], 0, 255);
         }

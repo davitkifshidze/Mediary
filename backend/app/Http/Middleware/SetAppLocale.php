@@ -8,10 +8,10 @@ use Illuminate\Support\Facades\App;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * **ინტერფეისის ენა backend-საც სჭირდება** (Tasks GAP-12).
+ * **ინტერფეისის ენა backend-საც სჭირდება**.
  *
  * ⚠️ **აპლიკაციის შეცდომებს ეს არ ეხება.** ისინი მანქანური კოდებია და მათ
- * `frontend/src/lib/errors.ts` თარგმნის (GAP-01-ის წესი) — თარგმანი
+ * `frontend/src/lib/errors.ts` თარგმნის — თარგმანი
  * ბრაუზერშია, რადგან ერთსა და იმავე პასუხს ორ ენაზე ხატავენ. აქ მხოლოდ ის
  * ნახევარი წყდება, რომელსაც SPA ვერ დაფარავს: **Laravel-ის საკუთარი
  * ვალიდაციის ტექსტები** (`required`, `max`, `email`…), რომლებსაც ჩარჩო

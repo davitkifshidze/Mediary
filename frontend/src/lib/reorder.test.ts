@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { moveWithin, sortByIds } from '@/lib/reorder'
 
 /* ============================================================
-   **გადალაგების არითმეტიკა** (Tasks §11).
+   **გადალაგების არითმეტიკა**.
    ============================================================ */
 
 describe('moveWithin', () => {

@@ -3,7 +3,7 @@
 namespace App\Policies;
 
 /**
- * NoteEntry-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ * NoteEntry-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია.
  *
  * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
  * აღმოჩენისთვის არსებობს (`App\Models\NoteEntry` → `App\Policies\NoteEntryPolicy`)

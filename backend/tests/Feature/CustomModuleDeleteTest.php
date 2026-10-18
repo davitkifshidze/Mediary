@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **პირადი მოდულის წაშლა — ურნაში, ჩანაწერებთან ერთად (Tasks §37.7, Q31).**
+ * **პირადი მოდულის წაშლა — ურნაში, ჩანაწერებთან ერთად.**
  *
  * ⚠️ სამი მდგომარეობა და თითოს თავისი ხაფანგი: **ურნაში** (მოდული ყველა
  * რეესტრიდან ქრება, ფაილები და კვოტა კი ხელუხლებელია — ურნა არაფერს
@@ -231,7 +231,7 @@ class CustomModuleDeleteTest extends TestCase
      * `trash` scope არ ახლავს; ურნაში მყოფი მოდულის ჩანაწერები იქ დამთხვევად
      * ითვლებოდა. ⚠️ სერვისი ყოველ ჯერზე ახლიდან იქმნება — მისი მემო
      * ინსტანციისაა, და ერთი და იგივე მარშრუტი ტესტში ქეშირებულ კონტროლერს
-     * (და მემოს) იღებს (PERF-15).
+     * (და მემოს) იღებს.
      */
     public function test_a_trashed_module_leaves_the_people_ranking(): void
     {
@@ -285,7 +285,7 @@ class CustomModuleDeleteTest extends TestCase
         $this->actingAs($this->admin)->deleteJson("/api/modules/{$this->key}")->assertNotFound();
         $this->actingAs($this->stranger)->getJson("/api/modules/{$this->key}/details")->assertNotFound();
 
-        // ⚠️ `DELETE /modules/order` (§36) მოდულის გასაღებად არ წაიკითხება
+        // ⚠️ `DELETE /modules/order` მოდულის გასაღებად არ წაიკითხება
         $this->actingAs($this->owner)->deleteJson('/api/modules/order')->assertSuccessful();
 
         $this->assertNotNull(Module::where('key', $this->key)->first());

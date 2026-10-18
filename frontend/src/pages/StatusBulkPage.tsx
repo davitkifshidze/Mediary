@@ -31,15 +31,15 @@ import { StatusLabel } from '@/components/StatusBadge'
 type Mode = 'by_status' | 'specific'
 /**
  * დომენი: მედია-ტიპი, ვიდეოები (ვიდეოს თავისი პანელი აქვს — ტიპი და ტეგებიც)
- * ან (Tasks §37.5) **პირადი მოდული**.
+ * ან **პირადი მოდული**.
  */
 type Domain = MediaType | 'video' | CustomModuleKey
 
 /* ============================================================
-   მასობრივი ოპერაციები (Tasks 4).
+   მასობრივი ოპერაციები.
    ერთი გვერდი ყველა დომენზე — გადამრთველი გვერდზევეა:
    · მედია (ფილმები/სერიალები/ანიმე) → სტატუსის შეცვლა
-   · ვიდეოები → სტატუსი, ტიპი და ტეგები (19.9 → §6.4: სტატუსი ვიდეოსაც აქვს)
+   · ვიდეოები → სტატუსი, ტიპი და ტეგები (სტატუსი ვიდეოსაც აქვს)
    ============================================================ */
 
 export function StatusBulkPage() {
@@ -53,7 +53,7 @@ export function StatusBulkPage() {
       ...enabled
         .filter((m) => m.key === 'video')
         .map((m) => ({ ...m, label: moduleName(m, i18n.language), domain: 'video' as Domain })),
-      // §37.5 — პირადი მოდულიც: სტატუსი მისი ლექსიკონიდან, ჩანაწერები — მისი ცხრილიდან
+      // პირადი მოდულიც: სტატუსი მისი ლექსიკონიდან, ჩანაწერები — მისი ცხრილიდან
       ...customModules.map((m) => ({ ...m, label: moduleName(m, i18n.language), domain: m.key as Domain })),
     ],
     [mediaModules, enabled, customModules, i18n.language],
@@ -97,7 +97,7 @@ export function StatusBulkPage() {
         }
       />
 
-      {/* ---------- დომენის არჩევა — ყველა ჩართული მოდული ერთ გვერდზეა (Tasks 4) ----------
+      {/* ---------- დომენის არჩევა — ყველა ჩართული მოდული ერთ გვერდზეა ----------
           ⚠️ **ბარათები აუდიტ-ლოგის იმავე კომპონენტისაა** (`ui/scope-card.tsx`,
           შენი მითითება 2026-09-15): ერთნაირი ჩარჩოიანი ღილაკები მხოლოდ
           წარწერით განსხვავდებოდნენ, ე.ი. „რომელ ბიბლიოთეკაში ვცვლი სტატუსს"
@@ -189,7 +189,7 @@ const RECORD_TEXT: Record<string, string> = {
 }
 
 /**
- * **პირადი მოდული (Tasks §37.5)** — იგივე პანელი, თავისი წყაროთი.
+ * **პირადი მოდული** — იგივე პანელი, თავისი წყაროთი.
  * ⚠️ ტექსტი „ჩანაწერებს" ამბობს (`…Records`) — „ფილმები" აქ ტყუილი იქნებოდა.
  */
 function CustomBulkPanel({ moduleKey }: { moduleKey: CustomModuleKey }) {
@@ -247,7 +247,7 @@ function BulkStatusPanel({
 }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
-  // §6.4 — სია ლექსიკონიდან; ორივე გადამრჩევი (საიდან/სად) იმავეს ხატავს
+  // სია ლექსიკონიდან; ორივე გადამრჩევი (საიდან/სად) იმავეს ხატავს
   const { data: statuses = [] } = useStatuses(domain)
   const { toast } = useToast()
   const confirm = useConfirm()
@@ -290,7 +290,7 @@ function BulkStatusPanel({
     if (!canApply) return
     const ok = await confirm({
       title: t('bulkStatus.confirmTitle'),
-      /* §9.7 — ⚠️ ტექსტები სიტყვასიტყვით „ფილმს" ამბობდა იმ პანელზე,
+      /* ⚠️ ტექსტები სიტყვასიტყვით „ფილმს" ამბობდა იმ პანელზე,
          რომელიც სერიალსაც და ანიმესაც ემსახურება. `mediaKey()` სწორედ
          ამისთვის არსებობს (`lib/media.ts`). */
       description: t(text('bulkStatus.confirmDesc'), {

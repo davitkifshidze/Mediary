@@ -12,7 +12,7 @@ import { LanguageDropdown } from '@/components/LanguageDropdown'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
 /**
- * რეგისტრაცია (F4) — ღიაა, მაგრამ ანგარიში „ცარიელი" იქმნება:
+ * რეგისტრაცია — ღიაა, მაგრამ ანგარიში „ცარიელი" იქმნება:
  * მოდულებს მომხმარებელი ცალკე ითხოვს და ადმინი რთავს (იხ. /modules).
  */
 export function RegisterPage() {
@@ -20,7 +20,7 @@ export function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  /* Tasks §40.6 — **ბმულით მოსული ახალი მომხმარებელი ბმულს არ კარგავს.**
+  /* **ბმულით მოსული ახალი მომხმარებელი ბმულს არ კარგავს.**
      აქამდე რეგისტრაცია ყოველთვის `/modules`-ზე გადადიოდა, ე.ი. გაზიარების
      გვერდიდან „რეგისტრაცია" დაჭერილს გვერდი სამუდამოდ ეკარგებოდა. */
   const from = (location.state as { from?: string } | null)?.from

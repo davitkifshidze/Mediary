@@ -7,7 +7,7 @@ use App\Services\Storage\StorageMeter;
 use Illuminate\Console\Command;
 
 /**
- * `users.storage_used_bytes`-ის სრული გადათვლა (Tasks 17.1).
+ * `users.storage_used_bytes`-ის სრული გადათვლა.
  *
  * მრიცხველი ჩვეულებრივ დელტით ცვლილება (ატვირთვა/წაშლა); ეს ბრძანება მაშინაა,
  * როცა ის ეჭვქვეშაა — მიგრაციის შემდეგ პირველი გაშვება, ხელით წაშლილი ფაილი,

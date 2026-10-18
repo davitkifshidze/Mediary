@@ -18,7 +18,7 @@ use Illuminate\Validation\Rule;
  * შაბლონი), წაშლისას სიმღერები **არ იკარგება**: `move_to` ან „ჟანრის გარეშე".
  *
  * ⚠️ განსხვავება წიგნის/ბორდგეიმის ლექსიკონისგან: კავშირი **pivot-ია**
- * (`song_genre_song`, `DECISIONS.md` §5), ე.ი. წაშლაზე `move_to` ჟანრს
+ * (`song_genre_song`), ე.ი. წაშლაზე `move_to` ჟანრს
  * **ამატებს** სიმღერებს და არა სვეტს ცვლის — სიმღერას სხვა ჟანრებიც აქვს.
  */
 class SongGenreController extends Controller
@@ -55,7 +55,7 @@ class SongGenreController extends Controller
             'name_ka' => $data['name_ka'],
             'name_en' => $data['name_en'],
             'icon' => $data['icon'] ?? $songGenre->icon,
-            // Tasks §24.3 — ⚠️ `array_key_exists`: ფერის მოხსნა (`null`) ცხადი არჩევანია
+            // ⚠️ `array_key_exists`: ფერის მოხსნა (`null`) ცხადი არჩევანია
             'color' => array_key_exists('color', $data) ? $data['color'] : $songGenre->color,
         ])->save();
 
@@ -80,7 +80,7 @@ class SongGenreController extends Controller
             DictionaryRecords::messages(),
         );
 
-        // ეტაპი 8 — ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**, მოდელის გავლით.
+        // ჩანაწერებიც „იშლება“ — **მფლობელის ურნაში**, მოდელის გავლით.
         // ⚠️ pivot-ზე ეს ის ჩანაწერიცაა, რომელსაც სხვა ჟანრიც აქვს — UI ამას ცხადად ამბობს
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::trash(Song::whereKey($songGenre->songs()->pluck('songs.id')->all()));
@@ -99,7 +99,7 @@ class SongGenreController extends Controller
             $moved = count($songIds);
         }
 
-        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+        /* ⚠️ **ურნა** — რიგი ურნაში გადადის და იმახსოვრებს,
            რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
            შემოგთავაზებს (`DictionaryTrash`). pivot-ს `trash()` ცხადად ხსნის — FK-ის კასკადი აღარ ეშვება. */
         DictionaryTrash::trash($songGenre, 'song_genre', $songIds, $moveTo);

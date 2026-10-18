@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * per-user მფლობელობა (I1, ვარიანტი A).
+ * per-user მფლობელობა.
  *
  * ერთი global scope უზრუნველყოფს, რომ ყველა არსებული query — სია, ფილტრები,
  * `withCount`, route-model-binding, ფრანჩაიზის ანოტაცია — ავტომატურად შემოიფარგლოს

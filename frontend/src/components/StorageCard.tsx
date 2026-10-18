@@ -33,7 +33,7 @@ import { Label } from '@/components/ui/label'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   „ჩემი საცავი" — **ერთი ბლოკი** (ეტაპი 5, 2026-09-13).
+   „ჩემი საცავი" — **ერთი ბლოკი** (2026-09-13).
 
    შენი სიტყვები: „პროფილში რომაა ატვირთული ფაილები და საცავი — ერთი ან
    მეორეზე გადასვლა რატომ, ორივე იყოს გამოტანილი სრულად".
@@ -84,7 +84,7 @@ export function StorageCard() {
   })
 
   const usage = usageQ.data
-  // მოდულის სახელი key-იდან; `account` და `chat` მოდულები არ არიან (§16.4)
+  // მოდულის სახელი key-იდან; `account` და `chat` მოდულები არ არიან
   const label = (key: string) =>
     STORAGE_PSEUDO_MODULES.includes(key)
       ? t(`storage.${key}`)
@@ -183,7 +183,7 @@ function UploadedFiles() {
     mutationFn: (path: string) => deleteStorageFile(path),
     onSuccess: (res) => {
       refreshAll()
-      // Tasks §29 — ურნაში გადატანილი ადგილს კვლავ იკავებს, ამიტომ სხვა სიტყვაა
+      // ურნაში გადატანილი ადგილს კვლავ იკავებს, ამიტომ სხვა სიტყვაა
       toast({ title: t(res.trashed > 0 ? 'storage.fileTrashed' : 'storage.fileDeleted'), variant: 'success' })
     },
     onError: fail,
@@ -253,7 +253,7 @@ function UploadedFiles() {
         <InfoHint info={t('storage.filesHint')} />
       </h3>
 
-      {/* Tasks §29 — ურნაში მყოფი აქ არ ჩანს, მაგრამ ადგილს იკავებს: ჯამი ამბობს, სად არის */}
+      {/* ურნაში მყოფი აქ არ ჩანს, მაგრამ ადგილს იკავებს: ჯამი ამბობს, სად არის */}
       {(filesQ.data?.trash?.files ?? 0) > 0 && (
         <p className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <ArchiveRestore className="size-4" />
@@ -287,7 +287,7 @@ function UploadedFiles() {
 }
 
 /**
- * ლიმიტის გაზრდის მოთხოვნა (Tasks 17.4).
+ * ლიმიტის გაზრდის მოთხოვნა.
  *
  * ცალკე ცხრილი არ გაჩენილა — იგივე `approval_requests`-ია, რაც მოდულებზე,
  * ე.ი. ადმინი მას `/requests`-ზე და `/users/{id}`-ზე იმავე ღილაკებით ხედავს.
@@ -398,12 +398,12 @@ function QuotaRequest({ quota }: { quota: number }) {
 }
 
 /**
- * ობოლი ფაილები (17.5) — დისკზე არიან, ბაზაში კი არავინ იხსენიებს.
+ * ობოლი ფაილები — დისკზე არიან, ბაზაში კი არავინ იხსენიებს.
  *
  * ⚠️ **გლობალური ოპერაციაა და არა per-user:** ატვირთვები საერთო
  * საქაღალდეებში ჯდება, ე.ი. არ-მოხსენიებულ ფაილს მფლობელი აღარ აქვს.
  * ამიტომ ბლოკი მხოლოდ `super_admin`-ს ჩანს (backend-ზეც იგივე ზღუდეა) —
- * **გვერდის შეცვლა უფლებას ვერ შეცვლის** (ეტაპი 5).
+ * **გვერდის შეცვლა უფლებას ვერ შეცვლის**.
  */
 function OrphanFiles() {
   const { t } = useTranslation()

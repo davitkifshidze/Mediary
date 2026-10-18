@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **Tasks §7.1 — ვიდეოს ლოკალურად ჩამოწერა.**
+ * **ვიდეოს ლოკალურად ჩამოწერა.**
  *
  * ⚠️ ნამდვილი `yt-dlp` ტესტში **არ ეშვება**: ის ამ მანქანაზე შეიძლება
  * საერთოდ არ იყოს, გარე ქსელს მიმართავს და გიგაბაიტს წერს. ამიტომ კლიენტი
@@ -203,7 +203,7 @@ class VideoDownloadTest extends TestCase
     }
 
     /* ============================================================
-       ხელახალი ჩამოტვირთვა (BUG-22)
+       ხელახალი ჩამოტვირთვა
        ============================================================ */
 
     /**
@@ -355,7 +355,7 @@ class VideoDownloadTest extends TestCase
         $this->assertNotContains($plain->id, $ids);
     }
 
-    /** Tasks §21.3 — სექციის სათაური: რამდენი ასლია და რამდენი ადგილი უკავია (მხოლოდ მზა, მხოლოდ ჩემი) */
+    /** სექციის სათაური: რამდენი ასლია და რამდენი ადგილი უკავია (მხოლოდ მზა, მხოლოდ ჩემი) */
     public function test_the_status_endpoint_sums_the_local_copies(): void
     {
         $this->fakeYtDlp(2048);
@@ -372,7 +372,7 @@ class VideoDownloadTest extends TestCase
             ->assertJsonPath('downloaded_size', 4096);
     }
 
-    /** Tasks §21.3 — დახარისხება ზომით და ჩამოტვირთვის თარიღით */
+    /** დახარისხება ზომით და ჩამოტვირთვის თარიღით */
     public function test_local_copies_can_be_sorted_by_size_and_date(): void
     {
         $this->fakeYtDlp(1024);
@@ -398,7 +398,7 @@ class VideoDownloadTest extends TestCase
         $this->fakeYtDlp();
         $video = $this->makeVideo($this->user);
         // ⚠️ **საწყისი დროც იწერება** — სწორედ ის ასხვავებს ცოცხალ გაშვებას
-        // მკვდრისგან (§B1); მის გარეშე ჩანაწერი „გაჭედილად" ითვლება
+        // მკვდრისგან; მის გარეშე ჩანაწერი „გაჭედილად" ითვლება
         $video->forceFill([
             'download_status' => Video::DOWNLOAD_RUNNING,
             'download_started_at' => now(),
@@ -411,7 +411,7 @@ class VideoDownloadTest extends TestCase
     }
 
     /* ============================================================
-       გაჭედილი ჩამოწერა (აუდიტი 2026-09-14, §B1)
+       გაჭედილი ჩამოწერა
        ============================================================ */
 
     /**

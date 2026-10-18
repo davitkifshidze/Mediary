@@ -22,19 +22,19 @@ import { PosterImage } from '@/components/PosterImage'
 import { StatusLabel } from '@/components/StatusBadge'
 
 /* ============================================================
-   **რჩეულში დამატება — ფრანჩაიზი პოპაპით** (Tasks §18).
+   **რჩეულში დამატება — ფრანჩაიზი პოპაპით**.
 
    ⚠️ **აქამდე სერვერი ჩუმად ავრცელებდა**: ფილმის რჩეულში ჩასმა იმავე
    კოლექციის ყველა ნანახ-არა ნაწილს უკითხავად აფერადებდა და მხოლოდ იმას,
    რაც ბიბლიოთეკაში უკვე იყო. ახლა კითხვა ეკრანზეა: „მხოლოდ ეს ფილმი" თუ
    „მთელი ფრანჩაიზი" — და მეორეზე თითო ნაწილი ჩექბოქსით ირჩევა.
 
-   ⚠️ **ბიბლიოთეკაში არარსებული ნაწილიც ემატება (Q5)**: ბეჯი „დაემატება",
+   ⚠️ **ბიბლიოთეკაში არარსებული ნაწილიც ემატება**: ბეჯი „დაემატება",
    სტატუსი იქვე ირჩევა (ნაგულისხმევი — მოდულის ნაგულისხმევი, როგორც
    აღმოჩენიდან დამატებისას), თვითონ დამატება კი TMDB-ის არსებული რიგით მიდის
    (`useQueue().enqueue` — `status` და `favorite` ერთეულს მიჰყვება).
 
-   ⚠️ **Tasks §51 — ნაგულისხმევად „მხოლოდ ეს ფილმი"** (შენი სიტყვები: „რჩეულებში
+   ⚠️ **ნაგულისხმევად „მხოლოდ ეს ფილმი"** (შენი სიტყვები: „რჩეულებში
    დამატებისას თავიდან იდგეს მხოლოდ ამ ფილმზე"); „მთელ ფრანჩაიზზე" ნაწილები
    ისევ ყველა მონიშნულია. **უკვე რჩეული ნაწილი ჩაკეტილია** — მონიშნული, ბეჯით
    „უკვე რჩეულია": აქედან რჩეულიდან მოხსნა არ ხდება (სერვერი რჩეულს მხოლოდ
@@ -73,7 +73,7 @@ export function FranchiseFavoriteDialog({
   const parts = useMemo(() => collectionQ.data?.parts ?? [], [collectionQ.data])
   const others = parts.filter((p) => p.movie_id !== movie.id)
 
-  // §51.1 — ნაგულისხმევად მხოლოდ ეს ფილმი
+  // ნაგულისხმევად მხოლოდ ეს ფილმი
   const [mode, setMode] = useState<Mode>('only')
   /** მოხსნილი ნაწილები (TMDB id) — ნაგულისხმევად ყველა მონიშნულია */
   const [excluded, setExcluded] = useState<Set<number>>(() => new Set())
@@ -83,7 +83,7 @@ export function FranchiseFavoriteDialog({
   const defaultStatus = statuses.find((s) => s.is_default) ?? statuses.find((s) => s.role === 'todo') ?? statuses[0]
   const statusKey = status ?? defaultStatus?.key ?? null
 
-  /** §51.2 — უკვე რჩეული ნაწილი ისედაც რჩეულია: ჩაკეტილია და ხელახლა აღარ იგზავნება */
+  /** უკვე რჩეული ნაწილი ისედაც რჩეულია: ჩაკეტილია და ხელახლა აღარ იგზავნება */
   const favorites = others.filter((p) => p.is_favorite)
   const chosen = mode === 'all' ? others.filter((p) => !p.is_favorite && !excluded.has(p.tmdb_id)) : []
   const fresh = chosen.filter((p) => !p.owned)
@@ -166,7 +166,7 @@ export function FranchiseFavoriteDialog({
               )}
               {parts.map((p) => {
                 const isThis = p.movie_id === movie.id
-                // §51.2 — უკვე რჩეული: მონიშნული და ჩაკეტილი
+                // უკვე რჩეული: მონიშნული და ჩაკეტილი
                 const locked = isThis || p.is_favorite
                 const on = locked || !excluded.has(p.tmdb_id)
                 return (
@@ -221,7 +221,7 @@ export function FranchiseFavoriteDialog({
             </ul>
           )}
 
-          {/* Q5 — ახლებისთვის სტატუსი იქვე; ჩანს მხოლოდ მაშინ, როცა მართლა ემატება რამე */}
+          {/* ახლებისთვის სტატუსი იქვე; ჩანს მხოლოდ მაშინ, როცა მართლა ემატება რამე */}
           {mode === 'all' && fresh.length > 0 && statuses.length > 0 && (
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm text-muted-foreground">{t('franchise.newStatus', { count: fresh.length })}</span>

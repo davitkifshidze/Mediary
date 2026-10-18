@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **შესვლების ჟურნალი — ყველა ჩანაწერზე** (Tasks §10, Q2).
+ * **შესვლების ჟურნალი — ყველა ჩანაწერზე**.
  *
  * შენი სიტყვები: „ფილმებში მინდა შესვლების მთვლელი; ეს მთვლელი მჭირდება
  * აბსოლუტურად ყველგან და ყველაფერზე, და ამის ლოგებიც — ვინ, სად შევიდა,
@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Schema;
  * ⚠️ **ურნა არ სჭირდება** (`RegistryConsistencyTest::NOT_TRASHED`): ჟურნალი
  * ჩანაწერს ეკუთვნის და მასთან ერთად ქრება (`HasVisits::deleting`).
  * ⚠️ **აუდიტში არ იწერება** (`AuditRegistry::NOT_LOGGED`): ყოველი გახსნა
- * ლოგში „შეიქმნა"-დ ჩაიწერებოდა და §4-ის გვერდს დამარხავდა.
+ * ლოგში „შეიქმნა"-დ ჩაიწერებოდა და აუდიტის გვერდს დამარხავდა.
  */
 return new class extends Migration
 {

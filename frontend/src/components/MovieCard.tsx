@@ -34,10 +34,10 @@ import { useStatuses } from '@/lib/statuses'
 
 /* ============================================================
    **ფილმის/სერიალის/ანიმეს ჩანაწერი სიაში** — ბარათი (`MovieCard`, ბადეც მისივე
-   კომპაქტური ზომაა) და სტრიქონი (`MovieRow`, Tasks §45).
+   კომპაქტური ზომაა) და სტრიქონი (`MovieRow`).
 
-   ⚠️ **ლოგიკა ერთია** (`useMovieRecord`): სტატუსი, რჩეული (ფრანჩაიზის პოპაპით,
-   §18), ჩაკეტვა (§35.5), წაშლა და მარჯვენა ღილაკის მენიუ (§7) — ორივე ხედს
+   ⚠️ **ლოგიკა ერთია** (`useMovieRecord`): სტატუსი, რჩეული (ფრანჩაიზის პოპაპით),
+   ჩაკეტვა, წაშლა და მარჯვენა ღილაკის მენიუ — ორივე ხედს
    ერთნაირად აქვს, თორემ სტრიქონი ბარათს ერთ კვირაში დაშორდებოდა.
    ============================================================ */
 
@@ -50,11 +50,11 @@ function useMovieRecord(movie: MovieListItem, type: MediaType) {
   const confirm = useConfirm()
   const { toast } = useToast()
   const api = mediaApi(type)
-  // §6.4 — სტატუსების სია ლექსიკონიდან (ქეში ერთია, ე.ი. ბარათზე დამატებითი მოთხოვნა არაა)
+  // სტატუსების სია ლექსიკონიდან (ქეში ერთია, ე.ი. ბარათზე დამატებითი მოთხოვნა არაა)
   const { data: statuses = [] } = useStatuses(type)
   const { detailBase } = mediaOf(type)
   const missing = movie.missing ?? []
-  // Tasks §47 — ბარათზე აღწერა უბრალო ტექსტია (ფორმატი მხოლოდ დეტალშია)
+  // ბარათზე აღწერა უბრალო ტექსტია (ფორმატი მხოლოდ დეტალშია)
   const desc = plainText(lang === 'ka' ? movie.description_ka || movie.description_en : movie.description_en || movie.description_ka)
 
   const inval = () => {
@@ -63,10 +63,10 @@ function useMovieRecord(movie: MovieListItem, type: MediaType) {
   }
   const statusMut = useMutation({ mutationFn: (s: string) => api.setStatus(movie.id, s), onSuccess: inval })
   const favMut = useMutation({ mutationFn: () => api.toggleFavorite(movie.id), onSuccess: inval })
-  /* Tasks §18 — ფილმზე, რომელსაც ფრანჩაიზი აქვს, რჩეულში **დამატება** პოპაპს ხსნის
+  /* ფილმზე, რომელსაც ფრანჩაიზი აქვს, რჩეულში **დამატება** პოპაპს ხსნის
      („მხოლოდ ეს ფილმი" / „მთელი ფრანჩაიზი"); მოხსნა და უფრანჩაიზო ფილმი — პირდაპირ. */
   const [franchiseOpen, setFranchiseOpen] = useState(false)
-  // Tasks §35.5 — ჩაკეტვა / პაროლი მარჯვენა ღილაკიდან
+  // ჩაკეტვა / პაროლი მარჯვენა ღილაკიდან
   const [locking, setLocking] = useState(false)
   const relockMut = useMutation({
     mutationFn: () => relockRecord(mediaLockBase(type, movie.id)),
@@ -83,7 +83,7 @@ function useMovieRecord(movie: MovieListItem, type: MediaType) {
     mutationFn: () => api.remove(movie.id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [type] })
-      // 19.3 — ტექსტი დომენს მიჰყვება: სერიალზე „ფილმი წაიშალა" ეწერა
+      // ტექსტი დომენს მიჰყვება: სერიალზე „ფილმი წაიშალა" ეწერა
       toast({ title: t(mediaKey('toast.deleted', type)), variant: 'success' })
     },
   })
@@ -99,7 +99,7 @@ function useMovieRecord(movie: MovieListItem, type: MediaType) {
     if (ok) delMut.mutate()
   }
 
-  /* Tasks §7 — ერთი სია (`record-menu`): გახსნა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა.
+  /* ერთი სია (`record-menu`): გახსნა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა.
      „გახსნა" აქამდე არ იყო — მარჯვენა ღილაკი ბრაუზერის „ახალ ჩანართში"-ს ფარავდა. */
   const actions: MenuAction[] = [
     {
@@ -211,10 +211,10 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
                     {movieTitle(movie, lang)}
                   </h3>
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    {/* §35.5 — ჩაკეტილი, ამ სესიაში გახსნილი */}
+                    {/* ჩაკეტილი, ამ სესიაში გახსნილი */}
                     {movie.locked && <LockOpen className="size-3" aria-label={t('lock.badgeOpen')} />}
                     <span>{movie.year ?? '—'}</span>
-                    {/* Tasks §9 (Q1) — ჩემი ქულა ოქროსფერი ვარსკვლავით; TMDB-ის საშუალო „TMDB"-ით და მინიშნებით */}
+                    {/* ჩემი ქულა ოქროსფერი ვარსკვლავით; TMDB-ის საშუალო „TMDB"-ით და მინიშნებით */}
                     {movie.my_rating != null && (
                       <>
                         <span className="opacity-40">·</span>
@@ -261,7 +261,7 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
 }
 
 /**
- * Tasks §45 — **სტრიქონი**: პოსტერი, სათაური, წელი · ჟანრები · TMDB, და §29.1-ის ზოლი —
+ * **სტრიქონი**: პოსტერი, სათაური, წელი · ჟანრები · TMDB, და მოქმედებების ზოლი —
  * ჩემი ქულა · სტატუსი · რჩეული · რედაქტირება · წაშლა. მენიუ და დიალოგები ბარათისაა.
  */
 export function MovieRow({ movie, type = 'movie' }: { movie: MovieListItem; type?: MediaType }) {
@@ -286,7 +286,7 @@ export function MovieRow({ movie, type = 'movie' }: { movie: MovieListItem; type
         }
         meta={
           <>
-            {/* §35.5 — ჩაკეტილი, ამ სესიაში გახსნილი */}
+            {/* ჩაკეტილი, ამ სესიაში გახსნილი */}
             {movie.locked && <LockOpen className="size-3" aria-label={t('lock.badgeOpen')} />}
             {movie.year ? <span>{movie.year}</span> : null}
             {movie.genres.slice(0, 3).map((g) => (

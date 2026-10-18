@@ -6,7 +6,7 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
 /* ============================================================
    სიმღერების მოდული (`song`, 2026-09-03).
 
-   ⚠️ ადრე სიმღერა `videos`-ის რიგი იყო (Tasks §15). ცალკე მოდულმა მას
+   ⚠️ ადრე სიმღერა `videos`-ის რიგი იყო. ცალკე მოდულმა მას
    მისცა საიდბარის სექცია, ადმინის გადამრთველი, როლების უფლებები და
    სრული მუსიკალური ველები: შემსრულებელი · ალბომი · წელი · ჟანრი ·
    ხანგრძლივობა · ტეგები · ჩემი ქულა.
@@ -18,7 +18,7 @@ export interface Song {
   artist: string | null
   album: string | null
   year: number | null
-  /** ⚠️ **მრავალჟანრიანია** (`DECISIONS.md` §5) — ერთი `genre_id` აღარ არსებობს */
+  /** ⚠️ **მრავალჟანრიანია** — ერთი `genre_id` აღარ არსებობს */
   genres?: SongGenre[]
   genre_ids?: number[]
   duration: number | null
@@ -34,17 +34,17 @@ export interface Song {
   is_favorite: boolean
   play_count: number
   played_at: string | null
-  /** 16.5 — საჯარო პროფილის წინაპირობა */
+  /** საჯარო პროფილის წინაპირობა */
   visibility: 'private' | 'public'
   playlist_ids?: number[]
   /**
-   * §5.3 — რომელ პლეილისტებშია სიმღერა.
+   * რომელ პლეილისტებშია სიმღერა.
    * ⚠️ `undefined` = კავშირი არ ჩატვირთულა, `[]` = **არცერთში** — სია ამ
    * ორს სხვადასხვანაირად ხატავს, თორემ „არცერთ პლეილისტში" იქაც ეწერებოდა,
    * სადაც უბრალოდ არ გვიკითხავს.
    */
   playlists?: { id: number; name: string }[]
-  /** §7.4 — მიმაგრებული ფაილები/ჩანიშვნები (`undefined` = არ დაგვითვლია) */
+  /** მიმაგრებული ფაილები/ჩანიშვნები (`undefined` = არ დაგვითვლია) */
   created_at: string | null
 }
 
@@ -74,7 +74,7 @@ export interface SongInput {
   /** ატვირთული ფოტო; მითითების შემთხვევაში multipart-ად იგზავნება */
   thumbnail?: File | null
   remove_thumbnail?: boolean
-  /** Tasks §44.2 — ბმულიდან ჩარჩოში ჩასმული ფოტო (URL); ატვირთულზე სერვერი იგნორირებს */
+  /** ბმულიდან ჩარჩოში ჩასმული ფოტო (URL); ატვირთულზე სერვერი იგნორირებს */
   thumbnail_url?: string | null
 }
 
@@ -84,7 +84,7 @@ function toFormData(input: SongInput): FormData {
   fd.append('url', input.url)
   fd.append('artist', input.artist ?? '')
   fd.append('album', input.album ?? '')
-  /* Tasks §25.3 (§4.8-ის წესი) — `null` („გაასუფთავე“) ცარიელ სტრიქონად
+  /* `null` („გაასუფთავე“) ცარიელ სტრიქონად
      იგზავნება, `undefined` („არ შეეხო“) — არა; ადრე გასუფთავებული წელი,
      ხანგრძლივობა და ქულა შენახვის შემდეგ უკან ბრუნდებოდა. */
   const number = (key: 'year' | 'duration' | 'rating') => {
@@ -164,7 +164,7 @@ export interface SongGenre {
   name_ka: string
   name_en: string
   icon: string | null
-  /** Tasks §24.3 — ჟანრის ფერი: პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; `null` — ნაცრისფერი */
+  /** ჟანრის ფერი: პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; `null` — ნაცრისფერი */
   color: string | null
   sort_order: number
   songs_count?: number

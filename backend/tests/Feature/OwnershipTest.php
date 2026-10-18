@@ -13,7 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * I7 — მფლობელობა, მოდულების gate და ადმინის დადასტურებები.
+ * მფლობელობა, მოდულების gate და ადმინის დადასტურებები.
  */
 class OwnershipTest extends TestCase
 {
@@ -183,7 +183,7 @@ class OwnershipTest extends TestCase
             ->assertNoContent();
     }
 
-    /** K13 — მომხმარებელი თვითონ რთავს/თიშავს მინიჭებულ მოდულს */
+    /** მომხმარებელი თვითონ რთავს/თიშავს მინიჭებულ მოდულს */
     public function test_user_can_disable_and_reenable_own_module(): void
     {
         $this->actingAs($this->alice)->getJson('/api/movies')->assertOk();
@@ -215,7 +215,7 @@ class OwnershipTest extends TestCase
         $this->actingAs($this->admin)->getJson('/api/admin/users')->assertOk();
     }
 
-    /* ---------- Tasks 1.6 — ადმინის სექციები როლის უფლებით ---------- */
+    /* ---------- ადმინის სექციები როლის უფლებით ---------- */
 
     /** როლს შეიძლება მიეცეს ცალკეული სექცია, მთელი super_admin-ის გარეშე */
     public function test_role_can_grant_a_single_admin_section(): void
@@ -313,7 +313,7 @@ class OwnershipTest extends TestCase
         $this->actingAs($alice)->deleteJson("/api/admin/users/{$this->bob->id}")->assertStatus(403);
     }
 
-    /** L4 — სიაშივე სრული ინფო: შიგთავსი, რჩეულები, ბოლო აქტივობა, ადგილი */
+    /** სიაშივე სრული ინფო: შიგთავსი, რჩეულები, ბოლო აქტივობა, ადგილი */
     public function test_admin_user_list_carries_full_info(): void
     {
         $this->makeMovie($this->alice, 'Alice movie')->forceFill(['is_favorite' => true])->save();
@@ -328,8 +328,8 @@ class OwnershipTest extends TestCase
         $this->assertSame(['movie', 'series'], $row['modules']);
         $this->assertSame([], $row['hidden_modules']);
         $this->assertArrayHasKey('last_activity', $row);
-        /* 17.1 — ადმინის ხედში ლიმიტი და დაქეშილი მრიცხველი.
-           ⚠️ **`files`/`bytes` სიაში აღარ არის** (Tasks PERF-14): სრული
+        /* ადმინის ხედში ლიმიტი და დაქეშილი მრიცხველი.
+           ⚠️ **`files`/`bytes` სიაში აღარ არის**: სრული
            ინვენტარი თითო მომხმარებელზე ~30 query-ს აკეთებდა, სია კი მას
            არც ხატავდა. ის `GET /admin/users/{id}`-ზე რჩება. */
         $this->assertSame(0, $row['storage']['used']);
@@ -337,10 +337,10 @@ class OwnershipTest extends TestCase
         $this->assertArrayNotHasKey('files', $row['storage']);
     }
 
-    /** L3 — „ვის აქვს ჩართული": თვითონ გამორთულიც სიაშია, ოღონდ მონიშნული */
+    /** „ვის აქვს ჩართული": თვითონ გამორთულიც სიაშია, ოღონდ მონიშნული */
     public function test_admin_module_list_shows_holders_with_state(): void
     {
-        // alice თვითონ გამორთავს ფილმებს — უფლება რჩება (K13)
+        // alice თვითონ გამორთავს ფილმებს — უფლება რჩება
         $this->actingAs($this->alice)->patchJson('/api/modules/movie', ['enabled' => false])->assertOk();
 
         $movie = collect(

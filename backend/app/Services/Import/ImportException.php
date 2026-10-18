@@ -5,7 +5,7 @@ namespace App\Services\Import;
 use RuntimeException;
 
 /**
- * **Tasks §59.6 — იმპორტის ფაილის „ვერ წავიკითხე".**
+ * **იმპორტის ფაილის „ვერ წავიკითხე".**
  *
  * `message` მანქანური კოდია (`import_format_unknown`…), რომელსაც კონტროლერი
  * პასუხის `message`-ად აბრუნებს (CLAUDE.md-ის წესი); `context` — ის, რაც

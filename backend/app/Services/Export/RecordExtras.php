@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\MorphOneOrMany;
 use Illuminate\Support\Facades\DB;
 
 /**
- * **Tasks §59.5 — ჩანაწერის „დამატებები" ექსპორტში.**
+ * **ჩანაწერის „დამატებები" ექსპორტში.**
  *
  * ექსპორტში აქამდე მხოლოდ ჩანაწერის სვეტები გადიოდა — დამატებითი ველები,
  * მიმაგრებული ფაილები, ჩანიშვნები, გალერეა, მსახიობები და მარშრუტები კი
@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\DB;
  * `files/<გზა>`-ზე დევს (`LibraryArchive`); ცალკე JSON/CSV-ში გზა მხოლოდ
  * მინიშნებაა და იმპორტი მას ფაილის გარეშე არ იყენებს.
  *
- * ⚠️ **ჩაკეტილი არაფერი გადის** (Tasks §35.4): ჩაკეტილი ფოტო პრივატულ
+ * ⚠️ **ჩაკეტილი არაფერი გადის**: ჩაკეტილი ფოტო პრივატულ
  * `gallery/locked`-შია და გამოიტოვება, ჩაკეტილი მსახიობი — `withoutLocked()`.
  *
  * ⚠️ **ბევრი ჩანაწერის მნიშვნელობა პორციით იკითხება** (`preload()`):
@@ -140,7 +140,7 @@ class RecordExtras
     private function images(Model $record): array
     {
         return $record->galleryImages
-            // ⚠️ ჩაკეტილი ფოტო (`gallery/locked`) ექსპორტში არ გადის — Tasks §35.4
+            // ⚠️ ჩაკეტილი ფოტო (`gallery/locked`) ექსპორტში არ გადის
             ->reject(fn (GalleryImage $image) => StorageFolder::isPrivate((string) $image->path))
             ->map(fn (GalleryImage $image) => [
                 'type' => 'image',

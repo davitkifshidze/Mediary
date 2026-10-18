@@ -6,14 +6,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Tasks 5.1 — ვიდეოს ტიპები **მართვადი სია** გახდა.
+ * ვიდეოს ტიპები **მართვადი სია** გახდა.
  *
  * ადრე `videos.kind` enum-ი იყო ორი მყარი მნიშვნელობით (`media` = გასართობი,
  * `info` = ინფორმაციული). ახლა ტიპი per-user ჩანაწერია: user თვითონ ამატებს,
  * არქმევს სახელს ორ ენაზე და ალაგებს. არსებული `kind` ჩანაწერებად მიგრირდება
  * (`media` → „გასართობი", `info` → „ინფორმაციული") და თვითონ სვეტი იშლება.
  *
- * აქვე ემატება `videos.visibility` (Tasks 5.6/16.5) — საჯარო პროფილისა და
+ * აქვე ემატება `videos.visibility` — საჯარო პროფილისა და
  * „დამთხვევების" წინაპირობა. ნაგულისხმევი ყოველთვის `private`-ია: არავის
  * ჩანაწერი ჩუმად საჯარო არ ხდება.
  */
@@ -44,7 +44,7 @@ return new class extends Migration
         Schema::table('videos', function (Blueprint $table) {
             $table->foreignId('type_id')->nullable()->after('description')
                 ->constrained('video_types')->nullOnDelete();
-            // 5.6/16.5 — ხილვადობა თავიდანვე, რომ 16-ის ტალღა-მიგრაცია აღარ დაგვჭირდეს
+            // ხილვადობა თავიდანვე, რომ მოგვიანებით ცალკე მიგრაცია აღარ დაგვჭირდეს
             $table->string('visibility', 20)->default('private')->after('is_favorite');
             $table->index(['user_id', 'type_id']);
         });

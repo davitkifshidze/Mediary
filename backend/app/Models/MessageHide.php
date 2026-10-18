@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * **„ეს წერილი მე დავიმალე" (აუდიტი 2026-09-14, §B2).**
+ * **„ეს წერილი მე დავიმალე".**
  *
  * ⚠️ **ცალკე ცხრილი, რადგან ფაქტი თითო მხარისაა.** „ორივესთან წაშლა"
  * შეტყობინების ფაქტია და `messages.removed_at`-ში ზის; „მხოლოდ ჩემთან" კი

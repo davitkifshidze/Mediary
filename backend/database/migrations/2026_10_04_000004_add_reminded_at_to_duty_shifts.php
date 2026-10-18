@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **მორიგეობის შეხსენება წინა დღეს (Tasks §34.7).**
+ * **მორიგეობის შეხსენება წინა დღეს.**
  *
  * `reminded_at` — როდის გაეგზავნა შეხსენება („ხვალ მორიგეობა გაქვს“). ⚠️ ის
  * **დაჭერის ნიშანიცაა** (`DutyReminder`): ორი გამომძახებელი (cron და ღია ტაბის

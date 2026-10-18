@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **ადგილების მოდული (FEAT-26).**
+ * **ადგილების მოდული.**
  *
  * ⚠️ `Http::fake()` აუცილებელია: Nominatim გარე მისამართია და ტესტი
  * ოფლაინ უნდა მუშაობდეს. ⚠️ ქეშიც ისუფთავდება — `NominatimClient`
@@ -38,7 +38,7 @@ class PlaceModuleTest extends TestCase
      * ⚠️ **`Http::fake()` stub-ებს ამატებს და არა ცვლის** (`Factory::fake()`
      * ყოველ URL-ს `stubUrl()`-ით ამატებს და სიას არასდროს ასუფთავებს), ე.ი.
      * `setUp()`-ის `*` ყოველთვის იგებდა და ტესტის საკუთარი პასუხი ჩუმად
-     * იგნორირდებოდა — ზუსტად ის ხაფანგი, რომელიც FEAT-10-მა დააფიქსირა.
+     * იგნორირდებოდა — ზუსტად ის ხაფანგი, რომელიც `CastSyncTest`-შიც არის აღწერილი.
      * ამიტომ stub **ერთია** და იცვლება მხოლოდ ის, რაც მის უკან დგას.
      */
     private array $answer = [];
@@ -130,7 +130,7 @@ class PlaceModuleTest extends TestCase
     }
 
     /**
-     * **„ჩემი შეფასება" — მთელი რიცხვი 1-დან 10-მდე** (Tasks §25.2).
+     * **„ჩემი შეფასება" — მთელი რიცხვი 1-დან 10-მდე**.
      *
      * ⚠️ ფორმა ახლა ამრჩევია (`RatingSelect`), ე.ი. 7.5 ან 0 მხოლოდ ხელით
      * დაწერილ რექვესთს შეუძლია — და ის დანარჩენი ოთხი მოდულის წესით 422-ია.
@@ -142,7 +142,7 @@ class PlaceModuleTest extends TestCase
             // ⚠️ რიცხვად — `decimal:1` cast-ი "7.0"-ს აბრუნებდა; მთელი ქულა `int`-ია (`RatingCast`)
             ->assertJsonPath('data.rating', 7);
 
-        // Tasks §9 — ვარსკვლავის ნახევარი და ხელით ჩაწერილი მეათედი ისე ინახება, როგორც აკრიფე
+        // ვარსკვლავის ნახევარი და ხელით ჩაწერილი მეათედი ისე ინახება, როგორც აკრიფე
         $this->postJson('/api/places', $this->payload(['rating' => 7.5]))
             ->assertStatus(201)
             ->assertJsonPath('data.rating', 7.5);
@@ -154,7 +154,7 @@ class PlaceModuleTest extends TestCase
         }
     }
 
-    /** ⚡ §4.8 — გასუფთავება სერვერამდე მიდის: ცარიელი მნიშვნელობა ქულას შლის */
+    /** ⚡ გასუფთავება სერვერამდე მიდის: ცარიელი მნიშვნელობა ქულას შლის */
     public function test_clearing_the_rating_reaches_the_server(): void
     {
         $id = $this->postJson('/api/places', $this->payload(['rating' => 9]))->json('data.id');
@@ -168,7 +168,7 @@ class PlaceModuleTest extends TestCase
     }
 
     /**
-     * **მიგრაცია წილადს ამრგვალებს, 1-ზე ნაკლებს კი 1-ად აქცევს** (§25.2).
+     * **მიგრაცია წილადს ამრგვალებს, 1-ზე ნაკლებს კი 1-ად აქცევს**.
      *
      * ⚠️ 0 ძველ შკალაზე „ყველაზე ცუდი" იყო და არა „შეუფასებელი" — `null`
      * მომხმარებლის განაჩენს წაშლიდა.
@@ -203,7 +203,7 @@ class PlaceModuleTest extends TestCase
      * **„ვიყავი" თარიღს სვამს, უკან დაბრუნება კი — შლის.**
      *
      * ⚠️ ეს ტესტის მთავარი აზრია: `visited_at`-ს მხოლოდ `applyStatus()`
-     * წერს, თორემ სტატისტიკა (FEAT-08/FEAT-21) სამუდამოდ ჩათვლიდა ადგილს,
+     * წერს, თორემ სტატისტიკა სამუდამოდ ჩათვლიდა ადგილს,
      * სადაც მომხმარებელმა თქვა, რომ არ ყოფილა.
      */
     public function test_the_visit_date_follows_the_status(): void
@@ -344,7 +344,7 @@ class PlaceModuleTest extends TestCase
     }
 
     /**
-     * ⚠️ **`osm_id` მატჩინგის იდენტობაა** (§16.2), ხელით შეყვანილს კი არ
+     * ⚠️ **`osm_id` მატჩინგის იდენტობაა**, ხელით შეყვანილს კი არ
      * აქვს — ის შედარებაში უბრალოდ არ მონაწილეობს.
      */
     public function test_the_match_identity_is_the_osm_id(): void
@@ -381,7 +381,7 @@ class PlaceModuleTest extends TestCase
         $this->assertDatabaseCount('place_files', 0);
     }
 
-    /** `DELETE /places/{id}` კალათაში აგზავნის და არაფერს ათავისუფლებს (FEAT-11) */
+    /** `DELETE /places/{id}` კალათაში აგზავნის და არაფერს ათავისუფლებს */
     public function test_deleting_moves_the_place_to_the_trash(): void
     {
         Storage::fake('public');

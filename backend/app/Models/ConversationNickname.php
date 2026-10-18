@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * ნიკნეიმი ერთ საუბარში (Tasks §10.11).
+ * ნიკნეიმი ერთ საუბარში.
  *
  * ⚠️ **ცალკე ცხრილი და არა პივოტის სვეტი.** პივოტის სვეტი მხოლოდ იმიტომ
  * იმუშავებდა, რომ მონაწილე ზუსტად ორია — სქემა კი სწორედ ამ დაშვებას

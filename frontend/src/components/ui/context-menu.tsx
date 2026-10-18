@@ -9,7 +9,7 @@ export const ContextMenuTrigger = ContextMenuPrimitive.Trigger
 export const ContextMenuSub = ContextMenuPrimitive.Sub
 
 /**
- * ⚠️ **პოზიციის ნაგულისხმევები ერთ ადგილას** (Tasks §2). Radix-ის საკუთარი
+ * ⚠️ **პოზიციის ნაგულისხმევები ერთ ადგილას**. Radix-ის საკუთარი
  * ნაგულისხმევები ნულებია (`sideOffset 0`, `alignOffset 0`, `collisionPadding 0`),
  * ქვემენიუს ტრიგერი კი მშობლის `p-1` + 1px ჩარჩოს შიგნით ზის — ამიტომ სტატუსის
  * ქვემენიუ ~5px-ით მშობელზე ადიოდა (ეკრანის კიდესთან გადაბრუნებისას — მარცხნივაც),

@@ -39,14 +39,14 @@ import { GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   **Drag & drop — ერთი კომპონენტი ყველა სიისა და ბადისთვის** (Tasks §11, Q3).
+   **Drag & drop — ერთი კომპონენტი ყველა სიისა და ბადისთვის**.
 
    შენი სიტყვები: „როდესაც ხელს მოკიდებ რომელიმეს, სადაც იყო, იქ დარჩეს
    გაუფერულებული ბლოკი; სადაც მიგაქვს, იქ ჯდებოდეს წყვეტილი ხაზებით; სხვები
    ჩამოცურდნენ ზევით-ქვევით და გქონდეს ვიზუალური ხედვა, სად როგორ ჯდება —
    ეს ყველგან, აბსოლუტურად".
 
-   `@dnd-kit/core + sortable` (Q3 ⭐): ბადე და სია ერთნაირად, სქროლის
+   `@dnd-kit/core + sortable`: ბადე და სია ერთნაირად, სქროლის
    კონტეინერი, `DragOverlay`, კლავიატურის სენსორი. ვიზუალი:
    - **მაუსთან ნამდვილი ბარათი** (`DragOverlay`, ჩრდილით და ოდნავ გადიდებული) —
      ⚠️ ის აღებული ელემენტის **DOM-ის ასლია** (`outerHTML`), ე.ი. რვა
@@ -66,7 +66,7 @@ import { cn } from '@/lib/utils'
    ⚠️ **`disabled`** — ელემენტი სიაშია, მაგრამ არ ითრევა და ვერც გადაინაცვლებს
    (დამალული მსახიობები); `SortableItem` ასეთზე სენსორებს არ აკიდებს.
 
-   ⚠️ **Tasks §58.1 — `motion="slow"`**: ნელი, რბილი გადანაცვლება (350 ms,
+   ⚠️ **`motion="slow"`**: ნელი, რბილი გადანაცვლება (350 ms,
    `ease-out`; ჩაგდება 300 ms) — მხოლოდ მოდულების გვერდზე (შენი სიტყვები:
    „როდესაც სრულდება და ცვლიან ადგილებს — უფრო სლოუ, სმუზ ანიმაცია");
    დანარჩენი სიები ნაგულისხმევ 150 ms-ზე რჩება. ნელ რეჟიმში
@@ -82,7 +82,7 @@ export type SortableId = UniqueIdentifier
 /** აღებული ელემენტი თავის ახალ სლოტზე — გაფერმკრთალებული და წყვეტილი */
 const SLOT_CLASS = 'opacity-40 grayscale border-dashed! border-2! border-primary/60! bg-primary/5!'
 
-/** გადანაცვლების სიჩქარე — `quick` ყველა სიისაა, `slow` მოდულების გვერდისა (§58.1) */
+/** გადანაცვლების სიჩქარე — `quick` ყველა სიისაა, `slow` მოდულების გვერდისა */
 export type SortableMotion = 'quick' | 'slow'
 
 interface MotionSpec {
@@ -154,7 +154,7 @@ export function Sortable<T extends SortableId>({
   onReorder: (ids: T[]) => void
   /** `list` — ვერტიკალური სია; `grid` — ბადე (მოდულები, მსახიობები, ალბომები) */
   layout?: 'list' | 'grid'
-  /** §58.1 — `slow`: ნელი, რბილი გადანაცვლება (მოდულები) */
+  /** `slow`: ნელი, რბილი გადანაცვლება (მოდულები) */
   motion?: SortableMotion
   children?: ReactNode
 }) {
@@ -238,7 +238,7 @@ type ItemProps = Omit<HTMLAttributes<HTMLElement>, 'id'> & {
 }
 
 export function SortableItem({ id, as: Tag = 'li', disabled = false, handle = false, className, style, children, ref, ...rest }: ItemProps) {
-  // §58.1 — სიჩქარე სიისაა (`Sortable motion`); `null` — ანიმაციის გარეშე
+  // სიჩქარე სიისაა (`Sortable motion`); `null` — ანიმაციის გარეშე
   const motion = useContext(MotionContext)
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id,

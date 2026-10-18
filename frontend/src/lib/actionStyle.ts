@@ -58,18 +58,18 @@ const ACTION_STYLE: Record<string, ActionStyle> = {
   chat_delete: { icon: MessageSquareX, color: 'var(--destructive)' },
   cast_attach: { icon: UserPlus, color: 'var(--icon-ok)' },
   cast_detach: { icon: UserMinus, color: 'var(--destructive)' },
-  // Tasks §16 — როლი, რიგი, დამალვა: რედაქტირებაა, ე.ი. რედაქტირების ლურჯი
+  // როლი, რიგი, დამალვა: რედაქტირებაა, ე.ი. რედაქტირების ლურჯი
   cast_update: { icon: UserPen, color: 'var(--icon-info)' },
   translate: { icon: Languages, color: 'var(--favorite)' },
-  /* FEAT-06 — ექსპორტი. ⚠️ ფერი **ინფორმაციულია და არა წითელი**: ფაილის
+  /* ექსპორტი. ⚠️ ფერი **ინფორმაციულია და არა წითელი**: ფაილის
      წაღება არაფერს შლის, მაგრამ მონაცემი სერვერიდან გადის, ე.ი. ლოგში
      თვალსაჩინო უნდა იყოს. */
   export: { icon: PackageOpen, color: 'var(--gold)' },
-  /* FEAT-11 — ურნიდან აღდგენა. ⚠️ ამ რიგს აქამდე არც ხატულა ჰქონდა და არც
+  /* ურნიდან აღდგენა. ⚠️ ამ რიგს აქამდე არც ხატულა ჰქონდა და არც
      ქართული სახელი — ლოგში ნედლი `restore` ეწერა. მწვანე: არაფერი იკარგება,
      პირიქით — დაკარგული ბრუნდება. */
   restore: { icon: ArchiveRestore, color: 'var(--icon-ok)' },
-  /* Tasks §39 — მსახიობების მასობრივი სინქრონიზაცია (ერთი რიგი გაშვებაზე).
+  /* მსახიობების მასობრივი სინქრონიზაცია (ერთი რიგი გაშვებაზე).
      ⚠️ ფერი **სინქრონიზაციის სექციისაა** (`--tool-sync`): ეს სწორედ იმ
      გვერდიდან გაშვებული სამუშაოა, და საიდბარის ლურჯი აქაც იგივეს ამბობს. */
   cast_sync: { icon: UserRoundSearch, color: 'var(--tool-sync)' },

@@ -3,7 +3,7 @@ import axios, { AxiosError, type AxiosAdapter, type AxiosResponse, type Internal
 import { api, UNAUTHENTICATED_EVENT } from '@/lib/api'
 
 /* ============================================================
-   axios-ის interceptor (Tasks GAP-02).
+   axios-ის interceptor.
 
    ⚠️ **ბიბლიოთეკა არ დამატებულა.** `axios-mock-adapter` ამისთვის ზედმეტია —
    axios თვითონ იღებს `adapter`-ს config-იდან, ე.ი. სატესტო ტრანსპორტი ერთი

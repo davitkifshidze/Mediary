@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * თამაშზე მიბმული ვიდეო (`game_videos`, Tasks §11.2).
+ * თამაშზე მიბმული ვიდეო (`game_videos`).
  *
  * `embed_url` **სერვერზე აიგება** `VideoUrl`-ის allowlist-ით — ნედლი
  * HTML/iframe არასდროს მოდის ბაზიდან.

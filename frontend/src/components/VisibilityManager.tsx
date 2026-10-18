@@ -30,7 +30,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   **ხილვადობის მესამე ფენა — ერთ ადგილას (Tasks §6.1).**
+   **ხილვადობის მესამე ფენა — ერთ ადგილას.**
 
    ადრე „პირადი/საჯარო" **თითო ჩანაწერის შიგნით** იჯდა, ე.ი. ასი ფილმის
    გასაჯაროება ასჯერ გვერდის გახსნას ნიშნავდა და „რა მაქვს საჯარო" კითხვას
@@ -64,7 +64,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
 
   /**
    * რომელი დომენი ჩანს: **ჩართული და გასაჯაროებადი** მოდულის დომენები.
-   * ⚠️ `note` `PUBLIC_DOMAINS`-ში საერთოდ არ არის (§16.5), ე.ი. აქაც ვერ
+   * ⚠️ `note` `PUBLIC_DOMAINS`-ში საერთოდ არ არის, ე.ი. აქაც ვერ
    * გამოჩნდება — ერთი წყარო, ორი ადგილას გამეორების გარეშე.
    */
   const domains = useMemo(
@@ -74,7 +74,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
         const module = enabled.find((m) => m.key === key)
         return !!module?.shareable && can(key, 'view')
       }),
-      /* §37.4 — პირადი მოდული თავისი დომენია (გასაღებით); გასაჯაროებადია და
+      /* პირადი მოდული თავისი დომენია (გასაღებით); გასაჯაროებადია და
          უფლებაც მფლობელისაა, ე.ი. `shareable`-ის შემოწმება საკმარისია. */
       ...enabled.filter((m) => isCustomModule(m) && m.shareable).map((m) => m.key as PublicDomainKey),
     ],
@@ -110,7 +110,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
     return module ? moduleName(module, i18n.language) : d
   }
 
-  /* Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; დომენის/ძებნის/ჭრილის შეცვლა პირველ
+  /* გვერდზე 10: ნომრები + „მეტის ჩვენება"; დომენის/ძებნის/ჭრილის შეცვლა პირველ
      გვერდზე აბრუნებს. საჯარო/პირადი რიცხვები ყოველ გვერდს ერთნაირი მოსდევს (`first.meta`) */
   const listQ = usePages({
     queryKey: ['visibility-list', domain, term, only],
@@ -125,7 +125,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
     qc.invalidateQueries({ queryKey: ['visibility-list'] })
     // ბარათებზე ბეჯი ჩანს — მოდულის სიაც უნდა განახლდეს
     if (domain) qc.invalidateQueries({ queryKey: [domain] })
-    // §37.4 — პირადი მოდულის სია თავის გასაღებზე ზის (ბეჯი ბარათზე იქაც ჩანს)
+    // პირადი მოდულის სია თავის გასაღებზე ზის (ბეჯი ბარათზე იქაც ჩანს)
     if (domain && isCustomModuleKey(domain)) qc.invalidateQueries({ queryKey: ['custom-records', domain] })
   }
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
@@ -209,7 +209,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
 
   const allPicked = rows.length > 0 && rows.every((r) => picked.includes(r.id))
 
-  /* ⚠️ `bare` — მოდალში სათაური და ზედა ხაზი ზედმეტია (Tasks §7.3): ფანჯარას
+  /* ⚠️ `bare` — მოდალში სათაური და ზედა ხაზი ზედმეტია: ფანჯარას
      თავისი სათაური აქვს, ბლოკის საკუთარი კი მეორე სათაურად წაიკითხებოდა.
      ბარათზე პირიქით — ის განმასხვავებელი ხაზია სამ ფენას შორის. */
   return (
@@ -236,9 +236,9 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
         />
       </div>
 
-      {/* Tasks §33.4 (Q24) — **ფლეილისტის გასაჯაროება მის სიმღერებსაც აჩენს**,
+      {/* **ფლეილისტის გასაჯაროება მის სიმღერებსაც აჩენს**,
           პირადებსაც (შიგნით სიმღერა მშობლის ხილვადობას იღებს). ⚠️ ტექსტია და
-          არა აიქონი: ის მხოლოდ ამ ჩანართზე ჩნდება (§8-ის პირობითი ტექსტის წესი),
+          არა აიქონი: ის მხოლოდ ამ ჩანართზე ჩნდება (პირობითი ახსნა ტექსტად იწერება),
           წითელია კი იმიტომ, რომ გამოტოვება პირადს ამხელს. */}
       {domain === 'playlist' && (
         <p className="mb-3 flex items-start gap-1.5 text-xs text-muted-foreground">

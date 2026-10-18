@@ -53,7 +53,7 @@ import { NumberPick } from '@/components/ui/number-pick'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 /* ============================================================
-   **რუკა და ნავიგაცია ადგილის ფანჯარაში** (Tasks §30.3/§30.4 → §56).
+   **რუკა და ნავიგაცია ადგილის ფანჯარაში**.
 
    შენი სიტყვები: „ნავიგაციაც შენი მიმდინარე ლოკაციიდან (არ ურევდე სხვა
    წერტილს) — იქიდან, Google Maps-ივით, გთავაზობდეს მოკლე მარშრუტს, შეგეძლოს
@@ -63,7 +63,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
    ჩამქრალი ხაზებით, გვერდით სია (მანძილი · დრო · არჩევა) → სახელი და „შენახვა".
    პროფილის/გზების რაოდენობის გადართვა უკვე არჩეული საწყისით მაშინვე ხელახლა ითვლის.
 
-   ⚠️ **Tasks §56.1 — საწყისი აღარ არის მხოლოდ გეოლოკაცია.** „ბათუმის პინი"
+   ⚠️ **საწყისი აღარ არის მხოლოდ გეოლოკაცია.** „ბათუმის პინი"
    ბრაუზერის გეოლოკაცია იყო: კომპიუტერს GPS არ აქვს და მდებარეობას IP-ით/Wi-Fi-ით
    ითვლის. ახლა: (ა) **სიზუსტე ჩანს** („±18 კმ") და რამდენიმე კმ-ზე მეტზე —
    გაფრთხილება; (ბ) **„საიდან"** — ჩემი მდებარეობა · სახლი · მისამართი/სახელი
@@ -72,8 +72,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
    ირჩევა. „სახლი" და გზების რაოდენობა `module_user.settings.routes`-შია (ჩუმი
    მეხსიერება, „რა ვნახო დღეს"-ის წესი — `users.settings`-ის ცხადი შენახვის ზოლი
    ერთი პინისთვის ზედმეტი იქნებოდა).
-   ⚠️ **§56.3 — „გზები: 1 · 2 · 3 …"** — OSRM იმდენს აბრუნებს, რამდენსაც პოულობს.
-   ⚠️ **§56.4 — შენახული მარშრუტები რუკის ქვემოთ, სრულ სიგანეზე** (ადრე ვიწრო
+   ⚠️ **„გზები: 1 · 2 · 3 …"** — OSRM იმდენს აბრუნებს, რამდენსაც პოულობს.
+   ⚠️ **შენახული მარშრუტები რუკის ქვემოთ, სრულ სიგანეზე** (ადრე ვიწრო
    მარჯვენა სვეტში არ ეტეოდა); „საიდან" — `from_label`.
 
    ⚠️ **ღრმა ბმულები Google Maps-ზე/OSM-ზე ყოველთვის რჩება** — ტელეფონზე
@@ -86,10 +86,10 @@ const PROFILE_ICON: Record<RouteProfile, LucideIcon> = { driving: Car, foot: Foo
 const GOOGLE_MODE: Record<RouteProfile, string> = { driving: 'driving', foot: 'walking', bike: 'bicycling' }
 const OSM_ENGINE: Record<RouteProfile, string> = { driving: 'fossgis_osrm_car', foot: 'fossgis_osrm_foot', bike: 'fossgis_osrm_bike' }
 
-/** §56.1(ა) — ამაზე უარესი სიზუსტე (მეტრი) „ზუსტი არ არის"-ია */
+/** ამაზე უარესი სიზუსტე (მეტრი) „ზუსტი არ არის"-ია */
 const ACCURACY_LIMIT = 3000
 
-/** §56.3 — „გზები" — `NumberPick`-ის სია; „სხვა" — `ROUTE_MAX`-მდე (`RouteClient::MAX_ROUTES`) */
+/** „გზები" — `NumberPick`-ის სია; „სხვა" — `ROUTE_MAX`-მდე (`RouteClient::MAX_ROUTES`) */
 const ROUTE_COUNTS = [1, 2, 3]
 const ROUTE_MAX = 5
 const ROUTE_DEFAULT = 3
@@ -221,7 +221,7 @@ export function PlaceRoutes({ place }: { place: Place }) {
     queryFn: () => fetchPlaceRoutes(place.id),
     enabled: hasCoords,
   })
-  // §56.1(ბ) — „ჩემი ადგილი": სხვა ადგილები კოორდინატებით (მხოლოდ ამ რეჟიმში ითხოვება)
+  // „ჩემი ადგილი": სხვა ადგილები კოორდინატებით (მხოლოდ ამ რეჟიმში ითხოვება)
   const placesQ = useQuery({
     queryKey: ['places', 'route-starts'],
     queryFn: () => fetchPlaces({ all: true }).then((page) => page.items),
@@ -279,7 +279,7 @@ export function PlaceRoutes({ place }: { place: Place }) {
       const acc = Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null
       setAccuracy(acc)
 
-      // §56.1(გ) — უზუსტო გეოლოკაცია და სახლი შენახულია → საწყისი სახლია
+      // უზუსტო გეოლოკაცია და სახლი შენახულია → საწყისი სახლია
       if (acc !== null && acc > ACCURACY_LIMIT && memory.home) {
         setNote(t('places.route.usedHome', { accuracy: distanceLabel(acc, t) }))
         setMode('home')
@@ -405,7 +405,7 @@ export function PlaceRoutes({ place }: { place: Place }) {
           center={to}
           from={mapFrom}
           routes={mapRoutes}
-          // §56.1 — „რუკაზე": დაჭერა და საწყისის პინის გადათრევა საწყისს სვამს
+          // „რუკაზე": დაჭერა და საწყისის პინის გადათრევა საწყისს სვამს
           onPickFrom={
             mode === 'pin'
               ? (lat, lng) => run({ at: [lat, lng], label: t('places.route.from.pinned'), mode: 'pin' })
@@ -423,7 +423,7 @@ export function PlaceRoutes({ place }: { place: Place }) {
             onChange={(key) => pickProfile(key as RouteProfile)}
           />
 
-          {/* ---------- §56.1(ბ) — საიდან ---------- */}
+          {/* ---------- საიდან ---------- */}
           <CutTabs
             label={t('places.route.from.title')}
             layout="inline"
@@ -552,7 +552,7 @@ export function PlaceRoutes({ place }: { place: Place }) {
             </p>
           )}
 
-          {/* ---------- §56.3 — გზების რაოდენობა ---------- */}
+          {/* ---------- გზების რაოდენობა ---------- */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{t('places.route.count')}</span>
             <NumberPick size="sm" value={count} onChange={pickCount} options={ROUTE_COUNTS} min={1} max={ROUTE_MAX} />
@@ -634,7 +634,7 @@ export function PlaceRoutes({ place }: { place: Place }) {
         </div>
       </div>
 
-      {/* ---------- §56.4 — შენახული მარშრუტები: რუკის ქვემოთ, სრულ სიგანეზე ---------- */}
+      {/* ---------- შენახული მარშრუტები: რუკის ქვემოთ, სრულ სიგანეზე ---------- */}
       <div className="mt-5" data-testid="saved-routes">
         <h4 className="mb-1.5 text-xs font-semibold text-muted-foreground">{t('places.route.savedTitle')}</h4>
         {savedQ.data?.length ? (

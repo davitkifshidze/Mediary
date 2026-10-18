@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
 use Illuminate\Database\Eloquent\Relations\MorphOneOrMany;
 
 /**
- * **Tasks §59.6 — ჩანაწერის „დამატებები" უკან** (`RecordExtras`-ის შებრუნება):
+ * **ჩანაწერის „დამატებები" უკან** (`RecordExtras`-ის შებრუნება):
  * დამატებითი ველები, მიმაგრებული ფაილები, ჩანიშვნები, გალერეა, მსახიობები,
  * მარშრუტები, თამაშის ვიდეოები, ნახვები, ეპიზოდები.
  *
@@ -175,7 +175,7 @@ class MediaryExtras
         }
     }
 
-    /** ხელახალი ნახვების ჟურნალი (FEAT-14) — `watched_at`-ის ჩაწერამ პირველი უკვე შექმნა */
+    /** ხელახალი ნახვების ჟურნალი — `watched_at`-ის ჩაწერამ პირველი უკვე შექმნა */
     private function watches(User $user, Model $model, array $items): void
     {
         foreach ($items as $item) {
@@ -233,7 +233,7 @@ class MediaryExtras
     /**
      * მსახიობები — `cast_members` საერთო ცხრილია: TMDB-ის მსახიობი TMDB-ის id-ით
      * იძებნება (და ახალი, თუ ჯერ არ არის, იმავე id-ით იქმნება — `/sync` შეავსებს),
-     * ხელით შექმნილი კი — ჩემს ხელით შექმნილებში სახელით (Tasks §35.3: ის მხოლოდ
+     * ხელით შექმნილი კი — ჩემს ხელით შექმნილებში სახელით (ის მხოლოდ
      * შემქმნელს ეკუთვნის).
      */
     private function cast(User $user, Model $model, array $items, MediaryFiles $files): void
@@ -247,7 +247,7 @@ class MediaryExtras
             }
 
             $tmdb = is_numeric($item['tmdb_person_id'] ?? null) ? (int) $item['tmdb_person_id'] : null;
-            // ⚠️ ურნაში მყოფ მსახიობზე (§35.9) ბმული არ ჯდება — ის დამალულია
+            // ⚠️ ურნაში მყოფ მსახიობზე ბმული არ ჯდება — ის დამალულია
             $member = $tmdb
                 ? CastMember::withoutGlobalScopes()->where('tmdb_person_id', $tmdb)->whereNull('trashed_at')->first()
                 : CastMember::withoutGlobalScopes()->whereNull('tmdb_person_id')->whereNull('trashed_at')->where('created_by', $user->getKey())->where('name', $name)->first();
@@ -289,7 +289,7 @@ class MediaryExtras
             'name' => $name,
             'imdb_id' => is_string($item['imdb_id'] ?? null) ? mb_substr($item['imdb_id'], 0, 20) : null,
             'photo_path' => $path,
-            // §35.3 — ხელით შექმნილი მხოლოდ შემქმნელისაა; TMDB-ის მსახიობი — საერთო
+            // ხელით შექმნილი მხოლოდ შემქმნელისაა; TMDB-ის მსახიობი — საერთო
             'created_by' => $tmdb === null ? $user->getKey() : null,
         ])->save();
 

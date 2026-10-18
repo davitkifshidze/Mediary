@@ -12,8 +12,8 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * ⚠️ **`imdb_id`-ის უნიკალურობა user-ის ფარგლებშია** და არა გლობალურად
- * (აუდიტი 2026-09-14). ბაზაში ინდექსი `unique(user_id, imdb_id)`-ია
+ * ⚠️ **`imdb_id`-ის უნიკალურობა user-ის ფარგლებშია** და არა გლობალურად.
+ * ბაზაში ინდექსი `unique(user_id, imdb_id)`-ია
  * 2026-08-28-იდან — ორმა ანგარიშმა ერთი და იგივე ფილმი უნდა შეძლოს
  * დაამატოს. გლობალური `unique:movies,imdb_id` კი მეორეს **უსაფუძვლოდ
  * უკრძალავდა** („ეს ფილმი უკვე დამატებულია") და, რაც უარესია, **სხვისი
@@ -40,24 +40,24 @@ class UpdateMovieRequest extends FormRequest
                     ->ignore($this->route('movie')),
             ],
             'ge_url' => ['nullable', 'url', 'max:500'],
-            // ტრეილერი (Tasks 9) — ხელით ჩასმაც შეიძლება, TMDB-ს არ ველოდებით
+            // ტრეილერი — ხელით ჩასმაც შეიძლება, TMDB-ს არ ველოდებით
             'trailer_url' => ['nullable', 'url', 'max:500'],
-            'description_ka' => RichText::rules(), // §47 — აქამდე ზღვარი არ ჰქონდა
+            'description_ka' => RichText::rules(), // აქამდე ზღვარი არ ჰქონდა
             'description_en' => RichText::rules(),
             'rating' => ['nullable', 'numeric', 'min:0', 'max:10'],
-            // Tasks §9 — „ჩემი ქულა" (ვარსკვლავები, 4.6 / 10); TMDB-ის `rating`-ისგან ცალკე
+            // „ჩემი ქულა" (ვარსკვლავები, 4.6 / 10); TMDB-ის `rating`-ისგან ცალკე
             'my_rating' => Rating::rules(),
             'runtime' => ['nullable', 'integer', 'min:1', 'max:1000'],
-            /* Tasks §6.4 — სტატუსი per-user ლექსიკონია, ე.ი. სია კოდში აღარ წერია.
+            /* სტატუსი per-user ლექსიკონია, ე.ი. სია კოდში აღარ წერია.
                ⚠️ გასაღები **ამ ანგარიშის** ლექსიკონში უნდა არსებობდეს, თორემ
                უცნობი მნიშვნელობა ჩუმად „სტატუსის გარეშედ“ იქცეოდა. */
             'status' => ['sometimes', 'required', 'string', Status::rule('movie')],
             'is_favorite' => ['nullable', 'boolean'],
             'genres' => ['sometimes', 'required', 'array', 'min:1'],
             'genres.*' => ['string', 'max:100'],
-            // Tasks §34.3 — ზომა და ფორმატი ერთი წყაროდან (`primary`: მთავარი ფოტო, პოსტერი, ავატარი)
+            // ზომა და ფორმატი ერთი წყაროდან (`primary`: მთავარი ფოტო, პოსტერი, ავატარი)
             'poster' => ['nullable', ...UploadLimits::rule('primary', $this->user())],
-            // Tasks 16.1 — ხილვადობა საჯარო პროფილზე (`private` default)
+            // ხილვადობა საჯარო პროფილზე (`private` default)
             'visibility' => ['nullable', Rule::in(PublicDomain::VALUES)],
         ];
     }

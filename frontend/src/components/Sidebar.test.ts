@@ -8,7 +8,7 @@ import type { ModuleInfo } from '@/api/account'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **მოდულის ქვემენიუ — ერთი ფუნქცია ყველასთვის** (Tasks §25.1).
+   **მოდულის ქვემენიუ — ერთი ფუნქცია ყველასთვის**.
 
    ⚠️ კურსი და ადგილი აქამდე ჩვეულებრივი ბმული იყო, ე.ი. „რჩეული" და
    „დამატება" მენიუდან საერთოდ არ იყო. ახლა რვა მოდულის ბლოკი ერთ
@@ -106,7 +106,7 @@ const PAGE_ROWS = [
 ]
 
 /**
- * ⚠️ `enabled` **სერვერის რიგითაა** (Tasks §36) — `mediaModules`/`pageModules`
+ * ⚠️ `enabled` **სერვერის რიგითაა** — `mediaModules`/`pageModules`
  * მისი ქვე-სიებია, ზუსტად ისე, როგორც `ModulesProvider`-ში.
  */
 async function mount(path = '/', enabled: ModuleInfo[] = PAGE_ROWS) {
@@ -116,7 +116,7 @@ async function mount(path = '/', enabled: ModuleInfo[] = PAGE_ROWS) {
     .filter((m) => ['movie', 'series', 'anime'].includes(m.key))
     .map((m) => ({ ...m, type: m.key }))
   mocks.modules.pageModules = enabled.filter((m) => !['movie', 'series', 'anime'].includes(m.key) && !m.is_custom)
-  // §37 — პირადი მოდული (`ModulesProvider`-ის იგივე გამიჯვნა)
+  // პირადი მოდული (`ModulesProvider`-ის იგივე გამიჯვნა)
   mocks.modules.customModules = enabled.filter((m) => m.is_custom)
 
   const { Sidebar } = await import('@/components/Sidebar')
@@ -205,7 +205,7 @@ describe('Sidebar module sections', () => {
 })
 
 /* ============================================================
-   **ერთი რიგი** (Tasks §36.2) — მედია და დანარჩენი მოდულები ერთმანეთში
+   **ერთი რიგი** — მედია და დანარჩენი მოდულები ერთმანეთში
    ერევა, `enabled`-ის (ე.ი. სერვერის პირადი რიგის) მიხედვით. ადრე ჯერ ყველა
    მედია იხატებოდა და მერე დანარჩენი — ფილმს სიმღერის შემდეგ ვერანაირი რიგი
    ვერ დააყენებდა.
@@ -225,7 +225,7 @@ describe('Sidebar module order', () => {
     expect(rows).toEqual(['song', 'movie', 'book', 'series'])
   })
 
-  /* Tasks §37 — ინტერფეისიდან შექმნილი მოდული `PAGE_MODULE_KEYS`-ში არ წერია
+  /* ინტერფეისიდან შექმნილი მოდული `PAGE_MODULE_KEYS`-ში არ წერია
      (გასაღები ბაზაშია), მაგრამ ერთ ზოგად გვერდს ფლობს — ე.ი. მენიუშიც ჩანს,
      თავისი სექციებით: „ყველა · (სტატუსები) · რჩეული · დამატება". ⚠️ ამ
      ტესტის გარეშე ციკლი მას „გვერდის გარეშე მოდულად" ჩუმად გამოტოვებდა. */
@@ -245,7 +245,7 @@ describe('Sidebar module order', () => {
     ])
   })
 
-  /* Tasks §58.3 (Q15) — პირადი მოდულები ჩაშენებულების ქვემოთ, ცალკე ჯგუფად
+  /* პირადი მოდულები ჩაშენებულების ქვემოთ, ცალკე ჯგუფად
      („ჩემი მოდულები"), თავისი რიგით — სერვერის რიგში ჩაშენებულებს შორისაც რომ იდგნენ */
   it('draws the personal modules below the built-in ones, as a group of their own', async () => {
     const recipes = { ...moduleRow('c7-recipes', '/c/c7-recipes', 2), is_custom: true, morph_alias: null }
@@ -269,7 +269,7 @@ describe('Sidebar module order', () => {
   })
 })
 
-/* Tasks §40.14 — „გაზიარების ბმულები" საკუთარი რიგია, შენი მითითებით
+/* „გაზიარების ბმულები" საკუთარი რიგია, შენი მითითებით
    „მონაცემების" ქვემოთ (მოდულების სათაურის ღილაკი მოიხსნა). */
 describe('Sidebar share links row', () => {
   it('sits right below the credentials row', async () => {

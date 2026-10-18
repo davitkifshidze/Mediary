@@ -4,7 +4,7 @@ import type { Status } from '@/api/types'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
-   ჩანაწერების მოდული (`note`, Tasks §13).
+   ჩანაწერების მოდული (`note`).
 
    ⚠️ მოდულის key `note`-ია, ცხრილი კი `note_entries` — უნივერსალური `notes`
    2026-09-03-ის წესით აღარ არსებობს და სახელი „სხვა ჩანაწერზე მიმაგრებულ
@@ -13,7 +13,7 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
    ============================================================ */
 
 /**
- * ⚠️ **სტატუსი per-user ლექსიკონია (Tasks §6.4)** — სია აღარ წერია კოდში.
+ * ⚠️ **სტატუსი per-user ლექსიკონია** — სია აღარ წერია კოდში.
  * ჩანაწერზე ის ობიექტია (`Status`), შესანახად კი **გასაღები** მიდის.
  */
 export type NoteStatus = string
@@ -31,11 +31,11 @@ export interface NoteEntry {
   category?: NoteCategory | null
   tags: string[]
   links: NoteLink[]
-  /** „როდისთვის მჭირდება" — deadline (§13.1) */
+  /** „როდისთვის მჭირდება" — deadline */
   due_at: string | null
   status: Status | null
   is_favorite: boolean
-  /** ⚠️ §13 — პირადი დოკუმენტების მოდული: default ყოველთვის `private` */
+  /** ⚠️ პირადი დოკუმენტების მოდული: default ყოველთვის `private` */
   visibility: 'private' | 'public'
   files_count?: number
   reminders_count?: number
@@ -143,17 +143,17 @@ export async function deleteNoteFile(id: number): Promise<void> {
   await api.delete(`/note-files/${id}`)
 }
 
-/* ---------- შეხსენებები (§13.2) ---------- */
+/* ---------- შეხსენებები ---------- */
 
 /**
- * ⚠️ §5.5 — სრული ნაკრები: ერთჯერადი · ინტერვალი · ყოველდღე · ყოველკვირეული
+ * ⚠️ სრული ნაკრები: ერთჯერადი · ინტერვალი · ყოველდღე · ყოველკვირეული
  * (**რამდენიმე დღე ერთდროულად**) · ყოველთვიური (თვის რიცხვი) · ყოველწლიური.
  */
 export const REMINDER_MODES = ['once', 'interval', 'daily', 'weekly', 'monthly', 'yearly'] as const
 export type ReminderMode = (typeof REMINDER_MODES)[number]
 
 /**
- * ⚠️ **`email` ამოღებულია (Tasks §8.2, შენი მითითებით: „არ გვინდა").**
+ * ⚠️ **`email` ამოღებულია (შენი მითითებით: „არ გვინდა").**
  * SMTP ამ პროექტს არ აქვს, ე.ი. არხი მხოლოდ ლოგში აგდებდა წერილს და
  * მომხმარებელი ფიქრობდა, რომ შეხსენება გაიგზავნა. მის ნაცვლად **ჟურნალია**
  * (`GET /api/note-notifications`): ყოველი გასროლა რჩება და აპლიკაციაში ჩანს.
@@ -167,19 +167,19 @@ export interface NoteReminder {
   mode: ReminderMode
   /** `once` — აბსოლუტური მომენტი (ISO) */
   remind_at: string | null
-  /** ⚠️ პერიოდი ველია და არა ჩაშენებული 10/15/20 (§13.2) */
+  /** ⚠️ პერიოდი ველია და არა ჩაშენებული 10/15/20 */
   interval_minutes: number | null
-  /** ⚠️ **სიაა** (ეტაპი 7) — `HH:mm`, დღეში რამდენიმე გასროლა */
+  /** ⚠️ **სიაა** — `HH:mm`, დღეში რამდენიმე გასროლა */
   times_of_day: string[]
-  /** ⚠️ **მასივია** (§5.5) — 0 = კვირა */
+  /** ⚠️ **მასივია** — 0 = კვირა */
   weekdays: number[]
-  /** ⚠️ **სიაა** (ეტაპი 7) — 1–31 (მოკლე თვეში ბოლო დღეზე ჩამოდის) */
+  /** ⚠️ **სიაა** — 1–31 (მოკლე თვეში ბოლო დღეზე ჩამოდის) */
   days_of_month: number[]
   /** `yearly` — 1–12 */
   month: number | null
   /** ჯერადობა: სულ რამდენჯერ გაისროლოს; `null` = უსასრულოდ */
   repeat_count: number | null
-  /** მოქმედების ფანჯარა (ეტაპი 7) — აბსოლუტური მომენტები, ISO */
+  /** მოქმედების ფანჯარა — აბსოლუტური მომენტები, ISO */
   starts_at: string | null
   ends_at: string | null
   timezone: string
@@ -215,7 +215,7 @@ export async function fetchNoteReminders(noteId: number): Promise<NoteReminder[]
 }
 
 /**
- * **ყველა შეხსენება ერთ სიაში** (ეტაპი 11.2 — `/notes/reminders`-ის გვერდი).
+ * **ყველა შეხსენება ერთ სიაში** (`/notes/reminders`-ის გვერდი).
  *
  * ⚠️ თითო რიგს თან მოჰყვება `note` (id + სათაური) — ეს არის ის „ბმა",
  * რომლის გარეშეც სია უაზროა: „ყოველდღე 09:00" არაფერს ამბობს, სანამ არ
@@ -246,7 +246,7 @@ export async function deleteNoteReminder(id: number): Promise<void> {
   await api.delete(`/note-reminders/${id}`)
 }
 
-/* ---------- მიწოდება (§13.3) ---------- */
+/* ---------- მიწოდება ---------- */
 
 export interface NoteNotification {
   id: number
@@ -266,7 +266,7 @@ export interface NoteNotification {
  * ბრაუზერის რიგი.
  *
  * ⚠️ **GET-ია, თუმცა backend-ზე ვადამოსულ შეხსენებებსაც ისვრის.** ეს განზრახაა:
- * dev-მანქანაზე cron არ დგას, ბრაუზერის შეტყობინება კი §13.3-ის მიხედვით
+ * dev-მანქანაზე cron არ დგას, ბრაუზერის შეტყობინება კი
  * „დამოკიდებულების გარეშე" უნდა მუშაობდეს.
  */
 export async function fetchDueNotifications(): Promise<NoteNotification[]> {
@@ -279,7 +279,7 @@ export async function markNotificationRead(id: number): Promise<void> {
 }
 
 /**
- * **შეხსენებების ჟურნალი (Tasks §8.2)** — რაც კი გასროლილა, წაკითხულის ჩათვლით.
+ * **შეხსენებების ჟურნალი** — რაც კი გასროლილა, წაკითხულის ჩათვლით.
  *
  * ⚠️ ეს `fetchDueNotifications()`-ის ტყუპი არ არის: ის **რიგია** (რა უნდა
  * ამოხტეს ახლა), ეს კი **ისტორია**. სწორედ ეს ხურავს ხვრელს, რომელსაც

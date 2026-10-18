@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * **პირადი მოდულის ჩანაწერის ჩანიშვნა (Tasks §37.5)** — თამაშის/ვიდეოს
+ * **პირადი მოდულის ჩანაწერის ჩანიშვნა** — თამაშის/ვიდეოს
  * ჩანიშვნის ფორმა (`body`), ერთი ცხრილი ყველა პირად მოდულზე.
  *
- * ⚠️ **ურნა (Tasks §29, ეტაპი 2)** — `destroy()` `moveToTrash()`-ს იძახის.
+ * ⚠️ **ურნა** — `destroy()` `moveToTrash()`-ს იძახის.
  */
 class CustomRecordNote extends Model
 {

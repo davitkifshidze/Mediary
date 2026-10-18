@@ -5,7 +5,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /**
- * **წლიური მიზნების სიებად ქცეული ჩანაწერების შეკეთება** (Tasks §1.2).
+ * **წლიური მიზნების სიებად ქცეული ჩანაწერების შეკეთება**.
  *
  * `users.settings.goals`-ის ფორმა `{ movie: { "2026": 12 } }`-ია, მაგრამ `UserResource`
  * (Laravel-ის `JsonResource`) ყველა-რიცხვითგასაღებიან ობიექტს `array_values()`-ით

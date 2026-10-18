@@ -97,17 +97,17 @@ import { favoriteAction, MENU_ICONS, statusActions, type MenuAction } from '@/co
 import { formatBytes } from '@/lib/utils'
 
 /* ============================================================
-   ვიდეოების მოდული (I5) — Tasks 5.
+   ვიდეოების მოდული.
 
-   5.1 — ტიპი მართვადი ლექსიკონია (`video_types`), ფორმაში select + „ახალი ტიპი".
-   5.2 — ფილტრები მარჯვენა პანელში: ტიპები, ტეგები, ძებნა, სორტირება (იგივე
-         მოდელი, რაც ბიბლიოთეკაზე — 2.2).
-   5.3 — ტეგების დუბლი submit-ზე იჭრება, user-ს შეტყობინება ეძლევა.
-   5.4 — thumbnail `PosterUploader`-ით (preview, drag&drop, წაშლა).
-   5.5 — ხანგრძლივობის ხელით ველი მოიხსნა; ავტომატური probe რჩება.
+   · ტიპი მართვადი ლექსიკონია (`video_types`), ფორმაში select + „ახალი ტიპი".
+   · ფილტრები მარჯვენა პანელში: ტიპები, ტეგები, ძებნა, სორტირება (იგივე
+     მოდელი, რაც ბიბლიოთეკაზე).
+   · ტეგების დუბლი submit-ზე იჭრება, user-ს შეტყობინება ეძლევა.
+   · thumbnail `PosterUploader`-ით (preview, drag&drop, წაშლა).
+   · ხანგრძლივობის ხელით ველი მოიხსნა; ავტომატური probe რჩება.
    ============================================================ */
 
-/* Tasks §21.3 — `size`/`downloaded` ლოკალური ასლების სექციისთვისაა, მაგრამ ყველგან მუშაობს */
+/* `size`/`downloaded` ლოკალური ასლების სექციისთვისაა, მაგრამ ყველგან მუშაობს */
 const SORTS = ['newest', 'oldest', 'title', 'watched', 'size', 'downloaded'] as const
 
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
@@ -117,7 +117,7 @@ type PanelFilters = typeof EMPTY_FILTERS
 export function VideosPage() {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
-  // §6.4 — სტატუსების ლექსიკონი (სექციები, ბეჯი, ფორმა)
+  // სტატუსების ლექსიკონი (სექციები, ბეჯი, ფორმა)
   const { data: statuses = [] } = useStatuses('video')
   const qc = useQueryClient()
   const { toast } = useToast()
@@ -128,34 +128,34 @@ export function VideosPage() {
   const search = params.toString()
   const view = params.get('view') ?? 'all'
 
-  // მოქმედი ფილტრი მისამართშია (2.2-ის მოდელი): საიდბარი და პანელი ერთსა და იმავეს ხედავს
+  // მოქმედი ფილტრი მისამართშია (ბიბლიოთეკის მოდელი): საიდბარი და პანელი ერთსა და იმავეს ხედავს
   const types = useMemo(() => new URLSearchParams(search).get('type')?.split(',').filter(Boolean) ?? [], [search])
   const tags = useMemo(() => new URLSearchParams(search).get('tag')?.split(',').filter(Boolean) ?? [], [search])
-  /* Tasks §21.3 — „მხოლოდ ჩამოტვირთული" პანელის გადამრთველია (`?downloaded=1`); საიდბარის
+  /* „მხოლოდ ჩამოტვირთული" პანელის გადამრთველია (`?downloaded=1`); საიდბარის
      სექცია (`?view=downloaded`) იგივეს აკეთებს სათაურითა და ჯამური ზომით */
   const downloadedParam = useMemo(() => new URLSearchParams(search).get('downloaded') === '1', [search])
 
-  // მონახაზში სტატუსი/რჩეული აღარაა (Tasks 3) — ის საიდბარის სექციაა (`?view=`)
+  // მონახაზში სტატუსი/რჩეული აღარაა — ის საიდბარის სექციაა (`?view=`)
   const [panelOpen, setPanelOpen] = useState(false)
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<Video | 'new' | null>(null)
-  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ბარათები
+  // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ბარათები
   const [layout, setLayout] = useRecordLayout('video', 'cards')
   const fmt = useDateFormat()
-  // ⚠️ სახელი „detail"-ია და არა „playing": §7.2-ის შემდეგ **დაკვრა
-  // დამკვრელშია** (§35: გვერდითა პანელი ან ქვედა ზოლი), მოდალი კი
+  // ⚠️ სახელი „detail"-ია და არა „playing": **დაკვრა
+  // დამკვრელშია** (გვერდითა პანელი ან ქვედა ზოლი), მოდალი კი
   // აღწერა/ფაილები/ჩანიშვნები/მსგავსებია და ვიდეოს დამკვრელს გადასცემს.
   const [detail, setDetail] = useState<Video | null>(null)
-  /** Tasks §21.2 — ლოკალური ასლის ფლეერი (ცალკე მოდალი, არა საერთო დამკვრელი) */
+  /** ლოკალური ასლის ფლეერი (ცალკე მოდალი, არა საერთო დამკვრელი) */
   const [local, setLocal] = useState<Video | null>(null)
-  /** Tasks §17 (Q4) — „რა ვნახო დღეს" ვიდეოებზეც; ბოლო პასუხის ჩანაწერები „გახსნა"-სთვის */
+  /** „რა ვნახო დღეს" ვიდეოებზეც; ბოლო პასუხის ჩანაწერები „გახსნა"-სთვის */
   const [pickOpen, setPickOpen] = useState(false)
   const picked = useRef<Record<number, Video>>({})
   const player = usePlayer()
 
-  // ძებნა აკრეფისას (K4) — ჩამორჩენილი 350ms, backend ეძებს ყველა ველში
+  // ძებნა აკრეფისას — ჩამორჩენილი 350ms, backend ეძებს ყველა ველში
   useEffect(() => {
     const timer = setTimeout(() => setTerm(q.trim()), 350)
     return () => clearTimeout(timer)
@@ -167,18 +167,18 @@ export function VideosPage() {
     type_id: types.length ? types.join(',') : undefined,
     tag: tags.length ? tags.join(',') : undefined,
     favorite: view === 'favorite' ? true : undefined,
-    // §7.1 — „ჩამოწერილები" საიდბარის სექციაა, ე.ი. `?view=`-ში ზის; §21.3 — პანელის გადამრთველიც
+    // „ჩამოწერილები" საიდბარის სექციაა, ე.ი. `?view=`-ში ზის; პანელის გადამრთველიც
     downloaded: view === 'downloaded' || downloadedParam ? true : undefined,
-    /* §6.4 — დანარჩენი `?view=` ლექსიკონის სტატუსია. ⚠️ „ყველა"/„რჩეული"/
+    /* დანარჩენი `?view=` ლექსიკონის სტატუსია. ⚠️ „ყველა"/„რჩეული"/
        „ჩამოწერილი" სტატუსები არაა და ფილტრში არ უნდა გადავიდეს. */
     status:
       view !== 'all' && view !== 'favorite' && view !== 'downloaded' ? view : undefined,
     sort: sort === 'newest' ? undefined : sort,
-    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
   }
 
-  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['videos', filters],
     fetchPage: (page) => fetchVideos({ ...filters, page, per_page: LIST_PAGE_SIZE }),
@@ -189,7 +189,7 @@ export function VideosPage() {
   const total = query.total
   const allTypes = useMemo(() => typesQ.data ?? [], [typesQ.data])
 
-  /* §7.2 — დასაკრავი რიგი **გაფილტრული სიაა** და ჩაირთვება რიგრიგობით.
+  /* დასაკრავი რიგი **გაფილტრული სიაა** და ჩაირთვება რიგრიგობით.
      ტიპის სახელი შიგთავსის ენაზეა, ამიტომ აქ ითარგმნება. */
   const queueItems = useMemo(
     () => videos.map((v) => videoItem(v, v.type ? videoTypeName(v.type, lang) : null)),
@@ -199,7 +199,7 @@ export function VideosPage() {
   /* ⚠️ დაკვრაზე **მთელი** გაფილტრული სია ჩამოდის და არა ჩატვირთული გვერდი —
      წესი გვერდებად დაყოფამდე ასეთი იყო და უცვლელი რჩება. მოთხოვნა მხოლოდ
      ცხად დაჭერაზე ხდება (და ქეშდება); წყარო თუ არ მოვიდა, ჩატვირთულს ვუკრავთ.
-     ⚠️ საწყისი **id-ით** იძებნება და არა გვერდის ინდექსით: §46-ის შემდეგ მეორე
+     ⚠️ საწყისი **id-ით** იძებნება და არა გვერდის ინდექსით: გვერდებად დაყოფის შემდეგ მეორე
      გვერდის პირველი ვიდეო ინდექსით 0 იყო — სრულ სიაში კი ეს პირველი გვერდის
      პირველია. სიის გარეთა ვიდეო (`?open=`, „მსგავსი") მარტო უკრავს. */
   const playFrom = async (video: Video) => {
@@ -219,14 +219,14 @@ export function VideosPage() {
     else player.play([item(video)], 0, t('videos.title'))
   }
 
-  /* Tasks §48.3 (Q14) — „დაკვრა" ფანჯარას ხსნის და ვიდეო **იქვე** უკრავს
+  /* „დაკვრა" ფანჯარას ხსნის და ვიდეო **იქვე** უკრავს
      (ფანჯრის ესკიზზე); „გატანის" შემდეგ — მოტივტივე ჩარჩოში, რიგით. */
   const playHere = (video: Video) => {
     setDetail(video)
     void playFrom(video)
   }
 
-  /* Tasks §48 — რიგი წინ წავიდა, ფანჯარა კი წინა (ნაკრავ) ვიდეოს აჩვენებს →
+  /* რიგი წინ წავიდა, ფანჯარა კი წინა (ნაკრავ) ვიდეოს აჩვენებს →
      ფანჯარაც მიჰყვება და ვიდეო ფანჯარაში რჩება. ⚠️ მხოლოდ მაშინ, როცა ფანჯარა
      **ნაკრავ** ვიდეოს აჩვენებდა — სხვა ვიდეოს ფანჯარა არ იცვლება; „გატანილზე"
      ვიდეო ისედაც მოტივტივე ჩარჩოშია. */
@@ -255,15 +255,15 @@ export function VideosPage() {
     }
   }, [params, setParams])
 
-  /* Tasks §19.6 — ვებძებნის „უკვე ვიდეოებშია · გახსნა" → `?open=<id>`.
-     ⚠️ ჩანაწერი id-ით მოდის და არა ჩატვირთული სიიდან (FEAT-17-ის წესი):
+  /* ვებძებნის „უკვე ვიდეოებშია · გახსნა" → `?open=<id>`.
+     ⚠️ ჩანაწერი id-ით მოდის და არა ჩატვირთული სიიდან:
      ის შეიძლება მიმდინარე ფილტრს მიღმა იყოს. პარამეტრი მაშინვე იშლება,
      თორემ მოდალის დახურვა და „უკან" მას ხელახლა გახსნიდა. */
   useEffect(() => {
     const open = Number(params.get('open'))
     if (!open) return
 
-    // Tasks §21.2 — `?open=<id>&local=1` ლოკალურ ფლეერს ხსნის (თუ ასლი მზადაა)
+    // `?open=<id>&local=1` ლოკალურ ფლეერს ხსნის (თუ ასლი მზადაა)
     const wantLocal = params.get('local') === '1'
     const next = new URLSearchParams(params)
     next.delete('open')
@@ -280,14 +280,14 @@ export function VideosPage() {
 
   const favorite = useMutation({ mutationFn: toggleVideoFavorite, onSuccess: invalidate, onError: fail })
   const remove = useMutation({ mutationFn: deleteVideo, onSuccess: invalidate, onError: fail })
-  // Tasks §7 — სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
+  // სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
   const status = useMutation({
     mutationFn: ({ id, next }: { id: number; next: string }) => setVideoStatus(id, next),
     onSuccess: invalidate,
     onError: fail,
   })
 
-  /* ---------- §7.1 — ლოკალური ჩამოწერა ----------
+  /* ---------- ლოკალური ჩამოწერა ----------
      ⚠️ `yt-dlp`-ის ყოფნა **ერთხელ** იკითხება და ღილაკს ხსნის/კეტავს: მის
      გარეშე ღილაკი მაინც ჩანს, ოღონდ ამბობს, რომ პროგრამა არ არის — ჩუმად
      გამქრალი ღილაკი „რატომ არ მუშაობს"-ს ტოვებდა. */
@@ -303,7 +303,7 @@ export function VideosPage() {
   /* ⚠️ ჩამოწერა **ფონურად** მიდის (`artisan serve` ერთნაკადიანია), ე.ი.
      დასრულებას ვერავინ გვატყობინებს — სანამ თუნდაც ერთი `running`-ია,
      სია თვითონ იკითხება. ყველა სხვა დროს polling გამორთულია. */
-  /* ⚠️ **გაჭედილი გაშვება polling-ს არ იმსახურებს** (აუდიტი §B1): მკვდარი
+  /* ⚠️ **გაჭედილი გაშვება polling-ს არ იმსახურებს**: მკვდარი
      ფონური პროცესის სტატუსი თვითონ ვერასდროს შეიცვლება, ე.ი. ტაიმერი
      სამუდამოდ ურეკავდა სერვერს ყოველ 4 წამში და პასუხი არასდროს იცვლებოდა. */
   const running = videos.some((v) => v.download_status === 'running' && !v.download_stale)
@@ -346,7 +346,7 @@ export function VideosPage() {
     if (v.download_status === 'running') {
       return v.download_stale ? t('videos.local.stalled') : t('videos.local.running')
     }
-    /* GAP-12 — `download_error` ან ჩვენი მანქანური კოდია, ან yt-dlp-ის
+    /* `download_error` ან ჩვენი მანქანური კოდია, ან yt-dlp-ის
        საკუთარი stderr; `translateCode()` პირველს თარგმნის და მეორეს ტოვებს. */
     if (v.download_status === 'failed') return translateCode(v.download_error) || t('videos.local.failed')
     // ffmpeg-ის არქონა ხარისხს ჭრის და ეს დაწკაპუნებამდე უნდა ეწეროს
@@ -355,7 +355,7 @@ export function VideosPage() {
       : t('videos.local.start')
   }
 
-  /** ფორმის ტეგების შემოთავაზებები (L8) — ყველა სექციიდან დანახული ტეგი გროვდება */
+  /** ფორმის ტეგების შემოთავაზებები — ყველა სექციიდან დანახული ტეგი გროვდება */
   const [knownTags, setKnownTags] = useState<string[]>([])
   useEffect(() => {
     if (!videos.length) return
@@ -413,7 +413,7 @@ export function VideosPage() {
             ? videoTypeName(onlyType, lang)
             : t('videos.title')
 
-  /* Tasks §7 → §45 — ერთი მენიუ სამივე განლაგებაზე: გახსნა · დაკვრა · წყარო · სტატუსი ▸ · რჩეული ·
+  /* ერთი მენიუ სამივე განლაგებაზე: გახსნა · დაკვრა · წყარო · სტატუსი ▸ · რჩეული ·
      (ჩამოტვირთვა) · — · რედაქტირება · წაშლა */
   const videoActions = (v: Video): MenuAction[] => [
     { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(v) },
@@ -429,7 +429,7 @@ export function VideosPage() {
     ...(!v.download_status || v.download_status === 'failed'
       ? [{ key: 'download', label: t('videos.local.start'), icon: Download, run: () => download.mutate(v.id) }]
       : []),
-    /* §19.4 — ლოკალური ასლის წაშლა ბარათის ზოლიდან აქ გადმოვიდა: ზოლში ერთი ღილაკი დარჩა */
+    /* ლოკალური ასლის წაშლა ბარათის ზოლიდან აქ გადმოვიდა: ზოლში ერთი ღილაკი დარჩა */
     ...(v.download_status === 'ready'
       ? [{ key: 'drop', label: t('videos.local.remove'), icon: FileX, run: () => void askDropDownload(v) }]
       : []),
@@ -442,7 +442,7 @@ export function VideosPage() {
       <PageHeader
         module="video"
         title={heading}
-        /* Tasks §21.3 — „ჩამოტვირთული" სექციას თავისი სათაური და ჯამური ზომა აქვს */
+        /* „ჩამოტვირთული" სექციას თავისი სათაური და ჯამური ზომა აქვს */
         subtitle={
           filters.downloaded
             ? t('videos.local.total', { count: total, size: formatBytes(ytdlpQ.data?.downloaded_size ?? 0) })
@@ -450,9 +450,9 @@ export function VideosPage() {
         }
         actions={
           <>
-            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
-            {/* ძებნა — Tasks 4: განმარტება tooltip-ია და არა `title` */}
+            {/* ძებნა — განმარტება tooltip-ია და არა `title` */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">
@@ -485,7 +485,7 @@ export function VideosPage() {
               </SelectContent>
             </Select>
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
-            {/* §7.2 — მთელი (გაფილტრული) სია რიგში */}
+            {/* მთელი (გაფილტრული) სია რიგში */}
             {videos.length > 0 && (
               <Button
                 variant="outline"
@@ -513,7 +513,7 @@ export function VideosPage() {
       <div className="flex gap-6">
         <div className="min-w-0 flex-1">
           {query.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
-          {/* ⚠️ §2.4 — ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
+          {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !videos.length && (
             <EmptyState
@@ -535,8 +535,8 @@ export function VideosPage() {
             />
           )}
 
-          {/* Tasks §45 — ბარათები `VideoCard`-ითაა (ახლანდელი, §19), ბადე და სტრიქონები — `RecordView`-ით;
-              მენიუ ერთია (`videoActions`). §53.3 — სვეტების რიცხვს **ბადის** სიგანე წყვეტს და არა
+          {/* ბარათები `VideoCard`-ითაა (ახლანდელი), ბადე და სტრიქონები — `RecordView`-ით;
+              მენიუ ერთია (`videoActions`). სვეტების რიცხვს **ბადის** სიგანე წყვეტს და არა
               `main`-ისა (ადრე `@container`-ით — ფილტრების 280 px-იანი პანელიც ითვლებოდა და ბარათი
               ~300 px-მდე ვიწროვდებოდა): ბარათი ~340 px-ზე ვიწრო არ ხდება; ტელეფონზე — ერთი სვეტი */}
           {layout === 'cards' ? (
@@ -585,7 +585,7 @@ export function VideosPage() {
                       {v.channel && <span className="truncate">{v.channel}</span>}
                       {v.published_at && <span>{fmt.date(v.published_at)}</span>}
                       {v.duration ? <span>{formatDuration(v.duration)}</span> : null}
-                      {/* §7.1 — „ეს ლოკალურად მაქვს" სტრიქონშიც ჩანს */}
+                      {/* „ეს ლოკალურად მაქვს" სტრიქონშიც ჩანს */}
                       {v.download_status === 'ready' && (
                         <span className="inline-flex items-center gap-1 text-[var(--status-watched)]">
                           <HardDriveDownload className="size-3" />
@@ -601,7 +601,7 @@ export function VideosPage() {
                     <RecordActionBar
                       link={{ href: v.url, label: t('videos.source'), icon: ExternalLink, title: v.url }}
                       before={
-                        /* §7.2 — რიგში ჩართვა: აქედან გაფილტრული სია უკრავს რიგრიგობით */
+                        /* რიგში ჩართვა: აქედან გაფილტრული სია უკრავს რიგრიგობით */
                         <Button variant="outline" size="sm" className="text-muted-foreground" onClick={() => playHere(v)}>
                           <ListVideo className="size-3.5" />
                           {t('playback.play')}
@@ -633,7 +633,7 @@ export function VideosPage() {
           <Pagination {...query.pagination} />
         </div>
 
-        {/* ---------- ფილტრები (5.2) ---------- */}
+        {/* ---------- ფილტრები ---------- */}
         <FilterPanel
           activeCount={activeCount}
           dirty={dirty}
@@ -642,7 +642,7 @@ export function VideosPage() {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
-          {/* Tasks §21.3 — „მხოლოდ ჩამოტვირთული" (`downloaded=1`); სექციიდან იგივე `?view=downloaded`-ით მოდის */}
+          {/* „მხოლოდ ჩამოტვირთული" (`downloaded=1`); სექციიდან იგივე `?view=downloaded`-ით მოდის */}
           <FilterGroup title={t('videos.local.tab')} count={draft.downloaded ? 1 : 0}>
             <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-2 text-sm">
               <span>{t('videos.local.onlyDownloaded')}</span>
@@ -654,7 +654,7 @@ export function VideosPage() {
             </label>
           </FilterGroup>
 
-          {/* „ყველა"/„რჩეული" აქ განზრახ არ არის (Tasks 3) — ისინი საიდბარის სექციებია */}
+          {/* „ყველა"/„რჩეული" აქ განზრახ არ არის — ისინი საიდბარის სექციებია */}
           <FilterGroup title={t('filter.types')} count={draft.types.length}>
             <FilterOptionList>
               {allTypes.map((type) => (
@@ -688,7 +688,7 @@ export function VideosPage() {
         </FilterPanel>
       </div>
 
-      {/* Tasks §17 (Q4) — მოტივტივე კამათელი და დიალოგი ფილმების იგივე კომპონენტებით;
+      {/* მოტივტივე კამათელი და დიალოგი ფილმების იგივე კომპონენტებით;
           „გახსნა" აქ ფანჯარაა (`VideoDetail`) და არა გვერდი. */}
       <FloatingPick module="video" onOpen={() => setPickOpen(true)} />
       {pickOpen && (
@@ -726,22 +726,22 @@ export function VideosPage() {
         />
       )}
 
-      {/* Tasks §21.2 — ლოკალური ასლის ფლეერი; ფაილის წაშლაზე სია თავისით ახლდება */}
+      {/* ლოკალური ასლის ფლეერი; ფაილის წაშლაზე სია თავისით ახლდება */}
       {local && <LocalVideoPlayer video={videos.find((v) => v.id === local.id) ?? local} onClose={() => setLocal(null)} />}
 
       {detail && (
         <VideoDetail
-          /* Tasks §8 — სია ახლდება რჩეულის შემდეგ, მოდალს ახალი ობიექტი უნდა მიუვიდეს */
+          /* სია ახლდება რჩეულის შემდეგ, მოდალს ახალი ობიექტი უნდა მიუვიდეს */
           video={videos.find((v) => v.id === detail.id) ?? detail}
           onClose={() => setDetail(null)}
-          // „მსგავსი ვიდეოზე" დაჭერა იმავე მოდალში გადაინაცვლებს (K4)
+          // „მსგავსი ვიდეოზე" დაჭერა იმავე მოდალში გადაინაცვლებს
           onOpen={setDetail}
-          /* §19.6 — „რედაქტირება" ფანჯრიდან: ფანჯარა იხურება, ფორმა იხსნება */
+          /* „რედაქტირება" ფანჯრიდან: ფანჯარა იხურება, ფორმა იხსნება */
           onEdit={(v) => {
             setDetail(null)
             setEditing(v)
           }}
-          /* §35.6 — სიაში მყოფი ვიდეო **გაფილტრულ სიას** აქედან უშვებს (ისევე,
+          /* სიაში მყოფი ვიდეო **გაფილტრულ სიას** აქედან უშვებს (ისევე,
              როგორც ბარათის „აქედან დაკვრა"); სიის გარეთა — `?open=`, დუბლის
              „გახსნა", „მსგავსი" — მარტო საკუთარ თავს, რიგის ჩანაცვლებით. */
           onPlay={(v) => void playFrom(v)}
@@ -759,7 +759,7 @@ export function VideosPage() {
             qc.invalidateQueries({ queryKey: ['video-types'] })
             setEditing(null)
           }}
-          /* FEAT-17 — „ეს უკვე გაქვს → გახსნა". ⚠️ ჩანაწერი id-ით მოაქვს
+          /* „ეს უკვე გაქვს → გახსნა". ⚠️ ჩანაწერი id-ით მოაქვს
              და არა ჩატვირთული სიიდან: დუბლი შეიძლება მიმდინარე ფილტრს
              მიღმა იყოს, ე.ი. სიაში მისი ძებნა ხშირად ვერაფერს იპოვიდა. */
           onOpenExisting={async (existingId) => {
@@ -787,17 +787,17 @@ function VideoForm({
   onOpenExisting,
 }: {
   video: Video | null
-  /** არსებული ტეგები შემოთავაზებისთვის (L8) */
+  /** არსებული ტეგები შემოთავაზებისთვის */
   allTags: string[]
   types: VideoType[]
   onClose: () => void
   onSaved: () => void
-  /** FEAT-17 — დუბლის გახსნა */
+  /** დუბლის გახსნა */
   onOpenExisting: (id: number) => void
 }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
-  // §6.4 — სტატუსების ლექსიკონი (სექციები, ბეჯი, ფორმა)
+  // სტატუსების ლექსიკონი (სექციები, ბეჯი, ფორმა)
   const { data: statuses = [] } = useStatuses('video')
   const { toast } = useToast()
 
@@ -805,23 +805,23 @@ function VideoForm({
     title: video?.title ?? '',
     url: video?.url ?? '',
     description: video?.description ?? '',
-    // Q52 — არხი და გამოქვეყნების დღე
+    // არხი და გამოქვეყნების დღე
     channel: video?.channel ?? '',
     publishedAt: video?.published_at ?? '',
     // ახალ ვიდეოს პირველი ტიპი ენიჭება — select ცარიელი არ რჩება
     // ⚠️ აღარ იყენებს პირველ ტიპს ნაგულისხმევად: არჩევანი მომხმარებლისაა
     typeId: video?.type_id ? String(video.type_id) : '',
-    // §6.4 — გასაღები; ცარიელი = ნაგულისხმევი (backend დაადებს)
+    // გასაღები; ცარიელი = ნაგულისხმევი (backend დაადებს)
     status: video?.status?.key ?? '',
     tags: video?.tags ?? [],
   })
-  // ხანგრძლივობა ავტომატურია (5.5); ხელით შეყვანა არჩევითი ველია (§6, ფაზა 1)
+  // ხანგრძლივობა ავტომატურია; ხელით შეყვანა არჩევითი ველია
   const [duration, setDuration] = useState<number | null>(video?.duration ?? null)
-  // §6 — რომელი ველი ჩანს, რა ჰქვია და სავალდებულოა თუ არა
+  // რომელი ველი ჩანს, რა ჰქვია და სავალდებულოა თუ არა
   const fields = useModuleFields('video')
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(storageUrl(video?.thumbnail))
-  /* Tasks §44.2 — ბმულიდან მოსული ფოტო **პირდაპირ ჩარჩოშია** (URL-ით); შენახვისას
+  /* ბმულიდან მოსული ფოტო **პირდაპირ ჩარჩოშია** (URL-ით); შენახვისას
      `thumbnail_url`-ად მიდის და სერვერი ზუსტად მას იწერს. ატვირთული და უკვე შენახული
      ფოტო უპირატესია (`thumbPreview`). */
   const [linkThumb, setLinkThumb] = useState<string | null>(null)
@@ -830,16 +830,16 @@ function VideoForm({
   const [meta, setMeta] = useState<VideoMetadata | null>(null)
   const [metaLoading, setMetaLoading] = useState(false)
   const [probing, setProbing] = useState(false)
-  // §7.6.3 — SerpApi-ით დეტალების წამოღება (YouTube-ის გასაღების გარეშე)
+  // SerpApi-ით დეტალების წამოღება (YouTube-ის გასაღების გარეშე)
   const [webLoading, setWebLoading] = useState(false)
   const [newType, setNewType] = useState(false)
   const lastFetched = useRef<string>(video?.url ?? '')
   const qc = useQueryClient()
-  // §26.5 — დამატებითი ველები ახალ ვიდეოზე; ჩავარდნისას შექმნილი რჩება
+  // დამატებითი ველები ახალ ვიდეოზე; ჩავარდნისას შექმნილი რჩება
   const extras = useRecordExtras('video', video)
 
   /**
-   * ბმულის ჩასმისთანავე ვცდილობთ სათაურის/thumbnail-ის/ხანგრძლივობის წამოღებას (K2).
+   * ბმულის ჩასმისთანავე ვცდილობთ სათაურის/thumbnail-ის/ხანგრძლივობის წამოღებას.
    * ივსება **მხოლოდ ცარიელი ველები** — ხელით შეყვანილს არ ვაბათილებთ.
    */
   const loadMeta = async (url: string) => {
@@ -857,7 +857,7 @@ function VideoForm({
         ...f,
         title: f.title || (m.title ?? ''),
         description: f.description || (m.description ?? ''),
-        // Q52 — oEmbed-ის `author_name` არხია; §44.3 — თარიღი Data API-დან ან yt-dlp-დან
+        // oEmbed-ის `author_name` არხია; თარიღი Data API-დან ან yt-dlp-დან
         channel: f.channel || (m.author ?? ''),
         publishedAt: f.publishedAt || (m.published_at ?? ''),
         tags: f.tags.length ? f.tags : m.tags,
@@ -870,7 +870,7 @@ function VideoForm({
     }
 
     // პირდაპირ ფაილზე (.mp4/.webm) oEmbed/API არ არსებობს და ffprobe backend-ზე
-    // არ გვაქვს — ხანგრძლივობას ბრაუზერი კითხულობს `<video>`-ით (K2)
+    // არ გვაქვს — ხანგრძლივობას ბრაუზერი კითხულობს `<video>`-ით
     if (!fetchedDuration && isDirectMediaUrl(clean)) {
       setProbing(true)
       const seconds = await probeMediaDuration(clean)
@@ -880,7 +880,7 @@ function VideoForm({
   }
 
   /**
-   * §7.6.3 — ხანგრძლივობისა და სათაურის წამოღება **SerpApi-დან**, როცა
+   * ხანგრძლივობისა და სათაურის წამოღება **SerpApi-დან**, როცა
    * უფასო გზამ ვერ მოიტანა (YouTube-ის შენი გასაღები „მონაცემებში" არ წერია).
    *
    * ⚠️ **ღილაკია და არა ავტომატური probe:** თითო გამოძახება ერთ ძებნას
@@ -901,7 +901,7 @@ function VideoForm({
         channel: f.channel || (found.channel ?? ''),
         publishedAt: f.publishedAt || (found.published ?? ''),
       }))
-      // Tasks §44.3 — ნაპოვნი ფოტოც ჩარჩოში (ადრე იკარგებოდა); ბმულისა უპირატესია
+      // ნაპოვნი ფოტოც ჩარჩოში (ადრე იკარგებოდა); ბმულისა უპირატესია
       if (found.thumbnail) setLinkThumb((l) => l ?? found.thumbnail)
       toast({ title: t('videos.metaFromWeb'), variant: 'success' })
     } catch (e) {
@@ -933,7 +933,7 @@ function VideoForm({
   })
 
 
-  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს**: ბლოკი
      `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
      ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
   const warnHidden = (missing: string[]) => {
@@ -967,7 +967,7 @@ function VideoForm({
 
     setErrors({})
 
-    // Tasks §13.3 — submit-ზე დუბლი უხმოდ იჭრება: `TagSelect` უკვე გააფრთხილა, აქ მხოლოდ გარანტია
+    // submit-ზე დუბლი უხმოდ იჭრება: `TagSelect` უკვე გააფრთხილა, აქ მხოლოდ გარანტია
     const { tags } = dedupeTags(form.tags)
 
     save.mutate({
@@ -983,12 +983,12 @@ function VideoForm({
       tags,
       thumbnail,
       remove_thumbnail: removeThumb,
-      // §44.2 — ჩარჩოში ნაჩვენები ბმულის ფოტო (ატვირთული/შენახული თუ არ არის)
+      // ჩარჩოში ნაჩვენები ბმულის ფოტო (ატვირთული/შენახული თუ არ არის)
       thumbnail_url: !thumbnail && !thumbPreview ? linkThumb : null,
     })
   }
 
-  /* ⚠️ ხანგრძლივობა ნაგულისხმევად დამალულია (§6) — ჩართვისას რიგი სამ
+  /* ⚠️ ხანგრძლივობა ნაგულისხმევად დამალულია — ჩართვისას რიგი სამ
      სვეტად იყოფა, თორემ ორი ველი რიგის ორ მესამედს დაიკავებდა და ბოლო
      მესამედი ცარიელი დარჩებოდა. */
   const detailSize = fields.shows('duration') ? 'third' : 'half'
@@ -996,9 +996,9 @@ function VideoForm({
   return (
     <ModalShell title={t(video ? 'videos.edit' : 'videos.add')} onClose={onClose} wide>
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
-        {/* §26.2 — ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
-            ⚠️ `url` `locked`-ია (§6.5): მისი გამორთვა ჩაწერას გატეხავდა — და
-            სწორედ ამიტომ ითხოვს ჩაკეტვის ცხად მოხსნას (§4). ⚠️ `shows()`-ს
+        {/* ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
+            ⚠️ `url` `locked`-ია: მისი გამორთვა ჩაწერას გატეხავდა — და
+            სწორედ ამიტომ ითხოვს ჩაკეტვის ცხად მოხსნას. ⚠️ `shows()`-ს
             მაინც ეკითხება, თორემ მოხსნის შემდეგ ჩამრთველი ტყუილი იქნებოდა. */}
         <QuickFill
           show={fields.shows('url')}
@@ -1022,14 +1022,14 @@ function VideoForm({
           />
           {errors.url && <p className="mt-1 text-xs text-destructive">{errors.url}</p>}
 
-          {/* ბმულიდან წამოღებული მონაცემი (K2) */}
+          {/* ბმულიდან წამოღებული მონაცემი */}
           {metaLoading && (
             <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="size-3.5 animate-spin" />
               {t('videos.metaLoading')}
             </p>
           )}
-          {/* FEAT-17 — ბმულის დუბლი. ⚠️ `metaLoading`-ის მიღმაც ჩანს:
+          {/* ბმულის დუბლი. ⚠️ `metaLoading`-ის მიღმაც ჩანს:
               ჩანაწერის არსებობა oEmbed-ის პასუხზე არ არის დამოკიდებული. */}
           {!metaLoading && meta?.existing && (
             <DuplicateLinkNotice title={meta.existing.title} onOpen={() => onOpenExisting(meta.existing!.id)} />
@@ -1041,18 +1041,18 @@ function VideoForm({
               )}
               <div className="min-w-0 text-xs text-muted-foreground">
                 <p className="truncate text-foreground">{meta.title ?? t('videos.metaNoTitle')}</p>
-                {/* Tasks §44.2 — აღწერაც ბარათშია, ორ ხაზად */}
+                {/* აღწერაც ბარათშია, ორ ხაზად */}
                 {meta.description && <p className="line-clamp-2">{meta.description}</p>}
                 <p className="capitalize">
                   {meta.platform}
                   {meta.author && ` · ${meta.author}`}
                   {duration ? ` · ${formatDuration(duration)}` : ''}
                 </p>
-                {/* §44.3 — გასაღების გარეშეც სრული ინფო მოდის, თუ yt-dlp დაყენებულია; ვებძებნა მხოლოდ ბოლო საშუალებაა */}
+                {/* გასაღების გარეშეც სრული ინფო მოდის, თუ yt-dlp დაყენებულია; ვებძებნა მხოლოდ ბოლო საშუალებაა */}
                 {meta.platform === 'youtube' && !meta.youtube_key && !meta.ytdlp && (
                   <div className="mt-0.5 flex flex-wrap items-center gap-2">
                     <span>{t('videos.metaNeedsKey')}</span>
-                    {/* §7.6.3 — SerpApi ამას გასაღების გარეშე ავსებს, მაგრამ
+                    {/* SerpApi ამას გასაღების გარეშე ავსებს, მაგრამ
                         ერთ ძებნას ხარჯავს 250-იდან → **მხოლოდ ღილაკით** */}
                     <Button
                       type="button"
@@ -1069,7 +1069,7 @@ function VideoForm({
               </div>
             </div>
           )}
-          {/* 5.5 — ხანგრძლივობა ავტომატურად წამოდის… */}
+          {/* ხანგრძლივობა ავტომატურად წამოდის… */}
           {probing && (
             <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="size-3.5 animate-spin" />
@@ -1078,7 +1078,7 @@ function VideoForm({
           )}
         </QuickFill>
 
-        {/* §26 — მთავარი ფოტო ზემოთაა, სათაურსა და აღწერასთან ერთად
+        {/* მთავარი ფოტო ზემოთაა, სათაურსა და აღწერასთან ერთად
             (5.4 — იმავე კომპონენტით, რითიც ფილმის პოსტერი) */}
         <FormSection
           title={t('form.sections.basic')}
@@ -1132,7 +1132,7 @@ function VideoForm({
         </FormSection>
 
         <FormSection title={t('form.sections.classification')}>
-          {/* ტიპი — მართვადი ლექსიკონიდან, გვერდით „ახალი ტიპი" (5.1, ეტაპი 2) */}
+          {/* ტიპი — მართვადი ლექსიკონიდან, გვერდით „ახალი ტიპი" */}
           <FormField size="half" {...fields.field('type_id')} htmlFor="v-type" error={errors.type_id}>
             <div className="flex gap-1">
               <Select value={form.typeId} onValueChange={(v) => setForm((f) => ({ ...f, typeId: v }))}>
@@ -1161,7 +1161,7 @@ function VideoForm({
             </div>
           </FormField>
 
-          {/* §6.4 — სტატუსი: ამ მოდულს ის ახლა გაუჩნდა */}
+          {/* სტატუსი: ამ მოდულს ის ახლა გაუჩნდა */}
           <FormField size="half" {...fields.field('status')} htmlFor="v-status" error={errors.status}>
             <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
               <SelectTrigger id="v-status" className={errors.status ? 'border-destructive' : undefined}>
@@ -1182,7 +1182,7 @@ function VideoForm({
             hint={joinHints(fields.hint('tags'), t('videos.tagsDedupeHint'))}
             htmlFor="v-tags"
           >
-            {/* multi-select — იგივე ბიბლიოთეკა, რაც ჟანრებზე (L8) */}
+            {/* multi-select — იგივე ბიბლიოთეკა, რაც ჟანრებზე */}
             <TagSelect
               inputId="v-tags"
               options={allTags}
@@ -1192,7 +1192,7 @@ function VideoForm({
           </FormField>
         </FormSection>
 
-        {/* Q52 — არხი და გამოქვეყნების დღე: ბმულის ჩასმა არხს ავსებს, ვებძებნა — ორივეს */}
+        {/* არხი და გამოქვეყნების დღე: ბმულის ჩასმა არხს ავსებს, ვებძებნა — ორივეს */}
         <FormSection title={t('form.sections.details')}>
           <FormField size={detailSize} {...fields.field('channel')} htmlFor="v-channel">
             <Input
@@ -1212,18 +1212,18 @@ function VideoForm({
             />
           </FormField>
 
-          {/* …ხელით შეყვანა კი **არჩევითი ველია** (§5 → §6): default-ად
+          {/* …ხელით შეყვანა კი **არჩევითი ველია**: default-ად
               გამორთულია და ირთვება `/modules/video`-ზე. საჭიროა მაშინ, როცა
               ავტომატიკა ვერ მუშაობს (მაგ. YouTube-ის კლავიშის გარეშე).
-              §2.5 — წუთი + წამი (საათი გადამრთველით); ბაზაში ისევ წამები */}
-          {/* §39 — ერთი ჩარჩო ერთ ხაზზე, ჯამი შიგნით (ვიწრო ველში თვითონ იმალება) */}
+              წუთი + წამი (საათი გადამრთველით); ბაზაში ისევ წამები */}
+          {/* ერთი ჩარჩო ერთ ხაზზე, ჯამი შიგნით (ვიწრო ველში თვითონ იმალება) */}
           <FormField size={detailSize} {...fields.field('duration')} htmlFor="v-duration">
             <DurationInput id="v-duration" value={duration} onChange={setDuration} />
           </FormField>
         </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ ვიდეოზე მონახაზი */}
+      {/* დამატებითი ველები; ახალ ვიდეოზე მონახაზი */}
       <CustomFieldsCard
         module="video"
         recordId={extras.current?.id ?? null}

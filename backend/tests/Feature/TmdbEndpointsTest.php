@@ -13,11 +13,11 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * **TMDB-ზე დამოკიდებული endpoint-ები** (Tasks DEBT-14).
+ * **TMDB-ზე დამოკიდებული endpoint-ები**.
  *
  * ⚠️ ესენი აპის **მთავარი გზებია** — „დაამატე discover-იდან", „განაახლე
- * TMDB-დან", „ფრანჩაიზის ნაწილები" — და აუდიტამდე მათ **არცერთი ტესტი**
- * არ ეხებოდა. BUG-16-იც და BUG-19-იც სწორედ დაუტესტავ ბრანჩებში იჯდა.
+ * TMDB-დან", „ფრანჩაიზის ნაწილები" — და ადრე მათ **არცერთი ტესტი**
+ * არ ეხებოდა. ორი ნაპოვნი ბაგი სწორედ დაუტესტავ ბრანჩებში იჯდა.
  *
  * ⚠️ ნამდვილი TMDB აქ არ იძახება: `Http::fake()` ყველაფერს იჭერს და
  * **გასაღების არქონაც** ცალკე მოწმდება — „წყარო არ არის" და „ვერაფერი
@@ -40,7 +40,7 @@ class TmdbEndpointsTest extends TestCase
         $this->user = $this->makeUser('ana');
         $this->other = $this->makeUser('gio');
 
-        // Tasks §30 — გასაღები ანგარიშისაა: ორივეს თავისი
+        // გასაღები ანგარიშისაა: ორივეს თავისი
         $this->giveCredential($this->user, 'tmdb');
         $this->giveCredential($this->other, 'tmdb');
     }
@@ -94,7 +94,7 @@ class TmdbEndpointsTest extends TestCase
     public function test_the_collection_lists_the_parts_and_marks_the_owned_ones(): void
     {
         $movie = Movie::create(['user_id' => $this->user->id, 'tmdb_id' => 603]);
-        // Tasks §51.2 — ბიბლიოთეკაში და უკვე რჩეული: ფანჯარაში ჩაკეტილი იქნება
+        // ბიბლიოთეკაში და უკვე რჩეული: ფანჯარაში ჩაკეტილი იქნება
         $owned = Movie::create(['user_id' => $this->user->id, 'tmdb_id' => 604, 'is_favorite' => true]);
 
         Http::fake([
@@ -180,7 +180,7 @@ class TmdbEndpointsTest extends TestCase
 
     /**
      * ⚠️ „ჩემი გასაღები არ მაქვს" **409 `credential_missing`**-ია და არა 500 ან 503
-     * (Tasks §30.6) — „წყარო არ პასუხობს" სხვა ფაქტია და სხვა ქმედებას ითხოვს.
+     * — „წყარო არ პასუხობს" სხვა ფაქტია და სხვა ქმედებას ითხოვს.
      */
     public function test_resync_without_a_key_asks_for_the_users_own_key(): void
     {
@@ -193,7 +193,7 @@ class TmdbEndpointsTest extends TestCase
     }
 
     /**
-     * ⚠️ **სხვისი გასაღები ჩემს მოთხოვნას არ ემსახურება** (Tasks §30): გიოს
+     * ⚠️ **სხვისი გასაღები ჩემს მოთხოვნას არ ემსახურება**: გიოს
      * გასაღები აქვს, ანას — არა; ანას ზარი TMDB-მდე საერთოდ არ მიდის.
      */
     public function test_another_users_key_never_serves_my_request(): void
@@ -275,7 +275,7 @@ class TmdbEndpointsTest extends TestCase
                     ['id' => 603, 'title' => 'The Matrix', 'release_date' => '1999-03-30', 'poster_path' => '/a.jpg'],
                 ],
             ]),
-            // §50 — სახელი ტიპის მინიშნებისთვის `/search/multi`-შიც მოწმდება
+            // სახელი ტიპის მინიშნებისთვის `/search/multi`-შიც მოწმდება
             'api.themoviedb.org/3/search/multi*' => Http::response([
                 'results' => [['id' => 603, 'media_type' => 'movie', 'title' => 'The Matrix', 'release_date' => '1999-03-30']],
             ]),
@@ -289,7 +289,7 @@ class TmdbEndpointsTest extends TestCase
             ->assertJsonPath('suggest', null);
     }
 
-    /* ---------- Tasks §50 — ნაპოვნი სხვა ტიპისაა ---------- */
+    /* ---------- ნაპოვნი სხვა ტიპისაა ---------- */
 
     private const BREAKING_BAD = ['id' => 1396, 'name' => 'Breaking Bad', 'first_air_date' => '2008-01-20', 'poster_path' => '/bb.jpg', 'genre_ids' => [18], 'origin_country' => ['US']];
 
@@ -350,7 +350,7 @@ class TmdbEndpointsTest extends TestCase
             ->assertJsonPath('suggest.title', 'The Matrix');
     }
 
-    /** 50.3 — იაპონური ანიმაცია სერიალის ფორმაში ანიმეს გვთავაზობს; ანიმეს ფორმაში — არაფერს */
+    /** იაპონური ანიმაცია სერიალის ფორმაში ანიმეს გვთავაზობს; ანიმეს ფორმაში — არაფერს */
     public function test_japanese_animation_suggests_anime(): void
     {
         $frieren = ['id' => 209867, 'name' => 'Frieren', 'first_air_date' => '2023-09-29', 'genre_ids' => [16, 10765], 'origin_country' => ['JP']];
@@ -455,7 +455,7 @@ class TmdbEndpointsTest extends TestCase
     }
 
     /**
-     * ⚠️ **`.env`/`config`-ში ჩაწერილი გასაღები იგნორირდება** (Tasks §30.9) —
+     * ⚠️ **`.env`/`config`-ში ჩაწერილი გასაღები იგნორირდება** —
      * საერთო ფენა აღარ არსებობს, ე.ი. `services.tmdb.key` ვერაფერს ცვლის.
      */
     public function test_a_key_in_config_is_ignored(): void

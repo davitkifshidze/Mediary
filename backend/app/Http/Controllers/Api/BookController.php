@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
- * წიგნების მოდული (`book`, Tasks §12).
+ * წიგნების მოდული (`book`).
  *
  * მფლობელობა — `BelongsToUser` global scope (სხვისი ჩანაწერი 404), უფლებები —
  * `permission:book` middleware. გამამდიდრებელი წყარო Open Library-ია
@@ -38,7 +38,7 @@ class BookController extends Controller
     public function index(Request $request)
     {
         $query = Book::query()->with('genre')->withCount(['files', 'notes', 'quotes']);
-        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'book', $request);
 
         if ($status = $request->string('status')->toString()) {
@@ -115,7 +115,7 @@ class BookController extends Controller
 
     public function destroy(Book $book)
     {
-        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+        /* ⚠️ **კალათა** — `delete()` კი არა, `moveToTrash()`.
            ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
            გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
            ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
@@ -178,13 +178,13 @@ class BookController extends Controller
         return new BookResource($book->load('genre'));
     }
 
-    /* ---------- Open Library (§12-ის enrichment) ---------- */
+    /* ---------- Open Library (enrichment) ---------- */
 
     /**
      * არჩევანის სია — ავტომატურად არაფერს ვამთხვევთ (TMDB-ის იგივე წესი).
      *
      * ⚠️ **ქართული ასოებით დაწერილ შეკითხვაზე წყარო საერთოდ არ იძახება**
-     * (§5.7, შენი გადაწყვეტილება 2026-09-11): ქართული წიგნი **ხელით ემატება**.
+     * (შენი გადაწყვეტილება 2026-09-11): ქართული წიგნი **ხელით ემატება**.
      * Open Library მხოლოდ ლათინურს პასუხობს, ე.ი. ქართული შეკითხვა ისედაც
      * ცარიელი სიით ბრუნდებოდა — და ეს „ასეთი წიგნი არ არსებობს"-ად
      * იკითხებოდა. ახლა პასუხში `notice: manual_only` წერია და ინტერფეისი
@@ -275,7 +275,7 @@ class BookController extends Controller
             'year' => ['nullable', 'integer', 'min:1', 'max:2200'],
             'pages' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'language' => ['nullable', 'string', 'max:10'],
-            // §5.7 — ერთი, მარტივი „წყაროს / წასაკითხი ლინკი" (`links`-ის ნაცვლად)
+            // ერთი, მარტივი „წყაროს / წასაკითხი ლინკი" (`links`-ის ნაცვლად)
             'source_url' => ['nullable', 'string', 'max:1000', 'url'],
 
             'genre_id' => [
@@ -347,7 +347,7 @@ class BookController extends Controller
         }
 
         if ($request->boolean('remove_cover')) {
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($book, 'cover_path', 'cover_source');
             $book->cover_path = null;
             $book->cover_source = null;
@@ -358,8 +358,8 @@ class BookController extends Controller
         }
 
         if ($request->hasFile('cover')) {
-            // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($book, 'cover_path', 'cover_source');
             $book->cover_path = $this->meter
                 ->storeUpload($request->user(), $request->file('cover'), StorageFolder::BOOK_COVERS);
@@ -371,7 +371,7 @@ class BookController extends Controller
     /**
      * Open Library-ს ყდის ჩამოტვირთვა შენახვისას.
      *
-     * ⚠️ **კვოტაში არ ითვლება** (19.4/B): TMDB-ის პოსტერივით ეს user-ის
+     * ⚠️ **კვოტაში არ ითვლება**: TMDB-ის პოსტერივით ეს user-ის
      * ატვირთვა არაა. ამიტომ `cover_source = 'openlibrary'` და ჩაწერა
      * `storeContents()`-ის გვერდით — `Storage`-ით პირდაპირ.
      */

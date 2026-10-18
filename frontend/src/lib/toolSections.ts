@@ -24,7 +24,7 @@ import {
 import { modAccent } from '@/lib/modules'
 
 /* ============================================================
-   **არა-მოდულური სექციების რეესტრი (Tasks §23).**
+   **არა-მოდულური სექციების რეესტრი.**
 
    საიდბარის რიგი და გვერდის ჰედერი ერთსა და იმავე სექციას ხატავენ, ე.ი.
    ფერიც და ხატულაც **ერთ ადგილას** უნდა ეწეროს. აქამდე ფერი `Sidebar.tsx`-ის
@@ -71,7 +71,7 @@ export type ToolSectionKey =
 type ToolSection = { color: string; icon: LucideIcon }
 
 export const TOOL_SECTIONS: Record<ToolSectionKey, ToolSection> = {
-  /* Tasks §35.2 — „მსახიობები": მედიის საერთო გვერდი (მოდული არ აქვს — `cast_members` გლობალურია) */
+  /* „მსახიობები": მედიის საერთო გვერდი (მოდული არ აქვს — `cast_members` გლობალურია) */
   actors: { color: 'var(--tool-actors)', icon: Drama },
   dictionaries: { color: 'var(--tool-dictionaries)', icon: Library },
   genres: { color: 'var(--tool-genres)', icon: Tags },
@@ -86,10 +86,10 @@ export const TOOL_SECTIONS: Record<ToolSectionKey, ToolSection> = {
   roles: { color: 'var(--tool-roles)', icon: ShieldCheck },
   audit: { color: 'var(--tool-audit)', icon: ScrollText },
   credentials: { color: 'var(--tool-credentials)', icon: KeyRound },
-  /* Tasks §40.14 — „გაზიარების ბმულები": ცალკე განყოფილება „მონაცემების" ქვემოთ */
+  /* „გაზიარების ბმულები": ცალკე განყოფილება „მონაცემების" ქვემოთ */
   share: { color: 'var(--tool-share)', icon: Share2 },
   backups: { color: 'var(--tool-backups)', icon: DatabaseBackup },
-  /* Tasks §31 — „ექსპორტ & იმპორტი": ორი მიმართულება ერთ სექციაში, ამიტომ
+  /* „ექსპორტ & იმპორტი": ორი მიმართულება ერთ სექციაში, ამიტომ
      ხატულაც ორმხრივია. ⚠️ ყოფილი „იმპორტის" ვარდისფერი რჩება — სექცია
      იგივეა, უბრალოდ მეორე ნახევარი შემოემატა. */
   transfer: { color: 'var(--tool-transfer)', icon: ArrowLeftRight },

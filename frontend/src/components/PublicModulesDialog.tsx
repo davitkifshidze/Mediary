@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   **ფენა 2 — რომელი მოდული ჩანს საჯარო პროფილზე (Tasks §7.2).**
+   **ფენა 2 — რომელი მოდული ჩანს საჯარო პროფილზე.**
 
    შენი სიტყვები: „რომელი მოდულები ჩანს — გვერდზე ღილაკი ჰქონდეს მარჯვნივ
    და მოდალი გამოდიოდეს".
@@ -40,7 +40,7 @@ export function PublicModulesDialog({
 
   const [busy, setBusy] = useState<string | null>(null)
 
-  // მოდულები, რომელთა გასაჯაროებაც საერთოდ შეიძლება (`note` — არასდროს, 16.5)
+  // მოდულები, რომელთა გასაჯაროებაც საერთოდ შეიძლება (`note` — არასდროს)
   const shareable = enabled.filter((m) => m.shareable)
 
   const toggle = async (key: string, next: boolean) => {

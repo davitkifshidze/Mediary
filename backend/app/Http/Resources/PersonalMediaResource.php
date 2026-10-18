@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * **ფოტო/ვიდეო პირად გალერეაში (Tasks §33).**
+ * **ფოტო/ვიდეო პირად გალერეაში.**
  *
  * ⚠️ **`url`/`thumb` API-ის გზებია და არა `/storage/*`** — ფაილი პირად დისკზეა
  * (`private: true`), SPA ესკიზს blob-ად კითხულობს (`usePrivateFileUrl`), ვიდეოს

@@ -17,7 +17,7 @@ import { useDutyReminderWatcher } from '@/lib/dutyReminders'
 import { MEDIA, type MediaType } from '@/lib/media'
 
 /* ============================================================
-   მარშრუტების დონეზე დაყოფა (Tasks §4).
+   მარშრუტების დონეზე დაყოფა.
 
    ⚠️ **`lazy()` სახელიან ექსპორტს `default`-ად გადაათარგმნინებს.** ეს
    `.then()` მოსაწყენია, მაგრამ განზრახ ხელითაა დაწერილი: ზოგადი დამხმარე
@@ -73,14 +73,14 @@ const NoteRemindersPage = lazy(() =>
 const BookmarksPage = lazy(() => import('@/pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage })))
 const CoursesPage = lazy(() => import('@/pages/CoursesPage').then((m) => ({ default: m.CoursesPage })))
 const PlacesPage = lazy(() => import('@/pages/PlacesPage').then((m) => ({ default: m.PlacesPage })))
-// Tasks §33 — პირადი გალერეა: ჭრილები, ადამიანის და ალბომის გვერდი
+// პირადი გალერეა: ჭრილები, ადამიანის და ალბომის გვერდი
 const PersonalPage = lazy(() => import('@/pages/PersonalPage').then((m) => ({ default: m.PersonalPage })))
 const DutyPage = lazy(() => import('@/pages/DutyPage').then((m) => ({ default: m.DutyPage })))
 const PersonalPersonPage = lazy(() =>
   import('@/pages/PersonalPersonPage').then((m) => ({ default: m.PersonalPersonPage })),
 )
 const PersonalAlbumPage = lazy(() => import('@/pages/PersonalAlbumPage').then((m) => ({ default: m.PersonalAlbumPage })))
-// Tasks §37 — ინტერფეისიდან შექმნილი მოდულების **ერთი** ზოგადი გვერდი
+// ინტერფეისიდან შექმნილი მოდულების **ერთი** ზოგადი გვერდი
 const CustomModulePage = lazy(() =>
   import('@/pages/CustomModulePage').then((m) => ({ default: m.CustomModulePage })),
 )
@@ -96,7 +96,7 @@ const AuditPage = lazy(() => import('@/pages/AuditPage').then((m) => ({ default:
 
 
 /**
- * `/gallery/actors/:id` → `/actors/:id` (§8.5).
+ * `/gallery/actors/:id` → `/actors/:id`.
  *
  * ⚠️ **მსახიობს ერთი გვერდი აქვს.** გალერეის სია მასზე გადაგიყვანს და არა
  * მის ასლზე — ორი გვერდი ერთ დღეს სხვადასხვა შიგთავსს აჩვენებდა.
@@ -150,25 +150,25 @@ const MODULE_PAGES: Record<string, React.ReactNode> = {
   video: <VideosPage />,
   // 2026-09-03 — სიმღერები ცალკე მოდულია (ადრე ვიდეოს ქვე-სექცია იყო)
   song: <SongsPage />,
-  // Tasks §12 — წიგნები
+  // წიგნები
   book: <BooksPage />,
-  // Tasks §14 — ბორდგეიმები
+  // ბორდგეიმები
   board_game: <BoardGamesPage />,
-  // Tasks §11 — თამაშები
+  // თამაშები
   game: <GamesPage />,
-  // Tasks §13 — ჩანაწერები (key `note`, ცხრილი `note_entries`)
+  // ჩანაწერები (key `note`, ცხრილი `note_entries`)
   note: <NotesPage />,
-  // Tasks §18 — ბუკმარკები (`DECISIONS.md` §10)
+  // ბუკმარკები
   bookmark: <BookmarksPage />,
-  // FEAT-25 — კურსები
+  // კურსები
   course: <CoursesPage />,
-  // FEAT-26 — ადგილები
+  // ადგილები
   place: <PlacesPage />,
-  // Tasks §33 — პირადი გალერეა; ფესვი „ადამიანებია", დანარჩენი ჭრილები ქვემოთ
+  // პირადი გალერეა; ფესვი „ადამიანებია", დანარჩენი ჭრილები ქვემოთ
   personal: <PersonalPage cut="people" />,
-  // Tasks §34 — მორიგეობა (კალენდარი · სია · ჯამები · კალკულატორი — `?view=`)
+  // მორიგეობა (კალენდარი · სია · ჯამები · კალკულატორი — `?view=`)
   duty: <DutyPage />,
-  // Tasks 10 — გალერეა ცალკე მოდულია, ფოტოები კი ფილმებსა/სერიალებს ჰკიდია
+  // გალერეა ცალკე მოდულია, ფოტოები კი ფილმებსა/სერიალებს ჰკიდია
   gallery: <GalleryPage />,
 }
 
@@ -187,29 +187,29 @@ function mediaRoutes(type: MediaType) {
 
 /**
  * აპლიკაციის გარსი — საიდბარი + მარშრუტები.
- * მედია-დომენების მარშრუტები **ჩართული მოდულებიდან** იგება (I3):
+ * მედია-დომენების მარშრუტები **ჩართული მოდულებიდან** იგება:
  * ჩაურთველი მოდულის მისამართი საერთოდ არ არსებობს.
  */
 function AppShell() {
   const { mediaModules, pageModules, has, loading } = useModules()
   const { canAdmin } = useAuth()
-  // უჯრის მდგომარეობა აქ არის — ჰედერის ჰამბურგერიც და საიდბარიც იყენებს (K12)
+  // უჯრის მდგომარეობა აქ არის — ჰედერის ჰამბურგერიც და საიდბარიც იყენებს
   const [drawerOpen, setDrawerOpen] = useState(false)
-  // მასობრივი ოპერაციები (Tasks 4) — მედია-დომენებზე სტატუსი, ვიდეოებზე ტიპი/ტეგები
+  // მასობრივი ოპერაციები — მედია-დომენებზე სტატუსი, ვიდეოებზე ტიპი/ტეგები
   const bulkAvailable = mediaModules.length > 0 || has('video')
   /** შეცდომის ზღვრის გასაღები — მისამართის შეცვლა შეცდომას ასუფთავებს */
   const location = useLocation()
 
-  // §13.3 — შეხსენებების მოსმენა აპლიკაციის დონეზეა, რომ ნებისმიერ გვერდზე
+  // შეხსენებების მოსმენა აპლიკაციის დონეზეა, რომ ნებისმიერ გვერდზე
   // მუშაობდეს და არა მხოლოდ `/notes`-ზე. მოდულის გარეშე polling არ ირთვება.
   useNoteReminderWatcher(has('note'))
-  // Tasks §34.7 — მორიგეობის შეხსენება წინა დღეს (იგივე ბრაუზერის არხი)
+  // მორიგეობის შეხსენება წინა დღეს (იგივე ბრაუზერის არხი)
   useDutyReminderWatcher(has('duty'))
 
-  // Tasks §4.1 — „რომელ სექციაში შევიდა". აპლიკაციის დონეზეა, რომ ყველა
+  // „რომელ სექციაში შევიდა". აპლიკაციის დონეზეა, რომ ყველა
   // მარშრუტი დაიფაროს და არა მხოლოდ ის, ვინც გამოძახებას დაიმახსოვრებს.
   useVisitTracker()
-  // Tasks §43.4 — დაჭერები და განახლება (ერთი `capture` მსმენელი, პაკეტებად; მხოლოდ ჩართული ტიპები)
+  // დაჭერები და განახლება (ერთი `capture` მსმენელი, პაკეტებად; მხოლოდ ჩართული ტიპები)
   useAuditEvents()
 
   if (loading) return <Splash />
@@ -219,12 +219,12 @@ function AppShell() {
       <Header onMenu={() => setDrawerOpen(true)} />
       <div className="flex flex-1 flex-col lg:flex-row">
         <Sidebar drawerOpen={drawerOpen} onDrawerChange={setDrawerOpen} />
-        {/* §7.2/§35 — დამკვრელი გვერდს არ უნდა ფარავდეს: ქვედა ზოლის სიმაღლეს
+        {/* დამკვრელი გვერდს არ უნდა ფარავდეს: ქვედა ზოლის სიმაღლეს
             (`--player-h`) და გვერდითა პანელის სიგანეს (`--player-w`) თვითონ
             დამკვრელი წერს; დახურულზე ცვლადები საერთოდ არ არის. ⚠️ `padding`
             და არა `margin`: ფონი ბოლომდე უნდა ჩანდეს, შიგთავსი კი პანელის
-            მარცხნივ ცენტრდებოდეს — ზუსტად ისე, როგორც ჰედერის ძებნა (Q26). */}
-        {/* Tasks §20.4 — `@container`: ბადეები **`main`-ის** სიგანეს მიჰყვებიან და არა ეკრანისას,
+            მარცხნივ ცენტრდებოდეს — ზუსტად ისე, როგორც ჰედერის ძებნა. */}
+        {/* `@container`: ბადეები **`main`-ის** სიგანეს მიჰყვებიან და არა ეკრანისას,
             ე.ი. გვერდზე მიწოლილი ფართო პანელი სვეტების რიცხვს თავისით ამცირებს
             (`MovieGrid`, ვიდეოების ბადე — `@2xl:`/`@7xl:` ვარიანტებით). */}
         <main className="@container min-w-0 flex-1 pb-[var(--player-h,0px)] pr-[var(--player-w,0px)]">
@@ -234,26 +234,26 @@ function AppShell() {
         <ErrorBoundary resetKey={location.pathname}>
         <Suspense fallback={<PageFallback />}>
         <Routes>
-          {/* Tasks 2 — `/` დეშბორდია და არა ფილმების ბიბლიოთეკა */}
+          {/* `/` დეშბორდია და არა ფილმების ბიბლიოთეკა */}
           <Route path="" element={<DashboardPage />} />
 
           {mediaModules.flatMap((m) => mediaRoutes(m.type))}
 
-          {/* არა-მედია მოდულები საკუთარი გვერდით (I5) */}
+          {/* არა-მედია მოდულები საკუთარი გვერდით */}
           {pageModules.map((m) => (
             <Route key={m.key} path={m.route_base.replace(/^\//, '')} element={MODULE_PAGES[m.key]} />
           ))}
 
-          {/* Tasks §37 — პირადი მოდულები: **ერთი** მარშრუტი ყველასთვის, `/c/{key}`.
+          {/* პირადი მოდულები: **ერთი** მარშრუტი ყველასთვის, `/c/{key}`.
               ⚠️ ჩართულობას გვერდი თვითონ ამოწმებს (`useModules().customModules`) —
               ადმინის მიერ გამორთული მოდული მიზეზს ამბობს და ცარიელ 404-ს არა. */}
           <Route path="c/:key" element={<CustomModulePage />} />
 
-          {/* ეტაპი 11.2 — შეხსენებებს **თავისი სექცია** აქვს და არა ჩანაწერის
+          {/* შეხსენებებს **თავისი სექცია** აქვს და არა ჩანაწერის
               ფორმის ნაწილი. მოდულის ჩართვაზეა დამოკიდებული, როგორც პლეილისტები. */}
           {has('note') && <Route path="notes/reminders" element={<NoteRemindersPage />} />}
 
-          {/* ---------- ლექსიკონები: ერთი გვერდი, გადამრჩევით (§6.3) ----------
+          {/* ---------- ლექსიკონები: ერთი გვერდი, გადამრჩევით ----------
               ⚠️ **ძველი შვიდი მისამართი ცოცხალი რჩება** და ახალზე
               გადამისამართდება: საიდბარის ბმულები, „უკან" ბმულები და
               ბრაუზერის შენახული ჩანართები არ უნდა გატყდეს. */}
@@ -267,7 +267,7 @@ function AppShell() {
             />
           ))}
 
-          {/* ---------- გალერეის ქვე-გვერდები (Tasks §8.5) ----------
+          {/* ---------- გალერეის ქვე-გვერდები ----------
               ⚠️ **გალერეა ერთი გვერდიდან ხუთ ჭრილად გაიშალა**: ყველა ფოტო ·
               ჩანაწერები · მსახიობები · ვიდეოები · წყაროები · მოდულები.
               ერთ სქროლზე ეს ყველაფერი (და ჩამოტვირთვის ბლოკიც) იმიტომ იყო
@@ -282,7 +282,7 @@ function AppShell() {
           )}
           {has('gallery') && <Route path="gallery/actors" element={<GalleryPage cut="actors" />} />}
           {has('gallery') && <Route path="gallery/actors/:id" element={<ActorRedirect />} />}
-          {/* §26 — ალბომები (და მათ შორის „ალბომის გარეშე" დარჩენილი ფოტოები) */}
+          {/* ალბომები (და მათ შორის „ალბომის გარეშე" დარჩენილი ფოტოები) */}
           {has('gallery') && <Route path="gallery/albums" element={<GalleryPage cut="albums" />} />}
           {/* ⚠️ ძველი მისამართი (2026-09-16-მდე „უკატეგორიო") — შენახული ბმული ცოცხალია.
               ორი ცალკე რიგია და არა ერთი `&&` ორი `<Route>`-ით: JSX-ის ერთი
@@ -294,7 +294,7 @@ function AppShell() {
           {has('gallery') && <Route path="gallery/sources" element={<GalleryPage cut="sources" />} />}
           {has('gallery') && <Route path="gallery/modules" element={<GalleryPage cut="modules" />} />}
 
-          {/* ---------- პირადი გალერეა (Tasks §33.5) ----------
+          {/* ---------- პირადი გალერეა ----------
               ჭრილები `PERSONAL_CUTS`-ის მისამართებია (საიდბარის ქვე-მენიუც იგივეა);
               ადამიანისა და ალბომის გვერდი — `:id`. */}
           {has('personal') && <Route path="personal/albums" element={<PersonalPage cut="albums" />} />}
@@ -311,72 +311,72 @@ function AppShell() {
           )}
 
           {/* გაზიარებული */}
-          {/* Tasks §35.2 — ყველა ჩემი მსახიობი; `/gallery/actors` გალერეის ჭრილად რჩება */}
+          {/* ყველა ჩემი მსახიობი; `/gallery/actors` გალერეის ჭრილად რჩება */}
           {mediaModules.length > 0 && <Route path="actors" element={<ActorsPage />} />}
           {mediaModules.length > 0 && <Route path="actors/:id" element={<ActorPage />} />}
           {mediaModules.length > 0 && <Route path="genres" element={<GenresPage />} />}
-          {/* Tasks 4 — მასობრივი ოპერაციები ვიდეოებსაც ეხება, ე.ი. მედია-მოდულის გარეშეც ჩანს */}
+          {/* მასობრივი ოპერაციები ვიდეოებსაც ეხება, ე.ი. მედია-მოდულის გარეშეც ჩანს */}
           {bulkAvailable && <Route path="status" element={<StatusBulkPage />} />}
-          {/* L2 — სინქრონი ქმედებაა და ცალკე გვერდზეა; TMDB მხოლოდ მედია-დომენებს ეხება */}
+          {/* სინქრონი ქმედებაა და ცალკე გვერდზეა; TMDB მხოლოდ მედია-დომენებს ეხება */}
           {mediaModules.length > 0 && <Route path="sync" element={<SyncPage />} />}
-          {/* Tasks 7 — თარგმანები; ორენოვანი სქემა მედია-დომენებზეა */}
+          {/* თარგმანები; ორენოვანი სქემა მედია-დომენებზეა */}
           {mediaModules.length > 0 && <Route path="translations" element={<TranslationsPage />} />}
           {/* ძებნის შედეგები — ⚠️ **მოდულზე დამოცებული არაა**:
               ის თვითონ ეკითხება ძებნას ყველა ჩართულ დომენში და გამორთულს
               საერთოდ არ აჭვენებს. */}
-          {/* Tasks §31 — „ექსპორტ & იმპორტი". ⚠️ **მოდულზე დამოკიდებული არაა**:
+          {/* „ექსპორტ & იმპორტი". ⚠️ **მოდულზე დამოკიდებული არაა**:
               ექსპორტი ჩართულ მოდულებს თვითონ ჩამოთვლის, იმპორტში კი რომელ
               მოდულს ეხება, ფაილი წყვეტს — კონტროლერები თვითონ ამოწმებენ
               წვდომასაც და უფლებასაც (ისევე, როგორც ძებნა).
               ⚠️ ძველი `/import` ბმული **გადამისამართებაა** და არა წაშლილი
-              მარშრუტი — შენახული ბმულები არ უნდა გატყდეს (31.2). */}
+              მარშრუტი — შენახული ბმულები არ უნდა გატყდეს. */}
           <Route path="transfer" element={<TransferPage />} />
           <Route path="import" element={<Navigate to="/transfer?tab=import" replace />} />
-          {/* FEAT-08 — სტატისტიკა. ⚠️ **მოდულზე დამოკიდებული არაა**: პასუხი
+          {/* სტატისტიკა. ⚠️ **მოდულზე დამოკიდებული არაა**: პასუხი
               ყველა ჩართულ მოდულს ეხება და ჩაურთველი სიიდან თვითონ ცვივა. */}
           <Route path="stats" element={<StatsPage />} />
           <Route path="trash" element={<TrashPage />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="profile" element={<ProfilePage />} />
-          {/* Tasks §16.2 — „ვისთან ჰგავს ჩემი გემოვნება": საჯარო პროფილების
+          {/* „ვისთან ჰგავს ჩემი გემოვნება": საჯარო პროფილების
               კატალოგი. მოდულზე დამოკიდებული არაა — გვერდი თვითონ ამბობს,
               თუ ჩემი პროფილი ჯერ დახურულია. */}
           <Route path="people" element={<PeoplePage />} />
-          {/* Tasks §16.3 — ჩატი. მოდულზე დამოკიდებული არაა; გვერდი თვითონ
+          {/* ჩატი. მოდულზე დამოკიდებული არაა; გვერდი თვითონ
               ამბობს, თუ პროფილი ჯერ საჯარო არაა. */}
           <Route path="chat" element={<ChatPage />} />
           <Route path="chat/:id" element={<ChatPage />} />
-          {/* Tasks 1.4 — მოდულები ერთი სექციაა, ქარდი → შიდა გვერდი */}
+          {/* მოდულები ერთი სექციაა, ქარდი → შიდა გვერდი */}
           <Route path="modules" element={<ModulesPage />} />
           <Route path="modules/:key" element={<ModulePage />} />
-          {/* Tasks 20 — მასობრივი წაშლა (გვერდი თვითონ ამოწმებს super_admin-ს) */}
+          {/* მასობრივი წაშლა (გვერდი თვითონ ამოწმებს super_admin-ს) */}
           <Route path="purge" element={<PurgePage />} />
-          {/* Tasks §21 — „მონაცემები": ჩემი გასაღებები და ლიმიტები.
+          {/* „მონაცემები": ჩემი გასაღებები და ლიმიტები.
               ⚠️ მოდულზე დამოკიდებული არაა და არც უნდა იყოს: გასაღები
               `modules` ცხრილში არ არის და ყველა ანგარიშს თავისი სჭირდება. */}
           <Route path="credentials" element={<CredentialsPage />} />
-          {/* Tasks §40.14 — გაზიარების ბმულები: თავისი განყოფილება „მონაცემების" ქვემოთ */}
+          {/* გაზიარების ბმულები: თავისი განყოფილება „მონაცემების" ქვემოთ */}
           <Route path="share-links" element={<ShareLinksPage />} />
-          {/* Tasks §22 — ბაზის დამპი (გვერდი თვითონ ამოწმებს super_admin-ს) */}
-          {/* Tasks §59.2 — ასლები „ექსპორტ & იმპორტის" „ბაზის" ჩანართშია */}
+          {/* ბაზის დამპი (გვერდი თვითონ ამოწმებს super_admin-ს) */}
+          {/* ასლები „ექსპორტ & იმპორტის" „ბაზის" ჩანართშია */}
           <Route path="backups" element={<Navigate to="/transfer?tab=database" replace />} />
-          {/* Tasks 1.5 — მოთხოვნები ცალკე სექციაა (ჩემიც და ადმინის ხედიც) */}
+          {/* მოთხოვნები ცალკე სექციაა (ჩემიც და ადმინის ხედიც) */}
           <Route path="requests" element={<RequestsPage />} />
 
-          {/* Tasks 1.1 — ადმინის ტაბები ცალკე სექციებად დაიშალა */}
-          {/* Tasks 1.6 — წვდომა როლიდანაც შეიძლება მოვიდეს და არა მარტო super_admin-ისგან */}
+          {/* ადმინის ტაბები ცალკე სექციებად დაიშალა */}
+          {/* წვდომა როლიდანაც შეიძლება მოვიდეს და არა მარტო super_admin-ისგან */}
           {canAdmin('users') && <Route path="users" element={<UsersPage />} />}
           {canAdmin('users') && <Route path="users/:id" element={<UserPage />} />}
           {canAdmin('roles') && <Route path="roles" element={<RolesPage />} />}
           {canAdmin('roles') && <Route path="roles/:id" element={<RolePage />} />}
-          {/* Tasks §4.4 — აუდიტ-ლოგი; გვერდი თვითონაც ამოწმებს უფლებას */}
+          {/* აუდიტ-ლოგი; გვერდი თვითონაც ამოწმებს უფლებას */}
           {canAdmin('audit') && <Route path="audit" element={<AuditPage />} />}
           {/* ძველი მისამართები არ ტყდება */}
           <Route path="admin" element={<Navigate to="/users" replace />} />
           <Route path="admin/users/:id" element={<Navigate to="/users" replace />} />
 
-          {/* ⚠️ არარსებული მისამართი **ცხადად** ითქმის (Tasks GAP-21): აქამდე ის
+          {/* ⚠️ არარსებული მისამართი **ცხადად** ითქმის: აქამდე ის
               უხმოდ დეშბორდზე გადადიოდა, ე.ი. ძველი გაზიარებული ბმულიც და
               შეცდომით აკრეფილი მისამართიც ერთნაირად „მუშაობდა".
               ⚠️ **გამორთული მოდულის მისამართიც აქ ჩავარდება** (მისი მარშრუტი
@@ -388,7 +388,7 @@ function AppShell() {
         </ErrorBoundary>
         </main>
       </div>
-      {/* §7.2/§35 — ერთი დამკვრელი მთელ აპზე (გვერდითა პანელი ან ქვედა ზოლი).
+      {/* ერთი დამკვრელი მთელ აპზე (გვერდითა პანელი ან ქვედა ზოლი).
           მარშრუტების **გარეთაა**: გვერდის შეცვლა დაკვრას არ წყვეტს, ე.ი.
           პლეილისტი ბოლომდე ჟღერს. */}
       <Player />
@@ -420,24 +420,24 @@ export default function App() {
             </GuestOnly>
           }
         />
-        {/* FEAT-16 — ადმინის ერთჯერადი აღდგენის ბმული. ⚠️ **`GuestOnly`-ის
+        {/* ადმინის ერთჯერადი აღდგენის ბმული. ⚠️ **`GuestOnly`-ის
             გარეთაა განზრახ**: შესულმაც შეიძლება გახსნას (მეორე ანგარიშის
             ბმული, ან უბრალოდ დამახსოვრებული სესია) და დეშბორდზე გადაგდება
             იმ ერთადერთ ქმედებას წაშლიდა, რისთვისაც ბმული გაიცა. */}
         <Route path="/reset/:token" element={<ResetPasswordPage />} />
 
-        {/* Tasks §16.1 — საჯარო პროფილი. ⚠️ **განზრახ `Protected`-ის გარეთაა**:
+        {/* საჯარო პროფილი. ⚠️ **განზრახ `Protected`-ის გარეთაა**:
             გაზიარებადი ბმული ავტორიზაციის გარეშეც უნდა იხსნებოდეს. დაცვა
             backend-შია — სამი ფენა, ყველა default-ით `private`. */}
         <Route path="/u/:username" element={<PublicProfilePage />} />
-        {/* Tasks §40.6 — გაზიარების ბმული: ნახვა შესვლის გარეშეც (Q46), `/u/:username`-ის ყალიბი */}
+        {/* გაზიარების ბმული: ნახვა შესვლის გარეშეც, `/u/:username`-ის ყალიბი */}
         <Route path="/share/:token" element={<SharePage />} />
         <Route
           path="/*"
           element={
             <Protected>
               <ModulesProvider>
-                {/* §7.2 — რიგი მარშრუტებზე მაღლა ცხოვრობს */}
+                {/* რიგი მარშრუტებზე მაღლა ცხოვრობს */}
                 <PlayerProvider>
                   <AppShell />
                 </PlayerProvider>

@@ -6,9 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * ჩანაწერი (`note` მოდული, Tasks §13).
+ * ჩანაწერი (`note` მოდული).
  *
- * სათაური ერთენოვანია — §13 ორ ენას არ ითხოვს და ეს user-ის საკუთარი
+ * სათაური ერთენოვანია — ეს user-ის საკუთარი
  * ტექსტია და არა კატალოგის (ვიდეოსა და სიმღერის იგივე წესი).
  */
 class NoteEntryResource extends JsonResource
@@ -26,15 +26,15 @@ class NoteEntryResource extends JsonResource
             'links' => $this->links ?? [],
 
             'due_at' => $this->due_at?->toIso8601String(),
-            /* §6.4 — სტატუსი per-user ლექსიკონის რიგია, ე.ი. **ობიექტი** და არა
+            /* სტატუსი per-user ლექსიკონის რიგია, ე.ი. **ობიექტი** და არა
                სტრიქონი: მხოლოდ გასაღები უცხო პროფილზე წასაკითხი არ იქნებოდა
                (სახელი მფლობელის ლექსიკონშია), ორივეს ცალკე ველად დაბრუნება კი
                ერთსა და იმავე ფაქტს ორ ადგილას გაიმეორებდა. */
             'status' => StatusResource::brief($this->status),
             'is_favorite' => $this->is_favorite,
 
-            // ⚠️ §13 — აქ პირადი დოკუმენტებია: `private` მკაცრი წესია და
-            // საჯარო პროფილზე მოდული საერთოდ არ ჩანს (16.1)
+            // ⚠️ აქ პირადი დოკუმენტებია: `private` მკაცრი წესია და
+            // საჯარო პროფილზე მოდული საერთოდ არ ჩანს
             'visibility' => $this->visibility,
 
             'files_count' => $this->whenCounted('files'),

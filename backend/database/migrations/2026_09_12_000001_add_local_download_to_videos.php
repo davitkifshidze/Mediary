@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **Tasks §7.1 — ვიდეოს ლოკალურად ჩამოწერა (`yt-dlp`).**
+ * **ვიდეოს ლოკალურად ჩამოწერა (`yt-dlp`).**
  *
  * ⚠️ ფაილი **`videos` ცხრილის სვეტებია და არა `video_files`-ის რიგი.** ორი
  * მიზეზი: (1) ერთ ვიდეოს ერთი ლოკალური ასლი აქვს — ცხრილი „რამდენი აქვს"-ს
@@ -38,7 +38,7 @@ return new class extends Migration
             $table->text('download_error')->nullable()->after('download_status');
             $table->timestamp('downloaded_at')->nullable()->after('download_error');
 
-            // „ჩამოწერილები" ცალკე სექციაა (§7.1) — ფილტრი ამ ინდექსზე დგას
+            // „ჩამოწერილები" ცალკე სექციაა — ფილტრი ამ ინდექსზე დგას
             $table->index(['user_id', 'download_status']);
         });
     }

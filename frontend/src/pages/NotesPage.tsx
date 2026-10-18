@@ -61,7 +61,7 @@ import { cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/StatusBadge'
 
 /* ============================================================
-   ჩანაწერების მოდული (`note`, Tasks §13).
+   ჩანაწერების მოდული (`note`).
 
    იგივე მოდელი, რაც წიგნებსა და ბორდგეიმებზე: **სტატუსი საიდბარის
    სექციაა** (`?view=`), პანელი კი კატეგორიასა და ტეგებს ფილტრავს.
@@ -69,7 +69,7 @@ import { StatusBadge } from '@/components/StatusBadge'
 
 const SORTS = ['newest', 'oldest', 'title', 'due', 'updated'] as const
 
-/* ⚠️ სტატუსების სია აღარ წერია კოდში (§6.4) — ის per-user ლექსიკონია.
+/* ⚠️ სტატუსების სია აღარ წერია კოდში — ის per-user ლექსიკონია.
    ფერი `statusTone()`-იდან მოდის, ე.ი. ხელით დამატებულიც ფერადია. */
 
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
@@ -79,14 +79,14 @@ type PanelFilters = typeof EMPTY_FILTERS
 export function NotesPage() {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
-  // §6.4 — სექციებისა და ბეჯების ერთადერთი წყარო
+  // სექციებისა და ბეჯების ერთადერთი წყარო
   const { data: statuses = [] } = useStatuses('note')
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
   const navigate = useNavigate()
   const fmt = useDateFormat()
-  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
   const [layout, setLayout] = useRecordLayout('note', 'rows')
 
   const [params, setParams] = useSearchParams()
@@ -109,9 +109,9 @@ export function NotesPage() {
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<NoteEntry | 'new' | null>(null)
   const [opened, setOpened] = useState<NoteEntry | null>(null)
-  // ეტაპი 11 — ბეჯი პირდაპირ შეხსენებების ფანჯარას ხსნის (და აღარ ჩანაწერს)
+  // ბეჯი პირდაპირ შეხსენებების ფანჯარას ხსნის (და აღარ ჩანაწერს)
   const [reminders, setReminders] = useState<NoteEntry | null>(null)
-  // §8.2 — შეხსენებების ჟურნალი: ელფოსტის არხის ჩამნაცვლებელი
+  // შეხსენებების ჟურნალი: ელფოსტის არხის ჩამნაცვლებელი
   const [log, setLog] = useState(false)
 
   useEffect(() => {
@@ -130,11 +130,11 @@ export function NotesPage() {
     // „ყველა"/„რჩეული" სტატუსები არაა; დანარჩენი ლექსიკონის გასაღებია
     status: view !== 'all' && view !== 'favorite' ? view : undefined,
     sort: sort === 'newest' ? undefined : sort,
-    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
   }
 
-  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['notes', filters],
     fetchPage: (page) => fetchNotes({ ...filters, page, per_page: LIST_PAGE_SIZE }),
@@ -159,7 +159,7 @@ export function NotesPage() {
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
   const favorite = useMutation({ mutationFn: toggleNoteFavorite, onSuccess: invalidate, onError: fail })
-  // Tasks §7 — სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
+  // სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
   const status = useMutation({
     mutationFn: ({ id, next }: { id: number; next: string }) => setNoteStatus(id, next),
     onSuccess: invalidate,
@@ -243,7 +243,7 @@ export function NotesPage() {
         subtitle={t('notes.count', { count: total })}
         actions={
           <>
-            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             <Tooltip>
               <TooltipTrigger asChild>
@@ -277,7 +277,7 @@ export function NotesPage() {
               </SelectContent>
             </Select>
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
-            {/* §8.2 — ჟურნალი: ყოველი გასროლილი შეხსენება აქ რჩება, ე.ი.
+            {/* ჟურნალი: ყოველი გასროლილი შეხსენება აქ რჩება, ე.ი.
                 დახურული აპი აღარ ნიშნავს დაკარგულ შეხსენებას (ეს ხვრელი
                 ელფოსტის არხს ჰქონდა დახურული, ის კი ამოღებულია) */}
             <Button variant="outline" size="icon" onClick={() => setLog(true)} title={t('notes.logTitle')}>
@@ -301,7 +301,7 @@ export function NotesPage() {
       <div className="flex gap-6">
         <div className="min-w-0 flex-1">
           {query.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
-          {/* ⚠️ §2.4 — ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
+          {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !notes.length && (
             <EmptyState
@@ -325,7 +325,7 @@ export function NotesPage() {
 
           <RecordList layout={layout}>
             {notes.map((note) => {
-              /* Tasks §7/§26.4 — მარჯვენა ღილაკის მენიუ: გახსნა · სტატუსი ▸ · რჩეული · შეხსენებები ·
+              /* მარჯვენა ღილაკის მენიუ: გახსნა · სტატუსი ▸ · რჩეული · შეხსენებები ·
                  (ბმული) · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
                 { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpened(note) },
@@ -396,9 +396,9 @@ export function NotesPage() {
                   hashTags={false}
                   actions={actions}
                   onEdit={() => setEditing(note)}
-                  /* Tasks §26.1 → §40.5 — კლასტერი: ბმული ტექსტით → სტატუსი („დაარქივებული") →
-                     **შემხსენებელი** (ქარვისფერი, ტექსტით და რიცხვით) → **რჩეული** (§8) → რედაქტირება →
-                     წაშლა; ყველა h-9. ⚠️ ბმულის სლოტი უბმულოზეც ადგილზეა (`invisible`, §14.2), მაგრამ
+                  /* კლასტერი: ბმული ტექსტით → სტატუსი („დაარქივებული") →
+                     **შემხსენებელი** (ქარვისფერი, ტექსტით და რიცხვით) → **რჩეული** → რედაქტირება →
+                     წაშლა; ყველა h-9. ⚠️ ბმულის სლოტი უბმულოზეც ადგილზეა (`invisible`), მაგრამ
                      **თავშია** (`RecordActionBar`-ის წესი): შუაში ის რედაქტირებას დანარჩენებს აშორებდა. */
                   bar={
                     <span className="flex shrink-0 items-center gap-1" data-testid="note-cluster">
@@ -415,7 +415,7 @@ export function NotesPage() {
                         <ExternalLink className="size-3.5" />
                         {t('notes.linkButton')}
                       </a>
-                      {/* Tasks §16.3 — აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
+                      {/* აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
                       <StatusBadge status={note.status} size="row" />
                       <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(note)} />
                       <FavoriteButton
@@ -461,7 +461,7 @@ export function NotesPage() {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
-          {/* სტატუსი აქ განზრახ არ არის (Tasks 3) — ის საიდბარის სექციაა */}
+          {/* სტატუსი აქ განზრახ არ არის — ის საიდბარის სექციაა */}
           <FilterGroup title={t('notes.dueFilter')} count={draft.overdue ? 1 : 0}>
             <FilterOption
               label={t('notes.overdueOnly')}
@@ -511,7 +511,7 @@ export function NotesPage() {
         />
       )}
 
-      {/* ეტაპი 11 — იგივე ფანჯარა, რასაც ფორმა და დეტალები ხსნიან */}
+      {/* იგივე ფანჯარა, რასაც ფორმა და დეტალები ხსნიან */}
       {reminders && (
         <NoteRemindersDialog
           note={notes.find((n) => n.id === reminders.id) ?? reminders}

@@ -26,7 +26,7 @@ class BookResource extends JsonResource
             'year' => $this->year,
             'pages' => $this->pages,
             'language' => $this->language,
-            // §5.7 — ერთი „წყაროს / წასაკითხი ლინკი"; `links` ძველი მონაცემისთვის რჩება
+            // ერთი „წყაროს / წასაკითხი ლინკი"; `links` ძველი მონაცემისთვის რჩება
             'source_url' => $this->source_url,
 
             'genre_id' => $this->genre_id,
@@ -48,13 +48,13 @@ class BookResource extends JsonResource
             'tags' => $this->tags ?? [],
             'openlibrary_id' => $this->openlibrary_id,
 
-            // 16.5 — საჯარო პროფილის წინაპირობა; default `private`
+            // საჯარო პროფილის წინაპირობა; default `private`
             'visibility' => $this->visibility,
             'files_count' => $this->whenCounted('files'),
             'notes_count' => $this->whenCounted('notes'),
-            // Tasks §23.2 — ციტატები ჩანიშვნებისგან ცალკე ჩანართია
+            // ციტატები ჩანიშვნებისგან ცალკე ჩანართია
             'quotes_count' => $this->whenCounted('quotes'),
-            // Tasks §6.8 — სიის ბრჭყალების აიქონი ციტატებს ითვლის და არა ყველა ჩანიშვნას
+            // სიის ბრჭყალების აიქონი ციტატებს ითვლის და არა ყველა ჩანიშვნას
             'quotes_count' => $this->whenCounted('quotes'),
             'created_at' => $this->created_at?->toIso8601String(),
         ];

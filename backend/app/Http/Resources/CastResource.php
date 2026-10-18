@@ -18,9 +18,9 @@ class CastResource extends JsonResource
             'has_tmdb' => (bool) $this->tmdb_person_id,
             'character' => $this->whenPivotLoaded('castables', fn () => $this->pivot->character),
             'billing_order' => $this->whenPivotLoaded('castables', fn () => $this->pivot->billing_order),
-            /* ეტაპი 1 — „ეს ბმული ხელით გაკეთდა" (`/sync` მას აღარ ხსნის). */
+            /* „ეს ბმული ხელით გაკეთდა" (`/sync` მას აღარ ხსნის). */
             'is_manual' => $this->whenPivotLoaded('castables', fn () => (bool) $this->pivot->is_manual),
-            /* Tasks §16 — `is_hidden`: ჩანაწერის სიაში „დამალულის" დაკეცილ ჯგუფში
+            /* `is_hidden`: ჩანაწერის სიაში „დამალულის" დაკეცილ ჯგუფში
                იხატება; `is_edited`: როლი ან რიგი ხელით შეიცვალა. ⚠️ `is_removed` აქ
                **არ არის** — `cast()` წაშლილს საერთოდ არ აბრუნებს, ე.ი. ველი
                ყოველთვის `false` იქნებოდა. ⚠️ წაშლას **ორივე** სახის მსახიობზე

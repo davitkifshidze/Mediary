@@ -51,7 +51,7 @@ class BoardGameGenreController extends Controller
             'name_ka' => $data['name_ka'],
             'name_en' => $data['name_en'],
             'icon' => $data['icon'] ?? $boardGameGenre->icon,
-            // Tasks §24.3 — ⚠️ `array_key_exists`: ფერის მოხსნა (`null`) ცხადი არჩევანია
+            // ⚠️ `array_key_exists`: ფერის მოხსნა (`null`) ცხადი არჩევანია
             'color' => array_key_exists('color', $data) ? $data['color'] : $boardGameGenre->color,
         ])->save();
 
@@ -70,7 +70,7 @@ class BoardGameGenreController extends Controller
             DictionaryRecords::messages(),
         );
 
-        // ეტაპი 8 — ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**, მოდელის გავლით
+        // ჩანაწერებიც „იშლება“ — **მფლობელის ურნაში**, მოდელის გავლით
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::trash(BoardGame::where('genre_id', $boardGameGenre->id));
             DictionaryTrash::trash($boardGameGenre, 'board_game_genre');
@@ -80,7 +80,7 @@ class BoardGameGenreController extends Controller
 
         $moveTo = DictionaryRecords::moveTarget($data);
 
-        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+        /* ⚠️ **ურნა** — რიგი ურნაში გადადის და იმახსოვრებს,
            რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
            შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
         $records = BoardGame::where('genre_id', $boardGameGenre->id);

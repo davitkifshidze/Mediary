@@ -11,18 +11,18 @@ use App\Support\VideoUrl;
 use Illuminate\Support\Facades\Log;
 
 /**
- * ვიდეოს მეტამონაცემის წამოღება ბმულიდან (Tasks K2).
+ * ვიდეოს მეტამონაცემის წამოღება ბმულიდან.
  *
  * ყველაფერი, რაც **გასაღების გარეშე** მოდის, oEmbed-ით მოდის:
  *   · YouTube oEmbed  → სათაური, thumbnail, არხი (ხანგრძლივობა/ტეგები **არა**)
  *   · Vimeo oEmbed    → სათაური, thumbnail, აღწერა, **ხანგრძლივობა**
  *   · Dailymotion     → სათაური, thumbnail, **ხანგრძლივობა**
  *
- * მომხმარებელი YouTube-ის **საკუთარ** გასაღებს „მონაცემებში" რომ ჩაწერს (Tasks §30 —
- * `.env`-ის `YOUTUBE_API_KEY` აღარ იკითხება), YouTube-ზეც ჩაირთვება ხანგრძლივობა და
- * ტეგები (Data API v3) — კოდის შეცვლა არ სჭირდება.
+ * მომხმარებელი YouTube-ის **საკუთარ** გასაღებს „მონაცემებში" რომ ჩაწერს
+ * (`.env`-ის `YOUTUBE_API_KEY` აღარ იკითხება), YouTube-ზეც ჩაირთვება
+ * ხანგრძლივობა და ტეგები (Data API v3) — კოდის შეცვლა არ სჭირდება.
  *
- * ⚠️ **Tasks §44.3 — YouTube სრულად.** Data API-დან ახლა თარიღიც მოდის (`publishedAt`)
+ * ⚠️ **YouTube სრულად.** Data API-დან ახლა თარიღიც მოდის (`publishedAt`)
  * და **საუკეთესო** ესკიზი (`maxres` → `standard` → `high`; oEmbed-ის `hqdefault`
  * 480×360-ია); **გასაღების გარეშე** — `yt-dlp -J` (სათაური, სრული აღწერა, თარიღი,
  * ესკიზი, ხანგრძლივობა, ტეგები, არხი). oEmbed-ს აღწერა და თარიღი არ აქვს, ამიტომ
@@ -53,7 +53,7 @@ class VideoMetadata
             'title' => null,
             'description' => null,
             'duration' => null,
-            // Tasks §44.3 — `Y-m-d` (Data API-ის `publishedAt`, yt-dlp-ის `upload_date`)
+            // `Y-m-d` (Data API-ის `publishedAt`, yt-dlp-ის `upload_date`)
             'published_at' => null,
             'tags' => [],
             'thumbnail_url' => $parsed['thumbnail_url'],
@@ -69,7 +69,7 @@ class VideoMetadata
                     'https://www.dailymotion.com/services/oembed?format=json&url='.urlencode($url),
                     $meta,
                 ),
-                // Tasks §15.1 — `other` ბმულზე გვერდის Open Graph იკითხება; `file`-ზე წასაკითხი არაფერია
+                // `other` ბმულზე გვერდის Open Graph იკითხება; `file`-ზე წასაკითხი არაფერია
                 default => $this->page($url, $meta),
             };
         } catch (\Throwable $e) {
@@ -85,7 +85,7 @@ class VideoMetadata
         return (bool) CredentialStore::value(CredentialProviders::YOUTUBE);
     }
 
-    /** Tasks §44.3 — გასაღების გარეშეც სრული ინფო მოდის? (`yt-dlp` დაყენებულია) */
+    /** გასაღების გარეშეც სრული ინფო მოდის? (`yt-dlp` დაყენებულია) */
     public function hasYtDlp(): bool
     {
         return $this->ytdlp->available();
@@ -94,7 +94,7 @@ class VideoMetadata
     /* ---------- პლატფორმები ---------- */
 
     /**
-     * Tasks §15.1 — `other` პლატფორმა (არა YouTube/Vimeo/Dailymotion/ფაილი): სათაური,
+     * `other` პლატფორმა (არა YouTube/Vimeo/Dailymotion/ფაილი): სათაური,
      * აღწერა და ესკიზი გვერდის `<head>`-იდან (Open Graph) — აქამდე აქ არაფერი იყო
      * და ვიდეოს/სიმღერის ფორმა ასეთ ბმულზე ცარიელი რჩებოდა.
      */
@@ -129,7 +129,7 @@ class VideoMetadata
             return $meta;
         }
 
-        // 2ბ) Tasks §44.3 — გასაღების გარეშე: `yt-dlp -J` (აღწერა, თარიღი, ესკიზი, ხანგრძლივობა, ტეგები)
+        // 2ბ) გასაღების გარეშე: `yt-dlp -J` (აღწერა, თარიღი, ესკიზი, ხანგრძლივობა, ტეგები)
         if (! $this->hasYoutubeKey()) {
             return $this->ytdlp($url, $meta);
         }
@@ -137,7 +137,7 @@ class VideoMetadata
         // 2) Data API v3 — მხოლოდ გასაღებით: ხანგრძლივობა, ტეგები, სრული აღწერა, თარიღი, საუკეთესო ესკიზი
 
         /*
-         * ⚠️ **გასაღები ჰედერშია და არა query-ში** (Tasks SEC-14). YouTube Data API
+         * ⚠️ **გასაღები ჰედერშია და არა query-ში**. YouTube Data API
          * `X-goog-api-key`-ს იღებს (Gemini-ს იგივე წესი), query-ში ჩაწერილი
          * გასაღები კი URL-ის ნაწილია, ე.ი. cURL-ის შეცდომის ტექსტში, ექსეპტის
          * კვალში და პროქსის ლოგში ხვდებოდა.
@@ -175,7 +175,7 @@ class VideoMetadata
     }
 
     /**
-     * Tasks §44.3 — `yt-dlp -J` გასაღების გარეშე; oEmbed-ის სათაური და არხი რჩება,
+     * `yt-dlp -J` გასაღების გარეშე; oEmbed-ის სათაური და არხი რჩება,
      * დანარჩენი ივსება. ⚠️ ჩავარდნა (ბინარი არაა, ქსელი) — oEmbed-ის შედეგი უცვლელად.
      */
     private function ytdlp(string $url, array $meta): array

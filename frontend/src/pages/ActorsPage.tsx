@@ -41,11 +41,11 @@ import { MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 /* ============================================================
-   **მსახიობების გვერდი `/actors` (Tasks §35.2).**
+   **მსახიობების გვერდი `/actors`.**
 
    ყველა „ჩემი" მსახიობი — ვინც ჩემს ფილმზე, სერიალზე ან ანიმეზეა და ვისაც
    ჩემი ფოტო აქვს. ⚠️ ავზი ათასობითაა, ამიტომ ფილტრი, დახარისხება და გვერდები
-   სერვერზეა (`GET /actors`); გვერდზე 10 — ნომრები + „მეტის ჩვენება" (§46), გვერდი `?page=`-შია.
+   სერვერზეა (`GET /actors`); გვერდზე 10 — ნომრები + „მეტის ჩვენება", გვერდი `?page=`-შია.
 
    ⚠️ სქესი ჭრილებია მთვლელით („ყველა · ქალები · კაცები"), დანარჩენი ფილტრი —
    პანელში (მისამართში ინახება, ბრაუზერის „უკან" მუშაობს). `/gallery/actors`
@@ -58,7 +58,7 @@ interface PanelFilters {
   photos: string
   records: string
   synced: string
-  /** §35.5 — `1` = მხოლოდ ჩემ მიერ ჩაკეტილები (დამალული — ბოქლომიანი ბარათით) */
+  /** `1` = მხოლოდ ჩემ მიერ ჩაკეტილები (დამალული — ბოქლომიანი ბარათით) */
   locked: string
 }
 
@@ -87,9 +87,9 @@ export function ActorsPage() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [tagging, setTagging] = useState<ActorCard | null>(null)
   const [webFor, setWebFor] = useState<ActorCard | null>(null)
-  // §35.5 — ჩაკეტვა / პაროლი მარჯვენა ღილაკიდან
+  // ჩაკეტვა / პაროლი მარჯვენა ღილაკიდან
   const [locking, setLocking] = useState<ActorCard | null>(null)
-  // §35.3 — ახალი მსახიობი (TMDB-დან ან ხელით)
+  // ახალი მსახიობი (TMDB-დან ან ხელით)
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
@@ -109,7 +109,7 @@ export function ActorsPage() {
     sort,
     locale: lang === 'ka' ? 'ka' : 'en',
   }
-  // Tasks §46 — ფილტრის/დახარისხების ცვლილება პირველ გვერდზე აბრუნებს (`usePagedList`)
+  // ფილტრის/დახარისხების ცვლილება პირველ გვერდზე აბრუნებს (`usePagedList`)
   const query = usePagedList({
     queryKey: [ACTORS_KEY, filters],
     fetchPage: (page) =>
@@ -158,7 +158,7 @@ export function ActorsPage() {
     onError: fail,
   })
 
-  /* §35.9 (Q17) — ხელით შექმნილი ურნაში: ბმულებთან და ფოტოებთან ერთად */
+  /* ხელით შექმნილი ურნაში: ბმულებთან და ფოტოებთან ერთად */
   const trash = useMutation({
     mutationFn: (actor: ActorCard) => trashActor(actor.id),
     onSuccess: (_, actor) => {
@@ -177,8 +177,8 @@ export function ActorsPage() {
     onError: fail,
   })
 
-  /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · ტეგები · ფოტოები ვებიდან · სინქრონი · ჩაკეტვა · — · წაშლა ჩემი ჩანაწერებიდან.
-     ⚠️ დამალულს მენიუ არ აქვს — მისი ბარათი თვითონ გახსნის ფანჯარაა (§35.5). */
+  /* მარჯვენა ღილაკის მენიუ: გახსნა · ტეგები · ფოტოები ვებიდან · სინქრონი · ჩაკეტვა · — · წაშლა ჩემი ჩანაწერებიდან.
+     ⚠️ დამალულს მენიუ არ აქვს — მისი ბარათი თვითონ გახსნის ფანჯარაა. */
   const actionsFor = (item: ActorListItem): MenuAction[] => {
     if (item.hidden) return []
     const actor = item
@@ -211,7 +211,7 @@ export function ActorsPage() {
             },
           ]
         : []),
-      /* §35.9 (Q17) — მხოლოდ ჩემი ხელით შექმნილი: მსახიობი თვითონ მიდის ურნაში */
+      /* მხოლოდ ჩემი ხელით შექმნილი: მსახიობი თვითონ მიდის ურნაში */
       ...(actor.editable
         ? [
             {
@@ -389,7 +389,7 @@ export function ActorsPage() {
             ))}
           </FilterGroup>
 
-          {/* §35.5 — ჩაკეტილი მსახიობი მხოლოდ აქ ჩანს (Q9) */}
+          {/* ჩაკეტილი მსახიობი მხოლოდ აქ ჩანს */}
           <FilterGroup title={t('actors.filter.lock')} count={draft.locked ? 1 : 0}>
             <FilterOption label={t('actors.filter.lockedOnly')} checked={draft.locked === '1'} onChange={(on) => pick('locked', '1', on)} />
           </FilterGroup>

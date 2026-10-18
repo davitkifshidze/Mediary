@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 
 /**
- * **„ეს ჩანაწერი უკვე ურნაშია" (Tasks §40.1ა).**
+ * **„ეს ჩანაწერი უკვე ურნაშია".**
  *
  * დამატება იდენტობით (`tmdb_id`, `imdb_id`…) ეძებს დუბლიკატს და `trash`
  * scope ურნაში მყოფს უმალავდა — `unique(user_id, imdb_id)` კი ხედავდა. ასე

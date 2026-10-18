@@ -11,7 +11,7 @@ import { LanguageDropdown } from '@/components/LanguageDropdown'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
 /**
- * **ადმინის ერთჯერადი აღდგენის ბმული (FEAT-16) — `/reset/:token`.**
+ * **ადმინის ერთჯერადი აღდგენის ბმული — `/reset/:token`.**
  *
  * ⚠️ **`Protected`-ის გარეთაა განზრახ** (საჯარო პროფილის იგივე მიზეზი):
  * ბმულით შემოსული ადამიანი სწორედ იმიტომ მოვიდა, რომ ვერ შედის.

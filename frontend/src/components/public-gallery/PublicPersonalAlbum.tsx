@@ -16,7 +16,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { usePages } from '@/lib/paged'
 
 /* ============================================================
-   **პირადი გალერეის საჯარო ალბომი (Tasks §33, Q7).**
+   **პირადი გალერეის საჯარო ალბომი.**
 
    ბარათი (`PublicPersonalAlbumTile`) და ფანჯარა (`PublicPersonalAlbumDialog`):
    ბადე კითხვის რეჟიმში, ლაითბოქსი ფოტოსაც ხსნის და ვიდეოსაც უკრავს.
@@ -27,7 +27,7 @@ import { usePages } from '@/lib/paged'
    ავტორიზაცია არ სჭირდება, ვიდეო კი Range-ით უნდა გადაიხვიოს.
 
    ⚠️ ჩაკეტილი ალბომი აქ **ვერასდროს** მოხვდება — ბოქლომიანი ბარათი საჯარო
-   პროფილს არ აქვს (გალერეის ალბომისგან განსხვავებით, Q7).
+   პროფილს არ აქვს (გალერეის ალბომისგან განსხვავებით).
    ============================================================ */
 
 /** ერთ გვერდზე — სერვერის ჭერი 100-ია */
@@ -75,7 +75,7 @@ export function PublicPersonalAlbumDialog({
   const { t } = useTranslation()
   const { date } = useDateFormat()
 
-  // Tasks §46 — ნომრები + „მეტის ჩვენება" (ფოტოს გვერდი — `PER_PAGE`)
+  // ნომრები + „მეტის ჩვენება" (ფოტოს გვერდი — `PER_PAGE`)
   const query = usePages({
     queryKey: ['public-personal-album', username, card.id],
     fetchPage: (page) => fetchPublicPersonalAlbum(username, card.id, page, PER_PAGE).then((r) => ({ ...r, items: r.data, total: r.meta.total, lastPage: r.meta.last_page })),

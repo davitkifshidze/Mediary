@@ -35,9 +35,9 @@ import { hostLabel, platformFromHost, platformLook } from '@/lib/platforms'
 import { cn } from '@/lib/utils'
 
 /**
- * **კურსის ბარათი (FEAT-25).**
+ * **კურსის ბარათი.**
  *
- * ⚠️ **Tasks §55** — YouTube-ის ფლეილისტის ბმულზე „ვიდეოები (N)" (`CoursePlaylistSection`);
+ * ⚠️ YouTube-ის ფლეილისტის ბმულზე „ვიდეოები (N)" (`CoursePlaylistSection`);
  * **სერტიფიკატი აღარ არის** (შენი სიტყვები: „არ მჭირდება სერტიფიკატები") — ძველი
  * სერტიფიკატი დოკუმენტებში ჩანს (მიგრაცია `kind`-ს `doc`-ად ცვლის).
  *
@@ -52,11 +52,11 @@ const KIND_ICON: Record<CourseFileKind, LucideIcon> = {
 
 export function CourseDetail({ course, onClose }: { course: Course; onClose: () => void }) {
   const { t, i18n } = useTranslation()
-  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  // გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen('course', course.id)
   const lang = useContentLang(i18n.language)
   const qc = useQueryClient()
-  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
+  // რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
   const favorite = useMutation({
     mutationFn: () => toggleCourseFavorite(course.id),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['courses'] }),
@@ -100,7 +100,7 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
     const rows = files.filter((f) => f.kind === kind)
     const Icon = KIND_ICON[kind]
 
-    /* Tasks §29.2 — ხელნაწერი `<section>` → საერთო `DetailSection` + `EmptyState`
+    /* ხელნაწერი `<section>` → საერთო `DetailSection` + `EmptyState`
        (ზუსტად ის, რაც წიგნის ფანჯარას აქვს) */
     return (
       <DetailSection
@@ -171,7 +171,7 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
   return (
     <ModalShell title={course.title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
-        {/* ---------- თავი: ფოტო, სტატუსი, კატეგორია, პლატფორმა (§26.4) ---------- */}
+        {/* ---------- თავი: ფოტო, სტატუსი, კატეგორია, პლატფორმა ---------- */}
         <DetailHero
           image={storageUrl(course.image)}
           alt={course.title}
@@ -180,7 +180,7 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
           badges={
             <>
               <EnumStatusBadge domain="course" status={course.status} size="row" />
-              {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+              {/* ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={course.visibility} />
               <FavoriteButton active={course.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
@@ -196,13 +196,13 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
           )}
           {course.platform && (
             <DetailFacts>
-              {/* §29.3 — პლატფორმა ბრენდის სახელით, აიქონითა და ფერით (§19.1-ის რუკა); უცნობი ჰოსტი ჰოსტივე */}
+              {/* პლატფორმა ბრენდის სახელით, აიქონითა და ფერით (`lib/platforms`-ის რუკა); უცნობი ჰოსტი ჰოსტივე */}
               <PlatformBadge host={course.platform} />
             </DetailFacts>
           )}
         </DetailHero>
 
-        {/* ---------- ფოტოები — ზემოთ და დიდად (§26.4) ---------- */}
+        {/* ---------- ფოტოები — ზემოთ და დიდად ---------- */}
         <DetailPhotos
           title={t('courses.fileKinds.image')}
           items={images.map((f) => ({ id: f.id, src: f.path, title: f.original_name }))}
@@ -219,7 +219,7 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
           <Markdown text={course.description} className="text-sm text-muted-foreground" />
         )}
 
-        {/* §29.2 — ბმული ღილაკის ფორმით (`buttonVariants outline`), არა ხელით ნახატი `<a>`;
+        {/* ბმული ღილაკის ფორმით (`buttonVariants outline`), არა ხელით ნახატი `<a>`;
             `<a>` რჩება, რადგან `ui/button.tsx`-ს `asChild` არ აქვს */}
         {course.url && (
           <a
@@ -233,10 +233,10 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
           </a>
         )}
 
-        {/* §55.3 — YouTube-ის ფლეილისტის ვიდეოები (ჩვენება; დაკვრა — რიგად, მოტივტივე ჩარჩოში) */}
+        {/* YouTube-ის ფლეილისტის ვიდეოები (ჩვენება; დაკვრა — რიგად, მოტივტივე ჩარჩოში) */}
         {isYoutubePlaylist(course.url) && <CoursePlaylistSection course={course} />}
 
-        {/* დოკუმენტები — ფოტოები ზემოთაა (§26.4); სერტიფიკატი §55.5-მა მოხსნა */}
+        {/* დოკუმენტები — ფოტოები ზემოთაა; სერტიფიკატი მოხსნილია */}
         {filesQ.isLoading ? <p className="text-sm text-muted-foreground">{t('api.loading')}</p> : section('doc')}
       </div>
 

@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * **FEAT-09 — სეზონები და ეპიზოდები.**
+ * **სეზონები და ეპიზოდები.**
  *
  * ⚠️ **ეპიზოდის ცხრილი გლობალურია** (`tv_episodes`, `user_id` არ აქვს) —
  * ე.ი. ორი ანგარიში ერთსა და იმავე რიგებს იზიარებს და მთელი მფლობელობა
@@ -39,7 +39,7 @@ class EpisodeTest extends TestCase
         $this->me = $this->makeUser('epi');
         $this->other = $this->makeUser('epo');
 
-        // Tasks §30 — გასაღები ანგარიშისაა: ორივეს თავისი
+        // გასაღები ანგარიშისაა: ორივეს თავისი
         $this->giveCredential($this->me, 'tmdb');
         $this->giveCredential($this->other, 'tmdb');
 

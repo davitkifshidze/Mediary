@@ -6,7 +6,7 @@ use App\Support\VideoUrl;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Tasks §55.1 — **YouTube-ის ფლეილისტის ამოცნობა** (`list=`).
+ * **YouTube-ის ფლეილისტის ამოცნობა** (`list=`).
  */
 class VideoUrlTest extends TestCase
 {

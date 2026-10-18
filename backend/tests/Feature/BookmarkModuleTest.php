@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * ბუკმარკების მოდული (`bookmark`, Tasks §18 — `DECISIONS.md` §10-ის არჩევანი).
+ * ბუკმარკების მოდული (`bookmark`).
  *
  * ამოწმებს იმას, რაც მოდულს მოდულად აქცევს: gate, per-user ლექსიკონი,
  * მფლობელობა, ატვირთვის კვოტა და `domain`-ის ერთადერთი წყარო.
@@ -83,7 +83,7 @@ class BookmarkModuleTest extends TestCase
             // ⚠️ `domain` მხოლოდ `applyUrl()`-იდან მოდის (www. იჭრება)
             ->assertJsonPath('data.domain', 'laravel.com')
             ->assertJsonPath('data.status.key', 'to_read')
-            // 16.5 — ხილვადობა default-ად პირადია
+            // ხილვადობა default-ად პირადია
             ->assertJsonPath('data.visibility', 'private')
             // ტეგების დუბლი რეგისტრისა და სივრცის მიუხედავად იჭრება
             ->assertJsonPath('data.tags', ['php', 'Laravel']);
@@ -208,7 +208,7 @@ class BookmarkModuleTest extends TestCase
             ->getJson("/api/bookmarks?category_id={$work}")
             ->assertJsonCount(1, 'data');
 
-        // ტეგები კი AND-ია (5.2-ის წესი)
+        // ტეგები კი AND-ია
         $this->actingAs($this->user)->getJson('/api/bookmarks?tag=docs')->assertJsonCount(2, 'data');
         $this->actingAs($this->user)->getJson('/api/bookmarks?tag=php,docs')->assertJsonCount(1, 'data');
     }

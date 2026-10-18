@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 /**
- * **Serper.dev — Google Maps-ის ადგილები** (`/places`, Tasks §57.2).
+ * **Serper.dev — Google Maps-ის ადგილები** (`/places`).
  *
  * SerpApi-ის `google_maps`-ის იაფი ტყუპი: სახელი, მისამართი, კოორდინატები,
  * კატეგორია, რეიტინგი, ტელეფონი, ვებგვერდი. ⚠️ **ერთი ძებნა = ერთი კრედიტი** —

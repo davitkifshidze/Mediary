@@ -94,12 +94,12 @@ export function SongsPage() {
   const navigate = useNavigate()
 
   const [params, setParams] = useSearchParams()
-  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
   const [layout, setLayout] = useRecordLayout('song', 'rows')
   const search = params.toString()
   const view = params.get('view') ?? 'all'
 
-  // მოქმედი ფილტრი მისამართშია (2.2-ის მოდელი): საიდბარი და პანელი ერთსა და იმავეს ხედავს
+  // მოქმედი ფილტრი მისამართშია (ბიბლიოთეკის მოდელი): საიდბარი და პანელი ერთსა და იმავეს ხედავს
   const genres = useMemo(
     () => new URLSearchParams(search).get('genre')?.split(',').filter(Boolean) ?? [],
     [search],
@@ -114,17 +114,17 @@ export function SongsPage() {
   const [term, setTerm] = useState('')
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<Song | 'new' | null>(null)
-  // §7.2 — დაკვრა გლობალურ ზოლშია: სიმღერაზე დაჭერა **მთელ გაფილტრულ სიას**
+  // დაკვრა გლობალურ ზოლშია: სიმღერაზე დაჭერა **მთელ გაფილტრულ სიას**
   // აგდებს რიგში, ე.ი. დამთავრებისას შემდეგი თავისით ჩაირთვება.
   const player = usePlayer()
 
-  /* §7.2 — დასაკრავი რიგი **მთელი გაფილტრული სიაა** და არა ჩატვირთული გვერდი.
+  /* დასაკრავი რიგი **მთელი გაფილტრული სიაა** და არა ჩატვირთული გვერდი.
      ⚠️ ეს წესი გვერდებად დაყოფამდე არსებობდა და განზრახ უცვლელი რჩება:
      500 სიმღერიან ფილტრზე „დაკვრა" 60-ზე არ უნდა გაჩერდეს. დამატებითი
      მოთხოვნა მხოლოდ **ცხად დაჭერაზე** ხდება (და ქეშდება), და არა სექციის
      გახსნაზე — სწორედ ის იყო ძვირი. წყარო თუ არ მოვიდა, ჩატვირთულს ვუკრავთ:
      დუმილი უარესი პასუხია.
-     ⚠️ საწყისი **id-ით** იძებნება (Tasks §48): §46-ის შემდეგ მეორე გვერდის
+     ⚠️ საწყისი **id-ით** იძებნება: გვერდებად დაყოფის შემდეგ მეორე გვერდის
      პირველი სიმღერა ინდექსით 0 იყო — სრულ სიაში ეს პირველი გვერდის პირველია. */
   const playFrom = async (song?: Song) => {
     let list = songs
@@ -140,7 +140,7 @@ export function SongsPage() {
     const at = song ? list.findIndex((entry) => entry.id === song.id) : 0
     player.play(list.map(songItem), Math.max(at, 0), t('songs.title'))
   }
-  // §7.4 — მიმაგრებული ფაილები/ჩანიშვნები. ⚠️ დაკვრისგან **ცალკეა**:
+  // მიმაგრებული ფაილები/ჩანიშვნები. ⚠️ დაკვრისგან **ცალკეა**:
   // სიმღერაზე დაჭერა ისევ უკრავს, სამაგრები ცალკე ღილაკზეა.
 
   useEffect(() => {
@@ -155,11 +155,11 @@ export function SongsPage() {
     tag: tags.length ? tags.join(',') : undefined,
     favorite: view === 'favorite' ? true : undefined,
     sort: sort === 'newest' ? undefined : sort,
-    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
   }
 
-  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['songs', filters],
     fetchPage: (page) => fetchSongs({ ...filters, page, per_page: LIST_PAGE_SIZE }),
@@ -245,7 +245,7 @@ export function SongsPage() {
         subtitle={t('songs.count', { count: total })}
         actions={
           <>
-            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             <Tooltip>
               <TooltipTrigger asChild>
@@ -279,7 +279,7 @@ export function SongsPage() {
               </SelectContent>
             </Select>
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
-            {/* Tasks §35.5 — მთელი (გაფილტრული) სია რიგში. აქამდე მხოლოდ მთავარ
+            {/* მთელი (გაფილტრული) სია რიგში. აქამდე მხოლოდ მთავარ
                 ფოტოზე დაჭერა უკრავდა — ვიდეოების გვერდს ეს ღილაკი ჰქონდა, აქ კი არა. */}
             {songs.length > 0 && (
               <Button variant="outline" onClick={() => playFrom()}>
@@ -312,7 +312,7 @@ export function SongsPage() {
       <div className="flex gap-6">
         <div className="min-w-0 flex-1">
           {query.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
-          {/* ⚠️ §2.4 — ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
+          {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !songs.length && (
             <EmptyState
@@ -337,7 +337,7 @@ export function SongsPage() {
           <RecordList layout={layout}>
             {songs.map((song) => {
               const cover = storageUrl(song.thumbnail)
-              /* Tasks §7 — მარჯვენა ღილაკის მენიუ: დაკვრა · წყარო · რჩეული · — · რედაქტირება · წაშლა */
+              /* მარჯვენა ღილაკის მენიუ: დაკვრა · წყარო · რჩეული · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
                 { key: 'play', label: t('playback.playFromHere'), icon: MENU_ICONS.play, run: () => void playFrom(song) },
                 {
@@ -364,7 +364,7 @@ export function SongsPage() {
                 },
               ]
               return (
-                /* §45 — სიმღერას ფანჯარა არ აქვს: ფოტო უკრავს, სათაური ტექსტია */
+                /* სიმღერას ფანჯარა არ აქვს: ფოტო უკრავს, სათაური ტექსტია */
                 <RecordView
                   key={song.id}
                   title={song.title}
@@ -385,7 +385,7 @@ export function SongsPage() {
                         </span>
                       )}
                       {!song.album && song.year ? <span>{song.year}</span> : null}
-                      {/* ჟანრები **მრავალია** (`DECISIONS.md` §5) — ყველა ჩანს */}
+                      {/* ჟანრები **მრავალია** — ყველა ჩანს */}
                       {(song.genres ?? []).map((genre) => (
                         <span key={genre.id} className="inline-flex items-center gap-1">
                           <ModuleIcon name={genre.icon} className="size-3" />
@@ -402,7 +402,7 @@ export function SongsPage() {
                     </>
                   }
                   extra={
-                    /* §5.3 — რომელ პლეილისტშია. ⚠️ „არცერთში" **ცხადად** ეწერება:
+                    /* რომელ პლეილისტშია. ⚠️ „არცერთში" **ცხადად** ეწერება:
                        ცარიელი ადგილი „არ ვიცი"-საც ნიშნავდა და „არცერთსაც". */
                     song.playlists && (
                       <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
@@ -427,7 +427,7 @@ export function SongsPage() {
                   tags={song.tags}
                   actions={actions}
                   onEdit={() => setEditing(song)}
-                  /* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: ქულა · რჩეული · ბმული · რედაქტირება · წაშლა;
+                  /* ერთი ზოლი ყველა სიაზე: ქულა · რჩეული · ბმული · რედაქტირება · წაშლა;
                      სიმღერას სტატუსი და ფაილები არ აქვს (დახურული გადაწყვეტილებები) */
                   bar={
                     <RecordActionBar
@@ -470,7 +470,7 @@ export function SongsPage() {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
-          {/* „ყველა"/„რჩეული" აქ განზრახ არ არის (Tasks 3) — ისინი საიდბარის სექციებია */}
+          {/* „ყველა"/„რჩეული" აქ განზრახ არ არის — ისინი საიდბარის სექციებია */}
           <FilterGroup title={t('filter.genres')} count={draft.genres.length}>
             <FilterOptionList>
               {allGenres.map((genre) => (
@@ -517,11 +517,11 @@ export function SongsPage() {
             qc.invalidateQueries({ queryKey: ['playlists'] })
             setEditing(null)
           }}
-          /* FEAT-17 — „ეს უკვე გაქვს → გახსნა". ⚠️ ჩანაწერი id-ით მოაქვს
+          /* „ეს უკვე გაქვს → გახსნა". ⚠️ ჩანაწერი id-ით მოაქვს
              და არა ჩატვირთული სიიდან: დუბლი შეიძლება მიმდინარე ფილტრს
              მიღმა იყოს. */
           onOpenExisting={async (existingId) => {
-            // Tasks §11 — სიმღერას დეტალის ფანჯარა აღარ აქვს: დუბლი ფორმაში იხსნება
+            // სიმღერას დეტალის ფანჯარა აღარ აქვს: დუბლი ფორმაში იხსნება
             setEditing(await fetchSong(existingId))
           }}
         />
@@ -548,13 +548,13 @@ function SongForm({
   genres: SongGenre[]
   onClose: () => void
   onSaved: () => void
-  /** FEAT-17 — დუბლის გახსნა */
+  /** დუბლის გახსნა */
   onOpenExisting: (id: number) => void
 }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { toast } = useToast()
-  // §6 — რომელი არჩევითი ველი ჩანს ამ ფორმაზე
+  // რომელი არჩევითი ველი ჩანს ამ ფორმაზე
   const fields = useModuleFields('song')
 
   const [form, setForm] = useState({
@@ -564,16 +564,16 @@ function SongForm({
     year: song?.year ? String(song.year) : '',
     url: song?.url ?? '',
     tags: song?.tags ?? [],
-    // Tasks §25.4 — „ჩემი ქულა" ბრუნდება: რიცხვი ან `null` (`RatingSelect`)
+    // „ჩემი ქულა" ბრუნდება: რიცხვი ან `null` (`RatingSelect`)
     rating: song?.rating ?? null,
   })
-  // ჟანრები **მრავალია** (`DECISIONS.md` §5) — ჩიპებით ირჩევა, თამაშის ნიმუშით
+  // ჟანრები **მრავალია** — ჩიპებით ირჩევა, თამაშის ნიმუშით
   const [genreIds, setGenreIds] = useState<number[]>(song?.genre_ids ?? [])
   // ხანგრძლივობა ავტომატურია — ხელით ველი არაა, მნიშვნელობა state-ში რჩება
   const [duration, setDuration] = useState<number | null>(song?.duration ?? null)
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(storageUrl(song?.thumbnail))
-  // Tasks §44.2 — ბმულის ფოტო პირდაპირ ჩარჩოშია და შენახვისას `thumbnail_url`-ად მიდის (ვიდეოს წესი)
+  // ბმულის ფოტო პირდაპირ ჩარჩოშია და შენახვისას `thumbnail_url`-ად მიდის (ვიდეოს წესი)
   const [linkThumb, setLinkThumb] = useState<string | null>(null)
   const [removeThumb, setRemoveThumb] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -583,7 +583,7 @@ function SongForm({
   const [newGenre, setNewGenre] = useState(false)
   const lastFetched = useRef<string>(song?.url ?? '')
   const qc = useQueryClient()
-  // §26.5 — დამატებითი ველები ახალ სიმღერაზე; ჩავარდნისას შექმნილი რჩება
+  // დამატებითი ველები ახალ სიმღერაზე; ჩავარდნისას შექმნილი რჩება
   const extras = useRecordExtras('song', song)
 
   /** რომელ პლეილისტებში შედის ეს სიმღერა */
@@ -663,7 +663,7 @@ function SongForm({
   })
 
 
-  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს**: ბლოკი
      `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
      ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
   const warnHidden = (missing: string[]) => {
@@ -695,7 +695,7 @@ function SongForm({
 
     setErrors({})
 
-    // Tasks §13.3 — submit-ზე დუბლი უხმოდ იჭრება: `TagSelect` უკვე გააფრთხილა, აქ მხოლოდ გარანტია
+    // submit-ზე დუბლი უხმოდ იჭრება: `TagSelect` უკვე გააფრთხილა, აქ მხოლოდ გარანტია
     const { tags } = dedupeTags(form.tags)
 
     save.mutate({
@@ -705,7 +705,7 @@ function SongForm({
       album: form.album || null,
       year: form.year ? Number(form.year) : null,
       genre_ids: genreIds,
-      // Tasks §25.4 — ქულა ისევ ფორმაზეა, ე.ი. `null` („გარეშე") მას ასუფთავებს
+      // ქულა ისევ ფორმაზეა, ე.ი. `null` („გარეშე") მას ასუფთავებს
       rating: form.rating,
       duration,
       tags,
@@ -718,8 +718,8 @@ function SongForm({
   return (
     <ModalShell title={t(song ? 'songs.edit' : 'songs.add')} onClose={onClose} wide>
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
-        {/* §26.2 — ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
-            ⚠️ `url` `locked`-ია (§6.5) — ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4),
+        {/* ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
+            ⚠️ `url` `locked`-ია — ჩაკეტვის მოხსნა ცხადი ქმედებაა,
             მაგრამ `shows()`-ს ფორმა მაინც ეკითხება: მოხსნის შემდეგ
             ჩამრთველი რომ მართლა მუშაობდეს. */}
         <QuickFill
@@ -750,7 +750,7 @@ function SongForm({
               {t('videos.metaLoading')}
             </p>
           )}
-          {/* FEAT-17 — ბმულის დუბლი (ვიდეოს იგივე კომპონენტი) */}
+          {/* ბმულის დუბლი (ვიდეოს იგივე კომპონენტი) */}
           {!metaLoading && meta?.existing && (
             <DuplicateLinkNotice title={meta.existing.title} onOpen={() => onOpenExisting(meta.existing!.id)} />
           )}
@@ -761,7 +761,7 @@ function SongForm({
               )}
               <div className="min-w-0 text-xs text-muted-foreground">
                 <p className="truncate text-foreground">{meta.title ?? t('videos.metaNoTitle')}</p>
-                {/* Tasks §44.2 — აღწერა ბარათში (სიმღერას საკუთარი აღწერის ველი არ აქვს) */}
+                {/* აღწერა ბარათში (სიმღერას საკუთარი აღწერის ველი არ აქვს) */}
                 {meta.description && <p className="line-clamp-2">{meta.description}</p>}
                 <p className="capitalize">
                   {meta.platform}
@@ -782,7 +782,7 @@ function SongForm({
           )}
         </QuickFill>
 
-        {/* §26 — ყდა ზემოთაა, ძირითად ველებთან ერთად; ექვსი ველი სამ ტოლ რიგად */}
+        {/* ყდა ზემოთაა, ძირითად ველებთან ერთად; ექვსი ველი სამ ტოლ რიგად */}
         <FormSection
           title={t('form.sections.basic')}
           mediaVariant="wide"
@@ -861,20 +861,20 @@ function SongForm({
             />
           </FormField>
 
-          {/* §2.5 — ხანგრძლივობა ხელით (ბმულიდან probe მაინც მუშაობს); ბაზაში წამები */}
+          {/* ხანგრძლივობა ხელით (ბმულიდან probe მაინც მუშაობს); ბაზაში წამები */}
           <FormField size="half" {...fields.field('duration')} htmlFor="s-duration">
-            {/* §39 — ჯამი კომპონენტის ნაწილია */}
+            {/* ჯამი კომპონენტის ნაწილია */}
             <DurationInput id="s-duration" value={duration} onChange={setDuration} />
           </FormField>
         </FormSection>
 
         <FormSection title={t('form.sections.classification')}>
-          {/* ჟანრები — per-user ლექსიკონი, ⚠️ **მრავალი** (`DECISIONS.md` §5) */}
+          {/* ჟანრები — per-user ლექსიკონი, ⚠️ **მრავალი** */}
           <FormField
             {...fields.field('genres')}
             error={errors.genre_ids}
           >
-            {/* Tasks §24.4 — ჟანრის ჩიპები აიქონით/ფერით, „დამატება" ღილაკი ჩიპების გვერდით */}
+            {/* ჟანრის ჩიპები აიქონით/ფერით, „დამატება" ღილაკი ჩიპების გვერდით */}
             <div
               className={cn(
                 'flex flex-wrap items-center gap-1.5',
@@ -938,7 +938,7 @@ function SongForm({
         </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ სიმღერაზე მონახაზი */}
+      {/* დამატებითი ველები; ახალ სიმღერაზე მონახაზი */}
       <CustomFieldsCard
         module="song"
         recordId={extras.current?.id ?? null}

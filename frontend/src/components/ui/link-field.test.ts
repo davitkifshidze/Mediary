@@ -4,10 +4,10 @@ import { createRoot, type Root } from 'react-dom/client'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **ბმულის ველი შემოთავაზებით** (Tasks §15.2).
+   **ბმულის ველი შემოთავაზებით**.
 
    ⚠️ მოწმდება: blur-ზე ბმული ერთხელ იკითხება (იგივე ბმულზე მეორედ არა);
-   ბარათი სათაურს და აღწერას (§44.2) აჩვენებს; `onFound` მოსვლისთანავე ეშვება; „ჩასმა"
+   ბარათი სათაურს და აღწერას აჩვენებს; `onFound` მოსვლისთანავე ეშვება; „ჩასმა"
    `onApply`-ს უშვებს და ბარათს ხურავს; „უარყოფა" მალავს; ნახევრად აკრეფილი
    მისამართი არ იგზავნება; paste-იც კითხულობს.
    ============================================================ */
@@ -99,7 +99,7 @@ describe('LinkField', () => {
     const card = el.querySelector('[data-testid="link-suggest"]')
     expect(card?.textContent).toContain(i18n.t('links.found'))
     expect(card?.textContent).toContain('Example page')
-    // Tasks §44.2 — აღწერაც ბარათშია (ორ ხაზად)
+    // აღწერაც ბარათშია (ორ ხაზად)
     const description = card?.querySelector('[data-testid="link-suggest-description"]')
     expect(description?.textContent).toBe('Desc')
     expect(description?.className).toContain('line-clamp-2')

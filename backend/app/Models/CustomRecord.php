@@ -18,12 +18,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * **ინტერფეისიდან შექმნილი მოდულის ჩანაწერი (Tasks §37).**
+ * **ინტერფეისიდან შექმნილი მოდულის ჩანაწერი.**
  *
  * ერთი ცხრილი ყველა პირად მოდულზე — მოდულს `module` სვეტი (გასაღები) ჭრის.
  * ჩაშენებული ველები განზრახ მცირეა (სათაური, აღწერა, ბმული, სტატუსი,
  * კლასიფიკაცია, ტეგები, რჩეული, მთავარი ფოტო); დანარჩენს მფლობელი
- * **დამატებითი ველებით** აწყობს — უკვე არსებული მექანიზმით (§6), ტიპიზებული
+ * **დამატებითი ველებით** აწყობს — უკვე არსებული მექანიზმით, ტიპიზებული
  * მნიშვნელობებითა და ფაილის ველით.
  *
  * ⚠️ **ჩანაწერს მოდულის ფარგლებში ყოველთვის `forModule()`-ით ეძებენ.**
@@ -35,19 +35,19 @@ class CustomRecord extends Model
 {
     use BelongsToUser;
 
-    /** §6 ფაზა 4b — დამატებით ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
+    /** დამატებით ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
-    /** §37.4 — გალერეის მშობელი (`GalleryParent`): ვებიდან მოტანილი ფოტო და ვიდეო-ბმული */
+    /** გალერეის მშობელი (`GalleryParent`): ვებიდან მოტანილი ფოტო და ვიდეო-ბმული */
     use HasGallery;
 
     /** სტატუსი — `statuses` ლექსიკონი, დომენი = მოდულის გასაღები */
     use HasStatus;
 
-    /** FEAT-18 — ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
+    /** ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
     use HasTags;
 
-    /** FEAT-11 → Tasks §29 — წაშლა ურნაშია (`moveToTrash()`) */
+    /** წაშლა ურნაშია (`moveToTrash()`) */
     use HasTrash;
 
     /** morph alias, როცა მოდული ჯერ არ ვიცით (ცარიელი ინსტანცია) */
@@ -75,12 +75,12 @@ class CustomRecord extends Model
     {
         static::deleting(function (CustomRecord $record) {
             $record->deletePhoto();
-            // §37.4 — `morphs()` FK-cascade-ს არ ქმნის (`HasGallery`-ის წესი)
+            // `morphs()` FK-cascade-ს არ ქმნის (`HasGallery`-ის წესი)
             $record->deleteGalleryMedia();
 
-            /* §37.5 — საკუთარი ფაილები **სათითაოდ** (`StoredFile` დისკიდანაც შლის
+            /* საკუთარი ფაილები **სათითაოდ** (`StoredFile` დისკიდანაც შლის
                და კვოტასაც ათავისუფლებს — SQL-კასკადი ივენთს არ ისვრის).
-               ⚠️ `owner`-ის გარეშე (BUG-21): ანგარიშის წაშლისას და `/purge`-ზე
+               ⚠️ `owner`-ის გარეშე: ანგარიშის წაშლისას და `/purge`-ზე
                სესია სხვისია და კავშირი ცარიელს დააბრუნებდა; `trash`-ის გარეშე —
                ურნაში მყოფი ფაილი დისკზე ობლად დარჩებოდა. */
             foreach ($record->files()->withoutGlobalScopes(['owner', 'trash'])->cursor() as $file) {
@@ -92,7 +92,7 @@ class CustomRecord extends Model
     }
 
     /**
-     * **ჩანაწერის query, რომლის მოდელმაც თავისი მოდული იცის** (Tasks §37.4).
+     * **ჩანაწერის query, რომლის მოდელმაც თავისი მოდული იცის**.
      *
      * ⚠️ `forModule()` აქ არ კმარა. `withCount('galleryImages')`/`whereHas()`
      * კავშირს **builder-ის მოდელზე** აგებს (`getRelationWithoutConstraints()`),
@@ -108,7 +108,7 @@ class CustomRecord extends Model
     }
 
     /**
-     * **morph alias — მოდულის გასაღები** (Tasks §37.4).
+     * **morph alias — მოდულის გასაღები**.
      *
      * ⚠️ `custom_record` ერთადერთი alias რომ ყოფილიყო, „ვისია ეს ფოტო" ყოველ
      * გამოძახებაზე `custom_records`-თან join-ს მოითხოვდა, ხოლო მთელი პროექტი
@@ -146,7 +146,7 @@ class CustomRecord extends Model
     }
 
     /**
-     * „როდის დასრულდა" — FEAT-21-ის წესი: წლის მიზანი და თვეების ჭრილი
+     * „როდის დასრულდა" — წლის მიზანი და თვეების ჭრილი
      * ნამდვილ თარიღს ითვლის და არა `updated_at`-ს.
      */
     protected function statusDoneColumn(): ?string
@@ -172,13 +172,13 @@ class CustomRecord extends Model
         return $this->belongsTo(CustomCategory::class, 'category_id');
     }
 
-    /** §37.5 — ჩემი ატვირთული ფოტოები და დოკუმენტები */
+    /** ჩემი ატვირთული ფოტოები და დოკუმენტები */
     public function files(): HasMany
     {
         return $this->hasMany(CustomRecordFile::class, 'custom_record_id')->orderBy('id');
     }
 
-    /** §37.5 — ჩანიშვნები, უახლესი პირველი */
+    /** ჩანიშვნები, უახლესი პირველი */
     public function notes(): HasMany
     {
         return $this->hasMany(CustomRecordNote::class, 'custom_record_id')->latest('id');
@@ -228,7 +228,7 @@ class CustomRecord extends Model
      * ატვირთული ფოტოს წაშლა დისკიდან — ზომა კვოტიდან აქვე მოიხსნება
      * (`StorageMeter::deleteUpload()`).
      *
-     * ⚠️ **გალერეის ფაილი აქ არ იშლება** (§37.4, `Place::deletePhoto()`-ის წესი):
+     * ⚠️ **გალერეის ფაილი აქ არ იშლება** (`Place::deletePhoto()`-ის წესი):
      * „მთავარად დაყენება" სვეტს `gallery_images`-ის ფაილზე მიუთითებს და ის
      * ფოტოს რიგს ეკუთვნის — აქ წაშლა მის ფაილს წაშლიდა, კვოტას კი ორჯერ
      * დააბრუნებდა. წყაროს სვეტი არ არსებობს, ე.ი. ფესვით ვარჩევთ.

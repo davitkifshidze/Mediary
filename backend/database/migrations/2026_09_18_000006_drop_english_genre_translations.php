@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **ინგლისური სახელი `ka` ლოკალიდან (Tasks BUG-23).**
+ * **ინგლისური სახელი `ka` ლოკალიდან.**
  *
  * სინქრონიზაციისას ახალ TMDB-ჟანრს ინგლისური სახელი **ორივე** ლოკალზე
  * ეწერებოდა. შედეგი ჩუმი იყო: `TranslationScanner::genreMissing()` `name_ka`-ს

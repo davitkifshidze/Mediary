@@ -6,9 +6,9 @@ use App\Services\Backup\BackupInspector;
 use Illuminate\Console\Command;
 
 /**
- * **`php artisan backups:prune-inspect` — მიტოვებული ვიუერები (Tasks GAP-16).**
+ * **`php artisan backups:prune-inspect` — მიტოვებული ვიუერები.**
  *
- * §11.3-ის ვიუერი დამპს დროებით ბაზაში (`<db>_inspect_<id>`) ტვირთავს.
+ * ასლის ვიუერი დამპს დროებით ბაზაში (`<db>_inspect_<id>`) ტვირთავს.
  * დახურვის ღილაკის გარეშე დატოვებული ტაბი მას სამუდამოდ ტოვებდა: მონაცემის
  * სრული მეორე ასლი დისკზე, კვოტის გარეთ, პაროლის ჰეშებით.
  *
@@ -22,7 +22,7 @@ class PruneBackupInspectCommand extends Command
 {
     protected $signature = 'backups:prune-inspect {--hours= : რამდენ საათზე ძველი ჩაითვალოს მიტოვებულად}';
 
-    protected $description = 'ხურავს ასლის ვიუერის მიტოვებულ დროებით ბაზებს (Tasks GAP-16)';
+    protected $description = 'ხურავს ასლის ვიუერის მიტოვებულ დროებით ბაზებს';
 
     public function handle(BackupInspector $inspector): int
     {

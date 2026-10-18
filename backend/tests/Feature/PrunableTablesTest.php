@@ -14,7 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **უსასრულოდ მზარდი ცხრილები (Tasks DEBT-24).**
+ * **უსასრულოდ მზარდი ცხრილები.**
  *
  * ⚠️ ოთხივე `MassPrunable`-ია და არა `Prunable`: წაშლა ერთი query-ია,
  * მოვლენების გარეშე. ოთხივე `AuditRegistry::NOT_LOGGED`-შია, ე.ი. observer-ს

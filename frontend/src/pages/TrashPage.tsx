@@ -59,7 +59,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 
 /* ============================================================
-   ურნა (FEAT-11 → Tasks §29).
+   ურნა.
 
    შენი სიტყვები: „იქ ყველა წაშლილი ჩავარდეს, ნებისმიერი რამ: ფოტო, ბმული,
    ფილმი, სერიალი, გალერეიდან თუ საიდანაც იქნება — და 30 დღე აღდგენის
@@ -70,7 +70,7 @@ import { PageHeader } from '@/components/ui/page-header'
    ფაილი, ჩატის ფაილი, ბაზის ასლი), ჩატის წერილები — ერთ ჯგუფად, სკოუპით
    („მხოლოდ ჩემთან" / „ორივესთან"). ფოტოს ესკიზი აქვს.
 
-   ⚠️ **ურნა ადგილს იკავებს** (29.4) — გვერდი თავში ამბობს, რამდენს, და
+   ⚠️ **ურნა ადგილს იკავებს** — გვერდი თავში ამბობს, რამდენს, და
    „ადგილის გათავისუფლება" = საბოლოო წაშლა.
 
    ⚠️ **ეს `/purge`-ის შემცვლელი არ არის.** `/purge` **სხვისი** ბიბლიოთეკიდან
@@ -93,9 +93,9 @@ function kindIcon(kind: string): ReactNode {
   if (kind === 'chat_file') return <MessageSquare />
   if (kind === 'chat_message') return <MessageSquareText />
   if (kind === 'audit_log') return <ScrollText />
-  // §37.7 — პირადი მოდული, ჩანაწერებთან ერთად
+  // პირადი მოდული, ჩანაწერებთან ერთად
   if (kind === 'custom_module') return <Blocks />
-  // §35.9 — ხელით შექმნილი მსახიობი, ბმულებთან და ფოტოებთან ერთად
+  // ხელით შექმნილი მსახიობი, ბმულებთან და ფოტოებთან ერთად
   if (kind === 'cast_member') return <UserRoundX />
   if (kind === 'field_file') return <FormInput />
   if (kind.endsWith('_note')) return <StickyNote />
@@ -190,7 +190,7 @@ export function TrashPage() {
   const removeOne = async (group: TrashGroup, item: TrashItem) => {
     const ok = await confirm({
       title: t('trash.deleteTitle'),
-      /* ⚠️ ჩატის წერილი საბოლოოდ არ იშლება (§4.6 — ბაზაში რჩება) — ურნიდან
+      /* ⚠️ ჩატის წერილი საბოლოოდ არ იშლება (ბაზაში რჩება) — ურნიდან
          მხოლოდ აღდგენის შესაძლებლობა ქრება, და ტექსტი ზუსტად ამას ამბობს */
       description:
         group.category === 'record'
@@ -278,12 +278,12 @@ export function TrashPage() {
                   {group.kind === 'database_backup' && <InfoHint info={t('trash.backupHint')} />}
                 </header>
 
-                {/* Tasks §46 — ჯგუფი გვერდებად (10): პირველი ჯამური სიიდანაა, დანარჩენი — `/trash/{kind}/items` */}
+                {/* ჯგუფი გვერდებად (10): პირველი ჯამური სიიდანაა, დანარჩენი — `/trash/{kind}/items` */}
                 <TrashGroupPages group={group}>
                   {(items) => (
                     <ul className="grid gap-2">
                       {items.map((item) => {
-                        /* Tasks §7 — მარჯვენა ღილაკი: აღდგენა · (ჩანაცვლება) · (ჩანაწერებით) · — · ახლავე წაშლა */
+                        /* მარჯვენა ღილაკი: აღდგენა · (ჩანაცვლება) · (ჩანაწერებით) · — · ახლავე წაშლა */
                         const actions: MenuAction[] = [
                           { key: 'restore', label: t('trash.restore'), icon: Undo2, disabled: restore.isPending || !item.restorable, run: () => restore.mutate({ group, item }) },
                           ...(item.replaceable
@@ -349,9 +349,9 @@ export function TrashPage() {
                             {t('trash.restore')}
                           </Button>
 
-                          {/* ⚠️ კლასიფიკატორი: „მხოლოდ რიგი" ნაგულისხმევია (Q21), ჩანაწერების
+                          {/* ⚠️ კლასიფიკატორი: „მხოლოდ რიგი" ნაგულისხმევია, ჩანაწერების
                               დაბრუნება — ცალკე, ცხადი არჩევანი */}
-                          {/* ⚠️ ეტაპი 4 — დაკავებულ სვეტში აღდგენა ცხადი „ჩანაცვლებაა":
+                          {/* ⚠️ დაკავებულ სვეტში აღდგენა ცხადი „ჩანაცვლებაა":
                               ახლანდელი ფოტო თვითონ გადავა ურნაში და არაფერი დაიკარგება */}
                           {item.replaceable && (
                             <Button
@@ -440,7 +440,7 @@ export function TrashPage() {
 /**
  * ესკიზი — ფოტო, პოსტერი ან სახის ხატულა.
  *
- * ⚠️ **ჩაკეტილი ალბომის ფოტო ბუნდოვანი ფილაა** (29.5): სერვერი ესკიზს
+ * ⚠️ **ჩაკეტილი ალბომის ფოტო ბუნდოვანი ფილაა**: სერვერი ესკიზს
  * საერთოდ არ აგზავნის, ე.ი. აქ დასაბუნდოვნებელი არაფერია — ერთი სტატიკური
  * აქტივი (`LOCKED_PHOTO_PLACEHOLDER`) და ბოქლომი. პირადი დისკის ფაილი
  * ბლობად იკითხება ურნის საკუთარი მარშრუტით.

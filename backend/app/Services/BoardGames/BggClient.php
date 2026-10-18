@@ -7,7 +7,7 @@ use SimpleXMLElement;
 use Throwable;
 
 /**
- * BoardGameGeek XML API 2 — ბორდგეიმების გამამდიდრებელი წყარო (Tasks §14).
+ * BoardGameGeek XML API 2 — ბორდგეიმების გამამდიდრებელი წყარო.
  *
  * უფასოა და გასაღებს **არ ითხოვს** (როგორც Open Library წიგნებზე), ე.ი.
  * „მონაცემებში" არაფერი იწერება.

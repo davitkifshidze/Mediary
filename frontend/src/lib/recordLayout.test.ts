@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readLayout } from '@/lib/recordLayout'
 
 /* ============================================================
-   **ხედი თითო მოდულზე** (Tasks §45.2–45.3).
+   **ხედი თითო მოდულზე**.
 
    ⚠️ შენახვა/აღდგენა თვითონ `useRecordLayout`-ის ტესტშია (`view-toggle.test.ts`)
    და სამ გვერდზე მონტირებით (ბუკმარკი, ვიდეო, ფილმი); აქ — **მიერთება ყველა
@@ -29,7 +29,7 @@ const WIRING: Record<string, string> = {
   LibraryPage: "useRecordLayout(type, 'cards')",
 }
 
-describe('every module list has the view toggle (§45.3)', () => {
+describe('every module list has the view toggle', () => {
   it.each(Object.entries(WIRING))('%s saves its view on its own module with the current default', (page, call) => {
     const source = PAGES[`../pages/${page}.tsx`]
 

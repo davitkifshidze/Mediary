@@ -20,13 +20,13 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   მომხმარებლების სექცია (Tasks 1.1/1.2) — ადრე ადმინის ტაბი იყო.
+   მომხმარებლების სექცია — ადრე ადმინის ტაბი იყო.
 
    ერთი ცხრილი: სახელი · გვარი · როლი · რეგისტრაცია · ბოლო აქტივობა ·
-   მოქმედება. როლი/სტატუსი/მოდულები **შიდა გვერდზე** იმართება (1.3),
+   მოქმედება. როლი/სტატუსი/მოდულები **შიდა გვერდზე** იმართება,
    რომ სია მსუბუქი დარჩეს.
 
-   ⚠️ **ცხრილი `DataTable`-ია (Tasks §5).** აქ ის ხელით ეწერა — საკუთარი
+   ⚠️ **ცხრილი `DataTable`-ია.** აქ ის ხელით ეწერა — საკუთარი
    `Th` კომპონენტით, საკუთარი `toggleSort`-ითა და საკუთარი ძებნით — და
    **გვერდები საერთოდ არ ჰქონდა**, ე.ი. სია მთლიანად ერთ ეკრანზე იყრიდა
    თავს. სამივე ფაქტი გაზიარებულ კომპონენტში უკვე ეწერა; მეორე ასლი კი
@@ -109,7 +109,7 @@ export function UsersPage() {
         label: t('admin.colRole'),
         value: (u) => roleName(u, i18n.language).toLowerCase(),
         render: (u) => (
-          // 1.2 — badge, არა checkbox
+          // badge, არა checkbox
           <span className="flex flex-wrap items-center gap-1.5">
             <span
               className={cn(
@@ -153,7 +153,7 @@ export function UsersPage() {
         className: 'w-40 text-right',
         render: (u) => (
           <div className="flex justify-end">
-            {/* 1.2 — `...`-ის ნაცვლად ცხადი ღილაკი „მოქმედება" */}
+            {/* `...`-ის ნაცვლად ცხადი ღილაკი „მოქმედება" */}
             <ActionMenu
               label={t('admin.colActions')}
               trigger={
@@ -195,7 +195,7 @@ export function UsersPage() {
     [t, i18n.language, fmt.date, fmt.dateTime, me?.id],
   )
 
-  // Tasks 1.6 — წვდომა როლიდანაც შეიძლება მოვიდეს
+  // წვდომა როლიდანაც შეიძლება მოვიდეს
   if (!canAdmin('users')) return null
 
   return (
@@ -213,7 +213,7 @@ export function UsersPage() {
           rows={rows}
           columns={columns}
           rowKey={(u) => u.id}
-          /* Tasks §7 — სტრიქონის მარჯვენა ღილაკი: იგივე ორი მოქმედება, რაც „მოქმედება" ღილაკს აქვს */
+          /* სტრიქონის მარჯვენა ღილაკი: იგივე ორი მოქმედება, რაც „მოქმედება" ღილაკს აქვს */
           menu={(u): MenuAction[] => [
             { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, run: () => navigate(`/users/${u.id}`) },
             {

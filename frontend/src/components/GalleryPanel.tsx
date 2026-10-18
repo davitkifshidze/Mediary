@@ -9,21 +9,21 @@ import { GalleryMoveDialog } from '@/components/gallery/GalleryMoveDialog'
 import { galleryPhotoInfo, isPortraitCategory } from '@/lib/galleryPhoto'
 
 /* ============================================================
-   გალერეის ფილტრები + ბადე (Tasks 10 · §2.9).
+   გალერეის ფილტრები + ბადე.
 
    ერთი კომპონენტი ორ ადგილას: **ჩანაწერის გვერდზე** (ტრეილერის ქვემოთ) და
    **მსახიობის გვერდზე**. ცალკე გვერდი განზრახ არ არსებობს — user-ს გალერეა
    ჩანაწერშივე უნდა.
 
    ⚠️ **ბადე, lightbox და მონიშვნები აქ არაა** — ისინი საერთო
-   `ui/photo-grid.tsx`-შია (§2.9), რომელსაც ჩანაწერის გვერდიც, მსახიობის
+   `ui/photo-grid.tsx`-შია, რომელსაც ჩანაწერის გვერდიც, მსახიობის
    გვერდიც და პროფილის ფაილებიც იყენებს. აქ მხოლოდ **გალერეის საქმე** რჩება:
    კატეგორიის ჩიპები.
 
-   ⚠️ **თემები აღარ არსებობს** (§4.5): ხელით მინიჭებული „რა არის სურათზე"
+   ⚠️ **თემები აღარ არსებობს**: ხელით მინიჭებული „რა არის სურათზე"
    მთლიანად მოიხსნა — ცხრილი, სვეტი, გვერდი და ეს ჩიპების რიგიც.
 
-   ⚠️ **გადატანა (ალბომში და სხვაგან) აქ ცხოვრობს** (Tasks §17, Q34 —
+   ⚠️ **გადატანა (ალბომში და სხვაგან) აქ ცხოვრობს** (შენი სიტყვები:
    „ორივეგან, ერთი პანელი, ერთი ქცევა"): ჩანაწერის გვერდიც და მსახიობის
    გვერდიც ამ პანელს ხატავს, ე.ი. ერთხელ დაწერილი მოქმედება ორივეგან
    ჩნდება. მდგომარეობაც და დიალოგის JSX-იც ამავე კომპონენტშია —
@@ -57,7 +57,7 @@ export function GalleryPanel({
    */
   images: (GalleryAnyImage | GalleryCastImage)[]
   bytes?: number
-  /** ⚠️ **მასივი** — მონიშნულების წაშლა ერთი ქმედებაა (§2.9) */
+  /** ⚠️ **მასივი** — მონიშნულების წაშლა ერთი ქმედებაა */
   onDelete?: (images: GalleryImage[]) => void
   /** მსახიობის ფოტოზე არ გადმოეცემა — გლობალურ ლექსიკონს ვერ ვცვლით */
   onPrimary?: (image: GalleryImage) => void
@@ -71,7 +71,7 @@ export function GalleryPanel({
   const [cut, setCut] = useState<CategoryCut>('all')
   /** რომელი ალბომის პაროლს ვკითხულობთ (ჩაკეტილ ფილაზე დაჭერა, 2026-09-20) */
   const [unlocking, setUnlocking] = useState<number | null>(null)
-  /** §17 — რომელი ფოტოები გადაგვაქვს (`null` — დიალოგი დახურულია) */
+  /** რომელი ფოტოები გადაგვაქვს (`null` — დიალოგი დახურულია) */
   const [moving, setMoving] = useState<number[] | null>(null)
 
   /**
@@ -147,7 +147,7 @@ export function GalleryPanel({
         </div>
       )}
 
-      {/* ბადე, lightbox და მონიშვნები — საერთო `PhotoGrid` (§2.9).
+      {/* ბადე, lightbox და მონიშვნები — საერთო `PhotoGrid`.
           ⚠️ ჩიპები აქ რჩება: ისინი გალერეის საქმეა და არა ბადის, ე.ი.
           `PhotoGrid`-ს მოდულის ცოდნა არ სჭირდება. */}
       <PhotoGrid
@@ -176,7 +176,7 @@ export function GalleryPanel({
                     ? t(`gallery.category.${image.category}`)
                     : t('gallery.category.other')),
                 portrait: isPortraitCategory(image.category),
-                /* ⚠️ **პასუხს backend იძლევა** (Tasks BUG-20): მშობელს მთავარი
+                /* ⚠️ **პასუხს backend იძლევა**: მშობელს მთავარი
                    სურათის სვეტი ან საერთოდ არ აქვს (მსახიობი — `photo_path`
                    გლობალურია), ან სხვა ჰქვია. `category !== 'actor'` მხოლოდ პირველ
                    შემთხვევას ხურავდა და სიმღერაზე/წიგნზე/თამაშზე ღილაკს ხატავდა,
@@ -185,7 +185,7 @@ export function GalleryPanel({
                 size: image.size,
                 width: image.width,
                 height: image.height,
-                // §4.3 — „რა ვიცით ამ ფოტოზე": ერთი ფუნქცია ყველგან
+                // „რა ვიცით ამ ფოტოზე": ერთი ფუნქცია ყველგან
                 info: galleryPhotoInfo(image, t, { owner: actorOf(image) }),
               },
         )}
@@ -209,7 +209,7 @@ export function GalleryPanel({
                 .filter((i): i is GalleryImage => Boolean(i) && !i!.locked),
             ))
         }
-        /* §17 — ⚠️ **ჩაკეტილი გამოირიცხება, `onDelete`-ის წესით**: `PhotoGrid`
+        /* ⚠️ **ჩაკეტილი გამოირიცხება, `onDelete`-ის წესით**: `PhotoGrid`
            მას მონიშვნაში ისედაც არ უშვებს, ეს მეორე ფენაა. სერვერიც არ
            გადაიტანდა (`album_lock` scope მას მალავს), ე.ი. მისი id მხოლოდ
            ფანჯრის სათაურს მოატყუებდა („3 ფოტოს გადატანა" ორ ფოტოზე). */
@@ -228,7 +228,7 @@ export function GalleryPanel({
         <AlbumUnlockById albumId={unlocking} onClose={() => setUnlocking(null)} />
       )}
 
-      {/* §17 — სიებს დიალოგი თვითონ აახლებს (`['gallery']`-ის პრეფიქსი ამ
+      {/* სიებს დიალოგი თვითონ აახლებს (`['gallery']`-ის პრეფიქსი ამ
           გვერდის ქეშსაც ფარავს), ე.ი. გამომძახებელს დამატებითი არაფერი სჭირდება */}
       {moving && (
         <GalleryMoveDialog ids={moving} initialTarget="keep" onClose={() => setMoving(null)} />

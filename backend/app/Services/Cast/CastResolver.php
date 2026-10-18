@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Throwable;
 
 /**
- * **სამი შესვლიდან ერთი მსახიობი — დუბლის გარეშე (ეტაპი 1 → Tasks §35.3).**
+ * **სამი შესვლიდან ერთი მსახიობი — დუბლის გარეშე.**
  *
  * არსებული `cast_member_id` · `tmdb_person_id` (შემოიყვანება) · სრულიად ხელით
  * `name`. ორი გამომძახებელი: ჩანაწერზე მიბმა (`RecordCastController::store()`)
@@ -22,7 +22,7 @@ use Throwable;
  * კერძო (ხელით შექმნილი) რიგი აქ არ ჩანს, ე.ი. მას ვერ „ვიპოვით" და ჩემს
  * ფილმს არ მივაბამთ.
  *
- * ⚠️ **ახალი ხელით შექმნილი რიგი შემქმნელისაა** (`created_by`, Q9) — სხვას არ
+ * ⚠️ **ახალი ხელით შექმნილი რიგი შემქმნელისაა** (`created_by`) — სხვას არ
  * უჩანს, სანამ TMDB-ის პირს არ დაუკავშირდება; TMDB-იანი კი ყველასია.
  */
 final class CastResolver
@@ -66,7 +66,7 @@ final class CastResolver
 
         if (! $member->exists) {
             $member->name = $name;
-            // §35.3 — ხელით შექმნილი ახალი რიგი კერძოა; TMDB-ის პირი კი საერთო
+            // ხელით შექმნილი ახალი რიგი კერძოა; TMDB-ის პირი კი საერთო
             $member->created_by = $tmdbId ? null : Auth::id();
         }
         if ($tmdbId && ! $member->tmdb_person_id) {
@@ -76,7 +76,7 @@ final class CastResolver
             $member->gender = (int) ($data['gender'] ?? $person['gender'] ?? 0) ?: null;
         }
 
-        // ფოტო TMDB-დან — ⚠️ **გაზიარებული ფაილია და კვოტას არ ხარჯავს** (19.4/B)
+        // ფოტო TMDB-დან — ⚠️ **გაზიარებული ფაილია და კვოტას არ ხარჯავს**
         if ($tmdbId && ! $member->photo_path && ! empty($person['profile_path'])) {
             if ($photo = $this->media->profile($person['profile_path'], $tmdbId)) {
                 $member->photo_path = $photo;

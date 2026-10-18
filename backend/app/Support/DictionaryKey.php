@@ -5,7 +5,7 @@ namespace App\Support;
 use Illuminate\Support\Str;
 
 /**
- * **ლექსიკონის ჩანაწერის უნიკალური `key` (აუდიტი 2026-09-14, §B3).**
+ * **ლექსიკონის ჩანაწერის უნიკალური `key`.**
  *
  * ერთი და იგივე თორმეტხაზიანი ფუნქცია **ცხრა ფაილში** იდო (`VideoType` ·
  * `NoteCategory` · `BookmarkCategory` · `BookGenre` · `GameGenre` ·

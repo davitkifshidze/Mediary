@@ -17,13 +17,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class BoardGameGenre extends Model
 {
     /**
-     * ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — წაშლა რიგს ურნაში აგზავნის
+     * ⚠️ **ურნა** — წაშლა რიგს ურნაში აგზავნის
      * (`DictionaryTrash::trash()`); `trash_meta` იმახსოვრებს გადატანილ
      * ჩანაწერებს, რომ აღდგენამ მათი დაბრუნება შემოგთავაზოს.
      */
     use BelongsToUser, HasTrash;
 
-    /** §B3 — უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
+    /** უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
     use HasDictionaryKey;
 
     /** ახალ ანგარიშზე ავტომატურად შექმნილი ჟანრები (იგივე სია მიგრაციაშიც) */
@@ -64,7 +64,7 @@ class BoardGameGenre extends Model
      */
     public static function ensureDefaults(int $userId): void
     {
-        // ⚠️ ურნაში მყოფიც (Tasks §29) — სხვაგვარად ნაგულისხმევები იმავე გასაღებით ჩაიწერებოდა და ინდექსი დაიძვრებოდა
+        // ⚠️ ურნაში მყოფიც — სხვაგვარად ნაგულისხმევები იმავე გასაღებით ჩაიწერებოდა და ინდექსი დაიძვრებოდა
         if (static::withoutGlobalScopes(['owner', 'trash'])->where('user_id', $userId)->exists()) {
             return;
         }

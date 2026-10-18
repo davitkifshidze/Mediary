@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * **„ჟურნალის პარამეტრები" — რა იწერება** (Tasks §43.5).
+ * **„ჟურნალის პარამეტრები" — რა იწერება**.
  *
  * ⚠️ **`super_admin` და არა `admin_access:audit`**: გადამრთველი ყველა ანგარიშის
  * ჩაწერას ცვლის (ინსტალაციის პარამეტრია — `AdminInstallationController`-ის

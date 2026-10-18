@@ -6,9 +6,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * შეხსენებების სრული ნაკრები (Tasks §5.5).
+ * შეხსენებების სრული ნაკრები.
  *
- * §13.2-ის ოთხ რეჟიმს (`once`/`interval`/`daily`/`weekly`) ორი ემატება —
+ * არსებულ ოთხ რეჟიმს (`once`/`interval`/`daily`/`weekly`) ორი ემატება —
  * **`monthly`** (თვის კონკრეტული რიცხვი) და **`yearly`** (თვე + რიცხვი) —
  * და ორი დამოუკიდებელი შესაძლებლობა:
  *

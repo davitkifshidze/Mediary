@@ -3,9 +3,9 @@ import { readPage, type ListParams, type Page } from '@/lib/paged'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
-   ადგილების მოდული (`place`, FEAT-26).
+   ადგილების მოდული (`place`).
 
-   ⚠️ წყარო **OSM Nominatim**-ია: უფასო და გასაღების გარეშე, ე.ი. §12-ის
+   ⚠️ წყარო **OSM Nominatim**-ია: უფასო და გასაღების გარეშე, ე.ი.
    `candidates → lookup` ნაკადი აქ ნამდვილად მუშაობს (კურსებისგან
    განსხვავებით). სამაგიეროდ მას წამში ერთი მოთხოვნა უშვებს — ამიტომ
    ძებნა **მხოლოდ ცხადი დაწკაპუნებით** ხდება და არასდროს აკრეფისას.
@@ -40,7 +40,7 @@ export interface Place {
   country: string | null
   lat: number | null
   lng: number | null
-  /** §16.2-ის იდენტობა — ხელით შეყვანილს არ აქვს */
+  /** OSM-ის იდენტობა — ხელით შეყვანილს არ აქვს */
   osm_id: string | null
   osm_type: string | null
   /** გარე რუკის ბმული; ⚠️ რუკა თვითონ ამ ეტაპზე არ ემატება */
@@ -50,12 +50,12 @@ export interface Place {
   category?: PlaceCategory | null
   tags: string[]
   status: PlaceStatus
-  /** Tasks §25.2 — მთელი რიცხვი 1–10 (ადრე `decimal(3,1)` სტრიქონად) */
+  /** მთელი რიცხვი 1–10 (ადრე `decimal(3,1)` სტრიქონად) */
   rating: number | null
   is_favorite: boolean
   visited_at: string | null
   photo: string | null
-  /** Tasks §57.1 — წყაროდან (Google Maps): ტელეფონი, ვებგვერდი, სამუშაო საათები */
+  /** წყაროდან (Google Maps): ტელეფონი, ვებგვერდი, სამუშაო საათები */
   phone: string | null
   website: string | null
   opening_hours: string[]
@@ -80,7 +80,7 @@ export interface PlaceFile {
   created_at: string | null
 }
 
-/** Tasks §57 — ადგილის წყარო: Google Places → SerpApi → Serper → Nominatim (+ ბმული) */
+/** ადგილის წყარო: Google Places → SerpApi → Serper → Nominatim (+ ბმული) */
 export type PlaceSource = 'google' | 'serpapi' | 'serper' | 'nominatim' | 'link'
 
 /**
@@ -153,7 +153,7 @@ export interface PlaceInput {
   /** ატვირთული ფოტო; მითითების შემთხვევაში multipart-ად იგზავნება */
   photo?: File | null
   remove_photo?: boolean
-  /** Tasks §57.1 — წყაროს ინფო */
+  /** წყაროს ინფო */
   phone?: string | null
   website?: string | null
   opening_hours?: string[]
@@ -179,7 +179,7 @@ function toFormData(input: PlaceInput): FormData {
   if (input.category_id != null) fd.append('category_id', String(input.category_id))
   if (input.status) fd.append('status', input.status)
   if (input.visibility) fd.append('visibility', input.visibility)
-  // Tasks §4.8 — გასუფთავებული შეფასება (`null`) ცარიელად იგზავნება, თორემ უკან ბრუნდებოდა
+  // გასუფთავებული შეფასება (`null`) ცარიელად იგზავნება, თორემ უკან ბრუნდებოდა
   if (input.rating !== undefined) fd.append('rating', input.rating == null ? '' : String(input.rating))
   if (input.visited_at) fd.append('visited_at', input.visited_at)
   /* ⚠️ **ცარიელი სიაც იგზავნება**: backend `has('tags')`-ზე დგას, ე.ი.
@@ -189,7 +189,7 @@ function toFormData(input: PlaceInput): FormData {
   ;(input.tags ?? []).forEach((tag) => fd.append('tags[]', tag))
   if (input.photo) fd.append('photo', input.photo)
   if (input.remove_photo) fd.append('remove_photo', '1')
-  // Tasks §57.1 — `undefined` „არ შეეხო"-ა, `null`/ცარიელი — „გაასუფთავე"
+  // `undefined` „არ შეეხო"-ა, `null`/ცარიელი — „გაასუფთავე"
   if (input.phone !== undefined) fd.append('phone', input.phone ?? '')
   if (input.website !== undefined) fd.append('website', input.website ?? '')
   if (input.opening_hours !== undefined) {
@@ -226,7 +226,7 @@ export async function fetchPlaceCountries(): Promise<{ name: string; count: numb
 }
 
 /**
- * Tasks §57 — ადგილის ძებნა. `live` — წერისას (მხოლოდ Google; გასაღების გარეშე
+ * ადგილის ძებნა. `live` — წერისას (მხოლოდ Google; გასაღების გარეშე
  * `live: false` და ძებნა Enter-ით ხდება); `city` — ფორმის ქალაქი (მიკერძოება);
  * `session` — Google-ის ავტოშევსების სესია (შემოთავაზებები + დეტალები ერთად ითვლება).
  */
@@ -243,7 +243,7 @@ export async function searchPlaces(
   return { results: data.results ?? [], source: data.source, live: !!data.live }
 }
 
-/** კანდიდატები სიად — ცხადი ძებნა (მარშრუტის „საიდან", §56) */
+/** კანდიდატები სიად — ცხადი ძებნა (მარშრუტის „საიდან") */
 export async function fetchPlaceCandidates(query: string): Promise<PlaceCandidate[]> {
   return (await searchPlaces(query)).results
 }
@@ -259,13 +259,13 @@ export async function lookupPlace(candidate: PlaceCandidate, query: string, sess
   return data.draft
 }
 
-/** §57.3 — Google Maps-ის ბმული (მოკლეც) → მონახაზი */
+/** Google Maps-ის ბმული (მოკლეც) → მონახაზი */
 export async function placeFromLink(url: string): Promise<PlaceCandidate> {
   const { data } = await api.post('/places/lookup/link', { url })
   return data.draft
 }
 
-/** §57.4 — კოორდინატი → მისამართი (პინის გადათრევა) */
+/** კოორდინატი → მისამართი (პინის გადათრევა) */
 export async function reverseGeocode(
   lat: number,
   lng: number,
@@ -331,9 +331,9 @@ export async function deletePlaceFile(id: number): Promise<void> {
   await api.delete(`/place-files/${id}`)
 }
 
-/* ---------- რუკა და მარშრუტები (Tasks §30 → §56) ----------
+/* ---------- რუკა და მარშრუტები ----------
    ⚠️ გამოთვლა (`computePlaceRoute`) ჩანაწერს არ ქმნის. საწყისი — ჩემი მდებარეობა,
-   სახლი, მისამართი, ჩემი სხვა ადგილი ან რუკაზე მონიშნული წერტილი (§56.1; სერვერთან
+   სახლი, მისამართი, ჩემი სხვა ადგილი ან რუკაზე მონიშნული წერტილი (სერვერთან
    ყველა რიცხვებად მიდის); შენახვა არჩეულის ასლია, გეომეტრია polyline-ად
    (`lib/polyline.ts`), „საიდან" — `from_label`-ით. */
 export const ROUTE_PROFILES = ['driving', 'foot', 'bike'] as const
@@ -350,7 +350,7 @@ export interface RouteOption {
 
 export interface RoutePlan {
   profile: RouteProfile
-  /** §56.3 — რამდენი გზა ითხოვე; `routes` შეიძლება ნაკლები იყოს */
+  /** რამდენი გზა ითხოვე; `routes` შეიძლება ნაკლები იყოს */
   requested: number
   from: { lat: number; lng: number }
   to: { lat: number; lng: number }
@@ -367,7 +367,7 @@ export interface PlaceRoute {
   duration_s: number
   from_lat: number
   from_lng: number
-  /** §56.4 — „საიდან" (სახლი, მისამართი…); ძველ მარშრუტს არ აქვს */
+  /** „საიდან" (სახლი, მისამართი…); ძველ მარშრუტს არ აქვს */
   from_label: string | null
   geometry: string
   chosen_at: string | null

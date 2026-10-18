@@ -8,15 +8,15 @@ import type { ImportPlan } from '@/api/import'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **„ექსპორტ & იმპორტი"** (Tasks §31).
+   **„ექსპორტ & იმპორტი"**.
 
    ⚠️ მოწმდება ის, რასაც ტიპი ვერ ხედავს:
    · ჩანართი URL-იდან იკითხება და უცნობი მნიშვნელობა ექსპორტზე ბრუნდება;
    · ფორმატი ბარათზეა — ღილაკი **ამ** მოდულს და **ამ** ფორმატს აგზავნის,
      ცარიელ მოდულზე კი გამორთულია;
    · ZIP ბარათი ატვირთვების ბიბლიოთეკას `all`-ით ითხოვს; „ჩემი სრული ექსპორტი"
-     (§59.5) ფაილებით ან მათ გარეშე;
-   · §59.6 — იმპორტი მხოლოდ Mediary-ის ფაილიდან: გეგმა თითო მოდულზე ამბობს
+    ფაილებით ან მათ გარეშე;
+   · იმპორტი მხოლოდ Mediary-ის ფაილიდან: გეგმა თითო მოდულზე ამბობს
      „დაემატება · გამოტოვდება · ვერ ჩაიწერება", შეუძლებელი მოდული მიზეზით ჩანს
      და რიგში არ მიდის; CSV-ის ორაზროვნებაზე „წაიკითხე, როგორც …";
    · ჩანართის გადართვა არჩეულ ფაილს არ კარგავს.
@@ -84,7 +84,7 @@ vi.mock('@/lib/modules', async (original) => ({
   useModules: () => modules,
 }))
 
-/* Tasks §59.2 — „ბაზის" ჩანართი მხოლოდ სუპერადმინს; ერთი და იგივე ობიექტი ყოველ გამოძახებაზე */
+/* „ბაზის" ჩანართი მხოლოდ სუპერადმინს; ერთი და იგივე ობიექტი ყოველ გამოძახებაზე */
 const auth = vi.hoisted(() => ({ value: { isAdmin: false, user: { id: 1 } } as Record<string, unknown> }))
 vi.mock('@/lib/auth', async (original) => ({
   ...(await original<typeof import('@/lib/auth')>()),
@@ -243,7 +243,7 @@ describe('TransferPage', () => {
     expect(card(i18n.t('transfer.tabExport'))?.getAttribute('aria-pressed')).toBe('true')
   })
 
-  /* Tasks §40.14 — „გაზიარება" აქ მესამე ჩანართი იყო; ახლა თავისი განყოფილებაა.
+  /* „გაზიარება" აქ მესამე ჩანართი იყო; ახლა თავისი განყოფილებაა.
      ⚠️ შენახული ძველი ბმული ექსპორტზე ჩუმად არ უნდა ჩამოვარდეს */
   it('has no share tab any more and sends the old share tab to its own section', async () => {
     await mount('/transfer')
@@ -282,7 +282,7 @@ describe('TransferPage', () => {
     expect(api.downloadStorageFiles).toHaveBeenCalledWith({ all: true })
   })
 
-  /* Tasks §59.5 — ყველა მოდული ერთ ZIP-ში; ფაილები — შენი არჩევანით */
+  /* ყველა მოდული ერთ ZIP-ში; ფაილები — შენი არჩევანით */
   it('downloads my full export with or without its files', async () => {
     await mount()
 
@@ -296,7 +296,7 @@ describe('TransferPage', () => {
     expect(api.downloadArchive).toHaveBeenLastCalledWith(false)
   })
 
-  /* Tasks §59.6 — გეგმა თითო მოდულზე; შეუძლებელი მოდული მიზეზით და რიგის გარეშე */
+  /* გეგმა თითო მოდულზე; შეუძლებელი მოდული მიზეზით და რიგის გარეშე */
   it('plans a Mediary file per module and queues only what is new', async () => {
     api.planImport.mockResolvedValue(plan())
     await mount('/transfer?tab=import')
@@ -357,7 +357,7 @@ describe('TransferPage', () => {
   })
 })
 
-describe('TransferPage — the database tab (§59.2)', () => {
+describe('TransferPage — the database tab', () => {
   it('shows the database tab, with the backups, only to the super admin', async () => {
     await mount('/transfer?tab=database')
     // ჩვეულებრივ ანგარიშზე ჩანართი არ არის და მისამართი ექსპორტზე ბრუნდება

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * საუბარი ორ მომხმარებელს შორის (Tasks §16.3).
+ * საუბარი ორ მომხმარებელს შორის.
  *
  * ⚠️ **`BelongsToUser` განზრახ არ გამოიყენება.** მისი `owner` global scope
  * „ჩანაწერს ერთი მფლობელი ჰყავს" დაშვებაზეა აგებული; საუბარი კი
@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Conversation extends Model
 {
     /**
-     * **ჩატის თემები (Tasks §10.6).**
+     * **ჩატის თემები.**
      *
      * ⚠️ **ეს გასაღებია და არა hex.** ფერები SPA-შია (ღია და
      * მუქი ვარიანტით), ე.ი. პალიტრის შეცვლა ბაზას არ ეხება —
@@ -32,7 +32,7 @@ class Conversation extends Model
     ];
 
     /**
-     * **ორი მხარის გასაღები — „ერთი წყვილი, ერთი საუბარი"** (Tasks BUG-07).
+     * **ორი მხარის გასაღები — „ერთი წყვილი, ერთი საუბარი"**.
      *
      * ⚠️ **დალაგებული და არა „ვინ დაიწყო"**: გასაღები მიმართულებისგან
      * დამოუკიდებელი უნდა იყოს, თორემ A→B და B→A ორ სხვადასხვა რიგად
@@ -45,7 +45,7 @@ class Conversation extends Model
     }
 
     /**
-     * ⚠️ **დადუმება პივოტზეა და არა საუბარზე** (§10.5): ერთმა
+     * ⚠️ **დადუმება პივოტზეა და არა საუბარზე**: ერთმა
      * მონაწილემ შეუძლია დაადუმოს, მეორეს — არა. `theme` პირიქით
      * საუბრისაა, რადგან Messenger-ში ორივე ერთსა და იმავე ფერს ხედავს.
      */
@@ -56,7 +56,7 @@ class Conversation extends Model
             ->withTimestamps();
     }
 
-    /** §10.11 — ვინ რას ეძახება ამ საუბარში */
+    /** ვინ რას ეძახება ამ საუბარში */
     public function nicknames(): HasMany
     {
         return $this->hasMany(ConversationNickname::class);

@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * **ფოტო ან ვიდეო პირად გალერეაში (Tasks §33)** — მოწყობილობიდან ატვირთული.
+ * **ფოტო ან ვიდეო პირად გალერეაში** — მოწყობილობიდან ატვირთული.
  *
  * ⚠️ **ფაილი პირად დისკზეა** (`personal/…`, `StorageFolder::PRIVATE_ROOTS`) და
  * სერვერიდან მხოლოდ მფლობელობაშემოწმებული მარშრუტით გამოდის
@@ -29,9 +29,9 @@ use Illuminate\Support\Facades\Storage;
  * ფოტო არსად ჩანს (`personal_parent`), თვითონ კი ურნის ცალკე ელემენტია
  * (`TrashDomain::ITEMS['personal_media']`, მშობელი — ადამიანი).
  *
- * ⚠️ **ჩაკეტილი ადამიანის ან ალბომის ფოტოც არსად ჩანს** (`personal_lock`,
- * Tasks §33.7), სანამ ის ამ სესიაში არ გაიხსნა — სია, ჯგუფები, ძებნა,
- * ჯამები, ფაილის მარშრუტი (მიბმა 404-ს აძლევს).
+ * ⚠️ **ჩაკეტილი ადამიანის ან ალბომის ფოტოც არსად ჩანს** (`personal_lock`),
+ * სანამ ის ამ სესიაში არ გაიხსნა — სია, ჯგუფები, ძებნა, ჯამები, ფაილის
+ * მარშრუტი (მიბმა 404-ს აძლევს).
  */
 class PersonalMedia extends Model
 {
@@ -72,7 +72,7 @@ class PersonalMedia extends Model
                     ->orWhereNotIn("{$table}.album_id", fn ($sub) => $sub->select('id')->from('personal_albums')->whereNotNull('trashed_at')));
         });
 
-        /* **ჩაკეტილი ადამიანის ან ალბომის ფოტო (Tasks §33.7)** — სერვერიდან
+        /* **ჩაკეტილი ადამიანის ან ალბომის ფოტო** — სერვერიდან
            საერთოდ არ გამოდის, სანამ ამ სესიაში არ გაიხსნა (`AlbumLock`-ის წესი:
            რაც პასუხში არ მოვიდა, იმას ინსპექტორი ვერ იპოვის). */
         static::addGlobalScope('personal_lock', fn (Builder $q) => self::lockScope($q));

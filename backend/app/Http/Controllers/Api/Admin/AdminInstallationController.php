@@ -10,7 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * **ინსტალაციის პარამეტრების ჩაწერა (Tasks §34.1)** — მხოლოდ `super_admin`.
+ * **ინსტალაციის პარამეტრების ჩაწერა** — მხოლოდ `super_admin`.
  *
  * ⚠️ **`super_admin` და არა `admin_access:`** — ორივე პარამეტრი **ყველა**
  * ანგარიშს ეხება (`admin/modules`-ისა და `admin/purge`-ის მსჯელობა): ერთი
@@ -22,7 +22,7 @@ use Illuminate\Http\Request;
 class AdminInstallationController extends Controller
 {
     /**
-     * **ატვირთვის ლიმიტები** (§34.2) — მხოლოდ მოსული სახეობები იცვლება.
+     * **ატვირთვის ლიმიტები** — მხოლოდ მოსული სახეობები იცვლება.
      *
      * ⚠️ **ფორმატი სიიდან ირჩევა** (`UploadLimits::selectable()`): კატალოგის
      * გარეთ მდგომი — მათ შორის ყოველი აქტიური შიგთავსი (svg, html, js…) —
@@ -67,7 +67,7 @@ class AdminInstallationController extends Controller
     }
 
     /**
-     * **ურნის ზედა ზღვარი** (Tasks §29.6 → §34.1).
+     * **ურნის ზედა ზღვარი**.
      *
      * ⚠️ `null` ან `config`-ის ტოლი რიცხვი — **ნაგულისხმევზე დაბრუნებაა** (რიგი
      * იშლება), ე.ი. `TRASH_MAX_DAYS`-ის შეცვლა `.env`-ში ისევ მოქმედებს, სანამ

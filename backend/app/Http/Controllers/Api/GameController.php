@@ -24,17 +24,17 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
- * თამაშების მოდული (`game`, Tasks §11).
+ * თამაშების მოდული (`game`).
  *
  * მფლობელობა — `BelongsToUser` global scope (სხვისი ჩანაწერი 404), უფლებები —
- * `permission:game` middleware. გამამდიდრებელი წყარო **RAWG**-ია (§11.4),
+ * `permission:game` middleware. გამამდიდრებელი წყარო **RAWG**-ია,
  * ნაკადი კი TMDB-ის იდენტურია: ჯერ კანდიდატების სია, მერე არჩეულის დრაფტი.
  *
- * ⚠️ **IGDB სათადარიგოა** (`DECISIONS.md` §7, 2026-09-06): ერთვება მაშინ, როცა
+ * ⚠️ **IGDB სათადარიგოა** (2026-09-06): ერთვება მაშინ, როცა
  * RAWG-ს კლავიში არ აქვს ან შედეგი არ მოაქვს. ორივე არასავალდებულოა.
  *
  * ⚠️ **ჟანრი აქ pivot-ია** (`genre_ids[]`) და არა ერთი `genre_id`, როგორც
- * წიგნზე/ბორდგეიმზე — 11.1 „ჟანრებს" მრავლობითში წერს.
+ * წიგნზე/ბორდგეიმზე: თამაში ხშირად ერთდროულად რამდენიმე ჟანრისაა.
  */
 class GameController extends Controller
 {
@@ -49,7 +49,7 @@ class GameController extends Controller
         $query = Game::query()
             ->with('genres')
             ->withCount(['videos', 'files', 'images', 'notes', 'galleryImages']);
-        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'game', $request);
 
         if ($status = $request->string('status')->toString()) {
@@ -59,7 +59,7 @@ class GameController extends Controller
             $query->where('is_favorite', true);
         }
 
-        // ჟანრი/პლატფორმა/რეჟიმი — მძიმით გამოყოფილი სია და **AND** (5.2-ის წესი)
+        // ჟანრი/პლატფორმა/რეჟიმი — მძიმით გამოყოფილი სია და **AND**
         foreach ($this->slugList($request->string('genre_id')->toString()) as $genreId) {
             $query->whereHas('genres', fn ($q) => $q->where('game_genres.id', (int) $genreId));
         }
@@ -70,7 +70,7 @@ class GameController extends Controller
             $query->whereJsonContains('modes', $mode);
         }
 
-        // §5.1 — ფრენჩაიზის მოდალი: **ზუსტი** დამთხვევა და არა `like`, თორემ
+        // ფრენჩაიზის მოდალი: **ზუსტი** დამთხვევა და არა `like`, თორემ
         // „Mass Effect" და „Mass Effect: Andromeda" ერთ ნაკრებში აღმოჩნდებოდა
         if ($franchise = $request->string('franchise')->toString()) {
             $query->where('franchise', $franchise);
@@ -98,7 +98,7 @@ class GameController extends Controller
     }
 
     /**
-     * ბიბლიოთეკაში არსებული ფრენჩაიზები — სახელი + რამდენი ნაწილი (§5.1).
+     * ბიბლიოთეკაში არსებული ფრენჩაიზები — სახელი + რამდენი ნაწილი.
      *
      * ⚠️ ცალკე ლექსიკონის ცხრილი **განზრახ არ იქმნება**: ფრენჩაიზი თამაშის
      * საკუთარი ტექსტური სვეტია და RAWG-იც ასე აბრუნებს — ცხრილი ერთსა და
@@ -165,7 +165,7 @@ class GameController extends Controller
 
     public function destroy(Game $game)
     {
-        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+        /* ⚠️ **კალათა** — `delete()` კი არა, `moveToTrash()`.
            ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
            გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
            ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
@@ -196,7 +196,7 @@ class GameController extends Controller
         return new GameResource($game->load('genres'));
     }
 
-    /* ---------- RAWG + IGDB (§11.4-ის enrichment) ---------- */
+    /* ---------- RAWG + IGDB (enrichment) ---------- */
 
     /**
      * არჩევანის სია — ავტომატურად არაფერს ვამთხვევთ (remake/remaster ერთნაირად ჰქვია).
@@ -205,7 +205,7 @@ class GameController extends Controller
      * ჩავარდნაზე 503-ს ვაბრუნებთ, თორემ user-ს ეგონებოდა, რომ თამაში ბაზაში
      * არ არსებობს (BGG-ის იგივე წესი).
      *
-     * ⚠️ **რიგი ცხადია: ჯერ RAWG, მერე IGDB** (`DECISIONS.md` §7). IGDB
+     * ⚠️ **რიგი ცხადია: ჯერ RAWG, მერე IGDB**. IGDB
      * **სათადარიგოა** — ერთვება მაშინ, როცა RAWG-ს კლავიში არ აქვს ან შედეგი
      * არ მოაქვს. თითო რიგს `source` ველი აქვს, ე.ი. ფორმა იცის, სად დააბრუნოს
      * `lookup`.
@@ -215,7 +215,7 @@ class GameController extends Controller
         $data = $request->validate(['query' => ['required', 'string', 'max:255']]);
 
         /* ⚠️ **ორივე გასაღების არქონა სხვა ფაქტია, ვიდრე ორივე წყაროს
-           ჩავარდნა** (Tasks §30.6): §30-იდან ეს ყოველდღიური მდგომარეობაა
+           ჩავარდნა**: ეს ყოველდღიური მდგომარეობაა
            ყველასთვის, ვისაც თავისი გასაღები არ ჩაუწერია, და სწორი ქმედება
            „მონაცემებში" ჩაწერაა — არა „სცადე მოგვიანებით". */
         if (! $this->configured()) {
@@ -255,7 +255,7 @@ class GameController extends Controller
         $useIgdb = ! empty($data['igdb_id']);
         $id = (int) ($useIgdb ? $data['igdb_id'] : $data['rawg_id']);
 
-        // §30.6 — არჩეული წყაროს გასაღები არ მაქვს → ეს ცხადად ითქმის
+        // არჩეული წყაროს გასაღები არ მაქვს → ეს ცხადად ითქმის
         if (! ($useIgdb ? $this->igdb->configured() : $this->rawg->configured())) {
             return MissingCredential::response($useIgdb ? CredentialProviders::IGDB : CredentialProviders::RAWG);
         }
@@ -335,7 +335,7 @@ class GameController extends Controller
             'links' => ['nullable', 'array', 'max:10'],
             'links.*.label' => ['nullable', 'string', 'max:60'],
             'links.*.url' => ['required_with:links', 'string', 'max:1000', 'url'],
-            // §22.3 — ⚠️ ძველი ერთღერძიანი მნიშვნელობაც მიიღება (`Game::normalizeLink()` თარგმნის)
+            // ⚠️ ძველი ერთღერძიანი მნიშვნელობაც მიიღება (`Game::normalizeLink()` თარგმნის)
             'links.*.kind' => ['nullable', Rule::in([...Game::LINK_KINDS, ...Game::LEGACY_LINK_KINDS])],
             'links.*.store' => ['nullable', Rule::in(Game::LINK_STORES)],
 
@@ -352,7 +352,7 @@ class GameController extends Controller
             ],
             'rawg_slug' => ['nullable', 'string', 'max:255'],
 
-            // IGDB — სათადარიგო წყარო (`DECISIONS.md` §7); იგივე per-user წესი
+            // IGDB — სათადარიგო წყარო; იგივე per-user წესი
             'igdb_id' => [
                 'nullable', 'integer', 'min:1',
                 Rule::unique('games', 'igdb_id')->where('user_id', $userId)->ignore($game?->id),
@@ -368,7 +368,7 @@ class GameController extends Controller
 
     /**
      * @return list<array{label: ?string, url: string, kind: string, store: ?string}>
-     *                                                                                ბმულები, რომლებიც თამაშის ვიდეოდ უნდა იქცეს (§22.4) — შენახვის შემდეგ
+     *                                                                                ბმულები, რომლებიც თამაშის ვიდეოდ უნდა იქცეს — შენახვის შემდეგ
      */
     private function apply(Game $game, Request $request, array $data): array
     {
@@ -402,7 +402,7 @@ class GameController extends Controller
         $videos = [];
 
         if (array_key_exists('links', $data)) {
-            /* §22.3/§22.4 — ორი ღერძი (`Game::normalizeLink()`), ხოლო
+            /* ორი ღერძი (`Game::normalizeLink()`), ხოლო
                YouTube/Vimeo-ს ტრეილერი და გზამკვლევი ბმულად აღარ რჩება —
                შენახვის შემდეგ თამაშის ვიდეოდ ჯდება (`addVideos()`). */
             /* ⚠️ **`ksort` აუცილებელია**: `validate()` wildcard-ის მასივს **წესების**
@@ -428,7 +428,7 @@ class GameController extends Controller
         }
 
         if ($request->boolean('remove_cover')) {
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($game, 'cover_path', 'cover_source');
             $game->cover_path = null;
             $game->cover_source = null;
@@ -439,8 +439,8 @@ class GameController extends Controller
         }
 
         if ($request->hasFile('cover')) {
-            // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
+            // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($game, 'cover_path', 'cover_source');
             $game->cover_path = $this->meter
                 ->storeUpload($request->user(), $request->file('cover'), StorageFolder::GAME_COVERS);
@@ -452,11 +452,11 @@ class GameController extends Controller
     }
 
     /**
-     * **ტრეილერი და გზამკვლევი — თამაშის ვიდეოებში** (Tasks §22.4, Q15).
+     * **ტრეილერი და გზამკვლევი — თამაშის ვიდეოებში**.
      *
      * ⚠️ **შენახვის შემდეგ**: ახალ თამაშს `id` მხოლოდ ახლა აქვს.
      * ⚠️ **ერთი ვიდეო ორჯერ არ ემატება** — `platform` + `external_id`-ით
-     * (FEAT-17-ის წესი: ერთ ვიდეოს ათი მისამართი აქვს, `?t=42`-იანიც).
+     * (ერთ ვიდეოს ათი მისამართი აქვს, `?t=42`-იანიც).
      * ⚠️ ბმული **`GameVideo::applyUrl()`-ს** გადის — `VideoUrl`-ის allowlist და
      * embed სერვერზე იგება, ნედლი HTML არასდროს ინახება.
      *
@@ -506,7 +506,7 @@ class GameController extends Controller
     /**
      * გარე წყაროს ყდის ჩამოტვირთვა შენახვისას.
      *
-     * ⚠️ **კვოტაში არ ითვლება** (19.4/B) — TMDB-ის პოსტერივით ეს user-ის
+     * ⚠️ **კვოტაში არ ითვლება** — TMDB-ის პოსტერივით ეს user-ის
      * ატვირთვა არაა. ფაილის სახელი წყაროს id-ია, ე.ი. საერთოა ანგარიშებს
      * შორის და ჩანაწერთან ერთად **არ იშლება** (`Game::deleteCover()`).
      *

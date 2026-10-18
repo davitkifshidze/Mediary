@@ -48,7 +48,7 @@ import { useRecordExtras } from '@/lib/customFieldDraft'
 import { LinkField } from '@/components/ui/link-field'
 
 /* ============================================================
-   წიგნის ფორმა (Tasks §12).
+   წიგნის ფორმა.
 
    „სწრაფი შევსება" TMDB-ის ზუსტი ანალოგია, ოღონდ წყარო **Open Library**-ია
    (კლავიშს არ ითხოვს): ჯერ კანდიდატების სია, მერე არჩეულის დრაფტი.
@@ -68,7 +68,7 @@ export function BookForm({
 }: {
   book: Book | null
   genres: BookGenre[]
-  /** Tasks §13.4 — ბიბლიოთეკაში უკვე არსებული ტეგები, შემოთავაზებისთვის */
+  /** ბიბლიოთეკაში უკვე არსებული ტეგები, შემოთავაზებისთვის */
   knownTags?: string[]
   onClose: () => void
   onSaved: () => void
@@ -76,7 +76,7 @@ export function BookForm({
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { toast } = useToast()
-  // §6 — რომელი არჩევითი ველი ჩანს ამ ფორმაზე
+  // რომელი არჩევითი ველი ჩანს ამ ფორმაზე
   const fields = useModuleFields('book')
 
   const [form, setForm] = useState({
@@ -96,13 +96,13 @@ export function BookForm({
     format: book?.format ?? 'print',
     // ⚠️ ცარიელით იწყება — არჩევანი მომხმარებლისაა, ნაგულისხმები აღარ იწერება
     status: book?.status ?? '',
-    // Tasks §25.4 — რიცხვი ან `null` (`RatingSelect`), სტრიქონი აღარ
+    // რიცხვი ან `null` (`RatingSelect`), სტრიქონი აღარ
     rating: book?.rating ?? null,
     tags: book?.tags ?? [],
-    // §5.7 — ერთი „წყაროს / წასაკითხი ლინკი" (ადრე მხოლოდ ატვირთული ebook იყო)
+    // ერთი „წყაროს / წასაკითხი ლინკი" (ადრე მხოლოდ ატვირთული ebook იყო)
     source_url: book?.source_url ?? '',
   })
-  /* ⚠️ §5.7 — ბმულების რედაქტორი ფორმიდან წავიდა, `state` კი დარჩა
+  /* ⚠️ ბმულების რედაქტორი ფორმიდან წავიდა, `state` კი დარჩა
      **განზრახ**: ძველი ჩანაწერის `links` ისევ იგზავნება და რედაქტირება მას
      ჩუმად არ შლის. ახალი ბმული ახლა `source_url`-შია. */
   const [links] = useState<BookLink[]>(book?.links ?? [])
@@ -110,21 +110,21 @@ export function BookForm({
   const [coverId, setCoverId] = useState<number | null>(null)
   const [cover, setCover] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(storageUrl(book?.cover))
-  /* Tasks §44.5 — `source_url`-ის ფოტო ყდის **ცარიელ** ჩარჩოში ჯდება (URL-ით) და შენახვისას
+  /* `source_url`-ის ფოტო ყდის **ცარიელ** ჩარჩოში ჯდება (URL-ით) და შენახვისას
      `cover_url`-ად მიდის. ატვირთული, Open Library-ის და უკვე შენახული ყდა უპირატესია (`coverPreview`). */
   const [linkCover, setLinkCover] = useState<string | null>(null)
   const [removeCover, setRemoveCover] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newGenre, setNewGenre] = useState(false)
   const qc = useQueryClient()
-  // §26.5 — დამატებითი ველები ახალ წიგნზე; ჩავარდნისას შექმნილი რჩება
+  // დამატებითი ველები ახალ წიგნზე; ჩავარდნისას შექმნილი რჩება
   const extras = useRecordExtras('book', book)
 
   /* ---------- სწრაფი შევსება Open Library-დან ---------- */
 
   const [lookupQuery, setLookupQuery] = useState('')
   const [candidates, setCandidates] = useState<BookCandidate[] | null>(null)
-  // ⚠️ „ქართული → ხელით" ცალკე მდგომარეობაა და არა ცარიელი სია (§5.7)
+  // ⚠️ „ქართული → ხელით" ცალკე მდგომარეობაა და არა ცარიელი სია
   const [lookupNotice, setLookupNotice] = useState<string | null>(null)
 
   const lookup = useMutation({
@@ -180,7 +180,7 @@ export function BookForm({
       tags: f.tags.length ? f.tags : draft.subjects.slice(0, 5),
     }))
     if (draft.key) setOpenLibraryId(draft.key)
-    // ყდა შენახვისას ჩამოიტვირთება; **კვოტაში არ ითვლება** (19.4/B)
+    // ყდა შენახვისას ჩამოიტვირთება; **კვოტაში არ ითვლება**
     if (draft.cover_id && !coverPreview) {
       setCoverId(draft.cover_id)
       setCoverPreview(`https://covers.openlibrary.org/b/id/${draft.cover_id}-M.jpg`)
@@ -210,7 +210,7 @@ export function BookForm({
   })
 
 
-  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს**: ბლოკი
      `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
      ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
   const warnHidden = (missing: string[]) => {
@@ -244,7 +244,7 @@ export function BookForm({
 
     setErrors({})
 
-    // Tasks §13.3 — submit-ზე დუბლი უხმოდ იჭრება: `TagSelect` უკვე გააფრთხილა, აქ მხოლოდ გარანტიაა
+    // submit-ზე დუბლი უხმოდ იჭრება: `TagSelect` უკვე გააფრთხილა, აქ მხოლოდ გარანტიაა
     const { tags } = dedupeTags(form.tags)
 
     save.mutate({
@@ -265,12 +265,12 @@ export function BookForm({
       // ⚠️ ზემოთი დაცვა უკვე დაადგინა, რომ ცარიელი არ არის — ეს მხოლოდ ტიპის დავიწროებაა
       status: form.status as (typeof BOOK_STATUSES)[number],
       source_url: form.source_url || null,
-      /* ⚠️ §5.7 — `series_*`, `tags`, `isbn` და `description_en` **ფორმაზე
+      /* ⚠️ `series_*`, `tags`, `isbn` და `description_en` **ფორმაზე
          აღარ ჩანს**, მაგრამ payload-ში რჩება განზრახ: სერია არსებულ ჩანაწერს
          რომ არ წაეშალოს რედაქტირებაზე, დანარჩენი კი Open Library-დან
          ივსება (ტეგების ფილტრი სწორედ ამით სუნთქავს). ცარიელი მნიშვნელობის
          გაგზავნა ჩუმად წაშლიდა იმას, რაც წყარომ მოიტანა.
-         Tasks §25.4 — ქულა ისევ ფორმაზეა; `null` („გარეშე") ქულას ასუფთავებს. */
+         ქულა ისევ ფორმაზეა; `null` („გარეშე") ქულას ასუფთავებს. */
       rating: form.rating,
       tags,
       links: links.filter((l) => l.url.trim()),
@@ -278,7 +278,7 @@ export function BookForm({
       openlibrary_cover_id: coverId,
       cover,
       remove_cover: removeCover,
-      /* §44.5 — ჩარჩოში ნაჩვენები ბმულის ყდა. ⚠️ „წაშლა" `cover_url`-საც ასუფთავებს: რესურსის
+      /* ჩარჩოში ნაჩვენები ბმულის ყდა. ⚠️ „წაშლა" `cover_url`-საც ასუფთავებს: რესურსის
          `cover` = `cover_path ?: cover_url`, ე.ი. მარტო `remove_cover` ბმულის ყდას უკან აბრუნებდა */
       cover_url: !cover && !coverPreview && linkCover ? linkCover : removeCover ? null : undefined,
     })
@@ -287,7 +287,7 @@ export function BookForm({
   return (
     <ModalShell title={t(book ? 'books.edit' : 'books.add')} onClose={onClose} wide>
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
-        {/* ---------- §26.2 — სწრაფი შევსება (ყველა ფორმის ერთი ბლოკი) ---------- */}
+        {/* ---------- სწრაფი შევსება (ყველა ფორმის ერთი ბლოკი) ---------- */}
         <QuickFill title={t('books.lookup')} hint={t('books.lookupHint')} htmlFor="b-lookup">
           <QuickFillSearch
             id="b-lookup"
@@ -299,7 +299,7 @@ export function BookForm({
             buttonLabel={t('books.lookupSearch')}
           />
 
-          {/* ⚠️ „ქართული → ხელით" ცალკე მდგომარეობაა და არა ცარიელი სია (§5.7) */}
+          {/* ⚠️ „ქართული → ხელით" ცალკე მდგომარეობაა და არა ცარიელი სია */}
           {candidates && !candidates.length && (
             <QuickFillMessage>
               {lookupNotice === 'manual_only' ? t('books.lookupManualOnly') : t('books.lookupEmpty')}
@@ -324,7 +324,7 @@ export function BookForm({
           )}
         </QuickFill>
 
-        {/* ---------- §26 — ყდა ზემოთაა, სახელთან, ავტორთან და აღწერასთან ერთად ---------- */}
+        {/* ---------- ყდა ზემოთაა, სახელთან, ავტორთან და აღწერასთან ერთად ---------- */}
         <FormSection
           title={t('form.sections.basic')}
           mediaVariant="poster"
@@ -356,8 +356,8 @@ export function BookForm({
             )
           }
         >
-          {/* ⚠️ სათაური `locked`-ია (§6.5) — ერთი ენა მაინც სავალდებულოა.
-              ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის.
+          {/* ⚠️ სათაური `locked`-ია — ერთი ენა მაინც სავალდებულოა.
+              ჩაკეტვის მოხსნა ცხადი ქმედებაა, ამიტომ `shows()` აქაც ისმის.
               ლეიბლი მაინც რედაქტორიდან მოდის, ენის მინიშნება კი ემატება,
               თორემ ორივე ველი ერთნაირად დაიწერებოდა. */}
           <FormField
@@ -406,9 +406,9 @@ export function BookForm({
               onChange={(e) => setForm((f) => ({ ...f, publisher: e.target.value }))}
             />
           </FormField>
-          {/* §5.7 — ISBN ფორმიდან მოხსნილია (Open Library-დან მაინც ივსება) */}
+          {/* ISBN ფორმიდან მოხსნილია (Open Library-დან მაინც ივსება) */}
 
-          {/* §5.7 — **მხოლოდ ქართული აღწერა** რჩება ფორმაზე. ინგლისური სვეტი
+          {/* **მხოლოდ ქართული აღწერა** რჩება ფორმაზე. ინგლისური სვეტი
               არსად წასულა: Open Library სწორედ მას ავსებს და ჩანაწერზე ჩანს. */}
           <FormField
             {...fields.field('description')}
@@ -469,10 +469,10 @@ export function BookForm({
                 <Plus className="size-4" />
               </Button>
             </div>
-            {/* §5.7 — მრავალი ბმული ფორმიდან მოხსნილია: ბმულს ერთი „წყაროს ლინკი" ცვლის. */}
+            {/* მრავალი ბმული ფორმიდან მოხსნილია: ბმულს ერთი „წყაროს ლინკი" ცვლის. */}
           </FormField>
 
-          {/* Tasks §13.4 — ტეგები ფორმაშიც („აბსოლუტურად ყველგან"): Open Library-ის საგნები ავსებს, ხელითაც იცვლება */}
+          {/* ტეგები ფორმაშიც („აბსოლუტურად ყველგან"): Open Library-ის საგნები ავსებს, ხელითაც იცვლება */}
           <FormField size="third" {...fields.field('tags')} htmlFor="b-tags">
             <TagSelect
               inputId="b-tags"
@@ -482,7 +482,7 @@ export function BookForm({
             />
           </FormField>
 
-          {/* Tasks §25.4 — „ჩემი ქულა" ერთი ამრჩევით (ხუთივე ფორმაში იგივე) */}
+          {/* „ჩემი ქულა" ერთი ამრჩევით (ხუთივე ფორმაში იგივე) */}
           <FormField size="third" {...fields.field('rating')} htmlFor="b-rating" error={errors.rating}>
             <RatingSelect
               id="b-rating"
@@ -551,14 +551,14 @@ export function BookForm({
               </SelectContent>
             </Select>
           </FormField>
-          {/* §5.7 — სერია/ნომერი ფორმიდან მოხსნილია (ძველი მნიშვნელობა რჩება
+          {/* სერია/ნომერი ფორმიდან მოხსნილია (ძველი მნიშვნელობა რჩება
               და სიაში ისევ ჩანს; დალაგებაც მუშაობს) */}
 
-          {/* §5.7 — **ახალი ველი**: წყაროს / წასაკითხი ლინკი. ⚠️ ატვირთულ
+          {/* **ახალი ველი**: წყაროს / წასაკითხი ლინკი. ⚠️ ატვირთულ
               ebook ფაილს არ ცვლის — ეს გარე ბმულია (მაღაზია, ბიბლიოთეკა). */}
           <FormField {...fields.field('source_url')} htmlFor="b-source-url" error={errors.source_url}>
-            {/* Tasks §15.3 — paste/blur-ზე გვერდის მეტა-მონაცემი: ცარიელ სათაურს/აღწერას ავსებს, „ჩასმა" შევსებულსაც;
-                §44.5 — ფოტო ყდის ჩარჩოში (თუ ყდა ჯერ არ არის) */}
+            {/* paste/blur-ზე გვერდის მეტა-მონაცემი: ცარიელ სათაურს/აღწერას ავსებს, „ჩასმა" შევსებულსაც;
+                ფოტო ყდის ჩარჩოში (თუ ყდა ჯერ არ არის) */}
             <LinkField
               id="b-source-url"
               value={form.source_url}
@@ -584,7 +584,7 @@ export function BookForm({
         </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები. ⚠️ `<form>`-ის **გარეთაა**:
+      {/* დამატებითი ველები. ⚠️ `<form>`-ის **გარეთაა**:
           არსებულ წიგნზე ბარათი თვითონ ინახავს თავს, ახალზე — მონახაზია */}
       <CustomFieldsCard
         module="book"

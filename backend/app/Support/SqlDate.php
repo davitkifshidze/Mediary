@@ -5,7 +5,7 @@ namespace App\Support;
 use Illuminate\Support\Facades\DB;
 
 /**
- * **წელი/თვე SQL-ში, ორივე დრაივერზე (FEAT-08).**
+ * **წელი/თვე SQL-ში, ორივე დრაივერზე.**
  *
  * ⚠️ **ეს არსებობს იმიტომ, რომ ეს პროექტი ორ დრაივერზე ცხოვრობს**:
  * პროდაქშენში MySQL, ტესტებში sqlite `:memory:` (`phpunit.xml`). `year(x)`

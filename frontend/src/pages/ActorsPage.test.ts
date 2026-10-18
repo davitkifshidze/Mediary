@@ -9,7 +9,7 @@ import type { ActorCard, ActorList, HiddenActorCard } from '@/api/actors'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **მსახიობების გვერდი `/actors` (Tasks §35.2)** — ბარათები ჩემი რიცხვებით,
+   **მსახიობების გვერდი `/actors`** — ბარათები ჩემი რიცხვებით,
    სქესის ჭრილი მთვლელით, პანელის ფილტრი სერვერამდე მიდის, მარჯვენა ღილაკის
    მენიუ და „წაშლა ჩემი ჩანაწერებიდან" დადასტურებით.
    ============================================================ */
@@ -114,7 +114,7 @@ describe('ActorsPage', () => {
     expect(tile.textContent).not.toContain(i18n.t('actors.countAnime', { count: 0 }))
     expect(button(i18n.t('actors.gender.male')).textContent).toContain('3')
 
-    // Tasks §46 — გვერდზე 10
+    // გვერდზე 10
     expect(lastFilters()).toMatchObject({ sort: 'name', page: 1, per_page: 10 })
   })
 
@@ -159,7 +159,7 @@ describe('ActorsPage', () => {
     expect(mocks.detachActorEverywhere).toHaveBeenCalledWith(7)
   })
 
-  /* Tasks §35.9 (Q17) — „წაშლა" მხოლოდ ჩემს ხელით შექმნილზე: მსახიობი ურნაში მიდის დადასტურების შემდეგ */
+  /* „წაშლა" მხოლოდ ჩემს ხელით შექმნილზე: მსახიობი ურნაში მიდის დადასტურების შემდეგ */
   it('offers deleting only my hand-made actor and sends it to the trash after confirming', async () => {
     const menuOf = async (tile: Element) => {
       await act(async () => {
@@ -194,7 +194,7 @@ describe('ActorsPage', () => {
     expect(mocks.trashActor).toHaveBeenCalledWith(8)
   })
 
-  /* Tasks §35.5 — ჩემ მიერ ჩაკეტილი: მხოლოდ სახელი და ბოქლომი, მენიუს გარეშე; ფილტრი სერვერამდე მიდის */
+  /* ჩემ მიერ ჩაკეტილი: მხოლოდ სახელი და ბოქლომი, მენიუს გარეშე; ფილტრი სერვერამდე მიდის */
   it('draws a hidden actor as a padlock tile and sends the locked-only filter', async () => {
     await render()
     const hidden: HiddenActorCard = {

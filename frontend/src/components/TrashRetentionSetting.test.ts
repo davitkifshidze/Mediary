@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **ურნის ვადა `/settings`-ზე** (Tasks §29, ეტაპი 6).
+   **ურნის ვადა `/settings`-ზე**.
 
    ⚠️ მოწმდება ის, რასაც ტიპი ვერ ხედავს: შეუნახავ ვადაზე გვერდი სერვერს
    ეკითხება და **შენახვამდე** ამბობს, რამდენი წაიშლება მომდევნო ღამით;
@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => ({
     prune_at: '03:30',
     expiring: 3,
   })),
-  // §34.1 — ზედა ზღვარს მხოლოდ სუპერადმინი ცვლის
+  // ზედა ზღვარს მხოლოდ სუპერადმინი ცვლის
   auth: { value: { user: null } as Record<string, unknown> },
   updateMax: vi.fn(async (days: number | null) => ({ max_days: days ?? 365, default_max_days: 365 })),
 }))
@@ -111,7 +111,7 @@ describe('TrashRetentionSetting', () => {
     expect(mocks.set).toHaveBeenCalledWith('trashDays', 365)
   })
 
-  /** §34.1 — ზედა ზღვარი ყველასთვის: ხაზი და რედაქტორი მხოლოდ სუპერადმინს */
+  /** ზედა ზღვარი ყველასთვის: ხაზი და რედაქტორი მხოლოდ სუპერადმინს */
   it('lets only a super admin change the ceiling for everyone', async () => {
     await mount()
     expect(container!.textContent).not.toContain(i18n.t('settings.trashCeiling', { max: 365 }))

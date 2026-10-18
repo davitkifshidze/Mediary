@@ -20,37 +20,37 @@ use Illuminate\Support\Str;
 
 class Movie extends Model
 {
-    /** per-user მფლობელობა: global scope + user_id-ის ავტო-შევსება (I1) */
+    /** per-user მფლობელობა: global scope + user_id-ის ავტო-შევსება */
     use BelongsToUser;
 
     /**
-     * ⚠️ **მსახიობები (Tasks §16)** — `cast()` წაშლილს (`is_removed`) თვითონ
+     * ⚠️ **მსახიობები** — `cast()` წაშლილს (`is_removed`) თვითონ
      * ფილტრავს, `castLinks()` კი ყველა რიგს ხედავს. იხ. `HasCastMembers`.
      */
     use HasCastMembers;
 
-    /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
+    /** მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
-    /** Tasks 10 — გალერეის ფოტოები (`gallery_images`) */
+    /** გალერეის ფოტოები (`gallery_images`) */
     use HasGallery;
 
-    /** Tasks §6.4 — სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
+    /** სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
     use HasStatus;
 
     /**
-     * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
+     * ⚠️ **კალათა** — `destroy()` `moveToTrash()`-ს იძახის და არა
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
 
     /**
-     * ⚠️ **ხელახლა ნახვის ჟურნალი (FEAT-14)** — `watched_at` „ბოლო ნახვაა"
+     * ⚠️ **ხელახლა ნახვის ჟურნალი** — `watched_at` „ბოლო ნახვაა"
      * და `media_watches`-იდან იწერება; გამეორება აღარ იკარგება.
      */
     use HasWatchLog;
 
-    /** Tasks §35.4 (Q9) — ჩაკეტილი ჩანაწერი იმალება ყველგან, ფილტრის „ჩაკეტილები"-ს გარდა */
+    /** ჩაკეტილი ჩანაწერი იმალება ყველგან, ფილტრის „ჩაკეტილები"-ს გარდა */
     use HidesLockedRecords;
 
     protected $guarded = ['id'];
@@ -63,11 +63,11 @@ class Movie extends Model
         'tmdb_collection_id' => 'integer',
         'ge_id' => 'integer',
         'rating' => 'decimal:1',
-        // Tasks §9 (Q1) — „ჩემი ქულა" ცალკე სვეტშია; `rating` TMDB-ის საშუალოა
+        // „ჩემი ქულა" ცალკე სვეტშია; `rating` TMDB-ის საშუალოა
         'my_rating' => RatingCast::class,
         'runtime' => 'integer',
         'is_favorite' => 'boolean',
-        // Tasks §31 — სინქრონის კვალი და „აღარ განაახლო"
+        // სინქრონის კვალი და „აღარ განაახლო"
         'sync_paused' => 'boolean',
         'last_synced_at' => 'datetime',
         'last_translated_at' => 'datetime',
@@ -80,7 +80,7 @@ class Movie extends Model
      * true, თუ ნაწილი ჯერ არ დაწყებულა, მაგრამ ფრანჩაიზის სხვა ნაწილი უკვე
      * მიმდინარეობს ან დასრულებულია.
      *
-     * ⚠️ **კრიტერიუმი `role`-ია და არა სახელი** (§6.4): სტატუსები ახლა
+     * ⚠️ **კრიტერიუმი `role`-ია და არა სახელი**: სტატუსები ახლა
      * per-user ლექსიკონია, ე.ი. `'watched'` აქ ჩაწერილი მხოლოდ იმ ანგარიშზე
      * იმუშავებდა, რომელსაც ნაგულისხმევი ნაკრები არ შეუცვლია — დანარჩენებზე
      * ბეჯი **ჩუმად ჩაქრებოდა**.
@@ -115,24 +115,24 @@ class Movie extends Model
     {
         static::deleting(function (Movie $movie) {
             $movie->genres()->detach();
-            // Tasks 10 — გალერეის ფოტოებიც (ფაილიც და კვოტაც `GalleryImage`-ზეა)
+            // გალერეის ფოტოებიც (ფაილიც და კვოტაც `GalleryImage`-ზეა)
             $movie->deleteGalleryMedia();
             $movie->deletePoster();
         });
     }
 
     /**
-     * **ხელით ატვირთული პოსტერის მოშორება** (17.1).
+     * **ხელით ატვირთული პოსტერის მოშორება**.
      *
      * ⚠️ **მოდელშია და არა კონტროლერში.** `DELETE /api/movies/{id}` მას ისედაც
      * იძახებდა, მაგრამ ჩანაწერს კონტროლერის გარეშეც შლიან — `PurgeService`
-     * (Tasks 20) პირდაპირ `$record->delete()`-ს აკეთებს **სწორედ იმიტომ, რომ
+     * პირდაპირ `$record->delete()`-ს აკეთებს **სწორედ იმიტომ, რომ
      * ივენთები გაისროლოს**. ე.ი. აქამდე მასობრივი წაშლა პოსტერს დისკზე ტოვებდა
      * და კვოტას არ ათავისუფლებდა, თანაც `plan()` იმ ბაიტებს „გათავისუფლებულში"
      * ითვლიდა — ციფრი ცრუობდა. წიგნი/თამაში/ბორდგეიმი თავიდანვე ასე იქცეოდა.
      *
      * ⚠️ **მხოლოდ `upload`.** TMDB-ის პოსტერი საერთო ფაილია (იმავე slug-ით სხვა
-     * ანგარიშსაც აქვს) და 19.4/B-ით კვოტაშიც არ ითვლება — მისი წაშლა სხვისთვის
+     * ანგარიშსაც აქვს) და კვოტაშიც არ ითვლება — მისი წაშლა სხვისთვის
      * სურათს გატეხავდა.
      */
     public function deletePoster(): void

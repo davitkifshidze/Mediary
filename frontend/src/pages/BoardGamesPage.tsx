@@ -57,7 +57,7 @@ import { RatingBadge } from '@/components/ui/star-rating'
 import { RecordActionBar } from '@/components/RecordActionBar'
 
 /* ============================================================
-   ბორდგეიმების მოდული (`board_game`, Tasks §14).
+   ბორდგეიმების მოდული (`board_game`).
 
    იგივე მოდელი, რაც წიგნებზე: **სტატუსი საიდბარის სექციაა** (`?view=`),
    პანელი კი ჟანრს, მექანიკებსა და **მოთამაშეთა რაოდენობას** ფილტრავს —
@@ -82,7 +82,7 @@ export function BoardGamesPage() {
   const navigate = useNavigate()
 
   const [params, setParams] = useSearchParams()
-  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
   const [layout, setLayout] = useRecordLayout('board_game', 'rows')
   const search = params.toString()
   const view = params.get('view') ?? 'all'
@@ -91,7 +91,7 @@ export function BoardGamesPage() {
     () => new URLSearchParams(search).get('genre')?.split(',').filter(Boolean) ?? [],
     [search],
   )
-  /* ⚠️ ეტაპი 8 — მოთამაშეები **სიაა** (`?players=2,4`) და არა ერთი რიცხვი.
+  /* ⚠️ მოთამაშეები **სიაა** (`?players=2,4`) და არა ერთი რიცხვი.
      სერვერზე ეს **OR**-ია: „2 **ან** 4 მოთამაშეს უდგება". */
   const players = useMemo(
     () => new URLSearchParams(search).get('players')?.split(',').filter(Boolean) ?? [],
@@ -117,11 +117,11 @@ export function BoardGamesPage() {
     players: players.length ? players.join(',') : undefined,
     favorite: view === 'favorite' ? true : undefined,
     sort: sort === 'newest' ? undefined : sort,
-    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
   }
 
-  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['board-games', filters],
     fetchPage: (page) => fetchBoardGames({ ...filters, page, per_page: LIST_PAGE_SIZE }),
@@ -208,7 +208,7 @@ export function BoardGamesPage() {
         subtitle={t('boardGames.count', { count: total })}
         actions={
           <>
-            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             <Tooltip>
               <TooltipTrigger asChild>
@@ -260,7 +260,7 @@ export function BoardGamesPage() {
       <div className="flex gap-6">
         <div className="min-w-0 flex-1">
           {query.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
-          {/* ⚠️ §2.4 — ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
+          {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !games.length && (
             <EmptyState
@@ -285,7 +285,7 @@ export function BoardGamesPage() {
           <RecordList layout={layout}>
             {games.map((game) => {
               const image = storageUrl(game.image)
-              /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · რჩეული · — · რედაქტირება · წაშლა (სტატუსი სამაგიდოს არ აქვს) */
+              /* მარჯვენა ღილაკის მენიუ: გახსნა · რჩეული · — · რედაქტირება · წაშლა (სტატუსი სამაგიდოს არ აქვს) */
               const actions: MenuAction[] = [
                 { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpened(game) },
                 favoriteAction(game.is_favorite, () => favorite.mutate(game.id), t),
@@ -352,7 +352,7 @@ export function BoardGamesPage() {
                   }
                   actions={actions}
                   onEdit={() => setEditing(game)}
-                  /* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: BGG · ქულა · რჩეული · ფაილები · ბმული (უბმულოზე უხილავი სლოტი) ·
+                  /* ერთი ზოლი ყველა სიაზე: BGG · ქულა · რჩეული · ფაილები · ბმული (უბმულოზე უხილავი სლოტი) ·
                      რედაქტირება · წაშლა; სამაგიდოს სტატუსი არ აქვს (დახურული გადაწყვეტილება) */
                   bar={
                     <RecordActionBar
@@ -363,7 +363,7 @@ export function BoardGamesPage() {
                               BGG {game.bgg_rating}
                             </Badge>
                           )}
-                          {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან; BGG-ის ქულა ცალკე რჩება */}
+                          {/* „★ 4.6" ერთი ბეჯით ყველგან; BGG-ის ქულა ცალკე რჩება */}
                           <RatingBadge value={game.rating} size="row" className="mr-1" />
                         </>
                       }
@@ -407,8 +407,8 @@ export function BoardGamesPage() {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
-          {/* სტატუსი აქ განზრახ არ არის (Tasks 3) — ის საიდბარის სექციაა */}
-          {/* ⚠️ საერთო `Chip`-ით და არა ხელით დაწერილი პილულით (ეტაპი 1-ის წესი) */}
+          {/* სტატუსი აქ განზრახ არ არის — ის საიდბარის სექციაა */}
+          {/* ⚠️ საერთო `Chip`-ით და არა ხელით დაწერილი პილულით */}
           <FilterGroup title={t('boardGames.players')} count={draft.players.length}>
             <ChipRow className="px-0.5 py-1">
               {PLAYER_COUNTS.map((n) => (

@@ -5,11 +5,11 @@ import { Link2 } from 'lucide-react'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **მოქმედებების ზოლი — ბმულის სლოტი თავშია** (Tasks §40.4).
+   **მოქმედებების ზოლი — ბმულის სლოტი თავშია**.
 
    შენი სიტყვები: „წიგნებში ეს დაშორება ფაილებსა და რედაქტირებას შორის
    მოაგვარე". უბმულო ჩანაწერზე სლოტი უხილავია, მაგრამ ადგილს იკავებს
-   (§14.2) — ფაილებსა და რედაქტირებას შორის ის ცარიელ ხვრელად ჩანდა. ახლა
+  — ფაილებსა და რედაქტირებას შორის ის ცარიელ ხვრელად ჩანდა. ახლა
    ის რიგის თავშია და მარჯვნივ მიმაგრებული ღილაკები ერთმანეთის გვერდით დგას.
    ============================================================ */
 
@@ -46,13 +46,13 @@ async function mount(href: string | null) {
   return container.querySelector('[data-testid="record-actions"]')!
 }
 
-describe('RecordActionBar (§40.4)', () => {
+describe('RecordActionBar', () => {
   it('puts the link slot first — status · favorite · files · edit · delete stay side by side', async () => {
     const bar = await mount(null)
     const children = [...bar.children] as HTMLElement[]
 
     expect(children[0].getAttribute('data-testid')).toBe('link-slot')
-    // უბმულოზე სლოტი უხილავია, მაგრამ ადგილს იკავებს (§14.2 — ღილაკები რიგიდან რიგში არ ხტება)
+    // უბმულოზე სლოტი უხილავია, მაგრამ ადგილს იკავებს (ღილაკები რიგიდან რიგში არ ხტება)
     expect(children[0].className).toContain('invisible')
 
     const files = children.findIndex((el) => el.getAttribute('data-testid') === 'files-button')

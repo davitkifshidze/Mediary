@@ -7,7 +7,7 @@ use App\Services\Video\VideoDownloader;
 use Illuminate\Console\Command;
 
 /**
- * **`php artisan videos:download {video}` — Tasks §7.1.**
+ * **`php artisan videos:download {video}` — ვიდეოს ჩამოტვირთვა.**
  *
  * ⚠️ ეს ბრძანება **ორივე გზაზეა**: მას SPA-ც უშვებს (ფონურად,
  * `VideoDownloader::start()`-იდან) და ხელითაც შეიძლება გაეშვას. ერთი
@@ -21,7 +21,7 @@ class DownloadVideoCommand extends Command
 {
     protected $signature = 'videos:download {video : ვიდეოს id}';
 
-    protected $description = 'ვიდეოს ლოკალურად ჩამოწერა yt-dlp-ით (Tasks §7.1)';
+    protected $description = 'ვიდეოს ლოკალურად ჩამოწერა yt-dlp-ით';
 
     public function handle(VideoDownloader $downloader): int
     {

@@ -18,7 +18,7 @@ import { GalleryMoveDialog } from '@/components/gallery/GalleryMoveDialog'
 import { LockedPhotosAlbumDialog } from '@/components/gallery/LockedPhotosAlbumDialog'
 
 /* ============================================================
-   გალერეის ბადე — **ერთი ფენა ყველა ჭრილისთვის** (§8.5).
+   გალერეის ბადე — **ერთი ფენა ყველა ჭრილისთვის**.
 
    ⚠️ ბადე თვითონ `ui/photo-grid.tsx`-ია (lightbox, მონიშვნები, გვერდები);
    აქ მხოლოდ **გალერეის საქმე** რჩება: მშობლის სახელი, „რა ვიცით ამ ფოტოზე"
@@ -27,7 +27,7 @@ import { LockedPhotosAlbumDialog } from '@/components/gallery/LockedPhotosAlbumD
    ⚠️ **წაშლა მყისიერია** (ბიბლიოთეკაა და არა ფორმა), მაგრამ დადასტურება
    ერთხელ იკითხება მთელ მონიშნულზე — თითოზე დიალოგი ათჯერ ამოხტებოდა.
 
-   ⚠️ **გადატანის დიალოგი აქ ცხოვრობს და არა ჭრილებში** (§26.3): ბადე
+   ⚠️ **გადატანის დიალოგი აქ ცხოვრობს და არა ჭრილებში**: ბადე
    შვიდივე ჭრილშია, ე.ი. აქ ერთხელ დაწერილი მოქმედება ყველგან ჩნდება —
    და მდგომარეობაც და პორტალის JSX-იც **ერთ კომპონენტშია**, ის წესი,
    რომელიც `GroupsCut`-ის ცოცხალმა ხარვეზმა დაგვაწერინა (ღილაკი ერთ
@@ -51,7 +51,7 @@ export function GalleryPhotoGrid({
    * ბადე მის ადგილას ბლარს ხატავს და დაჭერაზე პაროლს ითხოვს.
    */
   images: (GalleryOwnedImage | GalleryLockedImage)[]
-  /** გახსნილი ხედის სრული სია (§3.7) — ბადეზე მეტიც შეიძლება იყოს */
+  /** გახსნილი ხედის სრული სია — ბადეზე მეტიც შეიძლება იყოს */
   lightboxImages?: (GalleryOwnedImage | GalleryLockedImage)[]
   loading?: boolean
   showOwner?: boolean
@@ -66,12 +66,12 @@ export function GalleryPhotoGrid({
   const qc = useQueryClient()
   const confirm = useConfirm()
   const { toast } = useToast()
-  /** §26.3 — რომელი ფოტოები გადაგვაქვს (ცარიელი = დიალოგი დახურულია) */
+  /** რომელი ფოტოები გადაგვაქვს (ცარიელი = დიალოგი დახურულია) */
   const [moving, setMoving] = useState<number[] | null>(null)
   /** რომელი ალბომის პაროლს ვკითხულობთ (ჩაკეტილ ფილაზე დაჭერა, 2026-09-20) */
   const [unlocking, setUnlocking] = useState<number | null>(null)
 
-  /* Tasks §35.5 — ფოტოს ჩაკეტვა: სისტემურ ჩაკეტილ ალბომში გადატანა. ⚠️ პირველად ალბომი
+  /* ფოტოს ჩაკეტვა: სისტემურ ჩაკეტილ ალბომში გადატანა. ⚠️ პირველად ალბომი
      არ არსებობს — სერვერი 409-ით ითხოვს პაროლს და ფანჯარა იმავე ფოტოებს ხელახლა აგზავნის. */
   const [lockingIds, setLockingIds] = useState<number[] | null>(null)
   const lockPhotos = useMutation({
@@ -140,7 +140,7 @@ export function GalleryPhotoGrid({
     size: image.size,
     width: image.width,
     height: image.height,
-    // §4.3 — ზომა, სახელი, ვისია, წყარო, ორიგინალის ბმული, თარიღი
+    // ზომა, სახელი, ვისია, წყარო, ორიგინალის ბმული, თარიღი
     info: galleryPhotoInfo(image, t, { owner: ownerOf(image) }),
   })
 
@@ -203,7 +203,7 @@ export function GalleryPhotoGrid({
 }
 
 /**
- * ჩატვირთვის ჩონჩხი (§8.6).
+ * ჩატვირთვის ჩონჩხი.
  *
  * ⚠️ **„იტვირთება…" ტექსტი მოიხსნა**: ბადე ცარიელიდან სავსეში ხტებოდა და
  * გვერდი ყოველ გადასვლაზე „ხტუნავდა". ჩონჩხი იმავე ბადის ფორმას იკავებს.
@@ -222,7 +222,7 @@ export function GallerySkeletonGrid({ count = 8 }: { count?: number }) {
 }
 
 /**
- * ჯგუფების ჩონჩხი — დასტის პროპორციით. ⚠️ Tasks §6.7 — პროპორცია **ჯგუფის
+ * ჯგუფების ჩონჩხი — დასტის პროპორციით. ⚠️ პროპორცია **ჯგუფის
  * ტიპს მიჰყვება**: მსახიობი `3/4`-ია, ჩანაწერი და ალბომი კი `16/10` — ყოველთვის
  * `3/4` რომ იყოს, ჩატვირთვისას განლაგება ხტებოდა.
  */
@@ -230,7 +230,7 @@ export function GalleryStackSkeleton({ count = 8, aspect = 'portrait' }: { count
   return (
     <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {Array.from({ length: count }).map((_, i) => (
-        /* §25.6 — ჩონჩხი ბარათის ფორმას მიჰყვება: დასტა, სათაური, ჩიპები, ქვედა ზოლი */
+        /* ჩონჩხი ბარათის ფორმას მიჰყვება: დასტა, სათაური, ჩიპები, ქვედა ზოლი */
         <li key={i} className="flex flex-col rounded-2xl border border-border bg-card p-4">
           <div className={cn('animate-pulse rounded-xl bg-muted/60', aspect === 'wide' ? 'aspect-[16/10]' : 'aspect-[3/4]')} />
           <div className="mt-3 h-3 w-2/3 animate-pulse rounded bg-muted/60" />

@@ -6,7 +6,7 @@ use App\Services\Trash\TrashBin;
 use Illuminate\Console\Command;
 
 /**
- * **კალათის ვადაგასული ჩანაწერების ნამდვილი წაშლა (FEAT-11).**
+ * **კალათის ვადაგასული ჩანაწერების ნამდვილი წაშლა.**
  *
  * ⚠️ **Laravel-ის `model:prune` განზრახ არ გამოიყენება.** `Prunable`
  * ტრეიტი `SoftDeletes`-ს ელოდება (`forceDelete()`) და მისი `prunable()`
@@ -19,13 +19,13 @@ use Illuminate\Console\Command;
  * იგივე წესი: სწორედ `deleting`/`deleted` მოვლენები ათავისუფლებს ფაილს
  * დისკიდან, კვოტის მრიცხველს, გალერეას და pivot-ებს.
  *
- * ⚠️ **ვადა თითო ანგარიშისაა** (Tasks §29.6 — `UserSettings::trashDays()`,
+ * ⚠️ **ვადა თითო ანგარიშისაა** (`UserSettings::trashDays()`,
  * `/settings`-ზე 1–`TrashDomain::maxDays()` დღე) და ბრძანება თითოეულს
  * თავისით წმენდს. **`--days` ყველას ერთ ვადას აძალებს** — ტესტისა და
  * ხელით გაშვებისთვის; განრიგი მას არასდროს გადასცემს, თორემ „30 დღე
  * წერია, 7-ზე იშლება" დაბრუნდებოდა.
  *
- * ⚠️ **ყველა სახე — ჩანაწერი, ფაილი, `trashed_files`** (Tasks §29) — წესები
+ * ⚠️ **ყველა სახე — ჩანაწერი, ფაილი, `trashed_files`** — წესები
  * `TrashBin::prune()`-შია, რომ ბრძანება და ურნის გვერდი „რა არის ურნაში"-ზე
  * ერთსა და იმავეს ამბობდნენ.
  */
@@ -44,7 +44,7 @@ class PruneTrashCommand extends Command
 
         /* ⚠️ `lazyById` და არა `chunk` (`TrashBin::prune()`-ში): `chunk()`
            offset-ით დადის და წაშლა რიგებს წაანაცვლებს, ე.ი. ყოველი მეორე
-           გვერდი ჩუმად გამოტოვდებოდა — იგივე ხაფანგი, რაც BUG-23-ის მიგრაციას ჰქონდა. */
+           გვერდი ჩუმად გამოტოვდებოდა. */
         foreach (TrashBin::prune($days, $dry) as $kind => $count) {
             $this->line("  {$kind}: {$count}");
             $total += $count;

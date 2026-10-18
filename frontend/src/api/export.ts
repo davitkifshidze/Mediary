@@ -3,7 +3,7 @@ import { api } from '@/lib/api'
 import { formatDate } from '@/lib/dates'
 
 /* ============================================================
-   „ჩემი მონაცემები" — მოდულის ჩანაწერების ექსპორტი (FEAT-06).
+   „ჩემი მონაცემები" — მოდულის ჩანაწერების ექსპორტი.
 
    ⚠️ **ეს ატვირთული ფაილების არქივი არ არის.** `POST /storage/files/download`
    თვითონ **ფაილებს** ალაგებს (პოსტერები, დოკუმენტები, ფოტოები), აქ კი
@@ -48,7 +48,7 @@ export async function downloadExport(module: string, format: ExportFormat): Prom
   const url = URL.createObjectURL(res.data as Blob)
   const a = document.createElement('a')
   a.href = url
-  /* ⚠️ `formatDate(…, 'iso')` და არა `toISOString()` (BUG-15): ეს უკანასკნელი
+  /* ⚠️ `formatDate(…, 'iso')` და არა `toISOString()`: ეს უკანასკნელი
      **UTC-ზე გადადის**, ე.ი. თბილისში 00:00–04:00 ფაილი გუშინდელი თარიღით
      დაინომრებოდა. სახელი backend-შიც იწერება — ეს მხოლოდ fallback-ია. */
   a.download = `mediary-${module.replace(/_/g, '-')}-${formatDate(new Date(), 'iso')}.${format}`
@@ -60,7 +60,7 @@ export async function downloadExport(module: string, format: ExportFormat): Prom
 }
 
 /**
- * **Tasks §59.5 — „ჩემი სრული ექსპორტი"**: ყველა მოდული ერთ ZIP-ში (JSON +
+ * **„ჩემი სრული ექსპორტი"**: ყველა მოდული ერთ ZIP-ში (JSON +
  * ფაილები) — ის, რასაც „იმპორტი" უკან შემოიტანს. `files: false` — მხოლოდ ჩანაწერები.
  *
  * ⚠️ შეცდომის სხეულიც ბლობად მოდის — კოდი (`export_failed`) JSON-ად გადაიკითხება,

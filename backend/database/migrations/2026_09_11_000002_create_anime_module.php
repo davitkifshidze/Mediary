@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **ანიმეების მოდული** (Tasks §7.1).
+ * **ანიმეების მოდული**.
  *
  * მესამე მედია-დომენი ფილმისა და სერიალის გვერდით. წყარო **TMDB**-ია
  * (გადაწყვეტილება 2026-09-07), ე.ი. ქართული ტექსტი, პოსტერი, ტრეილერი და
@@ -61,7 +61,7 @@ return new class extends Migration
             $table->integer('sort_order')->default(0);
             $table->enum('sync_status', ['pending', 'synced', 'partial', 'failed'])->default('pending');
 
-            // §16 — ყოველ დომენურ ცხრილს სჭირდება; ნაგულისხმევად პირადი
+            // ყოველ დომენურ ცხრილს სჭირდება; ნაგულისხმევად პირადი
             $table->string('visibility', 20)->default('private');
 
             $table->timestamps();
@@ -71,7 +71,7 @@ return new class extends Migration
             $table->unique(['user_id', 'imdb_id']);
             $table->index(['user_id', 'status']);
             $table->index(['user_id', 'year']);
-            // §16.2 — დამთხვევის query სწორედ ამ წყვილს ჭრის
+            // დამთხვევის query სწორედ ამ წყვილს ჭრის
             $table->index(['user_id', 'visibility']);
             $table->index('tmdb_id');
             $table->index('is_favorite');
@@ -94,7 +94,7 @@ return new class extends Migration
         });
 
         /*
-         * §6 ფაზა 3/4b — მორგებული ველების მნიშვნელობები.
+         * მორგებული ველების მნიშვნელობები.
          *
          * ⚠️ **`hasTable`-ის დაცვა სავალდებულოა** (ბუკმარკის პრეცედენტი):
          * `create_custom_field_values` და `add_file_values_to_custom_fields`

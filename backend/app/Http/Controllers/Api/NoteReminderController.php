@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * შეხსენებები და მათი მიწოდება (Tasks §13.2/§13.3).
+ * შეხსენებები და მათი მიწოდება.
  *
  * ⚠️ **`next_at`-ს კონტროლერი ხელით არასდროს წერს** — ის ყოველთვის
  * `NoteReminder::computeNextAt()`-იდან მოდის. თუ ორი გზა გაჩნდა, ერთი
@@ -27,7 +27,7 @@ class NoteReminderController extends Controller
     }
 
     /**
-     * **ყველა შეხსენება ერთ სიაში (ეტაპი 11.2).**
+     * **ყველა შეხსენება ერთ სიაში.**
      *
      * შეხსენებას თავისი გვერდი გაუჩნდა (`/notes/reminders`), ე.ი. სჭირდება
      * კითხვა „რა მელის საერთოდ" და არა მხოლოდ „რა აქვს ამ ჩანაწერს".
@@ -80,14 +80,14 @@ class NoteReminderController extends Controller
 
     public function destroy(NoteReminder $noteReminder)
     {
-        // ⚠️ ურნა (Tasks §29, ეტაპი 2) — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
+        // ⚠️ ურნა — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
         $noteReminder->moveToTrash();
 
         return response()->noContent();
     }
 
     /**
-     * ბრაუზერის არხის რიგი (§13.3).
+     * ბრაუზერის არხის რიგი.
      *
      * ⚠️ **GET-ია, თუმცა გვერდით ეფექტიც აქვს**: ვადამოსული შეხსენებები
      * აქვე სროლდება. ეს განზრახაა — cron dev-მანქანაზე არ დგას და ბრაუზერის
@@ -112,7 +112,7 @@ class NoteReminderController extends Controller
     }
 
     /**
-     * **შეხსენებების ჟურნალი (Tasks §8.2)** — რაც კი გასროლილა.
+     * **შეხსენებების ჟურნალი** — რაც კი გასროლილა.
      *
      * ⚠️ **ეს ელფოსტის არხის ჩამნაცვლებელია.** არხი ამოღებულია („არ გვინდა"),
      * ე.ი. „აპი დახურული მქონდა და შეხსენება ვერ დავინახე" ვერსად უნდა
@@ -165,26 +165,26 @@ class NoteReminderController extends Controller
             'mode' => ['required', Rule::in(NoteReminder::MODES)],
             // ერთჯერადი — აბსოლუტური მომენტი (ფრონტი ISO-ს გზავნის)
             'remind_at' => ['nullable', 'required_if:mode,once', 'date'],
-            // ⚠️ პერიოდი ველია და არა ჩაშენებული 10/15/20 (§13.2)
+            // ⚠️ პერიოდი ველია და არა ჩაშენებული 10/15/20
             'interval_minutes' => [
                 'nullable', 'required_if:mode,interval', 'integer',
                 'min:'.NoteReminder::MIN_INTERVAL_MINUTES, 'max:'.(60 * 24 * 30),
             ],
-            // ⚠️ კედლის საათი **ოთხივე** პერიოდულს სჭირდება (§5.5) და **სიაა**
-            // (ეტაპი 7): „ყოველ დღე 08:00-ზე და 20:00-ზე" ერთი შეხსენებაა.
+            // ⚠️ კედლის საათი **ოთხივე** პერიოდულს სჭირდება და **სიაა**:
+            // „ყოველ დღე 08:00-ზე და 20:00-ზე" ერთი შეხსენებაა.
             'times_of_day' => [
                 'nullable', 'array', 'max:'.NoteReminder::MAX_TIMES_PER_DAY,
                 'required_if:mode,daily', 'required_if:mode,weekly',
                 'required_if:mode,monthly', 'required_if:mode,yearly',
             ],
             'times_of_day.*' => ['date_format:H:i'],
-            // ⚠️ **მასივია და არა ერთი დღე** (§5.5) — 0 = კვირა (Carbon-ის `dayOfWeek`)
+            // ⚠️ **მასივია და არა ერთი დღე** — 0 = კვირა (Carbon-ის `dayOfWeek`)
             // ⚠️ `min:1` **განზრახ არ წერია**: „აქტიურობის" გადამრთველი ყველა ველს
             // უკან აგზავნის და არაკვირეული შეხსენება `[]`-ს გამოგზავნიდა → 422.
             // კვირეულს ცარიელს `required_if` ისედაც აჭერს.
             'weekdays' => ['nullable', 'required_if:mode,weekly', 'array', 'max:7'],
             'weekdays.*' => ['integer', 'min:0', 'max:6'],
-            // ⚠️ თვის რიცხვებიც **სიაა** (ეტაპი 7) — „1-ში, 15-ში და 25-ში".
+            // ⚠️ თვის რიცხვებიც **სიაა** — „1-ში, 15-ში და 25-ში".
             // ⚠️ 31 დაშვებულია: `NoteReminder::atDay()` მას თვის სიგრძეზე ჩამოიყვანს
             'days_of_month' => [
                 'nullable', 'array', 'max:31',
@@ -194,7 +194,7 @@ class NoteReminderController extends Controller
             'month' => ['nullable', 'required_if:mode,yearly', 'integer', 'min:1', 'max:12'],
             // ჯერადობა: სულ რამდენჯერ გაისროლოს; ცარიელი = უსასრულოდ
             'repeat_count' => ['nullable', 'integer', 'min:1', 'max:1000'],
-            // ⚠️ **მოქმედების ფანჯარა** (ეტაპი 7) — „ამ დიაპაზონში", „ამ პერიოდით".
+            // ⚠️ **მოქმედების ფანჯარა** — „ამ დიაპაზონში", „ამ პერიოდით".
             // ორივე აბსოლუტური მომენტია; `after:starts_at` მხოლოდ მაშინ ირთვება,
             // როცა დასაწყისი მართლა გამოგზავნილია — თორემ ცარიელ `starts_at`-ს
             // წესი თარიღად კითხულობს და ვალიდური მოთხოვნა 422-ით ვარდება.

@@ -13,7 +13,7 @@ import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { MediaRecordPicker } from '@/components/MediaRecordPicker'
 
 /* ============================================================
-   **მსახიობის მიმაგრება ჩემს ჩანაწერებზე — მისივე გვერდიდან (Tasks §35.3).**
+   **მსახიობის მიმაგრება ჩემს ჩანაწერებზე — მისივე გვერდიდან.**
 
    ჩანაწერზე მიბმის იგივე endpoint (`POST /media/cast/{type}/{id}`,
    `cast_member_id`-ით), ოღონდ ბევრ ჩანაწერზე ერთად. ⚠️ უკვე მიბმული (409

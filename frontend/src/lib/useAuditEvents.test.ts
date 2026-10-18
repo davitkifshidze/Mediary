@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 
 /* ============================================================
-   **ჟურნალის სიგნალები SPA-დან** (Tasks §43.4).
+   **ჟურნალის სიგნალები SPA-დან**.
 
    ⚠️ რა მოწმდება: გამორთულ ტიპზე ქსელში **არაფერი** მიდის; ჩართულზე დაჭერები
    რიგში გროვდება და ~5 წამში ერთ პაკეტად იგზავნება (წარწერით, როლით, გვერდით);
@@ -70,7 +70,7 @@ function Events({ lib }: { lib: typeof import('@/lib/audit') }) {
   ])
 }
 
-describe('useAuditEvents (§43.4)', () => {
+describe('useAuditEvents', () => {
   it('sends nothing when clicks are off', async () => {
     const el = await mount((lib) => h(Events, { lib }))
 
@@ -114,7 +114,7 @@ describe('useAuditEvents (§43.4)', () => {
   })
 })
 
-describe('useRecordOpen (§43)', () => {
+describe('useRecordOpen', () => {
   function Open({ lib, id }: { lib: typeof import('@/lib/audit'); id: number }) {
     lib.useRecordOpen('book', id)
     return null

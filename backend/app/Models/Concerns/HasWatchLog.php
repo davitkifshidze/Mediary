@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 
 /**
- * **ხელახლა ნახვის ჟურნალი (FEAT-14).**
+ * **ხელახლა ნახვის ჟურნალი.**
  *
  * ⚠️ **`watched_at` რჩება და „ბოლო ნახვას" ნიშნავს.** მისი წაშლა ყველა
  * ფილტრს, სორტირებას, `MatchService`-ს, `PurgeService`-სა და
@@ -38,7 +38,7 @@ trait HasWatchLog
      */
     protected static function bootHasWatchLog(): void
     {
-        /* ⚠️ **ჩანაწერის საბოლოო წაშლა მის ჟურნალსაც შლის** (Tasks §29) —
+        /* ⚠️ **ჩანაწერის საბოლოო წაშლა მის ჟურნალსაც შლის** —
            `watchable` polymorphic-ია და FK-ის კასკადი არ აქვს, ე.ი. რიგები
            ობლად რჩებოდა (და სტატისტიკის ნედლი მოთხოვნები მათ ისევ ითვლიდნენ).
            ⚠️ `trash` scope-ის გარეშე — ურნაში მყოფი ნახვაც ამ ჩანაწერისაა. */

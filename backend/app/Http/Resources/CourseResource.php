@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * კურსი (`course` მოდული, FEAT-25).
+ * კურსი (`course` მოდული).
  *
  * ორენოვანი translation-ცხრილი განზრახ არ აქვს: სახელი ისე იწერება,
  * როგორც კურსს ჰქვია — მისი „ქართული ვერსია" არსად არსებობს (ბუკმარკისა
@@ -33,7 +33,7 @@ class CourseResource extends JsonResource
             'started_at' => $this->started_at?->toDateString(),
             'finished_at' => $this->finished_at?->toDateString(),
             'files_count' => $this->whenCounted('files'),
-            // 16.5 — საჯარო პროფილის წინაპირობა; default `private`
+            // საჯარო პროფილის წინაპირობა; default `private`
             'visibility' => $this->visibility,
             'created_at' => $this->created_at?->toIso8601String(),
         ];

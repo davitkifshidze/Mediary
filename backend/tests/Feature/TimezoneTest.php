@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
- * **Tasks §8 — სერვერის დრო საქართველოსია.**
+ * **სერვერის დრო საქართველოსია.**
  *
  * შენი სიტყვები: „ყველგან ისე გადაიკეტოს, რომ დრო იყოს იმ ქვეყნის მიხედვით,
  * სადაც არის ლოკაცია; ამ ეტაპზე თბილისი".
@@ -88,7 +88,7 @@ class TimezoneTest extends TestCase
      *
      * ⚠️ `times_of_day` **კედლის საათია** და თავისი `timezone` აქვს — ე.ი.
      * აპლიკაციის ზონის ცვლილება მას **არ უნდა შეეხოს**. ეს ორმაგი
-     * წანაცვლების რეალური რისკი იყო (§8.4).
+     * წანაცვლების რეალური რისკი იყო.
      */
     public function test_a_wall_clock_reminder_is_unaffected_by_the_app_timezone(): void
     {

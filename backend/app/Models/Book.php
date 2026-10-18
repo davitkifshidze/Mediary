@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * წიგნი — მოდული `book` (Tasks §12).
+ * წიგნი — მოდული `book`.
  *
  * ორენოვანი ტექსტი **ბრტყელი სვეტებია** (`title_ka`/`title_en`) და არა
  * translation-ცხრილი: წყარო (Open Library) ერთენოვანია, ე.ი. ცხრილი მხოლოდ
@@ -25,20 +25,20 @@ class Book extends Model
 {
     use BelongsToUser, HasGallery;
 
-    /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
+    /** მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
-    /** FEAT-18 — ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
+    /** ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
     use HasTags;
 
     /**
-     * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
+     * ⚠️ **კალათა** — `destroy()` `moveToTrash()`-ს იძახის და არა
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
 
     /**
-     * FEAT-21 — „როდის წავიკითხე" თარიღის ერთადერთი მწერალი. ლექსიკონიან
+     * „როდის წავიკითხე" თარიღის ერთადერთი მწერალი. ლექსიკონიან
      * დომენებზე ამას `HasStatus::applyStatus()` აკეთებს; enum-იანს საერთო
      * წერტილი არ ჰქონდა და სტატუსს სამი ადგილი წერს.
      */
@@ -64,7 +64,7 @@ class Book extends Model
         'finished_at' => 'date',
     ];
 
-    /** FEAT-21 — წიგნის „გაკეთებული" `read`-ია, ე.ი. თარიღი წაკითხვისაა */
+    /** წიგნის „გაკეთებული" `read`-ია, ე.ი. თარიღი წაკითხვისაა */
     public function completionColumn(): string
     {
         return 'finished_at';
@@ -84,7 +84,7 @@ class Book extends Model
     {
         static::deleting(function (Book $book) {
             $book->deleteCover();
-            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა** (Tasks BUG-21):
+            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა**:
                `<module>_files` `BelongsToUser`-ს იყენებს, ე.ი. `files()`
                მიმდინარე **ავტორიზებულ** მომხმარებელზე იჭრება. `/admin/purge`
                და ანგარიშის წაშლა სხვის ბიბლიოთეკას შლის ადმინის სესიიდან —
@@ -108,7 +108,7 @@ class Book extends Model
         return $this->hasMany(BookFile::class)->orderBy('sort_order')->orderBy('id');
     }
 
-    /** მხოლოდ ციტატები — სიის „ციტატების" მრიცხველისთვის (Tasks §6.8; `notes_count` ყველა ჩანიშვნას ითვლიდა) */
+    /** მხოლოდ ციტატები — სიის „ციტატების" მრიცხველისთვის (`notes_count` ყველა ჩანიშვნას ითვლიდა) */
     public function quotes(): HasMany
     {
         return $this->hasMany(BookNote::class)->where('is_quote', true);
@@ -126,9 +126,9 @@ class Book extends Model
      * მისი `cover_id`-ია, ე.ი. ერთი და იგივე ფაილი რამდენიმე ანგარიშის წიგნს
      * ემსახურება — წაშლა სხვისთვის სურათს გატეხავდა. ზუსტად ასე იქცევა
      * TMDB-ის პოსტერიც (`poster_source = 'tmdb'`); უპატრონოდ დარჩენილს
-     * 17.5-ის ობოლების სკანერი აგროვებს.
+     * ობოლი ფაილების სკანერი აგროვებს.
      *
-     * ჩამოტვირთული ყდა კვოტაშიც არ ითვლება (19.4/B).
+     * ჩამოტვირთული ყდა კვოტაშიც არ ითვლება.
      */
     public function deleteCover(): void
     {

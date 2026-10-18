@@ -12,7 +12,7 @@ export interface Playlist {
   id: number
   name: string
   sort_order: number
-  /** Tasks 16 — პლეილისტი დამოუკიდებელი გაზიარებადი ერთეულია */
+  /** პლეილისტი დამოუკიდებელი გაზიარებადი ერთეულია */
   visibility: 'private' | 'public'
   /** სიაში მოდის */
   songs_count?: number

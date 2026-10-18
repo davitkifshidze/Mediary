@@ -13,7 +13,7 @@ use App\Support\PublicDomain;
 use Illuminate\Http\Request;
 
 /**
- * მოდულების სია მიმდინარე მომხმარებლისთვის (I3).
+ * მოდულების სია მიმდინარე მომხმარებლისთვის.
  * ფრონტი ამით აგებს ნავიგაციასა და მარშრუტებს (lib/modules.tsx).
  */
 class ModuleController extends Controller
@@ -35,11 +35,11 @@ class ModuleController extends Controller
             ->get()
             ->groupBy('module_id');
 
-        /* Tasks §36 — რიგი თითო მომხმარებლისაა; ამ სიას საიდბარიც და `/modules`-იც კითხულობს.
-           ⚠️ §37 — **საბაზისო აქტიური და საკუთარი პირადი** მოდულები. სხვისი
-           პირადი მოდული აქ არასდროს ჩანს (Q28); საკუთარი კი **გამორთულიც**
+        /* რიგი თითო მომხმარებლისაა; ამ სიას საიდბარიც და `/modules`-იც კითხულობს.
+           ⚠️ **საბაზისო აქტიური და საკუთარი პირადი** მოდულები. სხვისი
+           პირადი მოდული აქ არასდროს ჩანს; საკუთარი კი **გამორთულიც**
            ჩანს — ადმინმა რომ გამორთო, მენიუდან ჩუმად გაქრობა მონაცემების
-           დაკარგვად წაიკითხებოდა (37.8), ამიტომ ის `disabled_by_admin`-ით მოდის. */
+           დაკარგვად წაიკითხებოდა, ამიტომ ის `disabled_by_admin`-ით მოდის. */
         $visible = Module::query()
             ->where(fn ($q) => $q
                 ->where(fn ($base) => $base->whereNull('owner_id')->where('is_active', true))
@@ -50,15 +50,15 @@ class ModuleController extends Controller
             ->each(function (Module $m) use ($enabledIds, $requests, $pivots, $user) {
                 $m->enabled = isset($enabledIds[$m->id]);
                 // `granted` — ადმინმა ჩართო (ან super_admin-ია); `enabled` — ამჟამად ჩანს.
-                // ორის სხვაობა = მომხმარებელმა თვითონ გამორთო (K13).
+                // ორის სხვაობა = მომხმარებელმა თვითონ გამორთო.
                 $m->granted = $user->isGrantedModule($m->key);
                 $m->request_status = $requests->get($m->id)?->first()?->status;
-                // ⚠️ SEC-12 — ღია ბოტის ტოკენი (ძველი ადგილი) ბრაუზერს არასდროს ეგზავნება
+                // ⚠️ ღია ბოტის ტოკენი (ძველი ადგილი) ბრაუზერს არასდროს ეგზავნება
                 $m->user_settings = ModuleSettings::withoutRetired(
                     json_decode($pivots->get($m->id)?->pivot?->settings ?? '', true) ?: []
                 );
-                // Tasks 16.1 — საჯარო პროფილი. `shareable = false` ნიშნავს, რომ
-                // გადამრთველიც არ უნდა დაიხატოს (`note` — 16.5-ის მკაცრი წესი).
+                // საჯარო პროფილი. `shareable = false` ნიშნავს, რომ
+                // გადამრთველიც არ უნდა დაიხატოს (მკაცრი წესი: `note` არასდროს საჯაროა).
                 $m->shareable = (bool) PublicDomain::forModule($m->key);
                 $m->is_public = (bool) ($pivots->get($m->id)?->pivot?->is_public);
             });
@@ -67,7 +67,7 @@ class ModuleController extends Controller
     }
 
     /**
-     * **პირადი რიგის შენახვა** (Tasks §36.1) — მთელი რიგი ერთი მოთხოვნით.
+     * **პირადი რიგის შენახვა** — მთელი რიგი ერთი მოთხოვნით.
      *
      * ⚠️ **`PUT` და არა `POST`** — `/modules/{key}/settings`-ის იგივე მიზეზი:
      * რიგი არსებულის ცვლილებაა და არა შექმნა.
@@ -100,7 +100,7 @@ class ModuleController extends Controller
     }
 
     /**
-     * მოდულის ჩართვა/გამორთვა **საკუთარი თავისთვის** (K13).
+     * მოდულის ჩართვა/გამორთვა **საკუთარი თავისთვის**.
      * ჩართვა მხოლოდ მაშინ, თუ უფლება უკვე აქვს — თორემ მოთხოვნა ადმინთან მიდის.
      */
     public function setEnabled(Request $request, string $key)
@@ -124,13 +124,13 @@ class ModuleController extends Controller
     }
 
     /**
-     * **Tasks 16.1 — პერ-მოდულური ხილვადობა საჯარო პროფილზე.**
+     * **პერ-მოდულური ხილვადობა საჯარო პროფილზე.**
      *
      * ⚠️ `PUT` და არა `POST` — `EnsureModulePermission` POST-იდან `create`-ს
      * გამოიყვანდა (იგივე მიზეზი, რაც პლეილისტების pivot-endpoint-ებზე).
      *
      * ⚠️ **მოდულის ჩამონათვალში ყოფნა აუცილებელია** (`PublicDomain`): `note`
-     * იქ განზრახ არაა (16.5), ე.ი. მისი გასაჯაროება საერთოდ არ მოითხოვება —
+     * იქ განზრახ არაა, ე.ი. მისი გასაჯაროება საერთოდ არ მოითხოვება —
      * და `422` სჯობს ჩუმად უეფექტო `true`-ს.
      */
     public function setPublic(Request $request, string $key)
@@ -141,7 +141,7 @@ class ModuleController extends Controller
         abort_unless($user->hasModule($key), 403, 'module_disabled');
 
         if (! PublicDomain::forModule($key)) {
-            // GAP-12 — ველის ჩანთაშიც მანქანური კოდია (`fieldErrors()` მას თარგმნის):
+            // ველის ჩანთაშიც მანქანური კოდია (`fieldErrors()` მას თარგმნის):
             // ქართული წინადადება ინგლისურ UI-ზე ქართულადვე იხატებოდა
             return response()->json([
                 'message' => 'module_not_shareable',
@@ -187,17 +187,17 @@ class ModuleController extends Controller
 
         $data = $request->validate(['settings' => ['required', 'array']]);
 
-        // შერწყმა — საიდბარის განლაგებაც (ეტაპი 8) იმავე ბლოკში წერს
+        // შერწყმა — საიდბარის განლაგებაც იმავე ბლოკში წერს
         $merged = ModuleSettings::merge($request->user(), $module, $data['settings']);
 
         // ⚠️ პასუხი **შერწყმულს** აბრუნებს და არა მოსულს — კლიენტმა უნდა
-        // დაინახოს, რა ჩაიწერა მართლა; ⚠️ SEC-12 — ღია ტოკენის გარეშე
+        // დაინახოს, რა ჩაიწერა მართლა; ⚠️ ღია ტოკენის გარეშე
         return response()->json(['settings' => ModuleSettings::withoutRetired($merged)]);
     }
 
     /**
-     * **ველების კონფიგი (Tasks §6, ფაზა 1)** — რომელი არჩევითი ველი ჩანს
-     * ამ მოდულის ფორმაზე. დეტალები: `docs/6-field-builder.md`.
+     * **ველების კონფიგი** — რომელი არჩევითი ველი ჩანს
+     * ამ მოდულის ფორმაზე.
      */
     public function fields(Request $request, string $key, FieldSettings $fields)
     {
@@ -224,17 +224,17 @@ class ModuleController extends Controller
             // ველი კატალოგში სწორედ იმიტომ არის, რომ ბაზაზე არჩევითია.
             // ამიტომ მას ფორმა იცავს და არა backend-ის ვალიდაცია.
             'fields.*.required' => ['nullable', 'boolean'],
-            // §6 ფაზა 4 → §16 — ჩანს თუ არა ველი საჯარო ბარათზე.
+            // ჩანს თუ არა ველი საჯარო ბარათზე.
             // ⚠️ ყოველი ახალი ატრიბუტი **აქაც** უნდა ჩაიწეროს: `validate()`
             // მხოლოდ დადასტურებულ გასაღებებს აბრუნებს და ჩაუწერელი ატრიბუტი
             // მთელ `fields`-ს პასუხიდან აგდებს.
             'fields.*.public' => ['nullable', 'boolean'],
-            /* §4.3 — ჩაკეტვის მოხსნა (მხოლოდ `super_admin`; `FieldSettings`
+            /* ჩაკეტვის მოხსნა (მხოლოდ `super_admin`; `FieldSettings`
                თვითონ ამოწმებს). ⚠️ აქ ჩაწერა **სავალდებულოა** ზუსტად იმავე
                მიზეზით, რაც ზემოთ `public`-ზე წერია: დაუსახელებელი ატრიბუტი
                მთელ `fields` მასივს აგდებს და `PUT` 500-ით ვარდება. */
             'fields.*.unlocked' => ['nullable', 'boolean'],
-            /* ⚠️ §6.5 — `sort_order` **აღარ არის** დაშვებული ატრიბუტი: რიგის
+            /* ⚠️ `sort_order` **აღარ არის** დაშვებული ატრიბუტი: რიგის
                UI მოიხსნა და თანმიმდევრობა კატალოგისაა. `validate()` მას
                ისედაც ჩამოაგდებდა, ე.ი. ძველი ფრონტის რექვესთი არ ტყდება —
                მხოლოდ რიგი აღარ იცვლება. */
@@ -250,7 +250,7 @@ class ModuleController extends Controller
     }
 
     /**
-     * **ველების კონფიგის ნაგულისხმევზე დაბრუნება** (Tasks §4, შენი პასუხი).
+     * **ველების კონფიგის ნაგულისხმევზე დაბრუნება** (შენი პასუხი).
      *
      * ⚠️ ეს საგარანტიო გასასვლელია: ველის გამორთვა ფორმას **გატეხილად**
      * ტოვებს (შენახვა 422-ით ვარდება ეკრანზე აღარმყოფ ველზე), და თუმცა

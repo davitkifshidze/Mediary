@@ -30,7 +30,7 @@ import { useContentLang } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   ჩანაწერის მსახიობები — ფილმი, სერიალი, ანიმე (Tasks §16).
+   ჩანაწერის მსახიობები — ფილმი, სერიალი, ანიმე.
 
    შენი მოთხოვნა: „უშუალოდ ფილმში მსახიობზე მარჯვენა კლიკით კონტექსტური
    მენიუ ჰქონდეს; drag & drop-ით დალაგებაც შესაძლებელი იყოს; მსახიობის
@@ -111,7 +111,7 @@ export function RecordCast({
     },
   })
 
-  // Tasks §11 — drag & drop და მენიუს „ერთით წინ/უკან" ერთსა და იმავე payload-ს აგზავნის (დამალულები ბოლოში)
+  // drag & drop და მენიუს „ერთით წინ/უკან" ერთსა და იმავე payload-ს აგზავნის (დამალულები ბოლოში)
   const reorderVisible = (ids: number[]) => reorder.mutate(castOrderPayload(ids, hidden))
   const moveBy = (id: number, delta: number) => {
     const next = moveWithin(visibleIds, id, delta)
@@ -257,7 +257,7 @@ export function RecordCast({
         </Button>
       </div>
 
-      {/* Tasks §11 — ბადის drag & drop; დამალულები სიაშია, მაგრამ `disabled` და რიგის გარეთ */}
+      {/* ბადის drag & drop; დამალულები სიაშია, მაგრამ `disabled` და რიგის გარეთ */}
       <Sortable ids={visibleIds} layout="grid" onReorder={reorderVisible}>
       {cast.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('cast.empty')}</p>

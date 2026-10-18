@@ -24,14 +24,14 @@ import { useToast } from '@/components/ui/feedback'
 import { cn, formatBytes } from '@/lib/utils'
 
 /* ============================================================
-   **ასლის ვიუერი და ნაწილობრივი აღდგენა (Tasks §11).**
+   **ასლის ვიუერი და ნაწილობრივი აღდგენა.**
 
    შენი სიტყვები: „ბაზის ასლში … იყოს ასევე ნახო რა თეიბლებს შეიცავს და
    კონკრეტული თეიბლის ჩანაწერების ნახვა — რამე ვიუვერი რომ იყოს; ასევე
    შეგეძლოს კონკრეტული თეიბლის აღდგენა, ან კონკრეტული ჩანაწერის, ან სრული".
 
    ⚠️ **ორი რეჟიმია და ისინი არ უნდა აირიოს.** *დახურული* ასლი ცხრილების
-   სიას მაინც აჩვენებს (`table_map` — დამპის ერთი გავლიდან, §11.1);
+   სიას მაინც აჩვენებს (`table_map` — დამპის ერთი გავლიდან);
    *გახსნილი* კი ნამდვილ SQL-ს ეკითხება (გვერდები, სორტირება, ფილტრი).
    ღილაკი ცხადად ამბობს, რომელში ხარ.
 
@@ -61,7 +61,7 @@ export function BackupViewer({ backup, onClose }: { backup: Backup; onClose: () 
 
   const [table, setTable] = useState<string | null>(null)
   const [page, setPage] = useState(1)
-  /** §11.4 — რომელი ცხრილის აღდგენას ვითხოვთ + აკრეფილი სიტყვა */
+  /** რომელი ცხრილის აღდგენას ვითხოვთ + აკრეფილი სიტყვა */
   const [restoring, setRestoring] = useState<string | null>(null)
   const [typed, setTyped] = useState('')
 
@@ -227,7 +227,7 @@ export function BackupViewer({ backup, onClose }: { backup: Backup; onClose: () 
               </div>
             ) : (
               <>
-                {/* §11.4 — რომელი ცხრილები დაზარალდება (კასკადები) */}
+                {/* რომელი ცხრილები დაზარალდება (კასკადები) */}
                 {!!rows.data?.meta.children.length && (
                   <p className="mb-3 flex items-start gap-2 rounded-md border border-[var(--icon-warn)]/50 bg-[var(--icon-warn)]/10 px-3 py-2 text-xs">
                     <AlertTriangle className="mt-0.5 size-4 shrink-0" />
@@ -251,7 +251,7 @@ export function BackupViewer({ backup, onClose }: { backup: Backup; onClose: () 
 
                 {/* ⚠️ სერვერის გვერდები ცალკეა: `DataTable` **ჩამოტვირთულ**
                     სიაზე მუშაობს, ეს კი ბაზის ცხრილია და ერთ პასუხში არ ჯდება. */}
-                {/* Tasks §46 — სერვერის ნაჭრების ნომრები (ნაჭერში `DataTable` თავის გვერდებს ხატავს) */}
+                {/* სერვერის ნაჭრების ნომრები (ნაჭერში `DataTable` თავის გვერდებს ხატავს) */}
                 {!!rows.data && rows.data.meta.total > rows.data.meta.per_page && (
                   <Pagination
                     className="mt-3"
@@ -267,7 +267,7 @@ export function BackupViewer({ backup, onClose }: { backup: Backup; onClose: () 
         </div>
       </div>
 
-      {/* ⚠️ **აკრეფილი სიტყვა ცხრილის სახელია და არა `RESTORE`** (§11.4):
+      {/* ⚠️ **აკრეფილი სიტყვა ცხრილის სახელია და არა `RESTORE`**:
           ღილაკიდან გადმოსაწერი სიტყვა ყოველთვის ერთი და იგივეა და თითს
           ავტომატურად აკრეფინებს. დიალოგი ამ კომპონენტის ერთადერთ `return`-შია
           (`GroupsCut`-ის ცოცხალი ბაგის წესი). */}

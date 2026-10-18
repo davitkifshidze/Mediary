@@ -9,7 +9,7 @@ import type { Place } from '@/api/places'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **ადგილის რიგი — ერთი მოქმედებების ზოლი** (Tasks §29.1/§29.4).
+   **ადგილის რიგი — ერთი მოქმედებების ზოლი**.
 
    ⚠️ აქამდე სტატუსი **ორჯერ** იყო (ბეჯი სათაურთან და `Select` ზოლში) და
    რუკა აიქონ-ბმულად. მოწმდება: სტატუსი ერთხელ, ჩამოსაშლელი; „რუკა" ტექსტით;
@@ -94,7 +94,7 @@ if (!('ResizeObserver' in globalThis)) {
   }
 }
 
-/* მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ (DEBT-12-ის წესი, `NoteReminders.test.ts`):
+/* მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ (როგორც `NoteReminders.test.ts`-ში):
    გვერდი დეტალის ფანჯარასთან ერთად Leaflet-ის ლეიზი საზღვარსაც იწევს და სრულ `npm test`-ში
    პირველი ტესტი 5 წმ-ს სცდებოდა — ერთჯერადი იმპორტი ჰუკშია, თავისი ვადით. */
 beforeAll(async () => {
@@ -151,7 +151,7 @@ const bars = () => [...document.querySelectorAll<HTMLElement>('[data-testid="rec
 const menuItem = (label: string) =>
   [...document.querySelectorAll<HTMLElement>('button, [role="menuitem"]')].find((el) => el.textContent?.trim() === label)
 
-describe('PlacesPage row (§29.1)', () => {
+describe('PlacesPage row', () => {
   it('shows the status once as a dropdown, the map as a text button and keeps the slot without coordinates', async () => {
     await mount()
 
@@ -193,9 +193,9 @@ describe('PlacesPage row (§29.1)', () => {
 })
 
 /* ============================================================
-   Tasks §57 — სახელით ძებნა წერისას (Google) და Google Maps-ის ბმული.
+   სახელით ძებნა წერისას (Google) და Google Maps-ის ბმული.
    ============================================================ */
-describe('PlacesPage form — suggestions while typing and a Google Maps link (§57)', () => {
+describe('PlacesPage form — suggestions while typing and a Google Maps link', () => {
   const category = { id: 5, key: 'food', name_ka: 'რესტორანი', name_en: 'Restaurant', icon: null, sort_order: 0 }
 
   const draft = {

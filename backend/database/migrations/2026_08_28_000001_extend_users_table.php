@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * I7 / ეტაპი 1 — პროფილი + როლი + per-user პარამეტრები.
+ * პროფილი + როლი + per-user პარამეტრები.
  * `name` რჩება (Laravel-ის default-ს ეყრდნობა), first/last მას ავსებს.
  */
 return new class extends Migration
@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('avatar_path')->nullable()->after('username');
             $table->enum('role', ['super_admin', 'user'])->default('user')->after('avatar_path');
             $table->boolean('is_active')->default(true)->after('role');
-            // E1-ის localStorage-ის (mediary.settings.v1) backend-ის ანალოგი
+            // SPA-ის localStorage-ის (mediary.settings.v1) backend-ის ანალოგი
             $table->json('settings')->nullable()->after('is_active');
 
             $table->index('role');

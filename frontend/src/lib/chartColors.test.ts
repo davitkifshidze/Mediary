@@ -3,7 +3,7 @@ import css from '@/index.css?raw'
 import { CHART_SURFACE, MIN_CONTRAST, SERIES_SLOTS, contrast, readable, seriesColor, seriesVars } from '@/lib/chartColors'
 
 /* ============================================================
-   **გრაფიკის ფერი — ორივე თემაზე წაკითხვადი** (Tasks §28.4).
+   **გრაფიკის ფერი — ორივე თემაზე წაკითხვადი**.
 
    ⚠️ `dataviz` სკილი ამ მანქანაზე არ არის, ამიტომ მისი ვალიდატორის
    საქმეს ეს ტესტი აკეთებს: WCAG 1.4.11-ის 3:1 **ყველა** შესაძლო ფერზე

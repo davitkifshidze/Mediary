@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **მოდულის ფერი (Tasks §2.1).**
+ * **მოდულის ფერი.**
  *
  * გვერდის ჰედერს გამოყოფილი ფონი სჭირდება და ფერი **მოდულს ეკუთვნის** —
  * ე.ი. ერთხელ ინიშნება `/modules/{key}`-ზე და ყველა იმ მოდულის გვერდზე

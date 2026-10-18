@@ -77,7 +77,7 @@ class SongModuleTest extends TestCase
             ->assertJsonPath('data.rating', 9)
             ->assertJsonPath('data.platform', 'youtube')
             ->assertJsonPath('data.embed_url', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
-            // 16.5 — ხილვადობა default-ად პირადია
+            // ხილვადობა default-ად პირადია
             ->assertJsonPath('data.visibility', 'private')
             // ტეგების დუბლი რეგისტრისა და სივრცის მიუხედავად იჭრება
             ->assertJsonPath('data.tags', ['ქართული', 'რეტრო']);
@@ -121,8 +121,8 @@ class SongModuleTest extends TestCase
     }
 
     /**
-     * **მრავალჟანრიანობა** (`DECISIONS.md` §5, 2026-09-06) — ჩანაწერზე
-     * რამდენიმე ჟანრია და ფილტრი მათ **AND**-ით კვეთს (5.2-ის წესი).
+     * **მრავალჟანრიანობა** (2026-09-06) — ჩანაწერზე
+     * რამდენიმე ჟანრია და ფილტრი მათ **AND**-ით კვეთს.
      */
     public function test_a_song_can_have_several_genres_and_the_filter_ands_them(): void
     {
@@ -212,7 +212,7 @@ class SongModuleTest extends TestCase
         $this->actingAs($this->user)->deleteJson("/api/songs/{$song->id}")->assertStatus(404);
     }
 
-    /** ატვირთული ფოტო კვოტაზე გადის და წაშლისას თავისუფლდება (17.1) */
+    /** ატვირთული ფოტო კვოტაზე გადის და წაშლისას თავისუფლდება */
     public function test_thumbnail_counts_towards_the_quota(): void
     {
         Storage::fake('public');
@@ -236,7 +236,7 @@ class SongModuleTest extends TestCase
         // მოდულის ჭრილშიც სიმღერას ეკუთვნის და არა ვიდეოს
         $this->actingAs($this->user)->getJson('/api/storage')->assertJsonPath('modules.song', $used);
 
-        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+        /* ⚠️ **კალათა** — `DELETE /api/<module>/{id}` ჩანაწერს
            აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
            როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/songs/{$id}")->assertNoContent();
@@ -245,7 +245,7 @@ class SongModuleTest extends TestCase
     }
 
     /**
-     * Tasks §11 (Q9) — **სიმღერა გალერეიდან გავიდა**: მშობლების სიაში აღარაა,
+     * **სიმღერა გალერეიდან გავიდა**: მშობლების სიაში აღარაა,
      * ე.ი. ვებიდან ფოტოს მიბმა 422-ია და გალერეის „ბიბლიოთეკაში" ჩანართი აღარ აქვს.
      */
     public function test_a_song_is_no_longer_a_gallery_parent(): void
@@ -264,7 +264,7 @@ class SongModuleTest extends TestCase
     }
 
     /**
-     * Tasks §11 — „მასალა" (ფაილები და ჩანიშვნები) ამოღებულია: მარშრუტები აღარ
+     * „მასალა" (ფაილები და ჩანიშვნები) ამოღებულია: მარშრუტები აღარ
      * არსებობს, ე.ი. 404 და არა ჩუმად მიღებული ატვირთვა; ცხრილებიც წაიშალა.
      */
     public function test_song_files_and_notes_are_gone(): void

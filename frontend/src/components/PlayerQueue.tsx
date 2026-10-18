@@ -10,7 +10,7 @@ import { MENU_ICONS, RecordActionMenu, RecordContextMenu, type MenuAction } from
 import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
 
 /* ============================================================
-   დამკვრელის რიგი — YouTube-ის ფლეილისტის ყალიბით (Tasks §35.2).
+   დამკვრელის რიგი — YouTube-ის ფლეილისტის ყალიბით.
 
    შენი სიტყვები: „ჩანდეს, რომელია შემდეგი და რომელზე ვდგავართ,
    YouTube-ის ფლეილისტის მსგავსად".
@@ -23,7 +23,7 @@ import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable
    (`scrollTo` თვითონ `<ol>`-ზე). `scrollIntoView` ყველა წინაპარს
    გადაახვევდა, ე.ი. ტრეკის შეცვლაზე მთელი გვერდი ახტებოდა.
 
-   ⚠️ **გადალაგება `Sortable`-ითაა (Tasks §11) + „ერთით წინ/უკან" მენიუში** —
+   ⚠️ **გადალაგება `Sortable`-ითაა + „ერთით წინ/უკან" მენიუში** —
    მენიუს პუნქტები კლავიატურისა და სენსორული ეკრანის მოკლე გზაა.
    ============================================================ */
 
@@ -131,7 +131,7 @@ function QueueRow({
   const time = formatDuration(entry.duration)
   const Fallback = entry.kind === 'song' ? Music : Video
 
-  /* Tasks §7 — ერთი სია `⋯`-სთვისაც და მარჯვენა ღილაკისთვისაც: დაკვრა · წინ · უკან · წყარო · — · რიგიდან მოხსნა.
+  /* ერთი სია `⋯`-სთვისაც და მარჯვენა ღილაკისთვისაც: დაკვრა · წინ · უკან · წყარო · — · რიგიდან მოხსნა.
      ⚠️ რასაც ვერ გააკეთებ, ის არ იხატება (და არა გამორთულად) — პირველს „წინ" არ აქვს. */
   const actions: MenuAction[] = [
     { key: 'play', label: t('playback.play'), icon: MENU_ICONS.play, run: onJump },

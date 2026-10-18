@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
- * გალერეის **ვიდეო-ბმული** (Tasks §8.1) — `gallery_images`-ის ტყუპი.
+ * გალერეის **ვიდეო-ბმული** — `gallery_images`-ის ტყუპი.
  *
  * ერთსა და იმავე მშობლებზე ჰკიდია (ფილმი · სერიალი · ანიმე · **მსახიობი** ·
  * სიმღერა · წიგნი · თამაში), ოღონდ ფაილს არ ინახავს: ვიდეო **ბმულია**,
@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class GalleryVideo extends Model
 {
-    /** ⚠️ **ურნა (Tasks §29, Q22)** — „ბმულის" წაშლა ეს იყო: ბმული ურნაში გადადის */
+    /** ⚠️ **ურნა** — „ბმულის" წაშლა ეს იყო: ბმული ურნაში გადადის */
     use BelongsToUser, HasTrash;
 
     /** საიდან მოვიდა ბმული — ცხადი სია, რომ „წყაროს" ფილტრს აზრი ჰქონდეს */
@@ -39,7 +39,7 @@ class GalleryVideo extends Model
         'published_at' => 'date',
     ];
 
-    /** §37.4 — პირადი მოდულის გასაღები morph-რუკაში (იხ. `GalleryImage::booted()`) */
+    /** პირადი მოდულის გასაღები morph-რუკაში (იხ. `GalleryImage::booted()`) */
     protected static function booted(): void
     {
         static::retrieved(fn (GalleryVideo $video) => CustomModules::registerMorph($video->videoable_type));

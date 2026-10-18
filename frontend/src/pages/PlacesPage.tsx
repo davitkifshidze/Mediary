@@ -87,10 +87,10 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
-   ადგილების მოდული (`place`, FEAT-26).
+   ადგილების მოდული (`place`).
 
    ⚠️ **სტატუსი enum-ია** (ორი მნიშვნელობა), ე.ი. საიდბარის სექციები
-   წიგნის/თამაშის/კურსის რიგშია: „ყველა · რჩეული · დამატება" (§6.1),
+   წიგნის/თამაშის/კურსის რიგშია: „ყველა · რჩეული · დამატება",
    ხოლო სტატუსით ფილტრი პანელშია.
 
    ⚠️ **Nominatim-ის ძებნა მხოლოდ ცხადი დაწკაპუნებით ხდება** და არასდროს
@@ -118,7 +118,7 @@ export function PlacesPage() {
   const confirm = useConfirm()
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
   const [layout, setLayout] = useRecordLayout('place', 'rows')
 
   const view = params.get('view') ?? 'all'
@@ -162,11 +162,11 @@ export function PlacesPage() {
     status: statuses.length ? statuses.join(',') : undefined,
     favorite: view === 'favorite' ? true : undefined,
     sort: sort === 'newest' ? undefined : sort,
-    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
   }
 
-  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['places', filters],
     fetchPage: (page) => fetchPlaces({ ...filters, page, per_page: LIST_PAGE_SIZE }),
@@ -253,7 +253,7 @@ export function PlacesPage() {
         subtitle={t('places.count', { count: total })}
         actions={
           <>
-            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             <div className="relative min-w-0 flex-1 sm:flex-none">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -322,7 +322,7 @@ export function PlacesPage() {
                       remove.mutate(place.id)
                     }
                   }
-                  /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · რუკა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+                  /* მარჯვენა ღილაკის მენიუ: გახსნა · რუკა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
                   const actions: MenuAction[] = [
                     { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(place) },
                     ...(place.map_url
@@ -343,7 +343,7 @@ export function PlacesPage() {
                     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: askDelete },
                   ]
                   return (
-                    /* §45 — ერთი აღწერა სამ განლაგებაში; სტატუსი და ქულა ზოლშია (§29.1) */
+                    /* ერთი აღწერა სამ განლაგებაში; სტატუსი და ქულა ზოლშია */
                     <RecordView
                       key={place.id}
                       title={place.name}
@@ -367,8 +367,8 @@ export function PlacesPage() {
                       tags={place.tags}
                       actions={actions}
                       onEdit={() => setEditing(place)}
-                      /* Tasks §29.1 — ერთი ზოლი: სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები · რუკა (კოორდინატის
-                         გარეშე უხილავი სლოტი, §14.2) · რედაქტირება · წაშლა — ყველა h-9 */
+                      /* ერთი ზოლი: სტატუსი (ჩამოსაშლელი) · რჩეული · ფაილები · რუკა (კოორდინატის
+                         გარეშე უხილავი სლოტი) · რედაქტირება · წაშლა — ყველა h-9 */
                       bar={
                         <RecordActionBar
                           before={
@@ -414,7 +414,7 @@ export function PlacesPage() {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
-          {/* ⚠️ სტატუსი **აქ არის და არა საიდბარში** — §6.1-ის წესი */}
+          {/* ⚠️ სტატუსი **აქ არის და არა საიდბარში**: enum-სტატუსიან მოდულებს სექციები არ აქვთ */}
           <FilterGroup title={t('places.status')} count={draft.statuses.length}>
             <FilterOptionList>
               {PLACE_STATUSES.map((s) => (
@@ -475,7 +475,7 @@ export function PlacesPage() {
         </FilterPanel>
       </div>
 
-      {/* Tasks §8 — სია ახლდება რჩეულის/ფაილის შემდეგ, მოდალს ახალი ობიექტი უნდა მიუვიდეს */}
+      {/* სია ახლდება რჩეულის/ფაილის შემდეგ, მოდალს ახალი ობიექტი უნდა მიუვიდეს */}
       {detail && <PlaceDetail place={places.find((p) => p.id === detail.id) ?? detail} onClose={() => setDetail(null)} />}
 
       {editing && (
@@ -532,21 +532,21 @@ function PlaceForm({
     // პასუხი არჩევანი არაა (2026-09-16-ის წესი)
     categoryId: place?.category_id ? String(place.category_id) : '',
     status: (place?.status ?? '') as PlaceStatus | '',
-    // Tasks §25.2 — რიცხვი ან `null` (`RatingSelect`)
+    // რიცხვი ან `null` (`RatingSelect`)
     rating: place?.rating ?? null,
     visitedAt: place?.visited_at ?? '',
     tags: place?.tags ?? [],
-    // Tasks §57.1 — წყაროდან; საათები ფორმაში თითო ხაზზე
+    // წყაროდან; საათები ფორმაში თითო ხაზზე
     phone: place?.phone ?? '',
     website: place?.website ?? '',
     hours: (place?.opening_hours ?? []).join('\n'),
   })
-  /** §57.1 — წყაროს რეიტინგი (Google 0–5) — **შენი ქულა არ არის**, ფორმაში მხოლოდ ჩანს */
+  /** წყაროს რეიტინგი (Google 0–5) — **შენი ქულა არ არის**, ფორმაში მხოლოდ ჩანს */
   const [sourceRating, setSourceRating] = useState({
     rating: place?.source_rating ?? null,
     count: place?.source_rating_count ?? null,
   })
-  /** §57.1 — წყაროს ფოტოები: შენახვისას გალერეაში, პირველი — მთავარი (ფოტო თუ არ გაქვს) */
+  /** წყაროს ფოტოები: შენახვისას გალერეაში, პირველი — მთავარი (ფოტო თუ არ გაქვს) */
   const [galleryUrls, setGalleryUrls] = useState<string[]>([])
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(
@@ -555,14 +555,14 @@ function PlaceForm({
   const [removePhoto, setRemovePhoto] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const qc = useQueryClient()
-  // §26.5 — დამატებითი ველები ახალ ადგილზეც (აქამდე მხოლოდ რედაქტირებისას ჩანდა)
+  // დამატებითი ველები ახალ ადგილზეც (აქამდე მხოლოდ რედაქტირებისას ჩანდა)
   const extras = useRecordExtras('place', place)
-  /* Tasks §29.3 — ფაილები **შექმნისთანავე** (`lib/pendingUploads.ts`): შენახვისას ჯერ ადგილი,
+  /* ფაილები **შექმნისთანავე** (`lib/pendingUploads.ts`): შენახვისას ჯერ ადგილი,
      მერე ფაილები სათითაოდ; ჩავარდნა ადგილს არ აუქმებს — ფანჯარა ღია რჩება. */
   const pending = usePendingUploads<PlaceFileKind>()
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
-  /* ---- Tasks §57 — წყაროები: Google Places → SerpApi → Serper → Nominatim ---- */
+  /* ---- წყაროები: Google Places → SerpApi → Serper → Nominatim ---- */
   const [lookupQuery, setLookupQuery] = useState(place?.name ?? '')
   const [results, setResults] = useState<PlaceCandidate[] | null>(null)
   const [resultsFrom, setResultsFrom] = useState<PlaceSource | null>(null)
@@ -574,7 +574,7 @@ function PlaceForm({
   const session = useMemo(() => globalThis.crypto?.randomUUID?.() ?? `s${Date.now()}`, [])
   const liveSeq = useRef(0)
   const [mapLink, setMapLink] = useState('')
-  /** §57.4 — პინის გადათრევის შემდეგ ნაპოვნი მისამართი — „განახლება?" */
+  /** პინის გადათრევის შემდეგ ნაპოვნი მისამართი — „განახლება?" */
   const [addressOffer, setAddressOffer] = useState<{ address: string | null; city: string | null; country: string | null } | null>(null)
   /** პრევიუ წყაროს ფოტოა (და არა შენი ატვირთული/შენახული) — ახალი არჩევა მას ცვლის */
   const [sourcePreview, setSourcePreview] = useState(false)
@@ -679,7 +679,7 @@ function PlaceForm({
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  /** §57.3 — Google Maps-ის ბმული (მოკლეც) → ფორმა */
+  /** Google Maps-ის ბმული (მოკლეც) → ფორმა */
   const fromLink = useMutation({
     mutationFn: (url: string) => placeFromLink(url),
     onSuccess: applyDraft,
@@ -690,7 +690,7 @@ function PlaceForm({
     if (/^https?:\/\//i.test(url) && !fromLink.isPending) fromLink.mutate(url)
   }
 
-  /** §57.4 — „41.7151, 44.8271" (Google-იდან დაკოპირებული) → ორი ველი */
+  /** „41.7151, 44.8271" (Google-იდან დაკოპირებული) → ორი ველი */
   const pasteCoords = (raw: string): boolean => {
     const m = raw.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/)
     if (!m || Math.abs(Number(m[1])) > 90 || Math.abs(Number(m[2])) > 180) return false
@@ -699,7 +699,7 @@ function PlaceForm({
     return true
   }
 
-  /** §57.4 — პინი გადაათრიე → მისამართი იმ წერტილზე; ფორმაში მხოლოდ „განახლებით" ჩაიწერება */
+  /** პინი გადაათრიე → მისამართი იმ წერტილზე; ფორმაში მხოლოდ „განახლებით" ჩაიწერება */
   const movePin = (lat: number, lng: number) => {
     setForm((f) => ({ ...f, lat: lat.toFixed(6), lng: lng.toFixed(6) }))
     void reverseGeocode(lat, lng)
@@ -776,7 +776,7 @@ function PlaceForm({
 
     setErrors({})
 
-    // Tasks §13.3 — submit-ზე დუბლი უხმოდ იჭრება: `TagSelect` უკვე გააფრთხილა, აქ მხოლოდ გარანტია
+    // submit-ზე დუბლი უხმოდ იჭრება: `TagSelect` უკვე გააფრთხილა, აქ მხოლოდ გარანტია
     const { tags } = dedupeTags(form.tags)
 
     save.mutate({
@@ -792,13 +792,12 @@ function PlaceForm({
       description: form.description || null,
       category_id: form.categoryId ? Number(form.categoryId) : null,
       status: form.status as PlaceStatus,
-      // §25.3 — `null` („გარეშე") სერვერამდე ცარიელ სტრიქონად მიდის და ქულას შლის
+      // `null` („გარეშე") სერვერამდე ცარიელ სტრიქონად მიდის და ქულას შლის
       rating: form.rating,
       visited_at: form.visitedAt || null,
       tags,
       photo,
       remove_photo: removePhoto,
-      // Tasks §57.1
       phone: form.phone.trim() || null,
       website: form.website.trim() || null,
       opening_hours: form.hours.split('\n').map((line) => line.trim()).filter(Boolean),
@@ -812,8 +811,8 @@ function PlaceForm({
   return (
     <ModalShell title={t(place ? 'places.edit' : 'places.add')} onClose={onClose} wide>
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
-        {/* §26.2 — წყაროთი მოძებნა, ყველა ფორმის ერთი ბლოკით; ხელით შევსება ყოველთვის ღიაა.
-            Tasks §57 — ზემოთ Google Maps-ის ბმული (§41.1-ის წესი: ბმული ფორმის თავში),
+        {/* წყაროთი მოძებნა, ყველა ფორმის ერთი ბლოკით; ხელით შევსება ყოველთვის ღიაა.
+            ზემოთ Google Maps-ის ბმული (წესი: ბმული ფორმის თავში),
             ქვემოთ სახელით ძებნა — Google-ის გასაღებით წერისას, მის გარეშე Enter-ით */}
         <QuickFill
           title={t('places.lookupTitle')}
@@ -881,7 +880,7 @@ function PlaceForm({
           )}
         </QuickFill>
 
-        {/* §26 — ფოტო ზემოთაა, სახელსა და აღწერასთან ერთად */}
+        {/* ფოტო ზემოთაა, სახელსა და აღწერასთან ერთად */}
         <FormSection
           title={t('form.sections.basic')}
           mediaVariant="wide"
@@ -906,7 +905,7 @@ function PlaceForm({
                   setPhoto(null)
                   setRemovePhoto(true)
                   setPreview(null)
-                  // §57.1 — წყაროს ფოტოს მოხსნა მის ჩამოტვირთვასაც აუქმებს
+                  // წყაროს ფოტოს მოხსნა მის ჩამოტვირთვასაც აუქმებს
                   if (sourcePreview) setGalleryUrls([])
                   setSourcePreview(false)
                 }}
@@ -914,7 +913,7 @@ function PlaceForm({
             )
           }
         >
-          {/* ⚠️ სახელი `locked`-ია (§6.5) — ყოველთვის სავალდებულო */}
+          {/* ⚠️ სახელი `locked`-ია — ყოველთვის სავალდებულო */}
           <FormField {...fields.field('name')} required htmlFor="p-name" error={errors.name}>
             <Input
               id="p-name"
@@ -936,9 +935,9 @@ function PlaceForm({
           </FormField>
         </FormSection>
 
-        {/* ⚠️ §26 — `required` აღარ წერია ხელით: ნიშანი ველების კონსტრუქტორიდან
+        {/* ⚠️ `required` აღარ წერია ხელით: ნიშანი ველების კონსტრუქტორიდან
             მოდის (სავალდებულობას `pickErrors` ამოწმებს, როგორც ყველა ფორმაში) */}
-        {/* Tasks §38.6 → §42.2 — სტატუსი · კლასიფიკატორი · შეფასება · ვიზიტი ოთხ მეოთხედად, ტეგები ქვემოთ:
+        {/* სტატუსი · კლასიფიკატორი · შეფასება · ვიზიტი ოთხ მეოთხედად, ტეგები ქვემოთ:
             შეფასების ჩამოსაშლელი (`RatingSelect`) მეოთხედში ეტევა და მეზობლების `h-10`-ისაა */}
         <FormSection title={t('form.sections.classification')}>
           <FormField size="quarter" {...fields.field('status')} htmlFor="p-status" error={errors.status}>
@@ -971,7 +970,7 @@ function PlaceForm({
             </Select>
           </FormField>
 
-          {/* Tasks §25.2 → §42 — ჩამოსაშლელი „★ 1…10" + ხელით ჩასაწერი წილადი */}
+          {/* ჩამოსაშლელი „★ 1…10" + ხელით ჩასაწერი წილადი */}
           <FormField size="quarter" {...fields.field('rating')} htmlFor="p-rating" error={errors.rating}>
             <RatingSelect
               id="p-rating"
@@ -1020,7 +1019,7 @@ function PlaceForm({
             />
           </FormField>
 
-          {/* Tasks §57.1 — წყაროდან ივსება (Google Maps), ხელითაც */}
+          {/* წყაროდან ივსება (Google Maps), ხელითაც */}
           <FormField size="half" {...fields.field('phone')} htmlFor="p-phone" error={errors.phone}>
             <Input
               id="p-phone"
@@ -1068,7 +1067,7 @@ function PlaceForm({
             htmlFor="p-lat"
             error={[errors.lat, errors.lng].filter(Boolean).join(' ')}
           >
-            {/* §57.4 — Google-იდან დაკოპირებული „41.7151, 44.8271" ერთ ველში; ცალ-ცალკე ველებიც რჩება */}
+            {/* Google-იდან დაკოპირებული „41.7151, 44.8271" ერთ ველში; ცალ-ცალკე ველებიც რჩება */}
             <Input
               className="mb-2"
               aria-label={t('places.coordsPaste')}
@@ -1101,9 +1100,9 @@ function PlaceForm({
                 onChange={(e) => setForm((f) => ({ ...f, lng: e.target.value }))}
               />
             </div>
-            {/* Tasks §30.2 — რუკა მარკერით: გადათრევით ან დაწკაპუნებით კოორდინატი ზუსტდება (ლეიზი ჩანკი) */}
+            {/* რუკა მარკერით: გადათრევით ან დაწკაპუნებით კოორდინატი ზუსტდება (ლეიზი ჩანკი) */}
             <FormMapPick lat={form.lat} lng={form.lng} onPick={movePin} />
-            {/* §57.4 — პინის ახალ წერტილზე სხვა მისამართია — ჩაიწეროს? */}
+            {/* პინის ახალ წერტილზე სხვა მისამართია — ჩაიწეროს? */}
             {addressOffer && (
               <div
                 className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs"
@@ -1137,7 +1136,7 @@ function PlaceForm({
           </FormField>
         </FormSection>
 
-        {/* §29.3 — ფაილები ახალ ადგილზე; არსებულს დეტალის ფანჯარაში აქვს */}
+        {/* ფაილები ახალ ადგილზე; არსებულს დეტალის ფანჯარაში აქვს */}
         {!place && (
           <PendingFilesSection
             pending={pending}
@@ -1151,7 +1150,7 @@ function PlaceForm({
         )}
       </form>
 
-      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები **ახალ ადგილზეც** (აქამდე მხოლოდ
+      {/* დამატებითი ველები **ახალ ადგილზეც** (აქამდე მხოლოდ
           რედაქტირებისას ჩანდა); ახალზე მონახაზია და ადგილთან ერთად ინახება */}
       <CustomFieldsCard
         module="place"

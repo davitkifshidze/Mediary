@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **ჟანრის ფერი და ხატულა** (Tasks §24.3) — ოთხივე ლექსიკონი ერთი წესით.
+ * **ჟანრის ფერი და ხატულა** — ოთხივე ლექსიკონი ერთი წესით.
  */
 class GenreColorTest extends TestCase
 {

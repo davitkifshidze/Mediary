@@ -27,7 +27,7 @@ use RuntimeException;
 use Throwable;
 
 /**
- * **რიგის ერთი ერთეული სერვერის მხარეს** (აუდიტი 2026-09-14, §D1).
+ * **რიგის ერთი ერთეული სერვერის მხარეს**.
  *
  * ⚠️ **პრობლემა, რომელსაც ეს ხსნის:** სინქრონი, გალერეა და თარგმანი
  * **ბრაუზერის ტაბში** ტრიალებდა (`ui/queue.tsx` თითო ჩანაწერზე ერთ მოკლე
@@ -57,7 +57,7 @@ class RunBatchItem implements ShouldQueue
     use Batchable, Queueable;
 
     /**
-     * მსახიობების მონაცემები (Tasks §39) — ერთეული ჩანაწერი კი არა,
+     * მსახიობების მონაცემები — ერთეული ჩანაწერი კი არა,
      * **მსახიობია** (`type: 'actor'`, გლობალური ლექსიკონის რიგი).
      */
     public const KIND_CAST = 'cast';
@@ -101,7 +101,7 @@ class RunBatchItem implements ShouldQueue
             // ⚠️ რიგი აქ ვერ დაიწერება — `user_id` უცხო გასაღებია და ანგარიში აღარაა
             /* ⚠️ ჩავარდნა არ არის (ანგარიში წაიშალა), მაგრამ **უხმო** არც
                უნდა იყოს: სხვაგვარად პარტია „შესრულებულად" ითვლება და
-               „რატომ არაფერი მოხდა" პასუხგაუცემელია (Tasks BUG-08). */
+               „რატომ არაფერი მოხდა" პასუხგაუცემელია. */
             SourceLog::failed('batch:'.$this->kind, 'user_missing', ['user' => $this->userId]);
 
             return;
@@ -117,13 +117,13 @@ class RunBatchItem implements ShouldQueue
            აისახება `Auth::id()`-ზე, რომელსაც global scope კითხულობს. */
         Auth::setUser($user);
 
-        /* Tasks §30.7 — ⚠️ **გასაღები მფლობელისაა და worker-ი ცოცხლობს** ერთზე
+        /* ⚠️ **გასაღები მფლობელისაა და worker-ი ცოცხლობს** ერთზე
            მეტ job-ს: `CredentialStore`-ის მემო სტატიკურია, ე.ი. გაშვების შუაში
            ჩაწერილი (ან წაშლილი) გასაღები worker-ის სიცოცხლის ბოლომდე ძველად
            წაიკითხებოდა. თითო job-ზე ერთი `select` — ფასი არაფერია. */
         CredentialStore::forget((int) $user->getKey());
 
-        /* ⚠️ **რიგი job-ის დასაწყისში იწერება** (Tasks FEAT-03) და არა ბოლოს:
+        /* ⚠️ **რიგი job-ის დასაწყისში იწერება** და არა ბოლოს:
            ჩავარდნისას გამონაკლისი გადაისვრება, ე.ი. ბოლოში ჩაწერა
            **ჩავარდნილ ერთეულს საერთოდ არ დააფიქსირებდა** — ზუსტად ის, რის
            ჩვენებაც ამ ცხრილს სურს. */
@@ -156,7 +156,7 @@ class RunBatchItem implements ShouldQueue
                 'id' => $this->recordId,
             ]);
 
-            /* ⚠️ **გადასროლა აუცილებელია** (Tasks BUG-08). აქამდე
+            /* ⚠️ **გადასროლა აუცილებელია**. აქამდე
                გამონაკლისი აქ კვდებოდა, ე.ი. `$batch->failedJobs` **ყოველთვის
                0-ია**, `processedJobs == totalJobs` და `failed_jobs` ცარიელი:
                SPA „300/300 დასრულდა"-ს აჩვენებდა იმ გაშვებაზეც, სადაც ყველა
@@ -176,7 +176,7 @@ class RunBatchItem implements ShouldQueue
     }
 
     /**
-     * **ამ ერთეულის რიგი** (Tasks FEAT-03).
+     * **ამ ერთეულის რიგი**.
      *
      * ⚠️ `batch()` `null`-ია, როცა job პარტიის გარეშე გაეშვა (ტესტი,
      * ხელით dispatch) — მაშინ ჩასაწერი ადგილი არ არსებობს და ეს
@@ -206,7 +206,7 @@ class RunBatchItem implements ShouldQueue
         $record = $this->record();
 
         if (! $record) {
-            /* ⚠️ **`skipped` და არა `failed`** (Tasks FEAT-03): წაშლილი ან
+            /* ⚠️ **`skipped` და არა `failed`**: წაშლილი ან
                სხვისი ჩანაწერი კანონიერი გამოტოვებაა — „ჩავარდნად" ჩათვლა
                მომხმარებელს ხელახლა გაშვებას ურჩევდა იქ, სადაც გასაშვები
                აღარაფერია. */
@@ -214,7 +214,7 @@ class RunBatchItem implements ShouldQueue
             /* ⚠️ ესეც კანონიერი გამოტოვებაა (ჩანაწერი გეგმასა და გაშვებას
                შორის წაიშალა, ან სხვისია და `owner` scope-მა დამალა) — და
                ესეც ლოგშია, იმავე მიზეზით. `skipped`/`failed`-ის ცალკე
-               დათვლა ცალკე ტასქია (FEAT-03). */
+               დათვლა ცალკე საკითხია. */
             SourceLog::failed('batch:'.$this->kind, 'record_not_found', [
                 'type' => $this->type,
                 'id' => $this->recordId,
@@ -223,7 +223,7 @@ class RunBatchItem implements ShouldQueue
             return false;
         }
 
-        /* Tasks §31.3 — „აღარ განაახლო": გეგმა შეჩერებულს არ სვამს, მაგრამ პირდაპირ
+        /* „აღარ განაახლო": გეგმა შეჩერებულს არ სვამს, მაგრამ პირდაპირ
            id-ებით გაშვებულ პარტიაში შეიძლება მოხვდეს — გამოტოვებაა მიზეზით, არა ჩავარდნა */
         if ((bool) ($record->sync_paused ?? false)) {
             $item?->update(['title' => $this->titleOf($record), 'status' => BatchItem::SKIPPED, 'error' => 'sync_paused']);
@@ -252,7 +252,7 @@ class RunBatchItem implements ShouldQueue
             default => null,
         };
 
-        /* Tasks §6.2 — ⚠️ **შედეგი იკითხება და არა მხოლოდ გამონაკლისი.** `ItemSyncer`
+        /* ⚠️ **შედეგი იკითხება და არა მხოლოდ გამონაკლისი.** `ItemSyncer`
            და `ItemTranslator` ყველა გამონაკლისს შიგნით იჭერს და `ok:false`-ს აბრუნებს,
            ე.ი. აქამდე ჩავარდნილი სინქრონიზაცია სერვერულ რიგში **ყოველთვის** `OK`
            ხდებოდა — `failed` მიუღწეველი იყო და `BatchQueueTest` მხოლოდ იმიტომ გადიოდა,
@@ -269,7 +269,7 @@ class RunBatchItem implements ShouldQueue
 
                 return false;
             }
-            /* Tasks §31.4 — „უცვლელი" და „ცარიელი" **გამოტოვებაა მიზეზით** (მსახიობების
+            /* „უცვლელი" და „ცარიელი" **გამოტოვებაა მიზეზით** (მსახიობების
                `unchanged`/`tmdb_empty`-ის იგივე წესი): სერვერულ სიაში ისინი ✓-ად აღარ ითვლება.
                ⚠️ `result` არჩევითია — ძველი შედეგის ფორმა (ტესტები, სხვა სერვისი) `OK`-ად რჩება. */
             if (in_array($result['result'] ?? null, [SyncOutcome::UNCHANGED, SyncOutcome::EMPTY], true)) {
@@ -283,15 +283,14 @@ class RunBatchItem implements ShouldQueue
     }
 
     /**
-     * **მსახიობის ერთეული** (Tasks §39) — `CastSyncController::item()`-ის
+     * **მსახიობის ერთეული** — `CastSyncController::item()`-ის
      * იგივე `CastEnricher::run()`, ოღონდ worker-ში.
      *
      * ⚠️ **ჟურნალი ჩახშობილია**: გაშვების ერთი რიგი `plan`-ის `start`-მა
      * უკვე დაწერა (`AuditLog::ACTION_CAST_SYNC`), თორემ 300 მსახიობი 300
      * `update`-ად ჩაიწერებოდა.
      * ⚠️ **„უცვლელი" და „TMDB-ზე არაფერია" გამოტოვებაა** (`skipped` + მიზეზი),
-     * ჩავარდნა კი **გადაისვრის** — პარტიის მრიცხველი სწორედ ამით ითვლის
-     * (Tasks BUG-08).
+     * ჩავარდნა კი **გადაისვრის** — პარტიის მრიცხველი სწორედ ამით ითვლის.
      */
     private function runCast(CastEnricher $enricher, ?BatchItem $item): bool
     {
@@ -305,7 +304,7 @@ class RunBatchItem implements ShouldQueue
         }
 
         $item?->update(['title' => mb_substr($member->name_ka ?: (string) $member->name, 0, 200)]);
-        // Tasks §31.3 — ჩემი „აღარ განაახლო" ამ მსახიობზე — გამოტოვებაა მიზეზით
+        // ჩემი „აღარ განაახლო" ამ მსახიობზე — გამოტოვებაა მიზეზით
         if (CastMemberSyncPref::withoutGlobalScope('owner')->where('user_id', $this->userId)->where('cast_member_id', $member->getKey())->exists()) {
             $item?->update(['status' => BatchItem::SKIPPED, 'error' => 'sync_paused']);
 

@@ -87,8 +87,8 @@ describe('PhotoStack', () => {
   })
 })
 
-/* Tasks §25.1 — ბარათი თავიდან: მოდულის ფერის ზოლი, ჟანრების ჩიპები, მეტა-ხაზი, h-9 ზოლი, `contain` ფიტი */
-describe('PhotoStack — §25.1', () => {
+/* ბარათი თავიდან: მოდულის ფერის ზოლი, ჟანრების ჩიპები, მეტა-ხაზი, h-9 ზოლი, `contain` ფიტი */
+describe('PhotoStack — ბარათი', () => {
   it('draws the accent bar, chips, meta and an equal-height actions bar; contain fit keeps the photo whole', async () => {
     const { PhotoStack } = await import('@/components/ui/photo-stack')
     container = document.createElement('div')

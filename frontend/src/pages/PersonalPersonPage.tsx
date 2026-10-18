@@ -26,7 +26,7 @@ import { PersonalUploader } from '@/components/personal/PersonalUploader'
 import { PersonalUploadDialog } from '@/components/personal/PersonalUploadDialog'
 
 /* ============================================================
-   **ადამიანის გვერდი — `/personal/people/:id` (Tasks §33.5).**
+   **ადამიანის გვერდი — `/personal/people/:id`.**
 
    შენი სიტყვები: „პიროვნების ფოტო/ვიდეო სექციები განცალკევებით ტაბებად,
    ბარათების სახითაც".
@@ -38,7 +38,7 @@ import { PersonalUploadDialog } from '@/components/personal/PersonalUploadDialog
    ⚠️ **მთავარი ფოტო ბადიდან ირჩევა** („მთავარად დაყენება") — ცალკე
    ატვირთვა ორ სხვადასხვა „პორტრეტს" გააჩენდა.
 
-   ⚠️ **ჩაკეტილი და დაუხსნელი ადამიანი (§33.7)** — მხოლოდ სახელი, რიცხვი და
+   ⚠️ **ჩაკეტილი და დაუხსნელი ადამიანი** — მხოლოდ სახელი, რიცხვი და
    ბოქლომი (`PersonalLockedScreen`); ჰერო, ველები, ჩანართები და ღილაკები
    გახსნამდე არ იხატება — სერვერი მათ შიგთავსს ისედაც არ აგზავნის.
    ============================================================ */
@@ -187,7 +187,7 @@ export function PersonalPersonPage() {
         </div>
       </section>
 
-      {/* §33.4 — დამატებითი ველები ადამიანზე (თვითონ ინახავს თავს; ველის გარეშე არ ჩანს) */}
+      {/* დამატებითი ველები ადამიანზე (თვითონ ინახავს თავს; ველის გარეშე არ ჩანს) */}
       <CustomFieldsCard module="personal" recordId={person.id} className="mb-5" />
 
       <div className="mb-4">

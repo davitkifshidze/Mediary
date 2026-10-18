@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **Tasks §57.1 — ადგილის სრული ინფო წყაროდან.**
+ * **ადგილის სრული ინფო წყაროდან.**
  *
  * შენი სიტყვები: „მინდა, სადაც კი რამე ჩაგდება მაქვს — ბმული, სახელი, ადგილი —
  * სრული ინფო, რაც შეიძლება, წამოვიღო". Google Places / Google Maps (SerpApi,

@@ -3,22 +3,22 @@ import type { StatusDomainKey } from '@/api/statuses'
 import type { Status } from '@/api/types'
 
 /* ============================================================
-   **„რა ვნახო დღეს" — საერთო ნაწილი** (Tasks §17).
+   **„რა ვნახო დღეს" — საერთო ნაწილი**.
 
    ⚠️ **დიალოგი არც ფილმს იცნობს და არც ვიდეოს** — მას `PickSource` ეძლევა:
    რა ჩამოიტანოს, როგორ გახსნას, რომელ ქეშს ეხება. ფილმი/სერიალი/ანიმე
-   `LibraryPage`-ზე აწყობს წყაროს, ვიდეო — `VideosPage`-ზე (Q4: კამათელი
+   `LibraryPage`-ზე აწყობს წყაროს, ვიდეო — `VideosPage`-ზე (კამათელი
    მხოლოდ ამ ოთხზეა). ასე ერთი დიალოგია და არა ორი.
 
    ⚠️ **`api/media.ts`-ს ეს ფაილი იმპორტირებული აქვს** (`pickParams`), ე.ი.
    აქედან `api/*`-ის იმპორტი წრეს შექმნიდა — წყაროების აწყობა გვერდებზეა.
    ============================================================ */
 
-/** `module_user.settings`-ის გასაღები — რამდენი და რომელი სტატუსებიდან (§17.4) */
+/** `module_user.settings`-ის გასაღები — რამდენი და რომელი სტატუსებიდან */
 export const PICK_SETTING = 'pick'
 
 /**
- * Tasks §52.1 — დიალოგის `NumberPick`-ის სია: „1 · 5 · 10 · სხვა" (ხელით —
+ * დიალოგის `NumberPick`-ის სია: „1 · 5 · 10 · სხვა" (ხელით —
  * `PICK_MAX`-მდე); ჭერი ბაზისაც არის (`PicksRandomRecords::$pickMax`).
  */
 export const PICK_COUNTS = [1, 5, 10]
@@ -30,7 +30,7 @@ export interface PickOptions {
   count?: number
   /** სტატუსის **გასაღებები** — `status[]` მასივად (სერვერზე „ან"-ით) */
   status?: string[]
-  /** უკვე ნაჩვენებები (§6.5) */
+  /** უკვე ნაჩვენებები */
   exclude?: number[]
 }
 
@@ -67,7 +67,7 @@ export function readPickSettings(settings: Record<string, unknown> | undefined):
 
 /**
  * ნაგულისხმევი ფარგლები: სიის ცხადად არჩეული სექცია, თუ არის; თორემ `todo`
- * როლის **ყველა** სტატუსი (როლით და არა სახელით — §6.4).
+ * როლის **ყველა** სტატუსი (როლით და არა სახელით).
  */
 export function defaultPickStatuses(statuses: Status[], current?: string | null): string[] {
   if (current && statuses.some((s) => s.key === current)) return [current]
@@ -98,7 +98,7 @@ export interface PickSource {
   currentStatus: string | null
   /** სიის დანარჩენი ფილტრის ანაბეჭდი — query-ის გასაღების ნაწილი */
   filterKey: string
-  /** ბარათის ფორმა — ჩონჩხები (§52.2) მას პასუხამდე ხატავენ */
+  /** ბარათის ფორმა — ჩონჩხები მას პასუხამდე ხატავენ */
   shape: PickRecord['shape']
   fetch: (opts: Required<PickOptions>) => Promise<PickRecord[]>
   setStatus: (id: number, statusKey: string) => Promise<unknown>

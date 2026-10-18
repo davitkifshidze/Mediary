@@ -11,7 +11,7 @@ import { formatBytes } from '@/lib/utils'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **ურნის გვერდი — ყველა სახე ერთად** (Tasks §29, ეტაპი 1).
+   **ურნის გვერდი — ყველა სახე ერთად**.
 
    ⚠️ მოწმდება ის, რასაც ტიპი ვერ ხედავს: ფაილის ჯგუფს საკუთარი სახელი
    აქვს (i18n) და ჩანაწერს — მოდულისა; ჩაკეტილი ალბომის ფოტო ბუნდოვანი
@@ -135,7 +135,7 @@ const payload: TrashPayload = {
         },
       ],
     },
-    // Tasks §37.7 — პირადი მოდული ჩანაწერებთან ერთად, ერთ ელემენტად
+    // პირადი მოდული ჩანაწერებთან ერთად, ერთ ელემენტად
     {
       kind: 'custom_module',
       category: 'entry',
@@ -244,7 +244,7 @@ describe('TrashPage', () => {
     expect(li.textContent).toContain(i18n.t('trash.blocked.module_disabled'))
   })
 
-  /* ⚠️ ეტაპი 5 — წერილი საბოლოოდ არ იშლება (§4.6), ამიტომ დადასტურება
+  /* ⚠️ წერილი საბოლოოდ არ იშლება, ამიტომ დადასტურება
      ფაილის „N MB გათავისუფლდება"-ს კი არა, „აღარ აღდგება"-ს ამბობს */
   it('shows a chat message with its scope and says deleting it only forgets it', async () => {
     await mount()
@@ -260,7 +260,7 @@ describe('TrashPage', () => {
     expect(document.body.textContent).toContain(i18n.t('trash.deleteMessageHint', { name: 'გამარჯობა' }))
   })
 
-  /* ⚠️ ეტაპი 7 — აუდიტის გასუფთავების სათაური კლიენტისაა (ენა), და „რამდენი
+  /* ⚠️ აუდიტის გასუფთავების სათაური კლიენტისაა (ენა), და „რამდენი
      ჩანაწერი გადაიტანა" ხაზი მას არ ეკუთვნის */
   it('titles an audit clean-up by its entry count and says why it cannot come back', async () => {
     await mount()
@@ -272,7 +272,7 @@ describe('TrashPage', () => {
     expect(restoreButton(li).disabled).toBe(true)
   })
 
-  /* ⚠️ §37.7 — მოდული ერთი ელემენტია: „რამდენი ჩანაწერით" მისი ხაზია
+  /* ⚠️ მოდული ერთი ელემენტია: „რამდენი ჩანაწერით" მისი ხაზია
      (კლასიფიკატორის „წაშლამ გადაიტანა" აქ ტყუილი იქნებოდა), და საბოლოო
      წაშლის დადასტურება ფაილებსაც ასახელებს */
   it('shows a trashed module as one element with its records', async () => {

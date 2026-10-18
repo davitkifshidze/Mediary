@@ -18,8 +18,8 @@ use Tests\TestCase;
 use ZipArchive;
 
 /**
- * **Tasks §59.4 — მთლიანი ბაზის / ცხრილების ექსპორტი (სუპერადმინი)** და
- * **§59.6ბ — იმავე JSON-ის ZIP-ით ცხრილების ჩანაცვლება** (უსაფრთხოების ასლით).
+ * **მთლიანი ბაზის / ცხრილების ექსპორტი (სუპერადმინი)** და
+ * **იმავე JSON-ის ZIP-ით ცხრილების ჩანაცვლება** (უსაფრთხოების ასლით).
  */
 class DatabaseExportTest extends TestCase
 {
@@ -107,7 +107,7 @@ class DatabaseExportTest extends TestCase
             ->assertJsonPath('message', 'mysqldump_unavailable');
     }
 
-    /* ---------- §59.6ბ — ჩანაცვლება JSON-ის ZIP-ით ---------- */
+    /* ---------- ჩანაცვლება JSON-ის ZIP-ით ---------- */
 
     public function test_only_the_super_admin_replaces_tables(): void
     {

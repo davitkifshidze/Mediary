@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * **TMDB-ის ეპიზოდი (FEAT-09) — გლობალური ფაქტი.**
+ * **TMDB-ის ეპიზოდი — გლობალური ფაქტი.**
  *
  * `BelongsToUser` აქ **განზრახ არ არის**: ეპიზოდის სახელი და ეთერის თარიღი
  * ყველა ანგარიშისთვის ერთია, ზუსტად ისე, როგორც `Genre` და `CastMember`.

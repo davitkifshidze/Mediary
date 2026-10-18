@@ -18,11 +18,11 @@ import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   ვიდეოს ტიპის დამატება/რედაქტირება (Tasks 5.1).
+   ვიდეოს ტიპის დამატება/რედაქტირება.
 
    ერთი და იმავე მოდალი ორ ადგილას მუშაობს:
-   · `/video-types` — სრული მართვა (ეტაპი 1)
-   · ვიდეოს ფორმის select-ის გვერდით „+ ახალი ტიპი" (ეტაპი 2),
+   · `/video-types` — სრული მართვა
+   · ვიდეოს ფორმის select-ის გვერდით „+ ახალი ტიპი",
      კონტექსტიდან გაუსვლელად.
    ============================================================ */
 
@@ -44,7 +44,7 @@ export function VideoTypeDialog({
     name_ka: type?.name_ka ?? '',
     name_en: type?.name_en ?? '',
     icon: type?.icon ?? ICON_NAMES[0],
-    // Tasks §19.2 — ბეჯის ფერი; `null` — ნაცრისფერი
+    // ბეჯის ფერი; `null` — ნაცრისფერი
     color: type?.color ?? null,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -74,7 +74,7 @@ export function VideoTypeDialog({
   return (
     <ModalShell title={t(type ? 'videoTypes.edit' : 'videoTypes.add')} onClose={onClose} wide>
       <form onSubmit={submit} className="mt-4 space-y-4">
-        {/* 2.3 — ველები ორ სვეტად, რომ მოდალი მაღალი არ გამოვიდეს */}
+        {/* ველები ორ სვეტად, რომ მოდალი მაღალი არ გამოვიდეს */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="vt-ka">{t('genres.name_ka')}</Label>
@@ -106,7 +106,7 @@ export function VideoTypeDialog({
           />
         </div>
 
-        {/* Tasks §19.2 — ფერი ბარათის ბეჯისთვის; იგივე პალიტრა, რაც სტატუსებს (§16) */}
+        {/* ფერი ბარათის ბეჯისთვის; იგივე პალიტრა, რაც სტატუსებს */}
         <ColorPick
           value={form.color ?? null}
           onChange={(color) => setForm((f) => ({ ...f, color }))}

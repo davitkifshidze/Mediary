@@ -78,7 +78,7 @@ const titles = () => visible().map((el) => el.textContent).filter(Boolean)
 
 const dialogs = visible
 
-describe('ModalShell — §37', () => {
+describe('ModalShell — ზომა და სქროლი', () => {
   function render(props: Record<string, unknown>) {
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -87,7 +87,7 @@ describe('ModalShell — §37', () => {
     return visible()[0] as HTMLElement
   }
 
-  it('grows with the screen: default 576 → 672, wide 1024 → 1152 → 1280 (§37.6)', () => {
+  it('grows with the screen: default 576 → 672, wide 1024 → 1152 → 1280', () => {
     const dialog = render({})
     expect(dialog.className).toContain('max-w-xl')
     expect(dialog.className).toContain('xl:max-w-2xl')
@@ -97,7 +97,7 @@ describe('ModalShell — §37', () => {
     for (const cls of ['max-w-5xl', 'xl:max-w-6xl', '2xl:max-w-7xl']) expect(wide.className).toContain(cls)
   })
 
-  it('is no longer centred by CSS — the top edge is placed once and stays (§37.4)', () => {
+  it('is no longer centred by CSS — the top edge is placed once and stays', () => {
     const dialog = render({})
     expect(dialog.className).not.toContain('top-1/2')
     expect(dialog.className).not.toContain('-translate-y-1/2')
@@ -118,7 +118,7 @@ describe('ModalShell — §37', () => {
     expect(anchorTop(null, 900, 1000)).toBe(50)
   })
 
-  it('scrolls the body with a stable scrollbar gutter and a margin-safe inner box (§37.2/§37.3)', () => {
+  it('scrolls the body with a stable scrollbar gutter and a margin-safe inner box', () => {
     const dialog = render({})
     const body = dialog.querySelector('.fb-modal-body') as HTMLElement
     expect(body.className).toContain('overflow-y-auto')

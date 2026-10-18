@@ -52,7 +52,7 @@ chmod +x setup.sh && ./setup.sh
 შექმნას შემოგთავაზებს) და `npm install`-ს.
 
 ⚠️ **ბაზის dump git-ში არ ინახება.** ის პაროლების ჰეშებს, სესიებს, პირად ჩატს და
-API ტოკენებს შეიცავს (Tasks SEC-01), ე.ი. ახალი კლონი ცარიელი ბაზით იწყება:
+API ტოკენებს შეიცავს, ე.ი. ახალი კლონი ცარიელი ბაზით იწყება:
 
 - პირველი სუპერ-ადმინი: `php artisan mediary:bootstrap-admin --name= --email= --username= --password=`
 - **საჩვენებელი მონაცემები** (სინთეზური, პერსონალური მონაცემის გარეშე): `php artisan mediary:seed-demo`
@@ -125,7 +125,7 @@ php artisan media:redownload --missing
 
 ## კონფიგურაცია
 
-- ⚠️ **გარე წყაროების გასაღებები `.env`-ში არ იწერება** (Tasks §30). TMDB · Gemini · RAWG ·
+- ⚠️ **გარე წყაროების გასაღებები `.env`-ში არ იწერება**. TMDB · Gemini · RAWG ·
   IGDB · SerpApi · Serper · YouTube · Telegram — ყოველი ანგარიში თავისას **`/credentials`**
   გვერდზე („მონაცემები") ჩაწერს; გასაღები დაშიფრულად ინახება (`APP_KEY`-ით), ლიმიტიც და ხარჯიც
   მისია. ვისაც გასაღები არ აქვს, მისთვის ის წყარო არ მუშაობს და აპი ამას ცხადად ამბობს.
@@ -133,15 +133,15 @@ php artisan media:redownload --missing
   FAIL-ს აბრუნებს. უფასო TMDB-ის გასაღები: https://www.themoviedb.org/settings/api
 - ⚠️ `APP_KEY` ინსტალაციისაა და მანქანებს შორის ბაზასთან **ერთად** გადადის — სხვა `APP_KEY`-ით
   შენახული გასაღებები ვეღარ გაიშიფრება („მონაცემებში" ეს ცხადად ჩანს).
-- ⚠️ `.env.example` **უსაფრთხო default-ებზეა** (`APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`
-  — Tasks SEC-11); `setup.sh`/`setup.ps1` ლოკალურ ინსტალაციაზე ორივეს ცხადად აბრუნებს,
+- ⚠️ `.env.example` **უსაფრთხო default-ებზეა** (`APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`);
+  `setup.sh`/`setup.ps1` ლოკალურ ინსტალაციაზე ორივეს ცხადად აბრუნებს,
   რადგან ლოკალურად `http://`-ზე secure-ქუქი საერთოდ არ იგზავნება.
 - `frontend/.env` — `VITE_API_URL` (backend-ის მისამართი). ⚠️ **ცარიელი მნიშვნელობა**
   ნიშნავს ფარდობით `/api`-ს და სწორედ ისაა საჭირო, როცა SPA და API ერთ origin-ზეა
   (იხ. „პროდაქშენში გაშვება") — Sanctum-ის cookie-რეჟიმი ამას ითხოვს.
 - ⚠️ `VITE_DEV_HOST` — მხოლოდ მაშინ, როცა dev-სერვერი პროქსის (Apache/nginx, პორტი 80)
   უკან დგას. ცარიელზე Vite ჩვეულებრივად მუშაობს. ადრე აქ `mediary.local` ჩაბეტონებული
-  იყო, ე.ი. იმ სახელის გარეშე მანქანაზე HMR **უხმოდ ვერ მუშაობდა** (Tasks GAP-17).
+  იყო, ე.ი. იმ სახელის გარეშე მანქანაზე HMR **უხმოდ ვერ მუშაობდა**.
 
 ## პროდაქშენში გაშვება
 
@@ -165,7 +165,7 @@ FRONTEND_URL=https://example.com
 SANCTUM_STATEFUL_DOMAINS=example.com
 # ⚠️ სესიის ქუქი თვითონაა შესვლა (Sanctum cookie) — HTTP-ზე ის არ უნდა გავიდეს
 SESSION_SECURE_COOKIE=true
-# ⚠️ საჯარო სერვერზე: სუპერ-ადმინი მხოლოდ `mediary:bootstrap-admin`-ით (Tasks SEC-15)
+# ⚠️ საჯარო სერვერზე: სუპერ-ადმინი მხოლოდ `mediary:bootstrap-admin`-ით
 FIRST_USER_IS_ADMIN=false
 ```
 
@@ -204,7 +204,7 @@ FIRST_USER_IS_ADMIN=false
         FallbackResource /index.html
     </Directory>
 
-    # ⚠️ **ჰედერები აქაც საჭიროა** (Tasks SEC-16 + GAP-17): SPA-ს HTML-სა და
+    # ⚠️ **ჰედერები აქაც საჭიროა**: SPA-ს HTML-სა და
     # `/storage/*`-ს **Laravel არ ემსახურება**, ე.ი. `SetSecurityHeaders` მათ
     # ვერ სწვდება — ორივე ფენას თავისი უნდა ჰქონდეს.
     Header always set X-Content-Type-Options "nosniff"

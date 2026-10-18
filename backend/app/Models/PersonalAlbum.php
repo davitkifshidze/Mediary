@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * **პირადი გალერეის ალბომი (Tasks §33)** — „გარეთ" (`person_id = null`) ან
+ * **პირადი გალერეის ალბომი** — „გარეთ" (`person_id = null`) ან
  * ადამიანის შიგნით.
  *
  * ⚠️ **ფოტოს ადამიანი ალბომისას მიჰყვება**: ადამიანის ალბომში მდგომი ფოტო
@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * „ფოტოებიც წაიშალოს" არჩევანზე ისინი ალბომთან ერთად რჩება — `personal_parent`
  * scope მათ მალავს, საბოლოო წაშლა კი შლის.
  *
- * ⚠️ **ჩაკეტვა (Tasks §33.7)**: ჩაკეტილი ალბომი სიაში ბოქლომიან ბარათად რჩება,
+ * ⚠️ **ჩაკეტვა**: ჩაკეტილი ალბომი სიაში ბოქლომიან ბარათად რჩება,
  * მისი ფოტოები კი იმალება (`PersonalMedia::lockScope()`); ჩაკეტილი ადამიანის
  * ალბომი საერთოდ არ ჩანს (`personal_lock`) — ის ადამიანის ნაწილია.
  */
@@ -55,7 +55,7 @@ class PersonalAlbum extends Model
                 ->orWhereNotIn("{$table}.person_id", fn ($sub) => $sub->select('id')->from('persons')->whereNotNull('trashed_at')));
         });
 
-        // §33.7 — ჩაკეტილი (ამ სესიაში დაუხსნელი) ადამიანის ალბომი მასთან ერთად იმალება
+        // ჩაკეტილი (ამ სესიაში დაუხსნელი) ადამიანის ალბომი მასთან ერთად იმალება
         static::addGlobalScope('personal_lock', fn (Builder $q) => RecordLocks::exclude(
             $q,
             'personal',

@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **ინტერფეისის ენა ორივე მხრიდან** (Tasks GAP-12).
+ * **ინტერფეისის ენა ორივე მხრიდან**.
  *
  * ორი ნახევარია და ორივე საჭირო:
  *
@@ -31,7 +31,7 @@ class ApiLanguageTest extends TestCase
     {
         parent::setUp();
 
-        // ⚠️ TMDB-ის პირადი გასაღები განზრახ არ ეძლევა (Tasks §30)
+        // ⚠️ TMDB-ის პირადი გასაღები განზრახ არ ეძლევა
         $this->seed(ModulesSeeder::class);
 
         $this->user = User::create([
@@ -44,7 +44,7 @@ class ApiLanguageTest extends TestCase
         $this->user->refresh();
     }
 
-    /** Tasks §30.6 — გასაღების არქონა ერთი კოდით და წყაროს სახელით ითქმის */
+    /** გასაღების არქონა ერთი კოდით და წყაროს სახელით ითქმის */
     public function test_a_missing_tmdb_key_answers_with_a_code(): void
     {
         $this->actingAs($this->user)

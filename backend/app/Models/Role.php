@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * როლი (Tasks 1.6) — **გლობალური** ლექსიკონი, არა per-user.
+ * როლი — **გლობალური** ლექსიკონი, არა per-user.
  *
- * უფლება მოდულის შიდა CRUD-ია (19.8): `permissions` = `{"<module>": ["view", …]}`.
+ * უფლება მოდულის შიდა CRUD-ია: `permissions` = `{"<module>": ["view", …]}`.
  * `null` = შეზღუდვის გარეშე (`super_admin`).
  *
  * ⚠️ **„ყველა მოდულის" ნიღაბი (`"*"`) აღარ არსებობს (2026-09-15, შენი
@@ -26,7 +26,7 @@ class Role extends Model
     public const ACTIONS = ['view', 'create', 'update', 'delete'];
 
     /**
-     * **ადმინის სექციები (Tasks 1.6)** — მოდულები არ არიან, მაგრამ იმავე
+     * **ადმინის სექციები** — მოდულები არ არიან, მაგრამ იმავე
      * მატრიცაში ცხოვრობენ: `permissions` JSON-ს ეს თავისუფლად იტევს.
      *
      * ⚠️ **გასაღები `admin:`-ით იწყება განზრახ.** უპრეფიქსოდ ხვალინდელი
@@ -57,7 +57,7 @@ class Role extends Model
     /**
      * აქვს თუ არა ამ როლს კონკრეტული მოქმედების უფლება მოდულზე.
      *
-     * ⚠️ **`permissions === null` აღარ ნიშნავს „ყველაფერს" (Tasks SEC-10).**
+     * ⚠️ **`permissions === null` აღარ ნიშნავს „ყველაფერს".**
      * ცარიელი მნიშვნელობა სრულ წვდომად იკითხებოდა ყველა მოდულსა და ადმინის
      * სექციაზე, ე.ი. ყველაზე არასაიმედო default, რაც შეიძლება არსებობდეს.
      * API ასეთ რიგს ვეღარ ქმნიდა (`cleanPermissions()` მასივს აბრუნებს),
@@ -78,13 +78,13 @@ class Role extends Model
     }
 
     /**
-     * **ადმინის სექციაზე წვდომა (Tasks 1.6)** — `/users`, `/roles`, `/requests`.
+     * **ადმინის სექციაზე წვდომა** — `/users`, `/roles`, `/requests`.
      *
      * ⚠️ **წვდომა მხოლოდ ცხადად ჩაწერილი `admin:<resource>`-ით მიიღება.**
      * არც ერთი მოდულის უფლება — რამდენიც უნდა იყოს — აქ არ ვრცელდება:
      * ეს უფლების გაფართოებაა და არა მოხერხებულობა.
      *
-     * ⚠️ **არც `permissions === null` (Tasks SEC-10)** — იხ. `allows()`.
+     * ⚠️ **არც `permissions === null`** — იხ. `allows()`.
      */
     public function allowsAdmin(string $resource, string $action): bool
     {
@@ -98,7 +98,7 @@ class Role extends Model
     }
 
     /**
-     * **SEC-02 — აძლევს თუ არა ეს როლი ისეთ ადმინ-ძალაუფლებას, რაც `$other`-ს არ აქვს?**
+     * **აძლევს თუ არა ეს როლი ისეთ ადმინ-ძალაუფლებას, რაც `$other`-ს არ აქვს?**
      *
      * „`admin:users`-ის მქონე" სხვის — და საკუთარ — ანგარიშს როლს უცვლის;
      * თუ ეს კითხვა არ ჰკითხოს, ერთ `PATCH`-ით `super_admin` ხდება, ე.ი.
@@ -154,7 +154,7 @@ class Role extends Model
     /** სახელიდან უნიკალური key — ქართულ სახელზეც მუშაობს (slug ცარიელი გამოდის) */
     public static function makeKey(string $name): string
     {
-        // ⚠️ იგივე ალგორითმი, რაც ლექსიკონებს (`DictionaryKey`, §B3) — ოღონდ
+        // ⚠️ იგივე ალგორითმი, რაც ლექსიკონებს (`DictionaryKey`) — ოღონდ
         // როლი **გლობალურია**, ე.ი. `user_id`-ის ფილტრი აქ არ არსებობს
         return DictionaryKey::make(
             $name,

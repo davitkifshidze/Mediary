@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * პრეცედენტი), და მრიცხველი მას ცხადად, `CredentialStore::quotaOwner()`-ით
  * ირჩევს — ფონურ სამუშაოსა და ტესტში `Auth::id()` შეიძლება სხვა იყოს.
  *
- * ⚠️ **ლიმიტი მომხმარებლისაა (Tasks §30)**: გასაღები ყველას თავისი აქვს, ე.ი.
+ * ⚠️ **ლიმიტი მომხმარებლისაა**: გასაღები ყველას თავისი აქვს, ე.ი.
  * „მთელი ინსტალაციის ჯამი" აღარაფერს ნიშნავს — სხვისი თარგმანი ჩემს კვოტას
  * არ ხარჯავს, რადგან Google-ს ჩემი გასაღები საერთოდ არ უნახავს.
  */
@@ -28,7 +28,7 @@ class TranslationUsage extends Model
     public const PROVIDER_GEMINI = 'gemini';
 
     /**
-     * რამდენი თვე ვინახავთ (Tasks DEBT-24).
+     * რამდენი თვე ვინახავთ.
      *
      * ⚠️ **ლიმიტის ფანჯარა ერთი დღეა** (`usedToday`) და RPM — ერთი წუთი,
      * ე.ი. სამი თვის იქით რიგი მხოლოდ ისტორიაა. `serp_searches`-ის იგივე
@@ -72,7 +72,7 @@ class TranslationUsage extends Model
     public static function dayStart(): CarbonImmutable
     {
         /* ⚠️ ფანჯარა Pacific-ისაა (Google-ის ლიმიტი), **ნორმალიზება კი
-           აპლიკაციის ზონისა** (Tasks §8): `created_at` ამ ზონით იწერება და
+           აპლიკაციის ზონისა**: `created_at` ამ ზონით იწერება და
            იკითხება, ე.ი. `->utc()` შედარებას 4 საათით ააცდენდა. */
         return CarbonImmutable::now(self::QUOTA_TIMEZONE)->startOfDay()->setTimezone(AppTime::zone());
     }
@@ -80,7 +80,7 @@ class TranslationUsage extends Model
     /**
      * ამ მომხმარებლის დღევანდელი გამოძახებები.
      *
-     * ⚠️ **საერთო შტო აღარ არსებობს (Tasks §30).** აქამდე `null` „მთელ
+     * ⚠️ **საერთო შტო აღარ არსებობს.** აქამდე `null` „მთელ
      * ინსტალაციას" ნიშნავდა (საერთო `.env` გასაღები) — ახლა ის ნიშნავს,
      * რომ მომხმარებელი არ არის (CLI), ე.ი. გასაღებიც არ არის და დასათვლელი
      * არაფერია. `0` და არა „ყველასი": სხვისი ხარჯის ჩათვლა ჩემს ლიმიტს
@@ -117,7 +117,7 @@ class TranslationUsage extends Model
      * მხოლოდ წასაშლელად ფუჭი ხარჯია.
      *
      * ⚠️ ზღვარი `AppTime`-იდან მოდის და არა `CarbonImmutable::now()`-იდან:
-     * `created_at` აპლიკაციის ზონაშია ჩაწერილი (§8) და ამ ფაილის
+     * `created_at` აპლიკაციის ზონაშია ჩაწერილი და ამ ფაილის
      * `QUOTA_TIMEZONE` აქ არ მოქმედებს — ის Google-ის ლიმიტის ფანჯარაა.
      */
     public function prunable(): Builder

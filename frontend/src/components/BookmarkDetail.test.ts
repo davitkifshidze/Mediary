@@ -11,7 +11,7 @@ import type { Status } from '@/api/types'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **ბუკმარკის დეტალის ფანჯარა** (Tasks §36.6).
+   **ბუკმარკის დეტალის ფანჯარა**.
 
    ⚠️ მოწმდება: „ბმულის გახსნა" ფანჯრის შიგნითაა, ახალ ჩანართში იხსნება და
    „გახსნის" მთვლელს ზრდის; დამატებითი ბმულები ბარათებადაა (ტიპი, დომენი, ფასი);
@@ -162,7 +162,7 @@ async function mount(gallery = true) {
 
 const button = (label: string) => [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)
 
-describe('BookmarkDetail (§36)', () => {
+describe('BookmarkDetail', () => {
   it('opens the link in a new tab from inside the window and counts the visit', async () => {
     await mount()
 

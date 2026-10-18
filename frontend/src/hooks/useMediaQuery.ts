@@ -1,7 +1,7 @@
 import { useCallback, useSyncExternalStore } from 'react'
 
 /* ============================================================
-   **CSS media query-ის პასუხი React-ში** (Tasks §35).
+   **CSS media query-ის პასუხი React-ში**.
 
    ⚠️ **`useSyncExternalStore` და არა `useState` + `useEffect`**: ეფექტი
    პირველ დახატვას *შემდეგ* გაიგებდა სიგანეს, ე.ი. ფართო ეკრანზე დამკვრელი

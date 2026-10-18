@@ -21,7 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * **ინტერფეისიდან შექმნილი მოდულის ჩანაწერები (Tasks §37.1/§37.3).**
+ * **ინტერფეისიდან შექმნილი მოდულის ჩანაწერები.**
  *
  * ერთი კონტროლერი ყველა პირად მოდულზე — მარშრუტი `/custom/{type}/…`,
  * სადაც `{type}` მოდულის გასაღებია (`module:@type` + `permission:@type`).
@@ -32,7 +32,7 @@ use Illuminate\Validation\Rule;
  * ჩანაწერი მოდულზეც მოწმდება (`record()`), და სია `forModule()`-ით იგება.
  *
  * ⚠️ **გამამდიდრებელი წყარო არ არსებობს** (ბუკმარკის წესი): ერთადერთი
- * დახმარება ბმულის გვერდის `<head>`-ია (`LinkResolver` — §44.1).
+ * დახმარება ბმულის გვერდის `<head>`-ია (`LinkResolver`).
  */
 class CustomRecordController extends Controller
 {
@@ -41,7 +41,7 @@ class CustomRecordController extends Controller
     public function index(Request $request, string $type)
     {
         $query = CustomRecord::query()->forModule($type)->with('category');
-        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, $type, $request);
 
         foreach ($this->slugList($request->string('status')->toString()) as $key) {
@@ -63,7 +63,7 @@ class CustomRecordController extends Controller
         if ($q = $request->string('q')->toString()) {
             $query->where(fn (Builder $inner) => $inner
                 ->where('title', 'like', Like::contains($q))
-                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // §47 — ფორმატის გარეშე
+                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // ფორმატის გარეშე
                 ->orWhere('url', 'like', Like::contains($q))
                 ->orWhere('tags', 'like', Like::contains($q)));
         }
@@ -89,7 +89,7 @@ class CustomRecordController extends Controller
      * ⚠️ ჩავარდნა 200-ია ცარიელი ველებით (ბუკმარკის წესი): დახურული
      * გვერდი ჩვეულებრივი ამბავია და ხელით შევსებას არ უნდა უშლიდეს.
      */
-    /** Tasks §44.1 — ერთი წყარო (`LinkResolver`): YouTube-ის ბმულზეც სრული ინფო */
+    /** ერთი წყარო (`LinkResolver`): YouTube-ის ბმულზეც სრული ინფო */
     public function metadata(Request $request, string $type, LinkResolver $links)
     {
         $data = $request->validate(['url' => ['required', 'string', 'max:1000', 'url']]);
@@ -117,7 +117,7 @@ class CustomRecordController extends Controller
         return new CustomRecordResource($record->load('category'));
     }
 
-    /** ⚠️ ურნაში (FEAT-11 → Tasks §29) — ფაილები, ველები და კვოტა ადგილზე რჩება */
+    /** ⚠️ ურნაში — ფაილები, ველები და კვოტა ადგილზე რჩება */
     public function destroy(string $type, CustomRecord $record)
     {
         $this->record($type, $record)->moveToTrash();
@@ -150,12 +150,12 @@ class CustomRecordController extends Controller
     }
 
     /**
-     * **მასობრივი სტატუსი (Tasks §37.5)** — `POST /custom/{key}/bulk-status`,
+     * **მასობრივი სტატუსი** — `POST /custom/{key}/bulk-status`,
      * `RecordStatusController::bulkUpdate()`-ის ფორმა: ან კონკრეტული `ids`, ან
      * `from_status`-ის მქონე ყველა; ცარიელი სკოუპი 422-ია და არასდროს „ყველა".
      *
      * ⚠️ **ციკლი მოდელით და არა `update()` query-ზე**: `finished_at`-ის ერთადერთი
-     * მწერალი `applyStatus()`-ია (BUG-05-ის გაკვეთილი), აუდიტ-ლოგიც მოდელის
+     * მწერალი `applyStatus()`-ია, აუდიტ-ლოგიც მოდელის
      * ივენთზე დგას. ⚠️ **მოდულით ჭრილი** — სხვა პირადი მოდულის id `ids`-ში
      * ჩუმად გამოტოვდება (`queryFor()`).
      */
@@ -213,7 +213,7 @@ class CustomRecordController extends Controller
 
         /* ⚠️ **სტატუსი და კლასიფიკაცია სავალდებულოა — როცა არსებობს** (2026-09-16-ის
            წესი: ჩანაწერი სტატუსისა და ტიპის გარეშე არ ინახება). პირადი მოდული
-           შეიძლება **ცარიელი სტატუსებით** შეიქმნა (37.2) ან კლასიფიკაციის
+           შეიძლება **ცარიელი სტატუსებით** შეიქმნა ან კლასიფიკაციის
            გარეშე — მაშინ სავალდებულო ველი ვერასდროს შეივსებოდა და შენახვა
            სამუდამოდ ჩაიკეტებოდა. რედაქტირებისას `sometimes` (`$must`-ის წესი). */
         $hasStatuses = Status::keysFor($userId, $type) !== [];
@@ -292,13 +292,13 @@ class CustomRecordController extends Controller
         }
 
         if ($request->boolean('remove_photo')) {
-            // Tasks §29, ეტაპი 4 — ძველი ატვირთული ფაილი ურნაში
+            // ძველი ატვირთული ფაილი ურნაში
             ColumnTrash::capture($record, 'photo_path');
             $record->photo_path = null;
         }
 
         if ($request->hasFile('photo')) {
-            // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
+            // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
             ColumnTrash::capture($record, 'photo_path');
             $record->photo_path = $this->meter
                 ->storeUpload($request->user(), $request->file('photo'), StorageFolder::customPhotos($type));
@@ -319,7 +319,7 @@ class CustomRecordController extends Controller
             return;
         }
 
-        // §44.1 — ფორმის probe-ის იგივე წყარო და ქეში
+        // ფორმის probe-ის იგივე წყარო და ქეში
         $meta = app(LinkResolver::class)->resolve((string) $record->url);
 
         if (! $record->title && $meta['title']) {

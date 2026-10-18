@@ -5,13 +5,13 @@ namespace App\Support;
 use App\Models\ApprovalRequest;
 
 /**
- * **შეტყობინების სახეები (FEAT-19) — ერთი რეესტრი.**
+ * **შეტყობინების სახეები — ერთი რეესტრი.**
  *
  * ⚠️ **ტექსტი აქ არ წერია და ვერც დაიწერება.** სახე მანქანური კოდია,
  * წინადადება კი i18n-შია (`notifications.kind.<type>`) — ენა ბრაუზერში
  * ირჩევა, ე.ი. ბაზაში ჩაწერილი ქართული წინადადება ინგლისურ ინტერფეისზე
  * ქართულად დარჩებოდა. იგივე წესი, რის გამოც `status.*` გასაღებები
- * წაიშალა (§6.4).
+ * წაიშალა.
  *
  * ⚠️ **ახალი სახე = ერთი კონსტანტა აქ + ორი თარგმანი**; UI-ს ცალკე
  * შესწორება არ სჭირდება, რადგან ის `type`-ს ხატავს და არა `switch`-ს.
@@ -29,22 +29,22 @@ final class NotificationType
     /** საცავი ივსება — `StorageMeter::WARN_AT` / `CRITICAL_AT` გადაილახა */
     public const STORAGE_WARNING = 'storage_warning';
 
-    /** ბაზის ასლი ჩავარდა (§22) */
+    /** ბაზის ასლი ჩავარდა */
     public const BACKUP_FAILED = 'backup_failed';
 
     /** ფონური პარტია დასრულდა (სინქრონი · გალერეა · თარგმანი) */
     public const BATCH_DONE = 'batch_done';
 
-    /** Tasks §37 — მომხმარებელმა ახალი მოდული შექმნა (ყველა სუპერადმინს, გარდა საკუთარი თავისა) */
+    /** მომხმარებელმა ახალი მოდული შექმნა (ყველა სუპერადმინს, გარდა საკუთარი თავისა) */
     public const MODULE_CREATED = 'module_created';
 
-    /** Tasks §37.7 — მომხმარებელმა თავისი მოდული წაშალა (ურნაში) */
+    /** მომხმარებელმა თავისი მოდული წაშალა (ურნაში) */
     public const MODULE_DELETED = 'module_deleted';
 
-    /** Tasks §37.8 — სუპერადმინმა პირადი მოდული გამორთო (მფლობელს) */
+    /** სუპერადმინმა პირადი მოდული გამორთო (მფლობელს) */
     public const MODULE_DISABLED = 'module_disabled';
 
-    /** Tasks §40.8 — ვიღაცამ ჩემი გაზიარების ბმულიდან ჩანაწერები დაიმატა (ერთი მიმღებზე დღეში) */
+    /** ვიღაცამ ჩემი გაზიარების ბმულიდან ჩანაწერები დაიმატა (ერთი მიმღებზე დღეში) */
     public const SHARE_IMPORTED = 'share_imported';
 
     /** @var list<string> */
@@ -71,7 +71,7 @@ final class NotificationType
      */
     public static function route(string $type, array $data = []): ?string
     {
-        /* ⚠️ მოთხოვნის შედეგი **თავისი სახლის** გვერდზე მიდის (Tasks §34.5):
+        /* ⚠️ მოთხოვნის შედეგი **თავისი სახლის** გვერდზე მიდის:
            ატვირთვის ლიმიტი `/settings`-ზე ჩანს, საცავი — `/profile`-ზე, ჟანრი —
            `/genres`-ზე; ყველა
            მოთხოვნის `/modules`-ზე გაგზავნა ადამიანს იქ მიიყვანდა, სადაც ეს
@@ -88,8 +88,8 @@ final class NotificationType
         return match ($type) {
             self::STORAGE_WARNING => '/profile',
             self::BACKUP_FAILED => '/backups',
-            /* ⚠️ §37 — სუპერადმინი **სიას** ხედავს და არა მოდულს: სხვისი
-               პირადი მოდულის გვერდი მისთვისაც 404-ია (Q41), ზედამხედველობის
+            /* ⚠️ სუპერადმინი **სიას** ხედავს და არა მოდულს: სხვისი
+               პირადი მოდულის გვერდი მისთვისაც 404-ია, ზედამხედველობის
                ჯგუფი კი `/modules`-ზეა. მფლობელი კი თავის მოდულზე მიდის. */
             self::MODULE_CREATED, self::MODULE_DELETED => '/modules',
             self::MODULE_DISABLED => isset($data['module_key']) ? '/modules/'.$data['module_key'] : '/modules',

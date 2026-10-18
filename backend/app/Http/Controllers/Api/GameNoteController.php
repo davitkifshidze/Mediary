@@ -9,7 +9,7 @@ use App\Models\GameNote;
 use App\Support\RichText;
 use Illuminate\Http\Request;
 
-/** თამაშის ჩანიშვნები (Tasks §11.1) — საკუთარი ცხრილი `game_notes` */
+/** თამაშის ჩანიშვნები — საკუთარი ცხრილი `game_notes` */
 class GameNoteController extends Controller
 {
     public function index(Game $game)
@@ -40,7 +40,7 @@ class GameNoteController extends Controller
 
     public function destroy(GameNote $gameNote)
     {
-        // ⚠️ ურნა (Tasks §29, ეტაპი 2) — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
+        // ⚠️ ურნა — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
         $gameNote->moveToTrash();
 
         return response()->noContent();

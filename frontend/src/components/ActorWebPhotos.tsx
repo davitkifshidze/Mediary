@@ -11,7 +11,7 @@ import { TagSelect } from '@/components/TagSelect'
 import { WebImageDialog } from '@/components/WebImageDialog'
 
 /* ============================================================
-   მსახიობის ფოტოები ვებიდან, ტეგებით (Tasks §7.5).
+   მსახიობის ფოტოები ვებიდან, ტეგებით.
 
    ⚠️ **ტეგი აქ „რა შინაარსის ფოტო მინდა"-ა** და არა კლასიფიკაცია: ის
    პირდაპირ ძებნის შეკითხვაში მიდის („Keanu Reeves" + „პორტრეტი"). სწორედ
@@ -103,7 +103,7 @@ export function ActorWebPhotos({
           id={actorId}
           initialQuery={query}
           title={t('web.searchPhotosFor', { name: actorName })}
-          // §5.2 — აქ კონტექსტი თვითონ მსახიობია და ფოტოც მას მიება
+          // აქ კონტექსტი თვითონ მსახიობია და ფოტოც მას მიება
           context={{ base: actorName, attachesTo: actorName }}
           onClose={() => setOpen(false)}
           onImported={() => {

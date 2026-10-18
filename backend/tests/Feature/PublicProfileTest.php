@@ -14,10 +14,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * **Tasks §16.1 — საჯარო პროფილი.**
+ * **საჯარო პროფილი.**
  *
  * ტესტი სამ ფენას იჭერს (პროფილი → მოდული → ჩანაწერი) და იმ ერთ ხაფანგს,
- * რომელიც `Tasks.md`-ში ⚠️-ით იყო ჩაწერილი: `BelongsToUser`-ის global scope
+ * რომელიც ყველაზე ადვილად გამოგრჩება: `BelongsToUser`-ის global scope
  * `owner` ავტორიზაციის გარეშე **საერთოდ არ მუშაობს**, ე.ი. საჯარო query-ს
  * `user_id` ცხადად უნდა ეწეროს — თორემ ერთი პროფილი ყველას ბიბლიოთეკას აჩვენებდა.
  */
@@ -76,7 +76,7 @@ class PublicProfileTest extends TestCase
         $user->modules()->syncWithoutDetaching([$id => ['is_public' => true]]);
     }
 
-    /* ---------- §6.1 — ხილვადობის ცენტრალური მართვა ---------- */
+    /* ---------- ხილვადობის ცენტრალური მართვა ---------- */
 
     /**
      * სია მხოლოდ **საკუთარ** ჩანაწერებს აჩვენებს და ჯამებს ფილტრამდე თვლის.
@@ -154,7 +154,7 @@ class PublicProfileTest extends TestCase
     }
 
     /**
-     * **მასობრივი გადართვა ლოგში ჩანს** (Tasks BUG-06).
+     * **მასობრივი გადართვა ლოგში ჩანს**.
      *
      * ⚠️ `update()` query-builder-ზეა, ე.ი. `AuditObserver` მას ვერ ხედავს:
      * `all: true`-ით მთელი ბიბლიოთეკა საჯარო ხდებოდა **ნულ ჩანაწერზე**,
@@ -198,7 +198,7 @@ class PublicProfileTest extends TestCase
         $this->assertSame('private', $theirs->refresh()->visibility);
     }
 
-    /** `note` საერთოდ არ არის დომენი (§16.5) — არც სია და არც გადართვა */
+    /** `note` საერთოდ არ არის დომენი — არც სია და არც გადართვა */
     public function test_note_domain_has_no_visibility_endpoints(): void
     {
         $this->actingAs($this->alice)->getJson('/api/visibility/note')->assertNotFound();
@@ -255,7 +255,7 @@ class PublicProfileTest extends TestCase
     }
 
     /**
-     * ⚠️ 16.5-ის მკაცრი წესი: `note` პირად დოკუმენტებს ინახავს და საჯარო
+     * ⚠️ მკაცრი წესი: `note` პირად დოკუმენტებს ინახავს და საჯარო
      * პროფილზე **საერთოდ არ ჩნდება** — `is_public = true`-საც კი არ აქვს ეფექტი.
      */
     public function test_note_module_can_never_become_public(): void
@@ -299,7 +299,7 @@ class PublicProfileTest extends TestCase
     }
 
     /**
-     * **Tasks §2 — კურსი და ადგილი საჯარო ბარათს იღებს.**
+     * **კურსი და ადგილი საჯარო ბარათს იღებს.**
      *
      * `card()`-ის `match`-ს ორივე შტო აკლდა და `default` არ ჰქონდა, ე.ი.
      * პირველი საჯარო კურსი ხილვადობის სიას და საჯარო პროფილს 500-ით
@@ -406,7 +406,7 @@ class PublicProfileTest extends TestCase
             ->assertJsonPath('data.bio', 'გამარჯობა');
     }
 
-    /** 1.3 (🔗 16) — abuse-ის შემთხვევაში ადმინს იძულებით დაპრივატება შეუძლია */
+    /** abuse-ის შემთხვევაში ადმინს იძულებით დაპრივატება შეუძლია */
     public function test_admin_can_force_a_profile_private(): void
     {
         $admin = $this->makeUser('admin');
@@ -436,7 +436,7 @@ class PublicProfileTest extends TestCase
     }
 
     /**
-     * **§6 ფაზა 4 → §16 — per-field საჯაროობა.**
+     * **per-field საჯაროობა.**
      *
      * ⚠️ წყვეტს **ჩანაწერის მფლობელი** და არა მნახველი: საჯარო პროფილზე
      * ჩემი ველი ჩემი არჩევანით ჩანს ან იმალება.
@@ -471,7 +471,7 @@ class PublicProfileTest extends TestCase
     }
 
     /**
-     * **`per_page`-ს ქვედა ზღვარიც სჭირდება** (აუდიტი 2026-09-14, §B4).
+     * **`per_page`-ს ქვედა ზღვარიც სჭირდება**.
      *
      * ⚠️ `Builder::limit()` **უარყოფით** მნიშვნელობას ჩუმად უგულებელყოფს
      * (`if ($value >= 0)`), ე.ი. `?per_page=-1` `LIMIT`-ს საერთოდ აშორებდა

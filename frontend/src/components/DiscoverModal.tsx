@@ -81,7 +81,7 @@ export function DiscoverModal({
     rating_max: searching ? undefined : num(ratingMax),
     sort: searching ? undefined : sort,
     page,
-    // E3 — სიღრმე/გვერდის ზომა პარამეტრებიდან
+    // სიღრმე/გვერდის ზომა პარამეტრებიდან
     max_pages: settings.discoverMaxPages,
     per_page: settings.discoverPerPage,
   }
@@ -94,10 +94,10 @@ export function DiscoverModal({
     retry: (count, e) => count < 1 && !isApiCode(e, 'credential_missing'),
   })
 
-  /* Tasks §30.6 — **ჩემი TMDB-ის გასაღები არ მაქვს** (409 `credential_missing`).
+  /* **ჩემი TMDB-ის გასაღები არ მაქვს** (409 `credential_missing`).
      ⚠️ ადრე შეცდომა საერთოდ არ იკითხებოდა: ცარიელი `q.data` „ვერაფერი
      მოიძებნა"-დ იხატებოდა, ე.ი. გასაღების არქონა და მკვდარი წყარო
-     კატალოგის სიცარიელედ ეჩვენებოდა — ზუსტად ის, რასაც §30.6 კრძალავს. */
+     კატალოგის სიცარიელედ ეჩვენებოდა, თუმცა ეს შემთხვევები ცალ-ცალკე უნდა ჩანდეს. */
   const noKey = isApiCode(q.error, 'credential_missing')
 
   // ხელახალი წამოღება TMDB-დან (ქეშის გვერდის ავლით)
@@ -118,7 +118,7 @@ export function DiscoverModal({
        იდგა და მოდალი დაბალი იყო, ბადის მოსვლაზე კი მკვეთრად ხტებოდა.
        ⚠️ „საბოლოო ზომის" გამოთვლა **არ გამოდგებოდა** — რიგების რაოდენობა
        `per_page`-ზეა დამოკიდებული (პარამეტრია), ე.ი. ხტუნვა დარჩებოდა.
-       Tasks §37.6 — საერთო `ModalShell` (`fill` — 90vh), სიგანე ეკრანის მიხედვით. */
+       საერთო `ModalShell` (`fill` — 90vh), სიგანე ეკრანის მიხედვით. */
     <ModalShell title={t('discover.title')} onClose={() => onOpenChange(false)} wide fill>
       {/* ძებნა სახელით + განახლება */}
       <div className="mt-4 flex gap-2">
@@ -327,7 +327,7 @@ export function DiscoverModal({
         )}
       </div>
 
-      {/* Tasks §46 — ნომრები. ⚠️ „მეტის ჩვენება" აქ არაა: TMDB-ის გვერდი ქეშირებულია და „განახლება"
+      {/* ნომრები. ⚠️ „მეტის ჩვენება" აქ არაა: TMDB-ის გვერდი ქეშირებულია და „განახლება"
           მთელ გვერდს ერთ ჩანაწერად ცვლის (`setQueryData`) — დამატებული გვერდები მას დაშორდებოდა */}
       {q.data && q.data.total_pages > 1 && (
         <Pagination className="mt-4" page={q.data.page} lastPage={q.data.total_pages} total={null} onPage={setPage} />

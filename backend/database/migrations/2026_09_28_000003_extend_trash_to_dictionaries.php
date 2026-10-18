@@ -7,9 +7,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **ურნა კლასიფიკატორის რიგზე (Tasks §29, ეტაპი 3)** — სტატუსი, ჟანრი, ტიპი, კატეგორია.
+ * **ურნა კლასიფიკატორის რიგზე** — სტატუსი, ჟანრი, ტიპი, კატეგორია.
  *
- * `trashed_at` — ეტაპი 1–2-ის იგივე ციკლი (`TrashDomain::itemTables()`) და
+ * `trashed_at` — წინა ორი მიგრაციის იგივე ციკლი (`TrashDomain::itemTables()`) და
  * იგივე დაცვა. ⚠️ **`trash_meta`** — რომელი ჩანაწერები გადაიტანა წაშლამ:
  * აღდგენა მათ დაბრუნებას **შემოგთავაზებს** (`DictionaryTrash`), და მხოლოდ
  * მათ, ვინც მას შემდეგ არ შეცვლილა.
@@ -53,6 +53,6 @@ return new class extends Migration
             }
         }
 
-        // ⚠️ `trashed_at`-ს ეტაპი 1-ის მიგრაციის `down()` შლის — ყველას ერთი ციკლი აქვს
+        // ⚠️ `trashed_at`-ს `extend_trash_to_files`-ის `down()` შლის — ყველას ერთი ციკლი აქვს
     }
 };

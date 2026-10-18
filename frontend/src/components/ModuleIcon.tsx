@@ -112,7 +112,7 @@ import {
 } from 'lucide-react'
 
 /* ============================================================
-   **მოდულის, სტატუსის, ტიპისა და კატეგორიის ხატულა სახელით (Tasks §1).**
+   **მოდულის, სტატუსის, ტიპისა და კატეგორიის ხატულა სახელით.**
 
    ორდონიანი რუკაა და ორივე დონე საჭიროა:
 
@@ -155,12 +155,12 @@ const GROUPS = [
   },
   {
     key: 'games',
-    // Tasks §24 — პლატფორმები/რეჟიმები/ჟანრები (`lib/gameMeta.ts`, `GameGenre::DEFAULTS`)
+    // პლატფორმები/რეჟიმები/ჟანრები (`lib/gameMeta.ts`, `GameGenre::DEFAULTS`)
     icons: { Gamepad2, Gamepad, Dices, Puzzle, Trophy, Swords, Sword, Joystick, Monitor, Smartphone, Sofa, Crosshair, Castle, Car, Ghost, Compass, Footprints, Target },
   },
   {
     key: 'state',
-    // Tasks §35.5 — `Lock`: მედიის ფსევდო-განყოფილება „ჩაკეტილები"
+    // `Lock`: მედიის ფსევდო-განყოფილება „ჩაკეტილები"
     icons: { HelpCircle, Circle, CircleDot, Eye, EyeOff, Lock, Clock, Hourglass, Play, Pause, CheckCircle2, CheckCheck, Check, Archive, Inbox },
   },
   {
@@ -177,7 +177,7 @@ const GROUPS = [
   },
   {
     key: 'life',
-    // Tasks §34 — მორიგეობა: მოდული (`CalendarClock`) და ტიპები (დღე · საღამო · ღამე)
+    // მორიგეობა: მოდული (`CalendarClock`) და ტიპები (დღე · საღამო · ღამე)
     icons: { Utensils, Coffee, ShoppingCart, Briefcase, Dumbbell, Wrench, Lightbulb, Wallet, Calendar, CalendarClock, Sun, Sunset, Moon, Bell, MessageSquare, Settings, Shield },
   },
   {

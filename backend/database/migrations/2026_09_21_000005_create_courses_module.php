@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **კურსების მოდული (FEAT-25).**
+ * **კურსების მოდული.**
  *
  * ონლაინ-კურსი (Udemy · Coursera · YouTube-პლეილისტი) დღემდე ან „ვიდეო"
  * იყო, ან „ბუკმარკი" — არც გაკვეთილების პროგრესი ჰქონდა, არც სერტიფიკატის
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Schema;
  * აქ უაზროა. ერთადერთი დახმარება ბუკმარკის `LinkMetadata`-ს probe-ია:
  * ერთი მოთხოვნა, სათაური და სურათი.
  *
- * ⚠️ **სტატუსი enum-ია და არა per-user ლექსიკონი** (ტასქის ცხადი სია:
+ * ⚠️ **სტატუსი enum-ია და არა per-user ლექსიკონი** (ცხადი სია:
  * `to_take` · `taking` · `done` · `dropped`). წიგნის, თამაშისა და
  * სამაგიდოს იგივე რიგი — და აქ ამას დამატებითი მიზეზიც აქვს:
  * `StatusDomain`-ის როლები **სამია** (`todo`/`doing`/`done`), ხოლო
@@ -29,13 +29,13 @@ use Illuminate\Support\Facades\Schema;
  * არ ინახება**: ორი ერთეული ერთი ფაქტისთვის ზუსტად ის ხაფანგია, რომელსაც
  * `Book::syncProgress()` ებრძვის. პროცენტი გამოთვლადია, უკუსვლა — არა.
  *
- * ⚠️ **ხანგრძლივობა წუთებშია** (`minutes`), მიუხედავად იმისა, რომ ტასქში
- * „hours" ეწერა: §2.5-ის გაკვეთილი — `hltb_*` საათებში ინახებოდა
+ * ⚠️ **ხანგრძლივობა წუთებშია** (`minutes`) და არა საათებში: `hltb_*`
+ * საათებში ინახებოდა
  * (`decimal(5,1)`) და „2სთ 20წთ" 2.3-ად ჩაიწერა, უკან კი 2სთ 18წთ ამოვიდა.
  * ერთეული მთელ პროექტში ერთია: წუთი.
  *
- * ⚠️ **`finished_at` ცალკე სვეტია და არა `updated_at`.** FEAT-08/FEAT-21-ის
- * აგრეგატი „წელს რამდენი დავასრულე"-ს სწორედ ამით ითვლის; `updated_at`-ით
+ * ⚠️ **`finished_at` ცალკე სვეტია და არა `updated_at`.** წლის სტატისტიკა
+ * და მიზანი „წელს რამდენი დავასრულე"-ს სწორედ ამით ითვლის; `updated_at`-ით
  * ჩანაცვლება ერთ სვეტში ორ ფაქტს ჩადებდა.
  *
  * ⚠️ **`url` unique არ არის** (ბუკმარკის წესი): 1000 utf8mb4 სიმბოლო 4000
@@ -85,7 +85,7 @@ return new class extends Migration
 
             $table->unsignedSmallInteger('lessons_total')->nullable();
             $table->unsignedSmallInteger('lessons_done')->default(0);
-            // ხანგრძლივობა **წუთებში** (§2.5-ის ერთეული)
+            // ხანგრძლივობა **წუთებში** (პროექტის ერთიანი ერთეული)
             $table->unsignedInteger('minutes')->nullable();
 
             $table->string('status', 20)->default('to_take');
@@ -98,12 +98,12 @@ return new class extends Migration
             $table->string('thumbnail_path')->nullable();
 
             $table->date('started_at')->nullable();
-            // FEAT-08/FEAT-21 — „წელს რამდენი დავასრულე" სწორედ ამით ითვლება
+            // „წელს რამდენი დავასრულე" სწორედ ამით ითვლება
             $table->date('finished_at')->nullable();
 
             $table->string('visibility', 20)->default('private');
             $table->integer('sort_order')->default(0);
-            // FEAT-11 — კალათა
+            // კალათა
             $table->timestamp('trashed_at')->nullable()->index();
             $table->timestamps();
 
@@ -116,7 +116,7 @@ return new class extends Migration
 
         /* სექციის ფაილები — 2026-09-03-ის წესი: უნივერსალური `attachments`
            აღარ არსებობს, თითო მოდულს თავისი `<module>_files` აქვს.
-           ⚠️ `certificate` მესამე `kind`-ია და სწორედ ის, რასაც ტასქი ითხოვს. */
+           ⚠️ `certificate` მესამე `kind`-ია. */
         Schema::create('course_files', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
@@ -132,7 +132,7 @@ return new class extends Migration
             $table->index(['course_id', 'kind']);
         });
 
-        /* §6 ფაზა 3/4b — მორგებული ველების მნიშვნელობები.
+        /* მორგებული ველების მნიშვნელობები.
            ⚠️ `hasTable`-ის დაცვა სავალდებულოა: სუფთა ბაზაზე ცხრილს
            `create_custom_field_values` უკვე შექმნის (ის თარიღით წინაა და
            `CustomFields::TABLES`-ს გადაუყვება), არსებულზე კი — არა. */
@@ -154,7 +154,7 @@ return new class extends Migration
                 $table->string('value_name')->nullable();
                 $table->string('value_mime', 120)->nullable();
                 $table->unsignedBigInteger('value_size')->nullable();
-                /* §7.3 — `file` ველზე რამდენიმე ფაილი. ⚠️ ინდექსი **სამსვეტიანია**:
+                /* `file` ველზე რამდენიმე ფაილი. ⚠️ ინდექსი **სამსვეტიანია**:
                    მისი უბრალოდ მოხსნა ყველა სხვა ტიპსაც ორ პასუხს მისცემდა. */
                 $table->unsignedSmallInteger('sort_order')->default(0);
 

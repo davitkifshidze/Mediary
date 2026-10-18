@@ -15,7 +15,7 @@ import { GalleryStackSkeleton, GallerySkeletonGrid } from '@/components/gallery/
 import { Pagination } from '@/components/ui/pagination'
 
 /* ============================================================
-   **სხვა მოდულების ფოტოები** (§8.3/§8.5).
+   **სხვა მოდულების ფოტოები**.
 
    მოთხოვნა: „სხვა რამეებზეც, სადაც ნებისმიერი ფოტო დაემატება … ყველაფერი
    გალერეაში დაყავი ჯგუფებად, გვერდებად, სექციებად".
@@ -33,7 +33,7 @@ import { Pagination } from '@/components/ui/pagination'
 export function ModulesCut() {
   const { t, i18n } = useTranslation()
   const { all } = useModules()
-  /* Tasks §25.7 — ⚠️ **გახსნილი მოდული URL-შია** (`?open=<module>`, §3-ის პატერნი):
+  /* ⚠️ **გახსნილი მოდული URL-შია** (`?open=<module>`):
      ფოტოების სიიდან „უკან" იმავე მოდულების ჭრილზე აბრუნებს და ბრაუზერის „უკან"-იც
      მუშაობს; აქამდე `useState` იყო და დასტაზე დაჭერა ბადეს უსათაუროდ ანაცვლებდა —
      „ეგრევე ფოტოებში ჩავარდნას" ჰგავდა. */
@@ -91,7 +91,7 @@ export function ModulesCut() {
               badge={group.private ? <Lock className="size-3" /> : undefined}
               aspect="wide"
               onClick={() => setOpen(group)}
-              /* Tasks §7 — მარჯვენა ღილაკი: გახსნა */
+              /* მარჯვენა ღილაკი: გახსნა */
               menu={contextMenuItems([
                 { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpen(group) },
               ])}
@@ -127,7 +127,7 @@ function ModulePhotos({
 
   return (
     <section>
-      {/* §25.7 — სათაურის ზოლი: „← უკან · {მოდული} · N ფოტო"; ჩანაწერი თითო უჯრის ქვესათაურშია */}
+      {/* სათაურის ზოლი: „← უკან · {მოდული} · N ფოტო"; ჩანაწერი თითო უჯრის ქვესათაურშია */}
       <div className="mb-4 flex flex-wrap items-center gap-2" data-testid="module-photos-header">
         <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="size-4" />
@@ -171,7 +171,7 @@ function ModulePhotos({
       )}
 
       {meta && meta.last_page > 1 && (
-        // Tasks §46 — ნომრები; „მეტის ნახვა" ფოტოს ბადეში რაოდენობის არჩევაა
+        // ნომრები; „მეტის ნახვა" ფოტოს ბადეში რაოდენობის არჩევაა
         <Pagination page={meta.page} lastPage={meta.last_page} total={meta.total} onPage={setPage} />
       )}
     </section>

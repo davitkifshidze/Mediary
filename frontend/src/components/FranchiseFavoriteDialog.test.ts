@@ -8,14 +8,14 @@ import type { CollectionPart } from '@/api/media'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **რჩეულში დამატება — ფრანჩაიზი პოპაპით** (Tasks §18.5).
+   **რჩეულში დამატება — ფრანჩაიზი პოპაპით**.
 
-   ⚠️ მოწმდება: ორი ჩანართი, ნაგულისხმევი — „მხოლოდ ეს ფილმი" (Tasks §51.1);
-   უკვე რჩეული ნაწილი მონიშნული და ჩაკეტილია, ხელახლა არ იგზავნება (§51.2);
+   ⚠️ მოწმდება: ორი ჩანართი, ნაგულისხმევი — „მხოლოდ ეს ფილმი";
+   უკვე რჩეული ნაწილი მონიშნული და ჩაკეტილია, ხელახლა არ იგზავნება;
    „მთელი ფრანჩაიზი" — ყველა ნაწილი ჩექბოქსით,
    ბეჯები „ეს ფილმი / ბიბლიოთეკაშია / დაემატება", რიცხვი ღილაკზე; მოხსნილი
    ნაწილი არც `parts`-ში მიდის, არც რიგში; არარსებული ნაწილი რიგში
-   ნაგულისხმევი სტატუსით და `favorite: true`-თი ემატება (Q5); „მხოლოდ ეს
+   ნაგულისხმევი სტატუსით და `favorite: true`-თი ემატება; „მხოლოდ ეს
    ფილმი" — ცარიელი `parts`; უფრანჩაიზო პასუხზე დიალოგი კითხვის გარეშე
    უმალ რჩეულად ნიშნავს და იხურება.
    ============================================================ */
@@ -174,7 +174,7 @@ describe('FranchiseFavoriteDialog', () => {
     expect(mocks.enqueue).not.toHaveBeenCalled()
   })
 
-  it('opens on "only this film", which favourites just this one (§51.1)', async () => {
+  it('opens on "only this film", which favourites just this one', async () => {
     await mount(franchise)
 
     // ჩანართზე დაჭერის გარეშე — ნაგულისხმევია
@@ -188,7 +188,7 @@ describe('FranchiseFavoriteDialog', () => {
     expect(mocks.enqueue).not.toHaveBeenCalled()
   })
 
-  it('an already-favourite part is ticked, locked and not sent again (§51.2)', async () => {
+  it('an already-favourite part is ticked, locked and not sent again', async () => {
     await mount([part(10, 'Part 1', true, 1), part(20, 'Part 2', true, 2, true), part(30, 'Part 3', true, 3)])
     await whole()
 
@@ -199,7 +199,7 @@ describe('FranchiseFavoriteDialog', () => {
     expect(locked.disabled).toBe(true)
     expect(locked.getAttribute('aria-checked')).toBe('true')
     expect(document.body.textContent).toContain(i18n.t('franchise.alreadyFavorite'))
-    // ბიბლიოთეკაშია, მაგრამ რჩეული არ არის — თავისუფლად ინიშნება (§51.3)
+    // ბიბლიოთეკაშია, მაგრამ რჩეული არ არის — თავისუფლად ინიშნება
     expect(checkbox('Part 3')!.disabled).toBe(false)
 
     // ღილაკი ახალ რჩეულებს ითვლის: ეს ფილმი + Part 3

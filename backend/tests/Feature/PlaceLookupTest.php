@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **Tasks §57 — ადგილის ძებნა წყაროების ჯაჭვით, ბმული, უკუ-გეოკოდირება, შენახვა.**
+ * **ადგილის ძებნა წყაროების ჯაჭვით, ბმული, უკუ-გეოკოდირება, შენახვა.**
  *
  * ⚠️ `Http::fake()` **ერთი closure-ია** (CLAUDE.md: მეორე `fake()` არაფერს ცვლის) —
  * მისამართით პასუხობს Google-ს, SerpApi-ს, Serper-ს, Nominatim-ს და ფოტოს ჰოსტს.
@@ -142,7 +142,7 @@ class PlaceLookupTest extends TestCase
         return base64_decode('/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==');
     }
 
-    /** §57.2 — გასაღების გარეშე: Nominatim, საქართველოს მიკერძოებით და ფორმის ქალაქით */
+    /** გასაღების გარეშე: Nominatim, საქართველოს მიკერძოებით და ფორმის ქალაქით */
     public function test_without_keys_nominatim_answers_with_a_georgian_bias_and_the_form_city(): void
     {
         $this->postJson('/api/places/lookup/candidates', ['query' => 'პიქტოგრამა', 'city' => 'თბილისი'])
@@ -159,7 +159,7 @@ class PlaceLookupTest extends TestCase
             && (string) $r['bounded'] === '0');
     }
 
-    /** §57.1 — წერისას შემოთავაზება მხოლოდ Google-ით; გასაღების გარეშე ქსელში არაფერი მიდის */
+    /** წერისას შემოთავაზება მხოლოდ Google-ით; გასაღების გარეშე ქსელში არაფერი მიდის */
     public function test_live_suggestions_need_the_google_key(): void
     {
         $this->postJson('/api/places/lookup/candidates', ['query' => 'პიქტ', 'live' => true])
@@ -183,7 +183,7 @@ class PlaceLookupTest extends TestCase
             && ! str_contains($r->url(), 'google_maps-key'));
     }
 
-    /** §57.2 — Google პირველია და ყველაფერს აბრუნებს; SerpApi-ს აღარ მიმართავს */
+    /** Google პირველია და ყველაფერს აბრუნებს; SerpApi-ს აღარ მიმართავს */
     public function test_google_comes_first_and_returns_everything(): void
     {
         $this->key(CredentialProviders::GOOGLE_MAPS);
@@ -207,7 +207,7 @@ class PlaceLookupTest extends TestCase
         Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'serpapi.com'));
     }
 
-    /** §57.2 — SerpApi ჩავარდა → Serper; შემდეგ SerpApi-ის ნორმალიზება (საათები, დიდი ფოტო) */
+    /** SerpApi ჩავარდა → Serper; შემდეგ SerpApi-ის ნორმალიზება (საათები, დიდი ფოტო) */
     public function test_a_failing_source_hands_over_to_the_next_one(): void
     {
         $this->key(CredentialProviders::SERPAPI);
@@ -255,7 +255,7 @@ class PlaceLookupTest extends TestCase
             ->assertJsonPath('message', 'places_unavailable');
     }
 
-    /** §57.1 — არჩეულის დეტალები: Google-ის ფოტოები (გასაღები ჰედერში); SerpApi-ს ქალაქი — კოორდინატიდან */
+    /** არჩეულის დეტალები: Google-ის ფოტოები (გასაღები ჰედერში); SerpApi-ს ქალაქი — კოორდინატიდან */
     public function test_details_bring_the_photos_and_the_city(): void
     {
         $this->key(CredentialProviders::GOOGLE_MAPS);
@@ -281,7 +281,7 @@ class PlaceLookupTest extends TestCase
             ->assertJsonPath('draft.country', 'საქართველო');
     }
 
-    /** §57.3 — Google Maps-ის ბმული: გასაღების გარეშე სახელი + წერტილი + Nominatim-ის მისამართი */
+    /** Google Maps-ის ბმული: გასაღების გარეშე სახელი + წერტილი + Nominatim-ის მისამართი */
     public function test_a_maps_link_fills_the_form_even_without_keys(): void
     {
         $this->postJson('/api/places/lookup/link', [
@@ -299,7 +299,7 @@ class PlaceLookupTest extends TestCase
             ->assertJsonPath('message', 'map_link_unreadable');
     }
 
-    /** §57.3 — მოკლე ბმული `SafeHttp`-ით იშლება; სახელით ნაპოვნი, წერტილთან ახლოს მდგომი ადგილი ირჩევა */
+    /** მოკლე ბმული `SafeHttp`-ით იშლება; სახელით ნაპოვნი, წერტილთან ახლოს მდგომი ადგილი ირჩევა */
     public function test_a_short_link_is_unfolded_and_matched_to_the_nearest_result(): void
     {
         $this->app->instance(SafeHttp::class, new class extends SafeHttp
@@ -326,7 +326,7 @@ class PlaceLookupTest extends TestCase
             ->assertJsonPath('draft.phone', '+995 32 222 22 22');
     }
 
-    /** §57.4 — პინის გადათრევა → მისამართი */
+    /** პინის გადათრევა → მისამართი */
     public function test_reverse_geocoding(): void
     {
         $this->postJson('/api/places/lookup/reverse', ['lat' => 41.7151, 'lng' => 44.8271])
@@ -337,7 +337,7 @@ class PlaceLookupTest extends TestCase
         $this->postJson('/api/places/lookup/reverse', ['lat' => 95, 'lng' => 44.8])->assertStatus(422);
     }
 
-    /** §57.1 — შენახვა: წყაროს ინფო ცალკე სვეტებში, ფოტოები — გალერეაში, პირველი — მთავარი */
+    /** შენახვა: წყაროს ინფო ცალკე სვეტებში, ფოტოები — გალერეაში, პირველი — მთავარი */
     public function test_saving_keeps_the_source_details_and_brings_the_photos_into_the_gallery(): void
     {
         PlaceCategory::ensureDefaults($this->user->id);

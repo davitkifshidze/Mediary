@@ -15,10 +15,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * თამაში — მოდული `game` (Tasks §11; ველების სია დამტკიცდა 19.1-ში).
+ * თამაში — მოდული `game`.
  *
  * ⚠️ **მრავალჟანრიანია** (pivot `game_genre_game`), განსხვავებით წიგნისა და
- * ბორდგეიმისგან, სადაც ერთი `genre_id`-ა — 11.1 „ჟანრებს" მრავლობითში წერს.
+ * ბორდგეიმისგან, სადაც ერთი `genre_id`-ა: თამაში ხშირად რამდენიმე ჟანრისაა.
  * ლექსიკონი მაინც **per-user** არის (`game_genres`) და არა გლობალური
  * `genres`: RAWG-ის „Shooter"/„RPG" იქ ფილმის ჟანრების არჩევანში გამოჩნდებოდა.
  *
@@ -29,30 +29,30 @@ class Game extends Model
 {
     use BelongsToUser, HasGallery;
 
-    /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
+    /** მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
     /**
-     * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
+     * ⚠️ **კალათა** — `destroy()` `moveToTrash()`-ს იძახის და არა
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
 
-    /** FEAT-21 — „როდის გავიარე" თარიღი; `finished` სტატუსზე ივსება */
+    /** „როდის გავიარე" თარიღი; `finished` სტატუსზე ივსება */
     use TracksCompletion;
 
-    /** Tasks §13 — მხოლოდ სამი: გასავლელი · ვთამაშობ · დახურული (`finished` —
+    /** მხოლოდ სამი: გასავლელი · ვთამაშობ · დახურული (`finished` —
         გასაღები რჩება: ის `PublicDomain::MATCH`-ის „done"-ია და `finished_at`-ს ადგენს) */
     public const STATUSES = ['to_play', 'playing', 'finished'];
 
-    /** 11.1-ის ჩამონათვალი; „ჩემი პლატფორმა" ერთია ამათგან */
+    /** პლატფორმების ჩამონათვალი; „ჩემი პლატფორმა" ერთია ამათგან */
     public const PLATFORMS = ['pc', 'ps5', 'ps4', 'xbox_series', 'xbox_one', 'switch', 'mobile'];
 
-    /** 11.1 — სინგლი · მრავალმოთამაშიანი · კოოპი (ლოკალური/ონლაინ) · PvP */
+    /** სინგლი · მრავალმოთამაშიანი · კოოპი (ლოკალური/ონლაინ) · PvP */
     public const MODES = ['single', 'multiplayer', 'coop_local', 'coop_online', 'pvp'];
 
     /**
-     * **ბმულის „რა არის"** — `links[].kind` (Tasks §22.3).
+     * **ბმულის „რა არის"** — `links[].kind`.
      *
      * შენი სიტყვები: „ბმულის დამატებისას იყოს, რა სახის ბმულია — ვიდეო
      * (YouTube), პატჩი, DLC…: Trailer, DLC, Patch, Download, Info".
@@ -88,7 +88,7 @@ class Game extends Model
     ];
 
     /**
-     * **თამაშის ვიდეოდ ქცეული ბმულის ტიპები** (Tasks §22.4, Q15).
+     * **თამაშის ვიდეოდ ქცეული ბმულის ტიპები**.
      *
      * ⚠️ YouTube/Vimeo/Dailymotion-ის ტრეილერი ან გზამკვლევი **ბმულად არ
      * ინახება** — ის `game_videos`-ში ჯდება და ფლეერით უკრავს. სხვა ჰოსტის
@@ -114,7 +114,7 @@ class Game extends Model
         'finished_at' => 'date',
     ];
 
-    /** FEAT-21 — თამაშის „გაკეთებული" `finished`-ია */
+    /** თამაშის „გაკეთებული" `finished`-ია */
     public function completionColumn(): string
     {
         return 'finished_at';
@@ -134,7 +134,7 @@ class Game extends Model
     {
         static::deleting(function (Game $game) {
             $game->deleteCover();
-            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა** (Tasks BUG-21):
+            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა**:
                `<module>_files` `BelongsToUser`-ს იყენებს, ე.ი. `files()`
                მიმდინარე **ავტორიზებულ** მომხმარებელზე იჭრება. `/admin/purge`
                და ანგარიშის წაშლა სხვის ბიბლიოთეკას შლის ადმინის სესიიდან —
@@ -155,7 +155,7 @@ class Game extends Model
             ->orderBy('game_genres.id');
     }
 
-    /** 11.2 — walkthrough/თრეილერი/მიმოხილვა/გაიდი */
+    /** walkthrough/თრეილერი/მიმოხილვა/გაიდი */
     public function videos(): HasMany
     {
         return $this->hasMany(GameVideo::class)->orderBy('sort_order')->orderBy('id');
@@ -193,7 +193,7 @@ class Game extends Model
      * ⚠️ **მხოლოდ ხელით ატვირთული ყდა იშლება.** RAWG-დან ჩამოტვირთულის სახელი
      * მისი `rawg_id`-ია, ე.ი. ერთი ფაილი რამდენიმე ანგარიშს ემსახურება — წაშლა
      * სხვისთვის სურათს გატეხავდა (TMDB პოსტერის, წიგნის ყდისა და BGG ფოტოს წესი).
-     * ჩამოტვირთული კვოტაშიც არ ითვლება (19.4/B).
+     * ჩამოტვირთული კვოტაშიც არ ითვლება.
      */
     public function deleteCover(): void
     {
@@ -223,7 +223,7 @@ class Game extends Model
         ))));
     }
 
-    /** მაღაზია ბმულის ჰოსტიდან (§22.3); უცნობ ჰოსტზე — `null` */
+    /** მაღაზია ბმულის ჰოსტიდან; უცნობ ჰოსტზე — `null` */
     public static function storeFromUrl(string $url): ?string
     {
         $host = strtolower((string) parse_url($url, PHP_URL_HOST));
@@ -239,7 +239,7 @@ class Game extends Model
     }
 
     /**
-     * **ერთი ბმულის ნორმალიზაცია — ერთადერთი ადგილი** (§22.3).
+     * **ერთი ბმულის ნორმალიზაცია — ერთადერთი ადგილი**.
      *
      * ⚠️ ფორმაც, RAWG/IGDB-ის დრაფტიც და მიგრაციაც ამ ფორმას წერს: ძველი
      * მნიშვნელობა (`steam`) → `store` + `steam`; უცნობი → `other`;
@@ -273,7 +273,7 @@ class Game extends Model
     }
 
     /**
-     * **ბმულები ↔ თამაშის ვიდეოები** (Tasks §22.4, Q15).
+     * **ბმულები ↔ თამაშის ვიდეოები**.
      *
      * ⚠️ ვიდეოდ იქცევა მხოლოდ `VIDEO_LINK_KINDS`-ის ტიპი **და** ჩაშენებადი
      * ჰოსტი (`VideoUrl::parse()`-ის `embed_url` — YouTube, Vimeo, Dailymotion):

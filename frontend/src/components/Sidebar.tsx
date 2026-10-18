@@ -44,7 +44,7 @@ import { useAuth } from '@/lib/auth'
 import { useSettings } from '@/lib/settings'
 import { fetchPendingCount, type ModuleInfo } from '@/api/account'
 import { ModuleIcon } from './ModuleIcon'
-// §8.5 — გალერეის ჭრილების ერთადერთი სია (გვერდზეც იგივეა)
+// გალერეის ჭრილების ერთადერთი სია (გვერდზეც იგივეა)
 import { GALLERY_CUTS } from '@/lib/galleryCuts'
 import { PERSONAL_CUTS } from '@/lib/personalCuts'
 import { cn } from '@/lib/utils'
@@ -58,7 +58,7 @@ import { isCustomModule } from '@/lib/customModules'
 
 
 /**
- * საიდბარის ერთი სექცია (K7 → Tasks 5.1 → ეტაპი 8).
+ * საიდბარის ერთი სექცია.
  * რიგი და ხილვადობა `lib/statusSections.ts`-იდან მოდის — „ყველა" და „რჩეული"
  * ნაგულისხმევად პირველი/ბოლოა, მაგრამ მომხმარებელი ლექსიკონის გვერდზე
  * მათ ადგილს ცვლის და ნებისმიერ სექციას მალავს.
@@ -68,14 +68,14 @@ type VideoSection = { id: string; label: string; icon?: string | null; search: s
 /**
  * დომენი მხოლოდ დომენის საკუთარი მარშრუტებისთვის — /genres, /status, /actors
  * არც ერთ დომენს არ ეკუთვნის, ამიტომ null (სექციების ავტო-გადართვა არ უნდა გამოიწვიოს).
- * ⚠️ `/` აღარ ეკუთვნის ფილმებს — ის დეშბორდია (Tasks 2.2).
+ * ⚠️ `/` აღარ ეკუთვნის ფილმებს — ის დეშბორდია.
  */
 function domainFromRoute(pathname: string): MediaType | null {
   return mediaFromPath(pathname)
 }
 
 /* ============================================================
-   **მოდულის ფერი საიდბარში (ეტაპი 6).**
+   **მოდულის ფერი საიდბარში.**
 
    ფერი `modules.color`-შია (გლობალური სვეტი, არა `module_user.settings`) და
    აქ **იმავე `useModules()`-იდან** მოდის, საიდანაც სახელი და ხატულა — ფრონტზე
@@ -87,7 +87,7 @@ function domainFromRoute(pathname: string): MediaType | null {
    (`hover:border-l-[var(--mod)]`) — ჰოვერი მხოლოდ CSS-ით ითქმება, JS-ით არა.
 
    ⚠️ **ცვლადი მემკვიდრეობით მიდის**: `<nav>`-ზე ნაგულისხმევად ოქროსფერია,
-   ე.ი. `color === null`-ზე რიგი დღევანდელ სახეს ინარჩუნებს (პუნქტი 7) და
+   ე.ი. `color === null`-ზე რიგი დღევანდელ სახეს ინარჩუნებს და
    დეშბორდიც იმავე ენაზე ლაპარაკობს.
 
    ⚠️ **ფერი აქცენტია და არა ტექსტის ფერი** — მხოლოდ მარცხენა ხაზი, ხატულა და
@@ -155,7 +155,7 @@ const TOOL_ROW_IDLE =
   'border-l-transparent text-muted-foreground hover:border-l-[var(--mod)] hover:bg-muted hover:text-foreground'
 
 /* ⚠️ `modAccent()` `lib/modules.tsx`-შია — იმავე ცვლადებს აუდიტ-ლოგის
-   ბარათებიც კითხულობს (ეტაპი 10), ე.ი. ორი ასლი გაშორდებოდა.
+   ბარათებიც კითხულობს, ე.ი. ორი ასლი გაშორდებოდა.
    ფერის გარეშე მოდული ცვლადს **არ** წერს და `<nav>`-ის ოქროსფერს იმემკვიდრებს. */
 
 /**
@@ -174,17 +174,17 @@ const TOOL_ROW_IDLE =
  * ⚠️ **ანიმაცია აქ არ იწერება**: ხატულები `index.css`-ის გლობალურ წესს
  * ემორჩილება (თითოეულს თავისი მოძრაობა აქვს) — რიგს მხოლოდ ფერი სჭირდება.
  */
-/* §23 — ინსტრუმენტების ფერები **საერთო რეესტრიდან** (`lib/toolSections.ts`).
+/* ინსტრუმენტების ფერები **საერთო რეესტრიდან** (`lib/toolSections.ts`).
    ⚠️ აქ დაწერილი პირადი რუკა გვერდის ჰედერს ვერ სწვდებოდა, ე.ი. იმავე
    სექციას საიდბარი ფერავდა და სათაური — არა; ორი ასლი კი პირველივე
    ცვლილებაზე დაშორდებოდა. */
 
 /**
- * **„ყველა · რჩეული · დამატება" — სტატუსის სექციების გარეშე** (Tasks §6.1 → §25.1).
+ * **„ყველა · რჩეული · დამატება" — სტატუსის სექციების გარეშე**.
  *
  * ⚠️ წიგნზე, სამაგიდოსა და თამაშზე ეს **შეგნებული გადახრაა საერთო წესიდან**
- * (§6.1, შენი მითითებით): სტატუსით ჭრა ფილტრების პანელშია. კურსი და ადგილი
- * §25-ში შემოვიდა — აქამდე მენიუში ჩვეულებრივი ბმული იყო, ე.ი. „რჩეული" და
+ * (შენი მითითებით): სტატუსით ჭრა ფილტრების პანელშია. კურსი და ადგილი
+ * მოგვიანებით შემოვიდა — აქამდე მენიუში ჩვეულებრივი ბმული იყო, ე.ი. „რჩეული" და
  * „დამატება" მხოლოდ გვერდიდან იყო მისაწვდომი, თუმცა ორივე გვერდი
  * `?view=favorite`-სა და `?new=1`-ს უკვე კითხულობდა.
  */
@@ -197,7 +197,7 @@ const PAGE_KEYS: ReadonlySet<string> = new Set(PAGE_MODULE_KEYS)
 const NAV_DEFAULT_ACCENT = MODULE_ACCENT_FALLBACK
 
 /**
- * ნავიგაცია. ლოგო, ენა/თემა და პროფილი ჰედერშია (K12) — აქ მხოლოდ მენიუა.
+ * ნავიგაცია. ლოგო, ენა/თემა და პროფილი ჰედერშია — აქ მხოლოდ მენიუა.
  * უჯრის (mobile drawer) მდგომარეობა `AppShell`-შია, რომ ჰედერის ჰამბურგერმაც მართოს.
  */
 export function Sidebar({
@@ -214,11 +214,11 @@ export function Sidebar({
   const { mediaModules, pageModules, customModules, enabled, has } = useModules()
   const { settings } = useSettings()
   const lang = useContentLang(i18n.language)
-  /* §6.4 — სტატუსები per-user ლექსიკონია, ე.ი. სექციები აქედან იგება.
+  /* სტატუსები per-user ლექსიკონია, ე.ი. სექციები აქედან იგება.
      ⚠️ `useStatusMap` ყოველთვის ექვს query-ს ქმნის და მხოლოდ `enabled`-ს ცვლის —
      ციკლის შიგნით პირობითი hook რიგს გატეხდა. */
   const statusMap = useStatusMap(enabled.map((m) => m.key))
-  /* §37 — პირადი მოდულების ლექსიკონები: მათი რიცხვი ცვალებადია, ამიტომ ცალკე
+  /* პირადი მოდულების ლექსიკონები: მათი რიცხვი ცვალებადია, ამიტომ ცალკე
      (`useQueries`), იმავე ქეშის გასაღებით, რასაც ფორმა და კლასიფიკატორი კითხულობს */
   const customStatusMap = useCustomStatusMap(customModules.map((m) => m.key as StatusDomainKey))
   const { isAdmin, canAdmin } = useAuth()
@@ -228,12 +228,12 @@ export function Sidebar({
 
   const routeDomain = domainFromRoute(location.pathname)
   const isLibraryRoute = !!routeDomain && location.pathname === MEDIA[routeDomain].libraryPath
-  // `?view=`-ის გარეშე ბიბლიოთეკა ნაგულისხმევ სექციას ხსნის (E4) —
+  // `?view=`-ის გარეშე ბიბლიოთეკა ნაგულისხმევ სექციას ხსნის —
   // მონიშვნაც იმავეს უნდა მიჰყვეს, თორემ „ყველა" აირჩეოდა ცრუდ
   const viewParam = params.get('view') ?? settings.defaultView
 
   /**
-   * ჩანაწერის გვერდზე `?view=` აღარ არის, ამიტომ მონიშვნა „ყველაზე" ხტებოდა (Tasks K8).
+   * ჩანაწერის გვერდზე `?view=` აღარ არის, ამიტომ მონიშვნა „ყველაზე" ხტებოდა.
    * ვიმახსოვრებთ, რომელი კატეგორიიდან შემოვედით და დეტალურ გვერდზე იმას ვინარჩუნებთ.
    */
   const [lastView, setLastView] = useState<Record<string, string>>({})
@@ -248,12 +248,12 @@ export function Sidebar({
       ? (lastView[routeDomain] ?? 'all')
       : 'all'
 
-  /* ⚠️ **ტიპებისა და ჟანრების ჩამოტვირთვა აქედან მოიხსნა (Tasks §2.7).**
+  /* ⚠️ **ტიპებისა და ჟანრების ჩამოტვირთვა აქედან მოიხსნა.**
      საიდბარი ლექსიკონის სრულ სიას აღარ აჩვენებს, ე.ი. მისი წაკითხვაც
      აღარ სჭირდება — ორი ზედმეტი რექვესთი ყოველ გვერდის გახსნაზე. სიები
      ფილტრების პანელშია, სადაც ისინი მართლა გამოიყენება. */
 
-  // §16.3 — ჩატის წაუკითხავი; polling მსუბუქია (მხოლოდ რიცხვი)
+  // ჩატის წაუკითხავი; polling მსუბუქია (მხოლოდ რიცხვი)
   const { data: chatUnread = 0 } = useQuery({
     queryKey: ['chat-unread'],
     queryFn: fetchChatUnread,
@@ -264,7 +264,7 @@ export function Sidebar({
   const { data: pending = 0 } = useQuery({
     queryKey: ['pending-count'],
     queryFn: fetchPendingCount,
-    // Tasks 1.6 — endpoint მოთხოვნების სექციისაა და არა „ადმინის" ზოგადად
+    // endpoint მოთხოვნების სექციისაა და არა „ადმინის" ზოგადად
     enabled: canAdmin('requests'),
     refetchInterval: 60_000,
   })
@@ -293,7 +293,7 @@ export function Sidebar({
     // პლეილისტები სიმღერების ქვე-სექციაა, გალერეას კი `route_base`-ს მიღმა ჭრილები აქვს
     if (location.pathname.startsWith('/playlists')) return 'song'
     if (location.pathname.startsWith('/gallery')) return 'gallery'
-    // §37 — პირადი მოდულიც (`/c/{key}`) თავის განყოფილებას ხსნის
+    // პირადი მოდულიც (`/c/{key}`) თავის განყოფილებას ხსნის
     const m = [...pageModules, ...customModules].find(
       (x) => location.pathname === x.route_base || location.pathname.startsWith(`${x.route_base}/`),
     )
@@ -313,11 +313,11 @@ export function Sidebar({
   }
 
   /**
-   * **სექციები აღარ წერია კოდში (Tasks §6.4).** სტატუსი per-user ლექსიკონია,
+   * **სექციები აღარ წერია კოდში.** სტატუსი per-user ლექსიკონია,
    * ე.ი. საიდბარის ჭრილებიც მისგან იგება: ყველა → *მისი* სტატუსები → რჩეული.
    * ⚠️ „ყველა" და „რჩეული" სტატუსები **არაა** — ისინი ფსევდო-განყოფილებებია.
    *
-   * ⚠️ **ეტაპი 8: რიგი და დამალვა ლექსიკონის გვერდის `arrangeSections()`-იდანაა**,
+   * ⚠️ **რიგი და დამალვა ლექსიკონის გვერდის `arrangeSections()`-იდანაა**,
    * ზუსტად იმავე ფუნქციიდან, რომელიც `/dictionaries/<domain>-statuses`-ის სიას
    * ხატავს — ორ ადგილას ხელით რომ ეწერა, გვერდი ერთ რიგს აჩვენებდა,
    * საიდბარი მეორეს. დამალული სექცია **მხოლოდ აქ** ქრება.
@@ -336,7 +336,7 @@ export function Sidebar({
   const sectionsFor = (domain: StatusDomainKey): VideoSection[] =>
     arrangeSections(
       (isStatusDomain(domain) ? statusMap[domain] : customStatusMap[domain]) ?? [],
-      // ⚠️ §37 — პირად გასაღებზე `PSEUDO_SECTIONS[domain]` `undefined` იქნებოდა
+      // ⚠️ პირად გასაღებზე `PSEUDO_SECTIONS[domain]` `undefined` იქნებოდა
       pseudoSectionsFor(domain),
       layoutFor(enabled, domain),
     )
@@ -383,7 +383,7 @@ export function Sidebar({
   ]
 
   /**
-   * **მოდულის ჩამოშლადი განყოფილება — ერთი განსაზღვრება** (Tasks §25.1).
+   * **მოდულის ჩამოშლადი განყოფილება — ერთი განსაზღვრება**.
    *
    * ⚠️ ეს ბლოკი რვაჯერ იყო ხელით დაწერილი: წიგნი, სამაგიდო და თამაში
    * სიტყვასიტყვით ერთნაირი იყო, სიმღერა, ჩანაწერი, ბუკმარკი და ვიდეო კი
@@ -447,7 +447,7 @@ export function Sidebar({
     )
   }
 
-  /** მედია-დომენის განყოფილება — სექციები სტატუსის ლექსიკონიდან (§6.4) */
+  /** მედია-დომენის განყოფილება — სექციები სტატუსის ლექსიკონიდან */
   const mediaSection = (m: ModuleInfo, type: MediaType) => {
     const d = MEDIA[type]
     const isActiveDomain = routeDomain === type
@@ -498,12 +498,12 @@ export function Sidebar({
     )
   }
 
-  /** არა-მედია მოდული — ვიდეოებსა და სიმღერებს თავისი სექციები აქვს (K7) */
+  /** არა-მედია მოდული — ვიდეოებსა და სიმღერებს თავისი სექციები აქვს */
   const pageSection = (m: ModuleInfo) => {
-    /* ---------- წიგნი · სამაგიდო · თამაში · კურსი · ადგილი (§6.1 → §25.1) ---------- */
+    /* ---------- წიგნი · სამაგიდო · თამაში · კურსი · ადგილი ---------- */
     if (FAVORITE_ONLY_MODULES.has(m.key)) return moduleSection(m, favoriteSections)
 
-    /* ---------- სიმღერები: „ყველა" · „რჩეული" · პლეილისტები (§2.7 → §5.3) ----------
+    /* ---------- სიმღერები: „ყველა" · „რჩეული" · პლეილისტები ----------
        ⚠️ ჟანრების სია აქ აღარაა — ფილტრების პანელშია; პლეილისტები
        სიმღერების ქვე-სექციაა (2026-09-03), ე.ი. მოდულის რიგი მათზეც ინთება. */
     if (m.key === 'song') {
@@ -522,8 +522,8 @@ export function Sidebar({
       })
     }
 
-    /* ---------- ჩანაწერები: სექციები ლექსიკონიდან + შეხსენებები (§13 → §6.4) ----------
-       ეტაპი 11.2 — შეხსენებებს თავისი სექცია აქვს (ჩანაწერის ფორმიდან ის
+    /* ---------- ჩანაწერები: სექციები ლექსიკონიდან + შეხსენებები ----------
+       შეხსენებებს თავისი სექცია აქვს (ჩანაწერის ფორმიდან ის
        მთლიანად მოიხსნა; პლეილისტების პრეცედენტი). */
     if (m.key === 'note') {
       return moduleSection(m, sectionsFor('note'), {
@@ -540,18 +540,18 @@ export function Sidebar({
       })
     }
 
-    /* ---------- ბუკმარკები: სექციები ლექსიკონიდან (§18 → §6.4) ---------- */
+    /* ---------- ბუკმარკები: სექციები ლექსიკონიდან ---------- */
     if (m.key === 'bookmark') return moduleSection(m, sectionsFor('bookmark'))
 
-    /* ---------- ვიდეოები: სექციები ლექსიკონიდან (§2.7 → §6.4 → ეტაპი 8) ----------
+    /* ---------- ვიდეოები: სექციები ლექსიკონიდან ----------
        ⚠️ ტიპების სია და „ტიპების მართვა" აქ აღარაა (ლექსიკონი `/dictionaries`-შია);
        „ჩამოტვირთულები" ფსევდო-განყოფილებაა (`PSEUDO_SECTIONS.video`) და
        „რჩეულის" მსგავსად დამალვადი და გადასატანია. */
     if (m.key === 'video') return moduleSection(m, sectionsFor('video'))
 
-    /* ---------- გალერეა: ქვე-მენიუ (Tasks §8.5) ----------
-       ⚠️ **§4.5-ში ქვე-პუნქტი მართლაც აღარ იყო** (ერთადერთი „თემების
-       მართვა" მოიხსნა), მაგრამ §8-ში გალერეა ერთი გვერდიდან **ხუთ
+    /* ---------- გალერეა: ქვე-მენიუ ----------
+       ⚠️ **ერთ დროს ქვე-პუნქტი მართლაც აღარ იყო** (ერთადერთი „თემების
+       მართვა" მოიხსნა), მაგრამ მერე გალერეა ერთი გვერდიდან **ხუთ
        ჭრილად** გაიშალა — ე.ი. ქვე-მენიუ ისევ გახდა საჭირო და ესაა
        შენი პირდაპირი მოთხოვნა („გვერდითა ქვე მენიუს გაუკეთე გალერიას").
 
@@ -592,7 +592,7 @@ export function Sidebar({
                   )}
                 >
                   <cut.icon className="size-4 shrink-0" />
-                  {/* ⚠️ სახელი ერთი გასაღებიდან მოდის (§27): ადრე
+                  {/* ⚠️ სახელი ერთი გასაღებიდან მოდის: ადრე
                       „ჩანაწერები" ჩართული მოდულების სახელებისგან
                       იგებოდა, რაც ტაბისთვის გრძელი იყო და მაინც
                       არასრული — შიგნით სიმღერაც ზის და წიგნიც */}
@@ -605,7 +605,7 @@ export function Sidebar({
       )
     }
 
-    /* ---------- პირადი გალერეა: ქვე-მენიუ (Tasks §33.5) ----------
+    /* ---------- პირადი გალერეა: ქვე-მენიუ ----------
        ⚠️ გალერეის ფორმა — სია `PERSONAL_CUTS`-იდან (გვერდის სეგმენტებიც იგივეა);
        ადამიანისა და ალბომის გვერდზე შესაბამისი ჭრილი რჩება მონიშნული. */
     if (m.key === 'personal') {
@@ -657,7 +657,7 @@ export function Sidebar({
         onClick={() => setDrawerOpen(false)}
         className={cn(
           MODULE_ROW,
-          // ქვე-გვერდზეც აქტიური რჩება (მაგ. `/gallery/movie/12` — Tasks 10)
+          // ქვე-გვერდზეც აქტიური რჩება (მაგ. `/gallery/movie/12`)
           location.pathname === m.route_base ||
             location.pathname.startsWith(`${m.route_base}/`)
             ? MODULE_ROW_ACTIVE
@@ -670,11 +670,11 @@ export function Sidebar({
     )
   }
 
-  /* Tasks §58.3 — ჩაშენებულები და პირადები ცალ-ცალკე (პირადები — ქვემოთ, ჯგუფად) */
+  /* ჩაშენებულები და პირადები ცალ-ცალკე (პირადები — ქვემოთ, ჯგუფად) */
   const builtInModules = enabled.filter((m) => !isCustomModule(m))
   const myModules = enabled.filter((m) => isCustomModule(m))
 
-  /* Tasks §35.2 — მსახიობების გვერდი; მსახიობის შიდა გვერდზეც (`/actors/:id`) აქტიურია */
+  /* მსახიობების გვერდი; მსახიობის შიდა გვერდზეც (`/actors/:id`) აქტიურია */
   const lastMediaKey = [...enabled].reverse().find((m) => isMediaKey(m.key))?.key
   const ActorsIcon = TOOL_SECTIONS.actors.icon
   const onActors = location.pathname === '/actors' || location.pathname.startsWith('/actors/')
@@ -693,7 +693,7 @@ export function Sidebar({
   const nav = (
     <>
       <nav className="flex-1 space-y-1 overflow-y-auto" style={NAV_DEFAULT_ACCENT}>
-        {/* Tasks 2 — დეშბორდი ყოველთვის პირველია */}
+        {/* დეშბორდი ყოველთვის პირველია */}
         <Link
           to="/"
           onClick={() => setDrawerOpen(false)}
@@ -708,22 +708,22 @@ export function Sidebar({
           {t('dashboard.nav')}
         </Link>
 
-        {/* ⚠️ **Tasks §36.2 — ერთი რიგი**: მედია და დანარჩენი მოდულები ერთმანეთში
+        {/* ⚠️ **ერთი რიგი**: მედია და დანარჩენი მოდულები ერთმანეთში
             ერევა, `enabled`-ის რიგით — სერვერი მას პირადი რიგით ალაგებს
             (`ModuleOrder::sort()`), ე.ი. `/modules`-ის და მთავარის ბარათების
             იგივე რიგია. ადრე ჯერ ყველა მედია იხატებოდა და მერე დანარჩენი,
             ამიტომ ფილმს სიმღერის შემდეგ ვერანაირი რიგი ვერ დააყენებდა.
             ⚠️ გვერდის გარეშე მოდული (ვერც მედიაა, ვერც `PAGE_MODULE_KEYS`-შია)
             არ იხატება — მისი მარშრუტი `App.tsx`-ში არ არსებობს. */}
-        {/* ⚠️ §37 — პირადი მოდული „ყველა · სტატუსები · რჩეული · დამატება"-ს იღებს
+        {/* ⚠️ პირადი მოდული „ყველა · სტატუსები · რჩეული · დამატება"-ს იღებს
             (ჩანაწერისა და ბუკმარკის წესი), სექციები — მისივე ლექსიკონიდან.
-            ⚠️ Tasks §58.3 (Q15) — პირადები **ჩაშენებულების ქვემოთ, ცალკე ჯგუფად**
+            ⚠️ პირადები **ჩაშენებულების ქვემოთ, ცალკე ჯგუფად**
             („ჩემი მოდულები"), თავისი რიგით; ჩაშენებულები — თავისით. */}
         {builtInModules.map((m) => {
           const row = isMediaKey(m.key) ? mediaSection(m, m.key) : PAGE_KEYS.has(m.key) ? pageSection(m) : null
 
-          /* Tasks §35.2 — „მსახიობები" მედიის ქვეშაა: **ბოლო მედია-მოდულის შემდეგ**
-             (რიგი პირადია, §36.2 — მედია შეიძლება სხვებში იყოს გაბნეული). */
+          /* „მსახიობები" მედიის ქვეშაა: **ბოლო მედია-მოდულის შემდეგ**
+             (რიგი პირადია — მედია შეიძლება სხვებში იყოს გაბნეული). */
           return m.key === lastMediaKey ? (
             <Fragment key={m.key}>
               {row}
@@ -743,7 +743,7 @@ export function Sidebar({
 
         <div className="my-2 border-t border-border" />
 
-        {/* ეტაპი 9 — **ლექსიკონები ინსტრუმენტების პირველი რიგია**, `/genres`-ზე
+        {/* **ლექსიკონები ინსტრუმენტების პირველი რიგია**, `/genres`-ზე
             ზემოთ. ⚠️ ორი მართლა სხვადასხვა რამაა და სწორედ ამიტომ დგანან
             გვერდიგვერდ: `/genres` **გლობალური** TMDB-ის ჟანრებია (ყველა
             ანგარიშისთვის ერთი, წაშლა ადმინის დასტურს ითხოვს), `/dictionaries`
@@ -771,7 +771,7 @@ export function Sidebar({
             {t('genres.manage')}
           </Link>
         )}
-        {/* Tasks 4 — მასობრივი ოპერაციები ვიდეოებსაც ეხება (ტიპი/ტეგები),
+        {/* მასობრივი ოპერაციები ვიდეოებსაც ეხება (ტიპი/ტეგები),
             ე.ი. მედია-მოდულის გარეშეც სჭირდება ბმული */}
         {(mediaModules.length > 0 || pageModules.some((m) => m.key === 'video')) && (
           <Link to="/status" onClick={() => setDrawerOpen(false)} style={toolAccent('bulk')} className={toolLink('/status')}>
@@ -779,7 +779,7 @@ export function Sidebar({
             {t('bulkStatus.manage')}
           </Link>
         )}
-        {/* L2 — სინქრონი პარამეტრებიდან ცალკე გვერდზე გავიდა (queue გლობალურია);
+        {/* სინქრონი პარამეტრებიდან ცალკე გვერდზე გავიდა (queue გლობალურია);
             TMDB მხოლოდ მედია-დომენებს ეხება */}
         {mediaModules.length > 0 && (
           <Link to="/sync" onClick={() => setDrawerOpen(false)} style={toolAccent('sync')} className={toolLink('/sync')}>
@@ -787,7 +787,7 @@ export function Sidebar({
             {t('sync.title')}
           </Link>
         )}
-        {/* Tasks 7 — თარგმანები. ორენოვანი სქემა მხოლოდ მედია-დომენებს აქვთ
+        {/* თარგმანები. ორენოვანი სქემა მხოლოდ მედია-დომენებს აქვთ
             (ჟანრებიც მათი ლექსიკონია), ე.ი. იმავე პირობაზე ჩანს, რაც სინქრონი. */}
         {mediaModules.length > 0 && (
           <Link to="/translations" onClick={() => setDrawerOpen(false)} style={toolAccent('translations')} className={toolLink('/translations')}>
@@ -795,13 +795,13 @@ export function Sidebar({
             {t('translate.title')}
           </Link>
         )}
-        {/* FEAT-08 — სტატისტიკა. „რა გავაკეთე" — დეშბორდის („რა მაქვს")
+        {/* სტატისტიკა. „რა გავაკეთე" — დეშბორდის („რა მაქვს")
             წყვილი და არა შემცვლელი; ამიტომ ცალკე სექციაა. */}
         <Link to="/stats" onClick={() => setDrawerOpen(false)} style={toolAccent('stats')} className={toolLink('/stats')}>
           <ChartColumn className="size-4 shrink-0" />
           {t('stats.title')}
         </Link>
-        {/* Tasks §31 — „ექსპორტ & იმპორტი" (FEAT-06 + FEAT-07 ერთ სექციაში).
+        {/* „ექსპორტ & იმპორტი" — ორივე ერთ სექციაში.
             ⚠️ **პირობის გარეშე ჩანს**: ექსპორტი ყველა ჩართულ მოდულს ეხება,
             იმპორტის ფორმატები კი სამ სხვადასხვას (ფილმი · წიგნი · თამაში) —
             რომელს, თვითონ ფაილი წყვეტს და უფლებას სერვერი ამოწმებს. */}
@@ -809,7 +809,7 @@ export function Sidebar({
           <ArrowLeftRight className="size-4 shrink-0" />
           {t('transfer.title')}
         </Link>
-        {/* FEAT-11 — კალათა.
+        {/* კალათა.
             ⚠️ **პირობის გარეშე ჩანს**: წაშლილი ჩანაწერი ათივე მოდულიდან
             აქ ხვდება, ე.ი. „რომელი მოდული მაქვს" აქ არასწორი კითხვაა —
             სერვერი ისედაც მხოლოდ იმ დომენებს აბრუნებს, რომლებზეც წაშლის
@@ -818,7 +818,7 @@ export function Sidebar({
           <ArchiveRestore className="size-4 shrink-0" />
           {t('trash.title')}
         </Link>
-        {/* Tasks §21 — „მონაცემები": ჩემი გასაღებები და ლიმიტები.
+        {/* „მონაცემები": ჩემი გასაღებები და ლიმიტები.
             ⚠️ **პირობის გარეშე ჩანს**: TMDB-ს მედია-მოდულები იყენებენ,
             RAWG-ს თამაშები, YouTube-ს ვიდეო — ე.ი. „რომელი მოდული მაქვს"
             კითხვაზე პასუხი ყოველთვის „რომელიღაც"-ია, ხოლო კვოტა და
@@ -827,7 +827,7 @@ export function Sidebar({
           <KeyRound className="size-4 shrink-0" />
           {t('credentials.title')}
         </Link>
-        {/* Tasks §40.14 — „გაზიარების ბმულები" — შენი მითითებით „მონაცემების" ქვემოთ.
+        {/* „გაზიარების ბმულები" — შენი მითითებით „მონაცემების" ქვემოთ.
             ⚠️ **ერთადერთი შესასვლელია**: მოდულების სათაურის ღილაკი და „ექსპორტ &
             იმპორტის" ჩანართი მოიხსნა. ⚠️ **პირობის გარეშე ჩანს** — ბმული თითქმის
             ყველა მოდულს ეხება, ხოლო რომელს შეგიძლია გააზიარო, ფანჯარა თვითონ ამბობს. */}
@@ -835,13 +835,13 @@ export function Sidebar({
           <Share2 className="size-4 shrink-0" />
           {t('share.listTitle')}
         </Link>
-        {/* Tasks §16.2 — „ვისთან ჰგავს ჩემი გემოვნება". მოდულზე დამოკიდებული
+        {/* „ვისთან ჰგავს ჩემი გემოვნება". მოდულზე დამოკიდებული
             არაა: სოციალური ფენა ბიბლიოთეკის შიგთავსს არ ეკითხება. */}
         <Link to="/people" onClick={() => setDrawerOpen(false)} style={toolAccent('people')} className={toolLink('/people')}>
           <Users className="size-4 shrink-0" />
           {t('people.title')}
         </Link>
-        {/* Tasks §16.3 — ჩატი; წაუკითხავის მრიცხველი ჰედერშივე ჩანს */}
+        {/* ჩატი; წაუკითხავის მრიცხველი ჰედერშივე ჩანს */}
         <Link to="/chat" onClick={() => setDrawerOpen(false)} style={toolAccent('chat')} className={toolLink('/chat')}>
           <MessageSquare className="size-4 shrink-0" />
           <span className="flex-1">{t('chat.title')}</span>
@@ -851,14 +851,14 @@ export function Sidebar({
             </span>
           )}
         </Link>
-        {/* პარამეტრები განზრახ აქ არ არის (L1): ერთადერთი შესვლის წერტილი
+        {/* პარამეტრები განზრახ აქ არ არის: ერთადერთი შესვლის წერტილი
             პროფილის ჩამოსაშლელია (`Header.tsx`), მარშრუტი `/settings` უცვლელია. */}
         <Link to="/modules" onClick={() => setDrawerOpen(false)} style={toolAccent('modules')} className={toolLink('/modules')}>
           <Puzzle className="size-4 shrink-0" />
           {t('modules.title')}
         </Link>
 
-        {/* Tasks 1.1 — „ადმინი" ერთიანი ბმული აღარაა; ოთხი ცალკე სექციაა */}
+        {/* „ადმინი" ერთიანი ბმული აღარაა; ოთხი ცალკე სექციაა */}
         <Link to="/requests" onClick={() => setDrawerOpen(false)} style={toolAccent('requests')} className={toolLink('/requests')}>
           <Inbox className="size-4 shrink-0" />
           <span className="flex-1">{t('admin.requests')}</span>
@@ -869,7 +869,7 @@ export function Sidebar({
           )}
         </Link>
 
-        {/* Tasks 1.6 — თითო სექცია ცალკე უფლებაზეა და აღარ ერთ „ადმინზე" */}
+        {/* თითო სექცია ცალკე უფლებაზეა და აღარ ერთ „ადმინზე" */}
         {canAdmin('users') && (
           <Link to="/users" onClick={() => setDrawerOpen(false)} style={toolAccent('users')} className={toolLink('/users')}>
             <Users className="size-4 shrink-0" />
@@ -882,14 +882,14 @@ export function Sidebar({
             {t('roles.title')}
           </Link>
         )}
-        {/* Tasks §4.4 — აუდიტ-ლოგი; ცალკე უფლებაა (`admin:audit`) */}
+        {/* აუდიტ-ლოგი; ცალკე უფლებაა (`admin:audit`) */}
         {canAdmin('audit') && (
           <Link to="/audit" onClick={() => setDrawerOpen(false)} style={toolAccent('audit')} className={toolLink('/audit')}>
             <ScrollText className="size-4 shrink-0" />
             {t('audit.title')}
           </Link>
         )}
-        {/* Tasks §22 → §59.2 — ბაზის ასლები „ექსპორტ & იმპორტის" „ბაზის" ჩანართშია
+        {/* ბაზის ასლები „ექსპორტ & იმპორტის" „ბაზის" ჩანართშია
             (მხოლოდ super_admin-ს უჩანს); ცალკე რიგი აღარ არის. */}
         {/* ⚠️ მასობრივი წაშლა **მხოლოდ** super_admin-ისაა (სხვისი ბიბლიოთეკის
             წაშლაა) — ის სექციის უფლებით არ იხსნება. დესტრუქციულია, ბოლოშია. */}

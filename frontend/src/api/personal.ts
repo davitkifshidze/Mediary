@@ -4,7 +4,7 @@ import { readPage, type ListParams, type Page } from '@/lib/paged'
 import type { Visibility } from '@/api/publicProfile'
 
 /* ============================================================
-   **პირადი გალერეა — მოდული `personal` (Tasks §33).**
+   **პირადი გალერეა — მოდული `personal`.**
 
    ადამიანები · ალბომები („გარეთ" ან ადამიანის შიგნით) · ფოტო და ვიდეო
    მოწყობილობიდან. ⚠️ **ყველა ფაილი პირად დისკზეა**: `url`/`thumb` API-ის
@@ -31,7 +31,7 @@ const PERSONAL_GROUPINGS = ['person', 'album', 'month'] as const
 export type PersonalGrouping = (typeof PERSONAL_GROUPINGS)[number]
 
 /**
- * **ლოკი (Tasks §33.7 → §35.4)** — ზოგადია (`api/locks.ts`): მხოლოდ ორი ფაქტი და
+ * **ლოკი** — ზოგადია (`api/locks.ts`): მხოლოდ ორი ფაქტი და
  * მინიშნება; hash არასდროს. `locked && !unlocked` — **ბოქლომიანი ბარათი**.
  */
 export { isHidden } from '@/api/locks'
@@ -224,7 +224,7 @@ export async function reorderPersonalAlbums(ids: number[]): Promise<PersonalAlbu
   return data.data
 }
 
-/* ---------- ჩაკეტვა (§33.7) ---------- */
+/* ---------- ჩაკეტვა ---------- */
 
 /** ლოკის მარშრუტის სეგმენტი — `/personal/people/{id}/lock` · `/personal/albums/{id}/lock` */
 export type PersonalLockKind = 'people' | 'albums'

@@ -7,7 +7,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import '@/i18n'
 
 /* ============================================================
-   რეგრესია: **არსებული შეხსენების ჩასწორება მეორეს არ ქმნის** (ეტაპი 7).
+   რეგრესია: **არსებული შეხსენების ჩასწორება მეორეს არ ქმნის**.
 
    ⚠️ ზუსტად ის შემთხვევა, რომელიც აღიწერა: შეხსენებას ამატებ, მერე მისი
    ჩასწორება ვერსად ჩანს და კვლავ „დამატებას" აჭერ — ე.ი. ერთ ჩანაწერზე ორი
@@ -85,7 +85,7 @@ async function render(node: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
   await act(async () => {
-    // §27.1 — ფანჯარაში `Link`-ია („მონაცემებზე"), ე.ი. Router სჭირდება
+    // ფანჯარაში `Link`-ია („მონაცემებზე"), ე.ი. Router სჭირდება
     root!.render(h(MemoryRouter, null, h(QueryClientProvider, { client: qc }, h(TooltipProvider, null, node))))
   })
 
@@ -130,7 +130,7 @@ function button(scope: ParentNode, text: string) {
 }
 
 /* ============================================================
-   **მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ** (Tasks DEBT-12).
+   **მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ**.
 
    ⚠️ გაზომილი: ფაილის ცალკე გაშვებაზე **პირველი** ტესტი 3578 ms-ია,
    დანარჩენი ექვსი 4–72 ms. ე.ი. ეს ხარჯი ტესტის კი არა, ერთჯერადი
@@ -194,7 +194,7 @@ describe('NoteReminders', () => {
     await act(async () => button(node, 'გაუქმება')!.click())
     await flush()
 
-    // ⚠️ რედაქტორი დაიხურა და **სია დაბრუნდა** — ორეკრანიანი ქცევა (ეტაპი 11)
+    // ⚠️ რედაქტორი დაიხურა და **სია დაბრუნდა** — ორეკრანიანი ქცევა
     expect(node.textContent).not.toContain('შეხსენების რედაქტირება')
     expect(node.textContent).toContain('აქტიური')
     expect(button(node, '09:00'), 'ბარათი ისევ ადგილზეა').toBeTruthy()
@@ -214,7 +214,7 @@ describe('NoteReminders', () => {
     expect(node.textContent).not.toContain('ახალი შეხსენება')
   })
 
-  /* Tasks §27.1 — ტოკენი და chat id აქ აღარ იწერება: არხების ქვეშ ბმულია „მონაცემებზე" */
+  /* ტოკენი და chat id აქ აღარ იწერება: არხების ქვეშ ბმულია „მონაცემებზე" */
   it('არხების ქვეშ „მონაცემების" ბმულია და ტოკენის ველი არ არის', async () => {
     const node = await mount(5)
 
@@ -237,7 +237,7 @@ describe('NoteReminders', () => {
   })
 })
 
-/* ეტაპი 11 — ღილაკი და მისი ფანჯარა. ⚠️ იმავე გაკვეთილს იმაგრებს, რაც
+/* ღილაკი და მისი ფანჯარა. ⚠️ იმავე გაკვეთილს იმაგრებს, რაც
    `GroupsCut.test.ts`-ს: state და პორტალის JSX **ერთ კომპონენტშია**,
    თორემ დაჭერა მდგომარეობას შეცვლიდა და ეკრანზე არაფერი მოხდებოდა. */
 describe('NoteRemindersButton', () => {
@@ -279,7 +279,7 @@ describe('NoteRemindersButton', () => {
   })
 })
 
-/* Tasks §26.1 — შემხსენებლის ღილაკი: ტექსტი, რიცხვი ბეჯად, აქტიურზე ქარვისფერი */
+/* შემხსენებლის ღილაკი: ტექსტი, რიცხვი ბეჯად, აქტიურზე ქარვისფერი */
 describe('NoteRemindersChip', () => {
   it('shows the label, the count and the amber tone when reminders exist', async () => {
     const { NoteRemindersChip } = await import('@/components/NoteRemindersDialog')

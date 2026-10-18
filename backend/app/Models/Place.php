@@ -15,14 +15,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * ადგილი — მოდული `place` (FEAT-26).
+ * ადგილი — მოდული `place`.
  *
  * ⚠️ **სტატუსი enum-ია და ორმნიშვნელოვანი** (`to_visit`/`visited`): ადგილს
  * „მიმდინარე" მდგომარეობა არ აქვს — ან ვიყავი, ან არა. წიგნის/თამაშის/
  * კურსის იგივე რიგი (per-user ლექსიკონი აქ ერთ როლს ვერ გამოიყენებდა).
  *
- * ⚠️ **`visited_at`-ს მხოლოდ `applyStatus()` წერს.** FEAT-08-ის თვეების
- * ჭრილი და FEAT-21-ის მიზანი სწორედ ამ თარიღით ითვლიან „წელს რამდენი
+ * ⚠️ **`visited_at`-ს მხოლოდ `applyStatus()` წერს.** სტატისტიკის თვეების
+ * ჭრილი და წლის მიზანი სწორედ ამ თარიღით ითვლიან „წელს რამდენი
  * ვნახე"-ს; ორი მწერალი ერთი ფაქტისთვის ის ხაფანგია, რომელსაც
  * `Book::syncProgress()` ებრძვის.
  *
@@ -35,16 +35,16 @@ class Place extends Model
 {
     use BelongsToUser;
 
-    /** §6 ფაზა 4b — მორგებული ველების ფაილები (წაშლა → დისკი + კვოტა) */
+    /** მორგებული ველების ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
-    /** §10/§8 — `gallery_images` + `gallery_videos` ამ ჩანაწერზე */
+    /** `gallery_images` + `gallery_videos` ამ ჩანაწერზე */
     use HasGallery;
 
-    /** FEAT-18 — ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
+    /** ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
     use HasTags;
 
-    /** FEAT-11 — კალათა: `destroy()` `moveToTrash()`-ს იძახის */
+    /** კალათა: `destroy()` `moveToTrash()`-ს იძახის */
     use HasTrash;
 
     /** ⚠️ ორი და არა სამი — ადგილს „მიმდინარე" მდგომარეობა არ აქვს */
@@ -61,9 +61,9 @@ class Place extends Model
            „ეს ორი ერთი ადგილია?" პასუხგაუცემელი ხდებოდა. */
         'lat' => 'decimal:7',
         'lng' => 'decimal:7',
-        // Tasks §9 — „ჩემი ქულა" 0–10 მეათედებით, ყველა მოდულის ერთი შკალა (`Rating`)
+        // „ჩემი ქულა" 0–10 მეათედებით, ყველა მოდულის ერთი შკალა (`Rating`)
         'rating' => RatingCast::class,
-        // Tasks §57.1 — წყაროს (Google-ის) საშუალო 0–5 და შეფასებების რიცხვი; საათები — სია
+        // წყაროს (Google-ის) საშუალო 0–5 და შეფასებების რიცხვი; საათები — სია
         'source_rating' => 'float',
         'source_rating_count' => 'integer',
         'opening_hours' => 'array',
@@ -82,12 +82,12 @@ class Place extends Model
         static::deleting(function (Place $place) {
             $place->deletePhoto();
 
-            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა** (BUG-21-ის
-               გაკვეთილი): `/admin/purge` და ანგარიშის წაშლა სხვის
+            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა**:
+               `/admin/purge` და ანგარიშის წაშლა სხვის
                ბიბლიოთეკას ადმინის სესიიდან შლის — გაფილტრული კავშირი
                ცარიელს დააბრუნებდა და ფაილები დისკზე დარჩებოდა. */
             $place->files()->withoutGlobalScopes(['owner', 'trash'])->get()->each->delete();
-            // Tasks §30.4 — შენახული მარშრუტებიც, ურნაში მყოფიც
+            // შენახული მარშრუტებიც, ურნაში მყოფიც
             $place->routes()->withoutGlobalScopes(['owner', 'trash'])->get()->each->delete();
 
             $place->deleteGalleryMedia();
@@ -106,7 +106,7 @@ class Place extends Model
         return $this->hasMany(PlaceFile::class)->orderByDesc('id');
     }
 
-    /** Tasks §30.4 — შენახული მარშრუტები ჩემი მდებარეობიდან */
+    /** შენახული მარშრუტები ჩემი მდებარეობიდან */
     public function routes(): HasMany
     {
         return $this->hasMany(PlaceRoute::class)->orderByDesc('id');
@@ -119,7 +119,7 @@ class Place extends Model
      * იგივე როლი enum-იან დომენზე.
      *
      * ⚠️ „ვიყავი" თარიღს სვამს, უკან დაბრუნება კი — შლის: თორემ
-     * სტატისტიკა (FEAT-08/FEAT-21) სამუდამოდ ჩათვლიდა ადგილს, სადაც
+     * სტატისტიკა სამუდამოდ ჩათვლიდა ადგილს, სადაც
      * მომხმარებელმა თქვა, რომ არ ყოფილა.
      */
     public function applyStatus(string $status, ?string $visitedAt = null): void
@@ -136,7 +136,7 @@ class Place extends Model
         $this->visited_at = null;
     }
 
-    /** გარე რუკის ბმული (OSM) — ღრმა ბმული ყოველთვის რჩება; რუკა თვითონ §30-დან Leaflet-ითაა */
+    /** გარე რუკის ბმული (OSM) — ღრმა ბმული ყოველთვის რჩება; რუკა თვითონ Leaflet-ითაა */
     public function mapUrl(): ?string
     {
         if ($this->lat === null || $this->lng === null) {
@@ -147,7 +147,7 @@ class Place extends Model
     }
 
     /**
-     * ⚠️ **გალერეის ფოტო აქ არ იშლება** (Tasks §29, ეტაპი 4) — ადგილს
+     * ⚠️ **გალერეის ფოტო აქ არ იშლება** — ადგილს
      * `photo_source` არ აქვს, ე.ი. „მთავარად დაყენებული" გალერეის ფოტოს
      * გზაც ამავე სვეტშია. ადრე მისი ჩანაცვლება გალერეის ფაილს დისკიდან
      * შლიდა (რიგი რჩებოდა, ფოტო გატყდებოდა) და კვოტას ორჯერ აბრუნებდა.

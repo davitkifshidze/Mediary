@@ -18,7 +18,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 /**
- * **მფლობელობის მეორე ფენა (აუდიტი 2026-09-14, §A5).**
+ * **მფლობელობის მეორე ფენა.**
  *
  * ⚠️ **ტესტი middleware-ს პირდაპირ იძახებს და არა HTTP-ით — და ეს არსებითია.**
  * ჩვეულებრივ მოთხოვნაზე სხვისი ჩანაწერი ისედაც 404-ია, რადგან

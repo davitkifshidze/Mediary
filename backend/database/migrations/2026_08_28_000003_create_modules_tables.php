@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * I7 / ეტაპი 3 — მოდულების რეესტრი და per-user ჩართვა.
+ * მოდულების რეესტრი და per-user ჩართვა.
  * ფილმები/სერიალები ხდება პირველი ორი „plug-in" (იხ. ModulesSeeder).
  */
 return new class extends Migration

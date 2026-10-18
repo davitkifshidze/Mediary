@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * ერთი ჩანაწერის სინქრონი TMDB-დან (Tasks J3/J4).
+ * ერთი ჩანაწერის სინქრონი TMDB-დან.
  *
  * განსხვავება არსებული Enricher-ებისგან: აქ **ირჩევა**, რომელი ველები განახლდეს
  * და რეჟიმი (მხოლოდ ცარიელი vs გადაწერა). Enricher „ყველაფერი, მხოლოდ ცარიელი"
@@ -46,7 +46,7 @@ class ItemSyncer
 
     /**
      * @param  array{fields?:array<string>, media?:bool, overwrite?:bool, only_missing?:bool}  $opts
-     *                                                                                                Tasks §31.1 — `result` ოთხი ფაქტიდან ერთია (`SyncOutcome`): `updated` ·
+     *                                                                                                `result` ოთხი ფაქტიდან ერთია (`SyncOutcome`): `updated` ·
      *                                                                                                `unchanged` · `empty` (TMDB-მ არაფერი დააბრუნა — ჩანაწერი დამუშავებულად **არ**
      *                                                                                                ითვლება, `sync_status` უცვლელი) · `failed`; გამოტოვებაზე `null`. კვალი
      *                                                                                                (`last_synced_at`/`last_sync_result`) ყოველ ცდაზე იწერება.
@@ -73,7 +73,7 @@ class ItemSyncer
             return $this->result(true, true, [], null);
         }
 
-        // ⚠️ **`instanceof Series` აღარ გამოდგება** (§7.1): TMDB-ის `/tv/*`-ზე
+        // ⚠️ **`instanceof Series` აღარ გამოდგება**: TMDB-ის `/tv/*`-ზე
         // ორი დომენი ზის — სერიალი და ანიმე. რუკა ერთია.
         $isSeries = MediaDomain::isTv(MediaDomain::typeOf($item));
         $changed = [];
@@ -81,7 +81,7 @@ class ItemSyncer
         try {
             $d = $isSeries ? $this->tmdb->tvDetails($item->tmdb_id) : $this->tmdb->details($item->tmdb_id);
 
-            /* Tasks §31.1 — **ცარიელი პასუხი ცალკე ფაქტია**: TMDB-მ არაფერი დააბრუნა, ე.ი.
+            /* **ცარიელი პასუხი ცალკე ფაქტია**: TMDB-მ არაფერი დააბრუნა, ე.ი.
                ჩანაწერი დამუშავებულად არ ითვლება — `sync_status` არ იწერება, შედეგი `empty`,
                გეგმა მას ისევ სთავაზობს. აქამდე ეს `ok:true, changed:[]` იყო — სიაში მწვანე ✓. */
             if (empty($d['id'])) {
@@ -112,7 +112,7 @@ class ItemSyncer
                 $this->applyTranslations($item, $d, $dka, $fields, $overwrite, $isSeries),
             );
 
-            // ტრეილერი ცალკე რექვესთია (`/videos`), ამიტომ მხოლოდ არჩევისას (Tasks 9)
+            // ტრეილერი ცალკე რექვესთია (`/videos`), ამიტომ მხოლოდ არჩევისას
             if (in_array('trailer', $fields, true) && $this->applyTrailer($item, $overwrite, $isSeries)) {
                 $changed[] = 'trailer';
             }
@@ -136,7 +136,7 @@ class ItemSyncer
             $item->sync_status = 'synced';
             $item->save();
 
-            // §31.1 — კვალი ჩანაწერზე: განახლდა თუ უბრალოდ შევამოწმეთ და ყველაფერი ისე იყო
+            // კვალი ჩანაწერზე: განახლდა თუ უბრალოდ შევამოწმეთ და ყველაფერი ისე იყო
             $outcome = $changed ? SyncOutcome::UPDATED : SyncOutcome::UNCHANGED;
             SyncOutcome::stamp($item, 'sync', $outcome);
         } catch (RequestException $e) {
@@ -212,7 +212,7 @@ class ItemSyncer
     }
 
     /**
-     * „მალე" კალენდრის სამი სვეტი (FEAT-10, გასწორებულია 2026-09-19).
+     * „მალე" კალენდრის სამი სვეტი (გასწორებულია 2026-09-19).
      *
      * ⚠️ **ეს სვეტები მხოლოდ `TvEnricher`-ს ეწერა, ე.ი. მასობრივ სინქრონს
      * კალენდარი საერთოდ არ შეუვსია.** ჩანაწერის დამატება და თითო
@@ -254,7 +254,7 @@ class ItemSyncer
     }
 
     /**
-     * ოფიციალური ტრეილერი (Tasks 9) — ka→en კასკადი.
+     * ოფიციალური ტრეილერი — ka→en კასკადი.
      * `overwrite=false`-ზე არსებულ ბმულს არ ეხება; ჩავარდნა ჩუმად ითმენს.
      */
     private function applyTrailer(Model $item, bool $overwrite, bool $isSeries): bool
@@ -345,7 +345,7 @@ class ItemSyncer
             $genre = Genre::firstOrCreate(['slug' => $slug], ['tmdb_id' => $g['id']]);
             if ($genre->wasRecentlyCreated) {
                 $genre->setTranslation('en', $g['name']);
-                // ⚠️ `ka` განზრახ არ იწერება — იხ. `MovieEnricher` (BUG-23)
+                // ⚠️ `ka` განზრახ არ იწერება — იხ. `MovieEnricher`
             } elseif (! $genre->tmdb_id) {
                 $genre->tmdb_id = $g['id'];
                 $genre->save();
@@ -377,7 +377,7 @@ class ItemSyncer
         foreach (array_slice($credits['cast'] ?? [], 0, self::CAST_LIMIT) as $i => $c) {
             $member = CastMember::firstOrNew(['tmdb_person_id' => $c['id']]);
             $member->name = $c['name'];
-            // Tasks 10 — სქესი გალერეის „ქალი/კაცი მსახიობები" ფილტრს სჭირდება
+            // სქესი გალერეის „ქალი/კაცი მსახიობები" ფილტრს სჭირდება
             if (isset($c['gender'])) {
                 $member->gender = (int) $c['gender'];
             }
@@ -472,9 +472,9 @@ class ItemSyncer
     }
 
     /**
-     * ⚠️ **დისკი თითო გზაზე ცალკე იკითხება** (აუდიტი 2026-09-14): პროექტის
-     * წესი ის არის, რომ დისკს **მხოლოდ** `StorageFolder::diskFor()` წყვეტს
-     * (§17.5), ე.ი. ერთი გაზიარებული `'public'` ობიექტი ამ წესს არღვევდა
+     * ⚠️ **დისკი თითო გზაზე ცალკე იკითხება**: პროექტის
+     * წესი ის არის, რომ დისკს **მხოლოდ** `StorageFolder::diskFor()` წყვეტს,
+     * ე.ი. ერთი გაზიარებული `'public'` ობიექტი ამ წესს არღვევდა
      * და მომავალ პრივატულ საქაღალდეს არასწორ დისკზე მოძებნიდა.
      */
     private function fileMissing(?string $path): bool

@@ -48,7 +48,7 @@ import { useRecordExtras } from '@/lib/customFieldDraft'
 import { LinkField } from '@/components/ui/link-field'
 
 /* ============================================================
-   ბორდგეიმის ფორმა (Tasks §14).
+   ბორდგეიმის ფორმა.
 
    „სწრაფი შევსება" BoardGameGeek-იდან, TMDB-ის ნაკადით: ჯერ კანდიდატები,
    მერე არჩეულის დრაფტი. ავტომატურად არაფერი ემთხვევა და დრაფტი
@@ -76,7 +76,7 @@ export function BoardGameForm({
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { toast } = useToast()
-  // §6 — რომელი არჩევითი ველი ჩანს ამ ფორმაზე
+  // რომელი არჩევითი ველი ჩანს ამ ფორმაზე
   const fields = useModuleFields('board_game')
 
   const [form, setForm] = useState({
@@ -94,11 +94,11 @@ export function BoardGameForm({
     complexity: game?.complexity ? String(game.complexity) : '',
     bggId: game?.bgg_id ? String(game.bgg_id) : '',
     bggRating: game?.bgg_rating ? String(game.bgg_rating) : '',
-    // Tasks §25.4 — „ჩემი ქულა" ბრუნდება: რიცხვი ან `null` (`RatingSelect`)
+    // „ჩემი ქულა" ბრუნდება: რიცხვი ან `null` (`RatingSelect`)
     rating: game?.rating ?? null,
     // ⚠️ ცარიელით იწყება — არჩევანი მომხმარებლისაა, ნაგულისხმები აღარ იწერება
   })
-  /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი (Tasks BUG-11):
+  /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი:
      ინდექსზე შუა სტრიქონის წაშლა ფოკუსს, კარეტსა და Radix `Select`-ის ღია
      მდგომარეობას მეზობელ ბმულზე გადაიტანდა. `unkeyRows()` მას payload-ში ჭრის. */
   const [links, setLinks] = useState<Keyed<BoardGameLink>[]>(() => keyRows(game?.links ?? []))
@@ -109,7 +109,7 @@ export function BoardGameForm({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newGenre, setNewGenre] = useState(false)
   const qc = useQueryClient()
-  // §26.5 — დამატებითი ველები ახალ თამაშზე; ჩავარდნისას შექმნილი რჩება
+  // დამატებითი ველები ახალ თამაშზე; ჩავარდნისას შექმნილი რჩება
   const extras = useRecordExtras('board_game', game)
 
   /* ---------- სწრაფი შევსება BGG-დან ---------- */
@@ -157,7 +157,7 @@ export function BoardGameForm({
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  /* ---------- ქართული მაღაზიები (§7.2) ---------- */
+  /* ---------- ქართული მაღაზიები ---------- */
 
   /**
    * ⚠️ **სქრეიპინგია და არა API.** ამიტომ პასუხი ორნაწილიანია: `offers` — რაც
@@ -197,7 +197,7 @@ export function BoardGameForm({
     value === null ? t('boardGames.shopSearch.priceUnknown') : `${value} ${currency ?? ''}`.trim()
 
   /**
-   * ერთი ღილაკი — ორივე წყარო. §7.2: „**დამატებისას ძებნაზე** უნდა მოვიდეს
+   * ერთი ღილაკი — ორივე წყარო. შენი სიტყვები: „**დამატებისას ძებნაზე** უნდა მოვიდეს
    * შესაბამისი საიტის ლინკები". BGG და მაღაზიები ერთმანეთს არ ელოდება:
    * BGG ამ ქსელიდან ხშირად საერთოდ არ იხსნება, მაღაზიები კი მუშაობს.
    */
@@ -226,7 +226,7 @@ export function BoardGameForm({
       bggId: f.bggId || String(draft.bgg_id),
       bggRating: f.bggRating || (draft.bgg_rating ? String(draft.bgg_rating) : ''),
     }))
-    // ფოტო შენახვისას ჩამოიტვირთება; **კვოტაში არ ითვლება** (19.4/B)
+    // ფოტო შენახვისას ჩამოიტვირთება; **კვოტაში არ ითვლება**
     if (draft.image_url && !imagePreview) {
       setBggImageUrl(draft.image_url)
       setImagePreview(draft.image_url)
@@ -259,7 +259,7 @@ export function BoardGameForm({
   const num = (value: string) => (value === '' ? null : Number(value))
 
 
-  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს**: ბლოკი
      `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
      ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
   const warnHidden = (missing: string[]) => {
@@ -278,7 +278,7 @@ export function BoardGameForm({
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    /* ⚠️ ჟანრი სავალდებულოა (სტატუსი Tasks §12-ით ამოვიდა) — შემოწმება
+    /* ⚠️ ჟანრი სავალდებულოა (სტატუსი სამაგიდოს აღარ აქვს) — შემოწმება
        ქსელამდე, რათა ველი იმავე წამს გაწითლდეს. */
     const picked = pickErrors(
       { genre_id: form.genreId },
@@ -308,7 +308,7 @@ export function BoardGameForm({
       complexity: num(form.complexity),
       bgg_id: num(form.bggId),
       bgg_rating: num(form.bggRating),
-      // Tasks §25.4 — ფორმაზე ისევ ჩანს, ე.ი. `null` („გარეშე") ქულას ასუფთავებს
+      // ფორმაზე ისევ ჩანს, ე.ი. `null` („გარეშე") ქულას ასუფთავებს
       rating: form.rating,
       links: unkeyRows(links.filter((l) => l.url.trim())),
       bgg_image_url: bggImageUrl,
@@ -320,7 +320,7 @@ export function BoardGameForm({
   return (
     <ModalShell title={t(game ? 'boardGames.edit' : 'boardGames.add')} onClose={onClose} wide>
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
-        {/* ---------- §26.2 — სწრაფი შევსება: BGG + ქართული მაღაზიები ერთი ღილაკით ---------- */}
+        {/* ---------- სწრაფი შევსება: BGG + ქართული მაღაზიები ერთი ღილაკით ---------- */}
         <QuickFill title={t('boardGames.lookup')} hint={t('boardGames.lookupHint')} htmlFor="bg-lookup">
           <QuickFillSearch
             id="bg-lookup"
@@ -357,7 +357,7 @@ export function BoardGameForm({
             </QuickFillResults>
           )}
 
-          {/* ---------- ქართული მაღაზიები (§7.2) ---------- */}
+          {/* ---------- ქართული მაღაზიები ---------- */}
           {fields.shows('links') && (offers !== null || shopLookup.isPending) && (
             <div className="mt-3 border-t border-border pt-3">
               <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -435,7 +435,7 @@ export function BoardGameForm({
           )}
         </QuickFill>
 
-        {/* ---------- §26 — ფოტო ზემოთაა, სახელთან, ავტორებთან და აღწერასთან ერთად ---------- */}
+        {/* ---------- ფოტო ზემოთაა, სახელთან, ავტორებთან და აღწერასთან ერთად ---------- */}
         <FormSection
           title={t('form.sections.basic')}
           mediaVariant="wide"
@@ -467,8 +467,8 @@ export function BoardGameForm({
             )
           }
         >
-          {/* ⚠️ სათაური `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება;
-              ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
+          {/* ⚠️ სათაური `locked`-ია — მისი გარეშე ჩანაწერი არ ჩაიწერება;
+              ჩაკეტვის მოხსნა ცხადი ქმედებაა, ამიტომ `shows()` აქაც ისმის. */}
           <FormField {...fields.field('title')} required htmlFor="bg-title" error={errors.title}>
             <Input
               id="bg-title"
@@ -537,7 +537,7 @@ export function BoardGameForm({
             </div>
           </FormField>
 
-          {/* Tasks §25.4 — „ჩემი ქულა"; BGG-ის ქულა (`bgg_rating`) ცალკეა და წყაროდან მოდის */}
+          {/* „ჩემი ქულა"; BGG-ის ქულა (`bgg_rating`) ცალკეა და წყაროდან მოდის */}
           <FormField size="half" {...fields.field('rating')} htmlFor="bg-rating" error={errors.rating}>
             <RatingSelect
               id="bg-rating"
@@ -620,7 +620,7 @@ export function BoardGameForm({
             </div>
           </FormField>
 
-          {/* §2.5 → §39 — მინ. – მაქს. ერთ ხაზზე (როგორც მოთამაშეები), ორივე ერთი კომპონენტით;
+          {/* მინ. – მაქს. ერთ ხაზზე (როგორც მოთამაშეები), ორივე ერთი კომპონენტით;
               სვეტი ისევ **წუთებია** */}
           <FormField size="half" {...fields.field('playtime')} htmlFor="bg-playtime" error={errors.playtime_max}>
             <div className="flex items-center gap-1.5">
@@ -641,7 +641,7 @@ export function BoardGameForm({
             </div>
           </FormField>
 
-          {/* მაღაზიები: ბმული + ფასი (§14) */}
+          {/* მაღაზიები: ბმული + ფასი */}
           <FormField {...fields.field('links')}>
             <div className="space-y-1.5">
               {links.map((link, i) => (
@@ -654,7 +654,7 @@ export function BoardGameForm({
                       setLinks((all) => all.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))
                     }
                   />
-                  {/* Tasks §15.3 — ცარიელი წარწერა გვერდის სათაურით ივსება */}
+                  {/* ცარიელი წარწერა გვერდის სათაურით ივსება */}
                   <LinkField
                     className="min-w-0 flex-1"
                     value={link.url}
@@ -732,7 +732,7 @@ export function BoardGameForm({
         </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ თამაშზე მონახაზი */}
+      {/* დამატებითი ველები; ახალ თამაშზე მონახაზი */}
       <CustomFieldsCard
         module="board_game"
         recordId={extras.current?.id ?? null}

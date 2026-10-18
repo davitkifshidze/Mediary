@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils'
 import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
-   სტატუსის დამატება/რედაქტირება (Tasks §6.4).
+   სტატუსის დამატება/რედაქტირება.
 
    ⚠️ **`role` აქ ცალკე ველია და არა დეტალი.** სახელი ნებისმიერი შეიძლება
    იყოს („ვნახე", „ჩავაბარე"), მაგრამ სამ ადგილს *მნიშვნელობა* სჭირდება:
@@ -43,7 +43,7 @@ export function StatusDialog({
   onClose,
   onSaved,
 }: {
-  /** §37 — პირადი მოდულის გასაღებიც */
+  /** პირადი მოდულის გასაღებიც */
   domain: StatusDomainKey
   /** null = ახალი სტატუსი */
   status: Status | null
@@ -71,7 +71,7 @@ export function StatusDialog({
       qc.invalidateQueries({ queryKey: statusesQueryKey(domain) })
       // ჩანაწერების სიაც — ბეჯი და სექციები იმავე სახელს ხატავს
       qc.invalidateQueries({ queryKey: [domain] })
-      // §37 — პირადი მოდულის სია სხვა გასაღებზეა (`CustomModulePage`)
+      // პირადი მოდულის სია სხვა გასაღებზეა (`CustomModulePage`)
       if (isCustomModuleKey(domain)) qc.invalidateQueries({ queryKey: ['custom-records', domain] })
       toast({ title: t('statuses.saved'), variant: 'success' })
       onSaved?.(saved)
@@ -147,7 +147,7 @@ export function StatusDialog({
           />
         </div>
 
-        {/* Tasks §16.1 — ფერი: 12 ტონის პალიტრა + „როლის ფერი" (ნაგულისხმევი); ამრჩევი საერთოა (§19.2) */}
+        {/* ფერი: 12 ტონის პალიტრა + „როლის ფერი" (ნაგულისხმევი); ამრჩევი საერთოა */}
         <ColorPick
           value={form.color ?? null}
           onChange={(color) => setForm((f) => ({ ...f, color }))}

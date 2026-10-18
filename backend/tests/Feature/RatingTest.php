@@ -16,12 +16,12 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * **„ჩემი ქულა" — ვარსკვლავები, მეათედები, „4.6 / 10"** (Tasks §9).
+ * **„ჩემი ქულა" — ვარსკვლავები, მეათედები, „4.6 / 10"**.
  *
  * ⚠️ რა მოწმდება: წილადი ქულა ისე ინახება და ბრუნდება, როგორც აკრიფე
  * (sqlite-ზეც — integer-აფინური სვეტი REAL-ს ინახავს); მთელი ქულა JSON-ში
  * `int`-ია და არა `7.0`; 10 ჭერია; ცარიელი და 0 ქულის წაშლაა; ფილმზე
- * `my_rating` TMDB-ის `rating`-ისგან ცალკეა (Q1) და ექსპორტშიც, საჯარო
+ * `my_rating` TMDB-ის `rating`-ისგან ცალკეა და ექსპორტშიც, საჯარო
  * ბარათშიც და გაზიარების გადამრთველშიც სწორედ ის იგულისხმება.
  */
 class RatingTest extends TestCase
@@ -120,7 +120,7 @@ class RatingTest extends TestCase
         $this->assertNull(Book::findOrFail($id)->rating);
     }
 
-    /** Q1 — ფილმზე ორი სვეტია: `rating` TMDB-ის საშუალო, `my_rating` ჩემი */
+    /** ფილმზე ორი სვეტია: `rating` TMDB-ის საშუალო, `my_rating` ჩემი */
     public function test_a_movie_keeps_tmdb_average_apart_from_my_rating(): void
     {
         $res = $this->actingAs($this->user)->postJson('/api/movies', [

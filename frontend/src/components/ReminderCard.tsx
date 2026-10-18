@@ -27,7 +27,7 @@ import { reminderState, type ReminderState } from '@/lib/reminders'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   **შეხსენების ბარათი — ერთი ვიზუალი ორ ადგილას (ეტაპი 11.1 → 11.2).**
+   **შეხსენების ბარათი — ერთი ვიზუალი ორ ადგილას.**
 
    ჩანაწერის ფანჯარაშიც (`NoteReminders`) და შეხსენებების საერთო გვერდზეც
    (`/notes/reminders`) ერთი და იგივე ბარათია. ⚠️ ორი ასლი ერთ კვირაში
@@ -46,7 +46,7 @@ import { cn } from '@/lib/utils'
 
 /** ადამიანური აღწერა — ერთი წყარო სიისთვისაც და ბარათისთვისაც */
 function reminderLabel(reminder: NoteReminder, t: TFunction, dateTime: (v: string) => string): string {
-  // ⚠️ ეტაპი 7 — დროებიც და რიცხვებიც **სიებია**; ერთწევრიანი ძველივით იკითხება
+  // ⚠️ დროებიც და რიცხვებიც **სიებია**; ერთწევრიანი ძველივით იკითხება
   const at = reminder.times_of_day.join(', ')
   const days = reminder.days_of_month.join(', ')
 
@@ -60,7 +60,7 @@ function reminderLabel(reminder: NoteReminder, t: TFunction, dateTime: (v: strin
     case 'daily':
       return `${t('notes.modes.daily')} · ${at}`
     case 'weekly':
-      // ⚠️ §5.5 — დღეები **რამდენიმეა**; ერთი არჩეული ძველივით გამოიყურება
+      // ⚠️ დღეები **რამდენიმეა**; ერთი არჩეული ძველივით გამოიყურება
       return `${reminder.weekdays.map((d) => t(`notes.weekdays.${d}`)).join(', ')} · ${at}`
     case 'monthly':
       return `${t('notes.monthlyOn', { days })} · ${at}`
@@ -85,7 +85,7 @@ function repeatLabel(reminder: NoteReminder, t: TFunction): string | null {
   })}`
 }
 
-/** მოქმედების ფანჯრის მინაწერი — ცარიელი, თუ საზღვარი არ აქვს (ეტაპი 7) */
+/** მოქმედების ფანჯრის მინაწერი — ცარიელი, თუ საზღვარი არ აქვს */
 function windowLabel(
   reminder: NoteReminder,
   t: TFunction,
@@ -122,7 +122,7 @@ const CHANNEL_ICON: Record<ReminderChannel, typeof BellRing> = {
 /**
  * მდგომარეობის **ჩარჩო** — „მუშაობს" თუ „არა" (`lib/reminders.ts`).
  *
- * ⚠️ **ფერი აქ აღარ იწერება — `lib/cutStyle.ts`-შია** (Tasks §2). იმავე
+ * ⚠️ **ფერი აქ აღარ იწერება — `lib/cutStyle.ts`-შია**. იმავე
  * სამ მდგომარეობას ახლა `/notes/reminders`-ის ჭრილის ბარათებიც ხატავენ,
  * ე.ი. ორი ნაკრები ნიშნავდა, რომ ერთსა და იმავე შეხსენებას ბარათზე ერთი
  * ფერი ექნებოდა და ტაბზე მეორე.

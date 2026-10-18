@@ -1,9 +1,9 @@
 import { api, API_URL } from '@/lib/api'
 
 /* ============================================================
-   აუდიტ-ლოგი (Tasks §4).
+   აუდიტ-ლოგი.
 
-   ⚠️ **სია ყოველთვის გვერდებზეა.** ლოგი სამუდამოდ ინახება (§4.1) და თვეში
+   ⚠️ **სია ყოველთვის გვერდებზეა.** ლოგი სამუდამოდ ინახება და თვეში
    ათასობით რიგით იზრდება — „ყველას ჩამოტვირთვა ერთ პასუხში" ცხადად
    გამორიცხულია, ე.ი. `fetchAuditLogs` ყოველთვის `page`/`per_page`-ს
    იღებს და `meta`-ს აბრუნებს.
@@ -15,7 +15,7 @@ import { api, API_URL } from '@/lib/api'
 
 /**
  * მოქმედების ტიპები — backend-ის `AuditLog::ACTIONS`-ის სარკე, რიგის ჩათვლით
- * (`RegistryConsistencyTest`). ⚠️ Tasks §43.3 — **ყველა** ტიპი: ადრე რვა იყო
+ * (`RegistryConsistencyTest`). ⚠️ **ყველა** ტიპი: ადრე რვა იყო
  * თექვსმეტიდან, ე.ი. ფერი და ფილტრი ნახევარს არ ჰქონდა.
  */
 export const AUDIT_ACTIONS = [
@@ -55,11 +55,11 @@ export interface AuditEntry {
   route: string | null
   ip: string | null
   user_agent: string | null
-  /** ძველი და ახალი — ერთი და იმავე გასაღებებით (§4.1-ის diff) */
+  /** ძველი და ახალი — ერთი და იმავე გასაღებებით (diff-ისთვის) */
   old_values: Record<string, unknown> | null
   new_values: Record<string, unknown> | null
   context: Record<string, unknown> | null
-  /** §4.6-ის რიგი — გასუფთავებას არ ემორჩილება */
+  /** დაცული რიგი — გასუფთავებას არ ემორჩილება */
   is_protected: boolean
   created_at: string | null
 }
@@ -72,13 +72,13 @@ export interface AuditPage {
 export interface AuditMeta {
   actions: string[]
   protected_actions: string[]
-  /** `owner` — პირადი მოდულის მფლობელი (§37.6); საბაზისოსა და ფსევდო-მოდულზე `null` */
+  /** `owner` — პირადი მოდულის მფლობელი; საბაზისოსა და ფსევდო-მოდულზე `null` */
   modules: { key: string; name_ka: string | null; name_en: string | null; owner?: string | null }[]
   users: { id: number; name: string; username: string }[]
 }
 
 /**
- * ფილტრი — სამივე ჭრილი ერთდროულად მოქმედებს (§4.7).
+ * ფილტრი — სამივე ჭრილი ერთდროულად მოქმედებს.
  * `module`/`action` მძიმით გამოყოფილ სიად მიდის (backend-ის `slugList()`).
  */
 export interface AuditFilters {
@@ -88,7 +88,7 @@ export interface AuditFilters {
   from?: string | null
   to?: string | null
   q?: string
-  /** §43.6 — „გახსნების" ჩაღრმავება: ერთი ჩანაწერის რიგები */
+  /** „გახსნების" ჩაღრმავება: ერთი ჩანაწერის რიგები */
   subject_type?: string | null
   subject_id?: number | null
 }
@@ -120,7 +120,7 @@ export async function fetchAuditLogs(
 }
 
 /**
- * ჭრილების მთვლელები (ეტაპი 10) — რამდენი რიგი აქვს თითო მოდულს/მოქმედებას.
+ * ჭრილების მთვლელები — რამდენი რიგი აქვს თითო მოდულს/მოქმედებას.
  *
  * ⚠️ **თითო ჭრილი საკუთარ თავს არ ითვლის** (backend-ის `except`): მოდულის
  * არჩევის შემდეგაც დანარჩენი ბარათები თავის რიცხვს ინარჩუნებს, ე.ი.
@@ -162,7 +162,7 @@ export async function fetchAuditPlan(
 }
 
 /**
- * გასუფთავება (§4.7) — მონიშნულები ან **მთელი ფილტრი**.
+ * გასუფთავება — მონიშნულები ან **მთელი ფილტრი**.
  * ⚠️ `ids` ფილტრს არ ცვლის, ავიწროებს: შემთხვევით უფრო ფართო წაშლა
  * შეუძლებელია.
  */
@@ -178,9 +178,9 @@ export async function purgeAuditLogs(
 }
 
 /* ============================================================
-   **Tasks §43 — გახსნა, დაჭერები, პარამეტრები.**
+   **გახსნა, დაჭერები, პარამეტრები.**
 
-   §10-ის ხილული „შევედი N-ჯერ" წაიშალა (`api/visits.ts`): ჩანაწერის გახსნა
+   ხილული „შევედი N-ჯერ" წაიშალა (`api/visits.ts`): ჩანაწერის გახსნა
    ახლა მხოლოდ ჟურნალშია (`open`), „ვინ რა გახსნა და რამდენჯერ" კი ჟურნალის
    „გახსნების" ხედია. ⚠️ SPA მხოლოდ **ჩართულ** ტიპებს აგზავნის
    (`user.audit_kinds`); სერვერი გამორთულს მაინც აგდებს — ეს მეორე კარიბჭეა.
@@ -218,7 +218,7 @@ export async function recordOpen(type: OpenType, id: number): Promise<void> {
   }
 }
 
-/** SPA-ს მოვლენა პაკეტში (§43.4) — ⚠️ ველის მნიშვნელობა აქ არასოდეს მოდის */
+/** SPA-ს მოვლენა პაკეტში — ⚠️ ველის მნიშვნელობა აქ არასოდეს მოდის */
 export interface AuditEvent {
   action: 'click' | 'refresh'
   path: string
@@ -260,7 +260,7 @@ export async function sendAuditEvents(events: AuditEvent[], keepalive = false): 
   }
 }
 
-/** „ვინ რა გახსნა და რამდენჯერ" (§43.6) — მომხმარებელი × ჩანაწერი */
+/** „ვინ რა გახსნა და რამდენჯერ" — მომხმარებელი × ჩანაწერი */
 export interface AuditOpenRow {
   user: { id: number; name: string; username: string } | null
   /** ანონიმზე (საჯარო პროფილი, გაზიარება) `null` */
@@ -283,11 +283,11 @@ export async function fetchAuditOpens(
   return data
 }
 
-/** „ჟურნალის პარამეტრები" (§43.5, სუპერადმინი) — თითო გადამრთველი */
+/** „ჟურნალის პარამეტრები" (სუპერადმინი) — თითო გადამრთველი */
 export interface AuditKindSetting {
   key: string
   enabled: boolean
-  /** ჩატის წაშლა — ვერ გამოირთვება (§4.6) */
+  /** ჩატის წაშლა — ვერ გამოირთვება */
   protected: boolean
 }
 
@@ -303,7 +303,7 @@ export async function saveAuditSettings(off: string[]): Promise<AuditKindSetting
 }
 
 /**
- * **„რომელ სექციაში შევიდა" (§4.1)** — SPA-ს მარშრუტის შეცვლაზე.
+ * **„რომელ სექციაში შევიდა"** — SPA-ს მარშრუტის შეცვლაზე.
  *
  * ⚠️ **ჩავარდნა ჩუმია და განზრახ**: ლოგირების ვერ-ჩაწერამ ნავიგაცია არ
  * უნდა გატეხოს და toast-იც არ უნდა აჩვენოს.

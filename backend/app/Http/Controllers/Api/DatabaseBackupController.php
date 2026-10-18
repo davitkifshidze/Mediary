@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * **ბაზის დამპი ადმინიდან** (Tasks §22).
+ * **ბაზის დამპი ადმინიდან**.
  *
  * ⚠️ **`super_admin`-ზეა და არა `admin_access:`-ზე.** დამპი მთელი ბაზაა —
  * ყველა ანგარიშის ყველა ჩანაწერი, ჰეშირებული პაროლები, პირადი ჩატები —
@@ -52,17 +52,17 @@ class DatabaseBackupController extends Controller
                 'restore_available' => $dumper->restoreAvailable(),
                 'driver' => $dumper->driver(),
                 'database' => (string) config('database.connections.'.config('database.default').'.database'),
-                /* ⚠️ **PHP-ის ჭერი და არა `doc`-ის ლიმიტი** (Tasks §34): დოკუმენტის
+                /* ⚠️ **PHP-ის ჭერი და არა `doc`-ის ლიმიტი**: დოკუმენტის
                    ზომა ახლა სუპერადმინის ხელშია, ე.ი. „დოკუმენტები 5 MB"
                    ბაზის 20 MB-იან ასლს შეუმჩნევლად დაბლოკავდა. ასლს მხოლოდ
                    სუპერადმინი ტვირთავს და კვოტა ისედაც მოქმედებს. */
                 'max_upload_kb' => UploadLimits::serverMaxKb(),
 
-                /* ⚠️ **დაგეგმილი ასლი მხოლოდ *ჩანს* და არ ირთვება აქედან**
-                   (FEAT-12). ეს ინსტალაციის პარამეტრია და არა მომხმარებლის:
+                /* ⚠️ **დაგეგმილი ასლი მხოლოდ *ჩანს* და არ ირთვება აქედან**.
+                   ეს ინსტალაციის პარამეტრია და არა მომხმარებლის:
                    ორი სუპერ-ადმინის შემთხვევაში „ვისი გადამრთველია" კითხვას
                    პასუხი არ აქვს. იგივე წესი, რაც `/credentials`-ის
-                   `meta.installation`-ს აქვს (ატვირთვის ლიმიტები კი §34-იდან
+                   `meta.installation`-ს აქვს (ატვირთვის ლიმიტები კი
                    უკვე ცვლადია — `app_settings`-ით).
                    ⚠️ **ბოლო გაშვება ნამდვილი რიგიდან იკითხება და არა
                    scheduler-იდან**: სწორედ ეს არის ის ფაქტი, რომელსაც გარე
@@ -112,7 +112,7 @@ class DatabaseBackupController extends Controller
         /* ⚠️ **გაშვება ვერ მოხერხდა → ჩანაწერი მაშინვე იშლება.** დაწერილი,
            მაგრამ არასდროს გაშვებული რიგი „მიმდინარეობს"-ად გამოჩნდებოდა და
            სამუდამოდ 0%-ზე იდგებოდა — ზუსტად ის, რაც `download_status`-მა
-           გვასწავლა (§B1). */
+           გვასწავლა. */
         if (! $process->dispatch([PHP_BINARY, base_path('artisan'), 'backups:run', (string) $backup->id])) {
             $backup->delete();
 
@@ -160,7 +160,7 @@ class DatabaseBackupController extends Controller
     }
 
     /**
-     * სხვა კომპიუტერიდან მოტანილი ფაილის ატვირთვა (§22.6).
+     * სხვა კომპიუტერიდან მოტანილი ფაილის ატვირთვა.
      *
      * ⚠️ **ატვირთვა და აღდგენა ორი ნაბიჯია და განზრახ.** ერთ მოძრაობად
      * გაერთიანება ნიშნავდა, რომ შემთხვევით არჩეული ფაილი მთელ ბაზას
@@ -255,14 +255,14 @@ class DatabaseBackupController extends Controller
     }
 
     /**
-     * ⚠️ **ურნა (Tasks §29)** — ასლი ურნაში გადადის: ფაილი და კვოტა რჩება,
+     * ⚠️ **ურნა** — ასლი ურნაში გადადის: ფაილი და კვოტა რჩება,
      * სიიდან კი ქრება. ურნიდან მხოლოდ **სიაში დაბრუნება** შეიძლება; ბაზის
      * აღდგენა ურნაში მყოფი ასლიდან 404-ია (`trash` scope მარშრუტის
      * მიბმასაც ეხება). ჟურნალს `HasTrash::moveToTrash()` წერს.
      */
     public function destroy(DatabaseBackup $backup): JsonResponse
     {
-        /* ⚠️ **ნახვის დროებითი ბაზა ახლავე იშლება** (§11) — ურნაში მყოფი ასლის
+        /* ⚠️ **ნახვის დროებითი ბაზა ახლავე იშლება** — ურნაში მყოფი ასლის
            ნახვა ისედაც 404-ია, ბაზის მეორე ასლი კი დისკს კვოტის მიღმა იკავებს.
            `deleting` აქ არ ისვრება (რიგი რჩება), ამიტომ ცხადად. */
         app(BackupInspector::class)->close($backup);
@@ -280,7 +280,7 @@ class DatabaseBackupController extends Controller
             'name' => $backup->name,
             'size' => (int) $backup->size,
             // ⚠️ მიტოვებული `running` ცალკე ფაქტია: „მიმდინარეობს" და
-            // „პროცესი მოკვდა" სხვადასხვა ღილაკს ითხოვს (§7.1-ის წესი)
+            // „პროცესი მოკვდა" სხვადასხვა ღილაკს ითხოვს
             'status' => $backup->status,
             'stale' => $backup->stale(),
             'error' => $backup->error,
@@ -296,10 +296,10 @@ class DatabaseBackupController extends Controller
         ];
     }
 
-    /* ================= §11 — ვიუერი და ნაწილობრივი აღდგენა ================= */
+    /* ================= ვიუერი და ნაწილობრივი აღდგენა ================= */
 
     /**
-     * **ასლის გახსნა ვიუერისთვის (§11.3)** — `POST /admin/backups/{id}/inspect`.
+     * **ასლის გახსნა ვიუერისთვის** — `POST /admin/backups/{id}/inspect`.
      *
      * ⚠️ **დამპი დროებით ბაზაში იტვირთება და არა პარსდება.** SQL-ის
      * პარსერი (`mysqldump` სვეტების სახელებს არ წერს, ტუპლების escape-ები
@@ -331,7 +331,7 @@ class DatabaseBackupController extends Controller
     }
 
     /**
-     * **ცხრილების სია (§11.1/§11.3).**
+     * **ცხრილების სია.**
      *
      * ⚠️ ვიუერის გახსნის გარეშეც პასუხობს: `database_backups.table_map`
      * დამპის **ერთი გავლიდან** მოდის და აღდგენას არ მოითხოვს. გახსნილზე
@@ -359,7 +359,7 @@ class DatabaseBackupController extends Controller
         ]);
     }
 
-    /** ერთი ცხრილის რიგები — გვერდებით, სორტირებით და ფილტრით (§11.3) */
+    /** ერთი ცხრილის რიგები — გვერდებით, სორტირებით და ფილტრით */
     public function rows(Request $request, DatabaseBackup $backup, BackupInspector $inspector): JsonResponse
     {
         $data = $request->validate([
@@ -391,7 +391,7 @@ class DatabaseBackupController extends Controller
                 'page' => $page,
                 'per_page' => min(max($perPage, 1), BackupInspector::MAX_PER_PAGE),
                 'total' => $result['total'],
-                // §11.4 — „რამდენად საშიშია ამ ცხრილის აღდგენა" იქვე ჩანს
+                // „რამდენად საშიშია ამ ცხრილის აღდგენა" იქვე ჩანს
                 'scope' => RestoreScope::scopeFor($data['table']),
                 'children' => RestoreScope::children($data['table']),
             ],
@@ -399,7 +399,7 @@ class DatabaseBackupController extends Controller
     }
 
     /**
-     * **ერთი ცხრილის აღდგენა (§11.4).**
+     * **ერთი ცხრილის აღდგენა.**
      *
      * ⚠️ **აკრეფილი სიტყვა ცხრილის საკუთარი სახელია და არა `RESTORE`.**
      * ღილაკიდან გადმოსაწერი სიტყვა სუსტია: ის ყოველთვის ერთი და იგივეა და
@@ -412,7 +412,7 @@ class DatabaseBackupController extends Controller
      *
      * ⚠️ **უსაფრთხოების დამპი ჯერ** — შეუქცევადი ოპერაცია იმ ასლის გარეშე,
      * რომელიც მას შექცევადს ხდის, ზუსტად ის ერთი რამეა, რაც ამ ფუნქციამ
-     * არ უნდა ქნას (§22-ის იგივე წესი).
+     * არ უნდა ქნას.
      */
     public function restoreTable(
         Request $request,
@@ -442,7 +442,7 @@ class DatabaseBackupController extends Controller
 
         /* ⚠️ **უსაფრთხოების ასლი ჯერ, და ჩავარდნაზე უარი.** შეუქცევადი
            ოპერაცია იმ ასლის გარეშე, რომელიც მას შექცევადს ხდის, ზუსტად
-           ის ერთი რამეა, რაც ამ ფუნქციამ არ უნდა ქნას (§22-ის წესი). */
+           ის ერთი რამეა, რაც ამ ფუნქციამ არ უნდა ქნას. */
         $safety = $runner->safetyDump($backup, 'auto: before table restore '.$data['table']);
         abort_unless($safety, 500, 'safety_backup_failed');
 
@@ -453,7 +453,7 @@ class DatabaseBackupController extends Controller
     }
 
     /**
-     * **ერთი ჩანაწერის აღდგენა (§11.5).**
+     * **ერთი ჩანაწერის აღდგენა.**
      *
      * ⚠️ აქ აკრეფილი სიტყვა **არ არის**: ერთი რიგის დაბრუნება შექცევადია
      * და სექციის საკუთარ ბადეში წაშლას უტოლდება. აკრეფილი სიტყვა

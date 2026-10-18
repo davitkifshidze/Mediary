@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
 
 /* ============================================================
-   ატვირთვების **მედია-ბიბლიოთეკა** (Tasks 17.5 → §6.2).
+   ატვირთვების **მედია-ბიბლიოთეკა**.
 
    ერთი კომპონენტი ორ ხედს ემსახურება, რომ „რა არის ატვირთული" ორნაირად
    არ გამოიყურებოდეს: ადმინის `/users/{id}` (ნახვა/გადმოწერა) და
@@ -34,7 +34,7 @@ import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from
 
    სია **სრულია და სქროლადი** — ჭრილი ფილტრებით ხდება და არა „top 200"-ით.
 
-   ⚠️ **§6.2 — ერთი დაჭერა ნიშნავს და არ ხსნის** (§2.9-ის ბიბლიოთეკის წესი,
+   ⚠️ **ერთი დაჭერა ნიშნავს და არ ხსნის** (ბიბლიოთეკის წესი,
    იგივე, რაც `PhotoGrid`-ს აქვს). გახსნას ცალკე ღილაკი აქვს, თორემ
    მონიშვნისას ყოველ დაჭერაზე ახალი ტაბი იხსნებოდა.
    ============================================================ */
@@ -43,13 +43,13 @@ type Sort = 'size' | 'date' | 'name'
 const SORTS: Sort[] = ['size', 'date', 'name']
 type View = 'grid' | 'list'
 
-/** ⚠️ `primary` — ჩანაწერის მთავარი ფოტო **ყველა** მოდულში (Tasks §9.4). ადრე ის
+/** ⚠️ `primary` — ჩანაწერის მთავარი ფოტო **ყველა** მოდულში. ადრე ის
  *  `cover`-ად და `thumbnail`-ად ცალ-ცალკე მოდიოდა, ე.ი. „მთავარი ფოტოს“ ორი ბარათი
  *  დაიხატებოდა; `poster` ცალკე რჩება — ფილმის, სერიალისა და ანიმეს ტერმინია. */
 const KINDS = ['avatar', 'poster', 'primary', 'image', 'video', 'doc', 'field', 'backup'] as const
 
 /**
- * **Tasks §3 — ჩეკბოქსის დაჭერა მწკრივამდე არ უნდა ავიდეს.**
+ * **ჩეკბოქსის დაჭერა მწკრივამდე არ უნდა ავიდეს.**
  *
  * მონიშვნის რეჟიმში ერთსა და იმავე `toggle`-ს ორი ადგილი იძახებს: `li`-ის
  * `onClick` (მთელ მწკრივზე დაჭერა ნიშნავს) და ჩეკბოქსის `onCheckedChange`.
@@ -81,9 +81,9 @@ export function StorageLibrary({
   moduleTotals?: Record<string, { files: number; bytes: number }>
   /** არ არის გადმოცემული → წაშლის ღილაკი არ ჩანს (ადმინის ხედი) */
   onDelete?: (file: UploadedFile) => void
-  /** §6.2 — მონიშნულების ან ყველას წაშლა; არ არის → მონიშვნის რეჟიმიც არ ჩანს */
+  /** მონიშნულების ან ყველას წაშლა; არ არის → მონიშვნის რეჟიმიც არ ჩანს */
   onBulkDelete?: (scope: BulkScope, count: number) => void
-  /** §6.2 — იგივე ჩამოტვირთვაზე (zip) */
+  /** იგივე ჩამოტვირთვაზე (zip) */
   onBulkDownload?: (scope: BulkScope, count: number) => void
   deletingPath?: string | null
   busy?: boolean
@@ -101,7 +101,7 @@ export function StorageLibrary({
 
   const bulk = !!(onBulkDelete || onBulkDownload)
 
-  /** მოდულის სახელი key-იდან; `account` და `chat` მოდულები არ არიან (§16.4) */
+  /** მოდულის სახელი key-იდან; `account` და `chat` მოდულები არ არიან */
   const label = (key: string) =>
     STORAGE_PSEUDO_MODULES.includes(key)
       ? t(`storage.${key}`)
@@ -269,7 +269,7 @@ export function StorageLibrary({
         </div>
       )}
 
-      {/* ---------- §6.2 — მასობრივი მოქმედებები ----------
+      {/* ---------- მასობრივი მოქმედებები ----------
           ⚠️ „მონიშნულები" ჭრილზე მუშაობს, „ყველა" კი **მთელ ბიბლიოთეკაზე** —
           ამიტომ ორივე ღილაკზე რიცხვი ცხადად წერია და არა „ყველა" მარტო. */}
       {bulk && !!files.length && (
@@ -390,7 +390,7 @@ export function StorageLibrary({
                   <span className="relative block">
                     <Preview file={f} className="aspect-video w-full" />
                     {bulk && (
-                      /* Tasks §3 — ⚠️ `flex` აუცილებელია: ჩეკბოქსი `<button>`-ია, ე.ი.
+                      /* ⚠️ `flex` აუცილებელია: ჩეკბოქსი `<button>`-ია, ე.ი.
                          inline და ტექსტის საბაზისო ხაზზე ჯდება — ბლოკ-გარსში ქვემოთ
                          ხაზის სიმაღლის ნარჩენი რჩებოდა (ზემოთ 2px, ქვემოთ ~8px). */
                       <span className="absolute left-1.5 top-1.5 flex rounded bg-background/90 p-0.5">
@@ -431,7 +431,7 @@ export function StorageLibrary({
 /**
  * ფაილის მინი-ხედი.
  *
- * ⚠️ **პრივატული დისკის ფაილი აქ არ იხსნება** (§17.5). `/storage/*` მას ვერ
+ * ⚠️ **პრივატული დისკის ფაილი აქ არ იხსნება**. `/storage/*` მას ვერ
  * ხედავს, ე.ი. `<img>` გატეხილი იყო და ბმული 404-ს აბრუნებდა — ჩანაწერების
  * დოკუმენტებზე და ჩატის მედიაზე სწორედ ეს ხდებოდა. თითოეულ სექციას
  * გაცემის **თავისი** route აქვს (`/note-files/{id}`, `/chat/files/{message}`,
@@ -441,8 +441,8 @@ export function StorageLibrary({
  * ⚠️ **`private`-ს backend ამბობს** და არა აქაური `startsWith('notes/')`:
  * დისკს მხოლოდ `StorageFolder` წყვეტს (CLAUDE.md-ის წესი).
  *
- * ⚠️ **§6.2 — ესკიზი აღარაა ბმული.** ერთი დაჭერა ახლა **ნიშნავს** და არ
- * ხსნის (§2.9), ე.ი. გახსნა ცალკე ღილაკზე გადავიდა (`Actions`).
+ * ⚠️ **ესკიზი აღარაა ბმული.** ერთი დაჭერა ახლა **ნიშნავს** და არ
+ * ხსნის, ე.ი. გახსნა ცალკე ღილაკზე გადავიდა (`Actions`).
  */
 function Preview({ file, className }: { file: UploadedFile; className?: string }) {
   const { t } = useTranslation()
@@ -460,7 +460,7 @@ function Preview({ file, className }: { file: UploadedFile; className?: string }
 
   return (
     <span className={box}>
-      {/* ⚠️ `field` (§6 ფაზა 4b) ხატულით ჩანს ტიპისგან დამოუკიდებლად:
+      {/* ⚠️ `field` ხატულით ჩანს ტიპისგან დამოუკიდებლად:
           მორგებული ველის ფაილი ნებისმიერი ფორმატისაა და `<img>` მას ვერ ხატავს */}
       {file.kind === 'doc' || file.kind === 'field' ? (
         <FileText className="size-4 text-muted-foreground" />
@@ -492,7 +492,7 @@ function Actions({
 
   return (
     <span className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
-      {/* ⚠️ პრივატულ ფაილს გახსნა/ჩამოტვირთვა **არ ეძლევა** (§17.5): `/storage/*`
+      {/* ⚠️ პრივატულ ფაილს გახსნა/ჩამოტვირთვა **არ ეძლევა**: `/storage/*`
           მას ვერ ხედავს, ე.ი. ბმული 404-ს აბრუნებდა. ცალკეული ფაილის გახსნა
           თავის სექციაშია (ჩანაწერი / ჩატი / მორგებული ველი), სადაც მფლობელობა
           მოწმდება; მასობრივ zip-ში კი პრივატულიც ხვდება — ის endpoint

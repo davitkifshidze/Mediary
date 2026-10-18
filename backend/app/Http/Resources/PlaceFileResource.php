@@ -16,7 +16,7 @@ class PlaceFileResource extends JsonResource
             'id' => $this->id,
             'kind' => $this->kind,
             'path' => $this->path,
-            // ⚠️ დისკს **საქაღალდე** წყვეტს და არა გამომძახებელი (§17.5)
+            // ⚠️ დისკს **საქაღალდე** წყვეტს და არა გამომძახებელი
             'url' => Storage::disk(StorageFolder::diskFor($this->path))->url($this->path),
             'original_name' => $this->original_name,
             'mime' => $this->mime,

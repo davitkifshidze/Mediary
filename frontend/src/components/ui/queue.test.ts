@@ -6,16 +6,16 @@ import i18n from '@/i18n'
 import type { ShareDomainKey } from '@/api/shareLinks'
 
 /* ============================================================
-   **რიგის `cast` სახეობა** (Tasks §39.3).
+   **რიგის `cast` სახეობა**.
 
-   ⚠️ §39.3 პირდაპირ აფრთხილებს: მსახიობის შტო `syncItem`-ის **ზოგად**
+   ⚠️ მთავარი გაფრთხილება: მსახიობის შტო `syncItem`-ის **ზოგად**
    შტომდე უნდა იდგეს — თორემ ერთეული ჩუმად ჩანაწერის სინქრონად წავა
    (`/media/sync/movie/{მსახიობის id}`) და სხვა ფილმს გადააწერს. ეს
    ტიპებსაც და lint-საც უხილავია: ორივე გზა ერთი და იმავე ფორმის
    `{ ok, error, skipped }`-ს აბრუნებს. მხოლოდ მონტირება ამბობს, **რომელ**
    endpoint-ს დაუძახა რიგმა.
 
-   ⚠️ მეორე შემოწმება — გამოტოვების **მიზეზი** (§39.6): „TMDB-ზე არაფერია"
+   ⚠️ მეორე შემოწმება — გამოტოვების **მიზეზი**: „TMDB-ზე არაფერია"
    და „უცვლელია" ორივე `skipped`-ია, და საერთო „გამოტოვდა" მათ აურევდა.
    ============================================================ */
 
@@ -107,7 +107,7 @@ describe('queue: the cast kind', () => {
   })
 })
 
-describe('queue: a missing key (Tasks §30.6)', () => {
+describe('queue: a missing key', () => {
   /* A missing personal key is not a fact about one record: every later item of the
      same kind would fail identically, so the queue drops them and names the source. */
   it('stops the same kind and names the source instead of failing every record', async () => {
@@ -146,7 +146,7 @@ describe('queue: a missing key (Tasks §30.6)', () => {
 })
 
 /**
- * Tasks §40.1ბ — სათაურის სია ხელით იყო ჩამოწერილი და `import` გამორჩა,
+ * სათაურის სია ხელით იყო ჩამოწერილი და `import` გამორჩა,
  * ე.ი. იმპორტის რიგი „ემატება…"-ს წერდა „იმპორტდება…"-ს ნაცვლად.
  */
 describe('queue: the headline kind', () => {
@@ -164,12 +164,12 @@ describe('queue: the headline kind', () => {
 })
 
 /* ============================================================
-   **რიგის `share` სახეობა** (Tasks §40.9).
+   **რიგის `share` სახეობა**.
 
    ⚠️ ერთეულის `itemId` **გამზიარებლის** ჩანაწერია — ზოგად `syncItem`-ზე
    ჩავარდნილი შტო მას ჩემი ბიბლიოთეკის id-ად წაიკითხავდა და სხვა ფილმს
    გადააწერდა (`cast`-ის იგივე საფრთხე). ⚠️ „ურნაშია" ჩავარდნად კი არა,
-   ცალკე ითვლება და მწკრივი „აღდგენას" სთავაზობს (40.1).
+   ცალკე ითვლება და მწკრივი „აღდგენას" სთავაზობს.
    ============================================================ */
 
 const shareMocks = vi.hoisted(() => ({ addShareItem: vi.fn(), restoreFromTrash: vi.fn() }))
@@ -231,7 +231,7 @@ describe('queue: the share kind', () => {
     expect(text).toContain(i18n.t('queue.restoreFromTrash'))
   })
 
-  /* §40.10 — ⚠️ ერთეულის სექცია ცალკე ველია (`shareDomain`): `mediaType`
+  /* ⚠️ ერთეულის სექცია ცალკე ველია (`shareDomain`): `mediaType`
      მედია-დომენია და წიგნს `movie`-ად წაიკითხავდა — დამატებაც და ურნიდან
      აღდგენაც სხვა მოდულში წავიდოდა. */
   it('sends a stage-2 section as itself, not as a media type', async () => {
@@ -263,7 +263,7 @@ describe('queue: the share kind', () => {
 })
 
 /* ============================================================
-   **სინქრონის ოთხი შედეგი რიგში** (Tasks §31.4/§31.6).
+   **სინქრონის ოთხი შედეგი რიგში**.
 
    ⚠️ აქამდე `changed` endpoint-იდან მოდიოდა და რიგი აგდებდა; ცარიელი TMDB-პასუხი
    მწვანე ✓ იყო, განახლებულის იდენტური. მოწმდება: განახლდა — რა შეიცვალა;
@@ -285,7 +285,7 @@ async function runOneSync() {
   return render(h(QueueProvider, null, h(Starter)))
 }
 
-describe('queue: the four sync outcomes (Tasks §31.4)', () => {
+describe('queue: the four sync outcomes', () => {
   it('names what changed on an updated record', async () => {
     mocks.syncItem.mockResolvedValue({ ok: true, skipped: false, changed: ['poster', 'description_ka'], result: 'updated', error: null, title: 'Dune' })
 
@@ -316,7 +316,7 @@ describe('queue: the four sync outcomes (Tasks §31.4)', () => {
     expect(text).toContain(i18n.t('queue.summary.empty', { count: 1 }))
     expect(text).not.toContain(i18n.t('queue.summary.updated', { count: 1 }))
     expect(el.querySelector('.text-status-towatch')).not.toBeNull()
-    // §31.3 — „აღარ განაახლო" სტრიქონზევეა
+    // „აღარ განაახლო" სტრიქონზევეა
     expect([...el.querySelectorAll('button')].some((b) => b.textContent?.includes(i18n.t('queue.pauseOne')))).toBe(true)
   })
 

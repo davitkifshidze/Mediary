@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
 /**
- * **FEAT-09 — სეზონები და ეპიზოდები.**
+ * **სეზონები და ეპიზოდები.**
  *
  * `GET|POST|PATCH /api/media/episodes/{type}/{id}` — `/media/sync/{type}/{id}`-ის
  * იგივე ფორმა: **ერთი** endpoint ორივე TV-დომენზე (სერიალი · ანიმე) და
@@ -55,7 +55,7 @@ class EpisodeController extends Controller
         $result = $this->sync->sync($record);
 
         if (! $result['ok']) {
-            // §30.6 — „შენი გასაღები არ გაქვს" თავისი კოდითა და წყაროთი მიდის
+            // „შენი გასაღები არ გაქვს" თავისი კოდითა და წყაროთი მიდის
             if ($result['error'] === MissingCredential::CODE) {
                 return MissingCredential::response(CredentialProviders::TMDB);
             }

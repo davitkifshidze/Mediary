@@ -2,19 +2,19 @@ import { api } from '@/lib/api'
 import type { PublicCard } from '@/api/publicProfile'
 
 /* ============================================================
-   **გაზიარების ბმული (Tasks §40).**
+   **გაზიარების ბმული.**
 
    მფლობელი ბმულს ქმნის, სხვა ადამიანი კი მისით მის ჩანაწერებს ხედავს —
-   ფარგლებით, თითო სექციაზე: ფილმები, სერიალები, ანიმე (ეტაპი 1),
+   ფარგლებით, თითო სექციაზე: ფილმები, სერიალები, ანიმე,
    თამაშები, წიგნები, სამაგიდო თამაშები, ადგილები, ვიდეოები, სიმღერები,
-   ბუკმარკები, კურსები (ეტაპი 2, §40.10) და პლეილისტები (§40.13 — სია და
+   ბუკმარკები, კურსები და პლეილისტები (სია და
    არა ჩანაწერი: შიგნით მისი სიმღერებია, დამატება ასლს ქმნის). ⚠️ ნახვა
-   შესვლის გარეშეც შეიძლება (Q46); ბიბლიოთეკაში დამატება მხოლოდ შესულს (40.8).
+   შესვლის გარეშეც შეიძლება; ბიბლიოთეკაში დამატება მხოლოდ შესულს.
 
    ⚠️ **ფარგლების ლექსიკონი `GalleryScope`-ისაა** (`all` · `status` ·
    `favorite` · `genre` · `ids`) — იგივე, რასაც სინქრონიზაციისა და გალერეის
    ფანჯრები იყენებს; ორი ლექსიკონი ერთი კითხვისთვის დაშორდებოდა. `genre`
-   ეტაპი 2-ის დომენებზე „კლასიფიკაციით"-ია — ჟანრი, კატეგორია ან ტიპი,
+   არამედია დომენებზე „კლასიფიკაციით"-ია — ჟანრი, კატეგორია ან ტიპი,
    **მფლობელის ლექსიკონის id-ებით** (`categories`); მედიაზე — გლობალური
    ჟანრის slug-ებით (`genres`).
    ============================================================ */
@@ -50,7 +50,7 @@ export interface ShareDomainSpec {
   statuses?: string[]
   /** მედია — გლობალური ჟანრის slug-ები */
   genres?: string[]
-  /** ეტაპი 2 — მფლობელის ლექსიკონის (ჟანრი/კატეგორია/ტიპი) id-ები */
+  /** მფლობელის ლექსიკონის (ჟანრი/კატეგორია/ტიპი) id-ები */
   categories?: number[]
   genre_mode?: 'any' | 'all'
   ids?: number[]
@@ -80,7 +80,7 @@ export interface ShareLink {
   state: 'active' | 'expired' | 'revoked'
   views: number
   imports: number
-  /** Tasks §40.8 — ვინ დაიმატა ამ ბმულიდან და რამდენი (ახლები ზემოთ) */
+  /** ვინ დაიმატა ამ ბმულიდან და რამდენი (ახლები ზემოთ) */
   importers: { username: string | null; display_name: string; added: number; last_added_at: string | null }[]
   last_opened_at: string | null
   created_at: string | null
@@ -129,7 +129,7 @@ function domainsParam(domains: ShareDomains) {
   )
 }
 
-/** „კონკრეტული ჩანაწერების" პიქერის ერთეული (§40.10) */
+/** „კონკრეტული ჩანაწერების" პიქერის ერთეული */
 export interface ShareRecordOption {
   id: number
   title_ka: string | null
@@ -138,7 +138,7 @@ export interface ShareRecordOption {
 }
 
 /**
- * მფლობელის ჩანაწერები ერთ დომენში — ეტაპი 2-ის პიქერისთვის. ⚠️ ერთი endpoint
+ * მფლობელის ჩანაწერები ერთ დომენში — ჩანაწერების პიქერისთვის. ⚠️ ერთი endpoint
  * რვა დომენზე: მოდულების `index`-ებს რვა სხვადასხვა ფორმა აქვთ.
  */
 export async function fetchShareRecords(domain: ShareDomainKey): Promise<ShareRecordOption[]> {
@@ -182,7 +182,7 @@ export interface PublicShare {
   viewer: {
     signed_in: boolean
     own: boolean
-    /** შესულ უცხოს — რომელ სექციაში შეუძლია დამატება (§40.6); სხვას — ცარიელი */
+    /** შესულ უცხოს — რომელ სექციაში შეუძლია დამატება; სხვას — ცარიელი */
     sections: Partial<Record<ShareDomainKey, ShareAbility>>
   }
 }
@@ -226,7 +226,7 @@ export async function fetchPublicShare(token: string): Promise<PublicShare> {
 
 /**
  * ⚠️ **ნამდვილი გვერდებია და არა „ერთი მზარდი გვერდი"** — სერვერი
- * `per_page`-ს 100-ზე ჭრის (ავტორიზაციის გარეშე endpoint-ია, §B4), ე.ი.
+ * `per_page`-ს 100-ზე ჭრის (ავტორიზაციის გარეშე endpoint-ია), ე.ი.
  * მზარდი `per_page` 100-ზე გაჩერდებოდა. საჯარო პროფილის ყალიბია.
  */
 export async function fetchPublicShareItems(
@@ -245,7 +245,7 @@ export async function fetchPublicShareItems(
   return data
 }
 
-/** ბმულში მყოფი პლეილისტის ერთი გვერდი — თავისი სიმღერებით, რიგით (§40.13) */
+/** ბმულში მყოფი პლეილისტის ერთი გვერდი — თავისი სიმღერებით, რიგით */
 export interface SharePlaylistPage {
   playlist: ShareCard
   data: ShareCard[]
@@ -253,7 +253,7 @@ export interface SharePlaylistPage {
 }
 
 /**
- * ⚠️ **ყველა სიმღერა ჩანს — პირადიც** (§33-ის წესი): სიმღერა პლეილისტის
+ * ⚠️ **ყველა სიმღერა ჩანს — პირადიც**: სიმღერა პლეილისტის
  * ხილვადობას იღებს, ბმული კი თვითონაა თანხმობა.
  */
 export async function fetchSharePlaylist(
@@ -268,9 +268,9 @@ export async function fetchSharePlaylist(
   return data
 }
 
-/* ---------- ბიბლიოთეკაში დამატება — შესულისთვის (Tasks §40.8) ---------- */
+/* ---------- ბიბლიოთეკაში დამატება — შესულისთვის ---------- */
 
-/** „ჩემი ნაგულისხმევი სტატუსით" · „როგორც გამზიარებელს აქვს" (Q48) */
+/** „ჩემი ნაგულისხმევი სტატუსით" · „როგორც გამზიარებელს აქვს" */
 export type ShareStatusMode = 'default' | 'owner'
 
 export interface SharePlanItem {
@@ -311,7 +311,7 @@ export interface ShareItemResult {
   partial: boolean
   /** მთავარი ფოტო ვერ ჩაიწერა (კვოტა) — მიზეზის კოდი */
   poster_skipped: string | null
-  /** §40.13 — პლეილისტის ასლს რამდენი ახალი სიმღერა მოჰყვა */
+  /** პლეილისტის ასლს რამდენი ახალი სიმღერა მოჰყვა */
   songs_added?: number
 }
 

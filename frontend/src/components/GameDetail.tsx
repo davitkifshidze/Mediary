@@ -41,10 +41,10 @@ import { formatBytes } from '@/lib/utils'
 import { LinkField } from '@/components/ui/link-field'
 
 /* ============================================================
-   თამაშის დეტალები — ვიდეოები (§11.2), სქრინშოტები (§11.3),
-   დოკუმენტები და ჩანიშვნები (Tasks §11).
+   თამაშის დეტალები — ვიდეოები, სქრინშოტები,
+   დოკუმენტები და ჩანიშვნები.
 
-   ⚠️ **რიგი §22.2-ით შეიცვალა** (შენი სიტყვები: „ფოტოები ბოლოშია — ზემოთ
+   ⚠️ **რიგი შეიცვალა** (შენი სიტყვები: „ფოტოები ბოლოშია — ზემოთ
    გააკეთე, კარგი ზომით"): თავში მთავარი ფოტო, სტატუსი, ჟანრები,
    პლატფორმები და მოკლე ცნობები; მერე **სქრინშოტები — Steam-ის მაღაზიის
    გვერდივით** (`PhotoShowcase`: პირველი დიდად, დანარჩენი ზოლად); მერე
@@ -59,22 +59,22 @@ import { LinkField } from '@/components/ui/link-field'
    ============================================================ */
 
 /**
- * პლატფორმების ჩიპები — **„ჩემი პლატფორმა" დაჭერით ირჩევა** (Tasks §6.9).
+ * პლატფორმების ჩიპები — **„ჩემი პლატფორმა" დაჭერით ირჩევა**.
  *
- * ⚠️ ფორმიდან `my_platform` ამოღებულია (წინა პარტიის §13), ანათება კი დეტალსა
+ * ⚠️ ფორმიდან `my_platform` ამოღებულია, ანათება კი დეტალსა
  * და სიაში დარჩა — ე.ი. ახალ თამაშს „ჩემი" ვერასდროს ექნებოდა. ხელახლა დაჭერა
  * მოხსნის (`null`); სია `['games']`-ის გაუქმებით ახლდება და დეტალს ახალ
  * ობიექტს აწვდის (`GamesPage` მას id-ით პოულობს).
  */
 export function GameDetail({ game, onClose }: { game: Game; onClose: () => void }) {
-  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
+  // რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
   const favoriteQc = useQueryClient()
   const favorite = useMutation({
     mutationFn: () => toggleGameFavorite(game.id),
     onSuccess: () => void favoriteQc.invalidateQueries({ queryKey: ['games'] }),
   })
   const { t, i18n } = useTranslation()
-  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  // გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen('game', game.id)
   const lang = useContentLang(i18n.language)
 
@@ -88,7 +88,7 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
   return (
     <ModalShell title={title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
-        {/* ---------- თავი: მთავარი ფოტო, სტატუსი, ჟანრები, პლატფორმები (§22.2 → §26.4) ---------- */}
+        {/* ---------- თავი: მთავარი ფოტო, სტატუსი, ჟანრები, პლატფორმები ---------- */}
         <DetailHero
           image={cover}
           alt={title}
@@ -96,16 +96,16 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
           badges={
             <>
               <EnumStatusBadge domain="game" status={game.status} size="row" />
-              {/* Tasks §9 — ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
+              {/* ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
               <RatingStars value={game.rating} />
-              {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+              {/* ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={game.visibility} />
               <FavoriteButton active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }
         >
 
-            {/* Tasks §24.2 — ჟანრები და პლატფორმები თავიდან ბარათებად გავიდა (ქვემოთ, `GameMetaSections`) */}
+            {/* ჟანრები და პლატფორმები თავიდან ბარათებად გავიდა (ქვემოთ, `GameMetaSections`) */}
 
             {/* ---------- მოკლე ცნობები ---------- */}
             <DetailFacts>
@@ -128,10 +128,10 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
             </DetailFacts>
         </DetailHero>
 
-        {/* ---------- Tasks §24.2 — პლატფორმები („ჩემი" დაჭერით) · რეჟიმები · ჟანრები ბარათებად ---------- */}
+        {/* ---------- პლატფორმები („ჩემი" დაჭერით) · რეჟიმები · ჟანრები ბარათებად ---------- */}
         <GameMetaSections game={game} />
 
-        {/* ---------- სქრინშოტები — ზემოთ და დიდად (§22.2, Q35) ---------- */}
+        {/* ---------- სქრინშოტები — ზემოთ და დიდად ---------- */}
         <Screenshots game={game} />
 
         {description && (
@@ -145,7 +145,7 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
             <ul className="space-y-1.5 text-sm">
               {game.links.map((link, i) => (
                 <li key={i} className="flex items-center gap-2">
-                  {/* §22.3 — „რა არის" + (მაღაზიას) „სად" */}
+                  {/* „რა არის" + (მაღაზიას) „სად" */}
                   <span className="shrink-0 rounded-[5px] bg-secondary px-1.5 py-0.5 text-[11px]">
                     {t(`games.linkKinds.${link.kind ?? 'other'}`)}
                     {link.kind === 'store' && link.store && ` · ${t(`games.linkStores.${link.store}`)}`}
@@ -180,7 +180,7 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
   )
 }
 
-/* ---------- §11.2 — ვიდეოები ---------- */
+/* ---------- ვიდეოები ---------- */
 
 function Videos({ game }: { game: Game }) {
   const { t } = useTranslation()
@@ -216,7 +216,7 @@ function Videos({ game }: { game: Game }) {
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        {/* Tasks §15.3 — ჩასმისთანავე სათაური, ესკიზი და ხანგრძლივობა ჩანს */}
+        {/* ჩასმისთანავე სათაური, ესკიზი და ხანგრძლივობა ჩანს */}
         <LinkField
           className="min-w-56 flex-1"
           placeholder={t('games.videoUrlPlaceholder')}
@@ -298,7 +298,7 @@ function useFiles(game: Game, kind: GameFile['kind']) {
   const done = () => {
     qc.invalidateQueries({ queryKey: ['game-files', game.id] })
     qc.invalidateQueries({ queryKey: ['games'] })
-    // 17.1 — ატვირთვა/წაშლა კვოტას ცვლის, ჰედერის ინდიკატორიც უნდა განახლდეს
+    // ატვირთვა/წაშლა კვოტას ცვლის, ჰედერის ინდიკატორიც უნდა განახლდეს
     qc.invalidateQueries({ queryKey: ['storage'] })
     qc.invalidateQueries({ queryKey: ['me'] })
   }
@@ -316,7 +316,7 @@ function useFiles(game: Game, kind: GameFile['kind']) {
 }
 
 /**
- * **სქრინშოტები — ვიტრინა** (§22.2, Q35): პირველი დიდად, დანარჩენი ზოლად,
+ * **სქრინშოტები — ვიტრინა**: პირველი დიდად, დანარჩენი ზოლად,
  * დაჭერით — სრულ ეკრანზე. ⚠️ ატვირთვაც და წაშლაც აქვეა — ცალკე ბადე
  * იმავე ფოტოებს მეორედ დახატავდა.
  */
@@ -347,7 +347,7 @@ function Files({ game }: { game: Game }) {
   const { query, upload, remove } = useFiles(game, 'doc')
   const files = query.data ?? []
   /* ონლაინ მნახველი (2026-09-14) — ⚠️ `resolve: storageUrl` იმიტომაა, რომ ეს
-     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი (§17.5). */
+     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი. */
   const viewer = useFileViewer({ resolve: storageUrl, onDelete: (id) => remove.mutate(id) })
 
 
@@ -437,7 +437,7 @@ function Files({ game }: { game: Game }) {
 function Notes({ game }: { game: Game }) {
   const { t } = useTranslation()
 
-  /* ⚠️ სხეული გაზიარებულია (`components/RecordNotes.tsx`, Tasks §6.7).
+  /* ⚠️ სხეული გაზიარებულია (`components/RecordNotes.tsx`).
      აქ ადრე `books.notesEmpty` იყო ნასესხები — გაზიარებულ კომპონენტს
      ტექსტი გამომძახებლისგან მოაქვს, ე.ი. თითოეულ მოდულს თავისი გასაღები
      უნდა ჰქონდეს და არა მეზობლის სივრცე. */

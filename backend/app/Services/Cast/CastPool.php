@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * **„ჩემი ჩანაწერების მსახიობები" — ერთი წყარო** (Tasks §39).
+ * **„ჩემი ჩანაწერების მსახიობები" — ერთი წყარო**.
  *
  * ⚠️ **ორი მომხმარებელი და ერთი query**: გალერეის ჩამოტვირთვის „მსახიობების"
  * ტაბი (`GalleryController::castPoolQuery`) და მსახიობების მასობრივი
@@ -62,7 +62,7 @@ final class CastPool
             $w->orWhereRaw('1 = 0');
         });
 
-        /* Tasks §35.5 (Q9) — მასობრივი სინქრონი და გალერეის ჩამოტვირთვა ჩემ მიერ
+        /* მასობრივი სინქრონი და გალერეის ჩამოტვირთვა ჩემ მიერ
            ჩაკეტილ მსახიობს არ ეხება, სესიაში გახსნილსაც (რიგი ფონზე მიდის). */
         if ($userId = Auth::id()) {
             $pool->withoutLockedBy((int) $userId);

@@ -6,7 +6,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * **კალათა ჩანაწერებზე (FEAT-11).**
+ * **კალათა ჩანაწერებზე.**
  *
  * ⚠️ **სვეტი `trashed_at` ჰქვია და არა `deleted_at`.** ეს უკანასკნელი
  * Laravel-ის `SoftDeletes`-ის **კონტრაქტია**: თუ ოდესმე ვინმე ამ მოდელს

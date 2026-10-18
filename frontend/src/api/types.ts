@@ -1,5 +1,5 @@
 /**
- * **სტატუსის „მნიშვნელობა" (Tasks §6.4).**
+ * **სტატუსის „მნიშვნელობა".**
  *
  * ⚠️ სახელი per-user-ია და გადაერქმევა, ე.ი. ლოგიკა მასზე ვერ დგება.
  * სამი ადგილი სწორედ ამას კითხულობს: „ორივემ ნანახი" (`MatchPanel`),
@@ -8,7 +8,7 @@
 export type StatusRole = 'todo' | 'doing' | 'done'
 
 /**
- * **ჩანაწერის სტატუსი — ლექსიკონის რიგი და არა სტრიქონი (Tasks §6.4).**
+ * **ჩანაწერის სტატუსი — ლექსიკონის რიგი და არა სტრიქონი.**
  *
  * ⚠️ ობიექტი იმიტომაა, რომ სახელი **მფლობელის** ლექსიკონშია: უცხო პროფილზე
  * მხოლოდ გასაღები („watched") წასაკითხი არ იქნებოდა, ორივეს ცალკე ველად
@@ -53,15 +53,15 @@ export interface CastMember {
   /** TMDB-ის კოდირება: 1 = ქალი, 2 = კაცი */
   gender?: number | null
   has_tmdb?: boolean
-  /** ეტაპი 1 — ეს ბმული ხელით გაკეთდა და `/sync` მას აღარ შლის */
+  /** ეს ბმული ხელით გაკეთდა და `/sync` მას აღარ შლის */
   is_manual?: boolean
   /**
-   * Tasks §16 — ჩანაწერის სიიდან დამალული: გვერდზე „დამალულის" დაკეცილ
+   * ჩანაწერის სიიდან დამალული: გვერდზე „დამალულის" დაკეცილ
    * ჯგუფში იხატება. ⚠️ ჩანაწერზე რჩება — ძებნაში, მსახიობის გვერდსა და
    * გალერეაში ჩანს. წაშლილი (`is_removed`) API-ში საერთოდ არ მოდის.
    */
   is_hidden?: boolean
-  /** Tasks §16 — როლი ან რიგი ხელით შეიცვალა; სინქრონიზაცია მას აღარ ეხება */
+  /** როლი ან რიგი ხელით შეიცვალა; სინქრონიზაცია მას აღარ ეხება */
   is_edited?: boolean
 }
 
@@ -72,7 +72,7 @@ export interface MovieListItem {
   year: number | null
   /** TMDB-ის საშუალო (სტრიქონი — `decimal:1`); შენი ქულა `my_rating`-შია */
   rating: string | null
-  /** Tasks §9 (Q1) — „ჩემი ქულა" 0–10 მეათედით, TMDB-ის საშუალოსგან ცალკე */
+  /** „ჩემი ქულა" 0–10 მეათედით, TMDB-ის საშუალოსგან ცალკე */
   my_rating: number | null
   poster: string | null
   status: Status | null
@@ -86,7 +86,7 @@ export interface MovieListItem {
   episodes?: number | null
   genres: Genre[]
   missing?: string[]
-  /* Tasks §35.5 — ლოკი (მხოლოდ მფლობელს). `hidden` — ბოქლომიანი ბარათი: სერვერმა
+  /* ლოკი (მხოლოდ მფლობელს). `hidden` — ბოქლომიანი ბარათი: სერვერმა
      მხოლოდ სათაური და ლოკის ფაქტები გამოგზავნა (პოსტერი, ჟანრები, სტატუსი — არა). */
   hidden?: boolean
   locked?: boolean
@@ -97,13 +97,13 @@ export interface MovieListItem {
 }
 
 export interface Movie extends MovieListItem {
-  /** Tasks 16.1 — ხილვადობა საჯარო პროფილზე; `private` default */
+  /** ხილვადობა საჯარო პროფილზე; `private` default */
   visibility: 'private' | 'public'
   imdb_id: string | null
   imdb_url: string | null
   tmdb_id: number | null
   ge_url: string | null
-  /** ოფიციალური ტრეილერი (Tasks 9) */
+  /** ოფიციალური ტრეილერი */
   trailer_url: string | null
   /** backend-ის allowlist-ით აწყობილი embed — თვითნებური HTML არასდროს */
   trailer_embed_url: string | null
@@ -116,9 +116,9 @@ export interface Movie extends MovieListItem {
   episodes?: number | null
   cast: CastMember[]
   sync_status: string
-  /** Tasks §31.3 — „აღარ განაახლო": მასობრივი გეგმები და რიგი ამ ჩანაწერს გამოტოვებენ */
+  /** „აღარ განაახლო": მასობრივი გეგმები და რიგი ამ ჩანაწერს გამოტოვებენ */
   sync_paused: boolean
-  /** Tasks §31.1 — ბოლო სინქრონი/თარგმანი და მისი შედეგი */
+  /** ბოლო სინქრონი/თარგმანი და მისი შედეგი */
   last_synced_at: string | null
   last_sync_result: SyncOutcome | null
   last_translated_at: string | null
@@ -128,7 +128,7 @@ export interface Movie extends MovieListItem {
 }
 
 /**
- * Tasks §31 — გაშვების შედეგი ჩანაწერზე (`SyncOutcome` backend-ზე): განახლდა ·
+ * გაშვების შედეგი ჩანაწერზე (`SyncOutcome` backend-ზე): განახლდა ·
  * უცვლელი · ცარიელი პასუხი (დამუშავებულად **არ** ითვლება) · ჩავარდა.
  */
 export type SyncOutcome = 'updated' | 'unchanged' | 'empty' | 'failed'

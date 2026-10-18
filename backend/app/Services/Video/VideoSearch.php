@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
- * ვიდეოს ძებნა და „მსგავსი ვიდეოები" (Tasks K4).
+ * ვიდეოს ძებნა და „მსგავსი ვიდეოები".
  *
  * ძებნა ორ ბიჯად:
  *  1. **SQL LIKE** — სათაური, აღწერა, ტეგები, წყარო/პლატფორმა, URL და ჩანიშვნები.
@@ -142,7 +142,7 @@ class VideoSearch
     }
 
     /**
-     * ჩანაწერის ყველა ტექსტური ველი ერთ ტოკენების სიად (K4 — „ძებნა ყველაფერში").
+     * ჩანაწერის ყველა ტექსტური ველი ერთ ტოკენების სიად („ძებნა ყველაფერში").
      * აღწერას/ჩანიშვნებს ვჭრით, რომ გრძელ ტექსტზე fuzzy არ გაძვირდეს.
      *
      * @return string[]
@@ -250,7 +250,7 @@ class VideoSearch
         if ($this->contains($this->normalize((string) $video->description), $needle)) {
             $score += 50;
         }
-        // Q52 — არხი აღწერის ქვემოთ, ჩანიშვნის ზემოთ: „ვისია" სათაურზე სუსტია, წყაროზე ძლიერი
+        // არხი აღწერის ქვემოთ, ჩანიშვნის ზემოთ: „ვისია" სათაურზე სუსტია, წყაროზე ძლიერი
         if ($this->contains($this->normalize((string) $video->channel), $needle)) {
             $score += 45;
         }
@@ -289,7 +289,7 @@ class VideoSearch
         if ($candidate->platform === $source->platform && $candidate->platform !== 'other') {
             $score += 3;
         }
-        // იგივე ტიპი (5.1 — ადრე `kind` enum იყო); ტიპის გარეშე ვიდეოები არ ემსგავსება
+        // იგივე ტიპი (ადრე `kind` enum იყო); ტიპის გარეშე ვიდეოები არ ემსგავსება
         if ($candidate->type_id && $candidate->type_id === $source->type_id) {
             $score += 2;
         }

@@ -4,19 +4,19 @@ import type { Video } from '@/api/videos'
 import { isAllowedEmbed } from '@/lib/embed'
 
 /**
- * ვიდეოს ჩვენება (I5).
+ * ვიდეოს ჩვენება.
  *
  * ⚠️ უსაფრთხოება: iframe **მხოლოდ** backend-ის allowlist-იდან მოსულ `embed_url`-ს
  * იღებს (და აქვე ხელახლა მოწმდება ჰოსტი) — თვითნებური HTML არსად ირენდერება.
  * პირდაპირი ფაილი `<video>`-შია; უცნობი წყარო — უბრალოდ ბმული.
  *
  * ⚠️ allowlist-ის ასლი აქ **აღარ არის** — `lib/embed.ts`-შია, იმავეს რომ
- * კითხულობდეს ერთიანი დამკვრელიც (§7.2).
+ * კითხულობდეს ერთიანი დამკვრელიც.
  */
 
 /**
  * ვიწრო ფორმა — მთელი `Video` საჭირო არაა.
- * Tasks 9-ის ტრეილერიც ამ სახით გადმოეცემა (`trailer_url`/`trailer_embed_url`).
+ * ტრეილერიც ამ სახით გადმოეცემა (`trailer_url`/`trailer_embed_url`).
  */
 export type Embeddable = Pick<Video, 'url' | 'embed_url' | 'title'> & {
   platform?: Video['platform']

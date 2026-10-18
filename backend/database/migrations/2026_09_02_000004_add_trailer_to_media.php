@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Tasks 9 — ტრეილერის ბმული ფილმზე და სერიალზე.
+ * ტრეილერის ბმული ფილმზე და სერიალზე.
  *
  * ინახება **სრული URL** (და არა YouTube-ის key), რომ `App\Support\VideoUrl`-მა
  * იგივე allowlist-ით ააგოს embed, რითიც ვიდეოს მოდული მუშაობს — ე.ი. ტრეილერზეც

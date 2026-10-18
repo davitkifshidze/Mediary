@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 /* ============================================================
-   **ბმულის ველი შემოთავაზებით** (Tasks §15.2).
+   **ბმულის ველი შემოთავაზებით**.
 
    შენი სიტყვები: „სადაც ვიდეო ან რამე ბმული ისმება, მეტა-ტეგებით შეეძლოს
    წამოიღოს ფოტო, სათაური და ასე შემდეგ და ჩასვას შესაბამის ადგილას, ან
@@ -103,7 +103,7 @@ function LinkSuggestCard({
         <p className="truncate font-medium" title={preview.title ?? undefined}>
           {preview.title ?? preview.url}
         </p>
-        {/* Tasks §44.2 — აღწერაც ჩანს, ორ ხაზად (სრული ტექსტი „ჩასმით" ველში ჯდება) */}
+        {/* აღწერაც ჩანს, ორ ხაზად (სრული ტექსტი „ჩასმით" ველში ჯდება) */}
         {preview.description && (
           <p className="line-clamp-2 text-xs text-muted-foreground" data-testid="link-suggest-description">
             {preview.description}
@@ -148,7 +148,7 @@ export function LinkField({
   onApply?: (preview: LinkPreview) => void
   placeholder?: string
   invalid?: boolean
-  /** ახალი ჩანაწერის ფორმა ბმულით იწყება (ბუკმარკი, §41.1) */
+  /** ახალი ჩანაწერის ფორმა ბმულით იწყება (ბუკმარკი) */
   autoFocus?: boolean
   className?: string
   inputClassName?: string

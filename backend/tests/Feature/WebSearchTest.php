@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * SerpApi — ერთი კლიენტი, ერთი მრიცხველი (Tasks §7.6).
+ * SerpApi — ერთი კლიენტი, ერთი მრიცხველი.
  *
  * ⚠️ **აქ ის იმოწმება, რაც ფულს ღირს.** ბიუჯეტი 250 ძებნაა თვეში მთელ
  * ანგარიშზე, ე.ი. ყოველი ჩუმი ხარვეზი — ორმაგად გაშვებული რექვესთი, ქეშის
@@ -40,7 +40,7 @@ class WebSearchTest extends TestCase
             'password' => 'password',
         ]);
 
-        /* Tasks §30 — SerpApi-ის გასაღები **მომხმარებლისაა**; თვიური ჭერი კი
+        /* SerpApi-ის გასაღები **მომხმარებლისაა**; თვიური ჭერი კი
            კოდის ნაგულისხმევია (250), ე.ი. ცალკე ჩაწერა აღარ სჭირდება. */
         $this->giveCredential($this->user, 'serpapi');
     }
@@ -72,7 +72,7 @@ class WebSearchTest extends TestCase
         ]);
     }
 
-    /** ძებნა იხარჯება **ერთხელ**, ხოლო გამეორება ქეშიდან — უფასოდ (§7.6.1) */
+    /** ძებნა იხარჯება **ერთხელ**, ხოლო გამეორება ქეშიდან — უფასოდ */
     public function test_a_repeated_query_is_served_from_cache_and_spends_nothing(): void
     {
         $this->fakeImages();
@@ -141,9 +141,9 @@ class WebSearchTest extends TestCase
     }
 
     /**
-     * გასაღების გარეშე **ფასიანი** წყარო სიაში არ ჩანს და ცხადად ამბობს ამას (§7.6.7).
+     * გასაღების გარეშე **ფასიანი** წყარო სიაში არ ჩანს და ცხადად ამბობს ამას.
      *
-     * ⚠️ Tasks §30.6 — პასუხი **`credential_missing` + წყაროა** და არა
+     * ⚠️ პასუხი **`credential_missing` + წყაროა** და არა
      * `serpapi_unavailable`: „ჩაწერე შენი გასაღები" და „წყარო არ პასუხობს"
      * სხვადასხვა ქმედებას ითხოვს. სტატუსი კი ამბობს, **რომელს** აკლია გასაღები.
      */
@@ -174,7 +174,7 @@ class WebSearchTest extends TestCase
     }
 
     /**
-     * ⚠️ **გასაღების გარეშე ვებძებნა მთლიანად არ ქრება** (Tasks §7.5, წყარო „დ"):
+     * ⚠️ **გასაღების გარეშე ვებძებნა მთლიანად არ ქრება** (წყარო „დ"):
      * უფასო კატალოგი სიაში რჩება და მუშაობს — ქრება მხოლოდ ტეგიანი ძებნა.
      */
     public function test_the_free_catalogue_works_without_any_key(): void
@@ -262,7 +262,7 @@ class WebSearchTest extends TestCase
     }
 
     /**
-     * ⚠️ **ნაგულისხმევი წყარო უფასოა** (§7.5-ის პირდაპირი მითითება) — თორემ
+     * ⚠️ **ნაგულისხმევი წყარო უფასოა** — თორემ
      * ერთი მსახიობის ფოტოძებნა 250-იან ბიუჯეტს ერთ საღამოში შეჭამდა.
      */
     public function test_the_default_source_is_the_free_one(): void
@@ -281,7 +281,7 @@ class WebSearchTest extends TestCase
 
     /**
      * ⚠️ **`GET /account` კვოტას არ ხარჯავს** — სტატუსის გვერდის გახსნა
-     * მრიცხველს ვერ გაზრდის (§7.6.1).
+     * მრიცხველს ვერ გაზრდის.
      */
     public function test_the_status_page_does_not_spend_a_search(): void
     {
@@ -316,7 +316,7 @@ class WebSearchTest extends TestCase
     }
 
     /**
-     * რამდენიმე engine ერთად (§7.6.4): თითო +1 ძებნაა, დუბლიკატი ერთდება და
+     * რამდენიმე engine ერთად: თითო +1 ძებნაა, დუბლიკატი ერთდება და
      * ერთეული ინახავს **ყველა** წყაროს, რომელმაც ის მოიტანა.
      */
     public function test_several_engines_merge_duplicates_and_each_costs_one_search(): void
@@ -373,7 +373,7 @@ class WebSearchTest extends TestCase
         $this->assertTrue($res->json('sources.0.ok'));
     }
 
-    /** ერთი ვიდეოს დეტალები YouTube-ის გასაღების გარეშე (§7.6.3) */
+    /** ერთი ვიდეოს დეტალები YouTube-ის გასაღების გარეშე */
     public function test_video_details_come_from_serpapi_without_a_youtube_key(): void
     {
         Http::fake([
@@ -457,7 +457,7 @@ class WebSearchTest extends TestCase
             },
         ]);
 
-        // ⚠️ კლიენტი პირდაპირ იძახება — გასაღები კი `Auth::id()`-ის მომხმარებლისაა (§30)
+        // ⚠️ კლიენტი პირდაპირ იძახება — გასაღები კი `Auth::id()`-ის მომხმარებლისაა
         $this->actingAs($this->user);
         $client = app(SerpApiClient::class);
 
@@ -473,7 +473,7 @@ class WebSearchTest extends TestCase
     }
 
     /**
-     * **ფარდობითი თარიღი ნორმალიზდება** (ეტაპი 4, 2026-09-13).
+     * **ფარდობითი თარიღი ნორმალიზდება** (2026-09-13).
      *
      * ⚠️ YouTube `published_date`-ში „9 months ago"-ს წერს. ეს სტრიქონი
      * პირდაპირ მიდიოდა `POST /api/gallery/videos`-ზე, სადაც `published_at`
@@ -522,7 +522,7 @@ class WebSearchTest extends TestCase
     }
 
     /* ============================================================
-       Tasks §19 — „კიდევ ჩამოიტანე", ხარჯის კატეგორია და „უკვე ვიდეოებშია"
+       „კიდევ ჩამოიტანე", ხარჯის კატეგორია და „უკვე ვიდეოებშია"
        ============================================================ */
 
     /** GET-ის შეკითხვის პარამეტრები — `Http::fake()`-ის closure-ისთვის */
@@ -665,7 +665,7 @@ class WebSearchTest extends TestCase
     }
 
     /**
-     * §19.2 — ვიდეოს წყაროები **`uses_quota`-ს** ამბობენ: ინტერფეისი ხარჯს
+     * ვიდეოს წყაროები **`uses_quota`-ს** ამბობენ: ინტერფეისი ხარჯს
      * ამით ითვლის და არა `!free`-ით (Serper-ზე ორივე ტყუილი იქნებოდა).
      */
     public function test_video_sources_say_they_spend_the_serpapi_quota(): void
@@ -695,8 +695,8 @@ class WebSearchTest extends TestCase
     }
 
     /**
-     * §19.6 — **ძებნის პასუხი თვითონ ამბობს, რომელი ბმული უკვე გაქვს**
-     * (`DuplicateLink`, FEAT-17): ცალკე მოთხოვნა ბადეს ორჯერ დახატავდა.
+     * **ძებნის პასუხი თვითონ ამბობს, რომელი ბმული უკვე გაქვს**
+     * (`DuplicateLink`): ცალკე მოთხოვნა ბადეს ორჯერ დახატავდა.
      */
     public function test_video_results_say_which_links_you_already_have(): void
     {

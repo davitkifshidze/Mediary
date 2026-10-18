@@ -1,7 +1,7 @@
 import type { VideoPlatform } from '@/api/videos'
 
 /* ============================================================
-   embed-ის ერთადერთი წყარო ფრონტზე (Tasks §7.2).
+   embed-ის ერთადერთი წყარო ფრონტზე.
 
    ⚠️ **ნედლი HTML არსად ირენდერება** — `<iframe src>`-ში მხოლოდ backend-ის
    ნაშენი `embed_url` ხვდება (`App\Support\VideoUrl`), ჰოსტი აქვე ხელახლა
@@ -33,9 +33,9 @@ export function isAllowedEmbed(url: string | null | undefined): boolean {
  *
  * ⚠️ `enablejsapi`/`origin` YouTube-ისთვის **სავალდებულოა** — მათ გარეშე
  * ფრეიმი `postMessage`-ს არც აგზავნის და არც იღებს, ე.ი. „დამთავრდა" ვერ
- * გავიგებთ და ავტომატური გადასვლა (§7.2-ის არსი) არ იმუშავებდა.
+ * გავიგებთ და რიგში შემდეგზე ავტომატური გადასვლა არ იმუშავებდა.
  *
- * ⚠️ `autoplay = false` — ფრეიმი **პაუზაზე** იბადება (Tasks §35): რიგიდან
+ * ⚠️ `autoplay = false` — ფრეიმი **პაუზაზე** იბადება: რიგიდან
  * ბოლო, მიმდინარე ჩანაწერი რომ ამოიღო, სცენა წინაზე დგება და უკვე
  * მოსმენილი თავისით თავიდან არ უნდა დაიწყოს. დაკვრის ბრძანება მერეც
  * მუშაობს (`embedCommand`), ე.ი. „დაკვრაზე" დაჭერა მაინც რთავს.
@@ -133,7 +133,7 @@ export function embedEventFrom(data: unknown): EmbedEvent | null {
 }
 
 /**
- * Tasks §48.4 — **სად არის დაკვრა** (სიმღერის ბუშტის რგოლი), წამებში.
+ * **სად არის დაკვრა** (სიმღერის ბუშტის რგოლი), წამებში.
  *
  * ⚠️ ნაწილობრივი პასუხია: YouTube ხანგრძლივობას (`duration`) იშვიათად
  * აგზავნის, მიმდინარე წამს (`currentTime`) კი — ხშირად; გამომძახებელი ბოლო
@@ -173,7 +173,7 @@ export function embedHandshake(platform: VideoPlatform): string[] {
     ]
   }
   if (platform === 'vimeo') {
-    // §48.4 — `timeupdate` ბუშტის პროგრესის რგოლისთვისაა
+    // `timeupdate` ბუშტის პროგრესის რგოლისთვისაა
     return ['ended', 'play', 'pause', 'timeupdate'].map((value) =>
       JSON.stringify({ method: 'addEventListener', value }),
     )

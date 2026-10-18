@@ -5,7 +5,7 @@ import type { UploadKindLimit } from '@/api/account'
 import { acceptFor, uploadProblem, usePendingUploads, type PendingUploads } from './pendingUploads'
 
 /* ============================================================
-   `lib/pendingUploads.ts` — შენახვამდე არჩეული ფაილები (Tasks §23.4).
+   `lib/pendingUploads.ts` — შენახვამდე არჩეული ფაილები.
 
    ⚠️ მთავარი წესი, რასაც ეს ფაილი იცავს: **ერთი ფაილის ჩავარდნა დანარჩენს
    არ აჩერებს და ჩანაწერს არ აუქმებს** — წარმატებული სიიდან ქრება,
@@ -25,7 +25,7 @@ const DOC: UploadKindLimit = {
   personal: null,
   default: { max_kb: 20480, formats: ['pdf', 'docx'] },
 }
-/* ⚠️ §34.4 — სურათსაც **ნამდვილი სია** აქვს; `extensions` ფსევდონიმებსაც
+/* ⚠️ სურათსაც **ნამდვილი სია** აქვს; `extensions` ფსევდონიმებსაც
    შეიცავს (`jpg` → `jpeg`), ისევე როგორც სერვერის `mimes:` */
 const IMAGE: UploadKindLimit = {
   ...DOC,
@@ -44,7 +44,7 @@ describe('uploadProblem', () => {
     expect(uploadProblem(file('A.PDF'), 'doc', DOC)).toBeNull()
   })
 
-  /** ⚠️ §34.4 — სურათიც სიით მოწმდება; `.jpeg` `jpg`-ის ფსევდონიმით გადის */
+  /** ⚠️ სურათიც სიით მოწმდება; `.jpeg` `jpg`-ის ფსევდონიმით გადის */
   it('სურათი — ნამდვილი სიით და ფსევდონიმით', () => {
     expect(uploadProblem(file('a.txt', 10, 'text/plain'), 'image', IMAGE)).toBe('wrong_type')
     expect(uploadProblem(file('a.jpg', 10, 'image/jpeg'), 'image', IMAGE)).toBeNull()
@@ -59,9 +59,9 @@ describe('uploadProblem', () => {
 })
 
 describe('acceptFor', () => {
-  it('დოკუმენტსაც აქვს `accept` (§23.4)', () => {
+  it('დოკუმენტსაც აქვს `accept`', () => {
     expect(acceptFor('doc', DOC)).toBe('.pdf,.docx')
-    // ⚠️ §34.4 — სურათიც ნამდვილი სიით, ფსევდონიმებიანად; ლიმიტის გარეშე — `image/*`
+    // ⚠️ სურათიც ნამდვილი სიით, ფსევდონიმებიანად; ლიმიტის გარეშე — `image/*`
     expect(acceptFor('image', IMAGE)).toBe('.jpg,.png,.jpeg')
     expect(acceptFor('image', undefined)).toBe('image/*')
     expect(acceptFor('video', undefined)).toBe('video/*')

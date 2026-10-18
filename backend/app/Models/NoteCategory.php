@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * ჩანაწერის კატეგორია — „რას ეხება" (Tasks §13.1).
+ * ჩანაწერის კატეგორია — „რას ეხება".
  *
  * **per-user მართვადი ლექსიკონი**, ზუსტად ისე, როგორც `book_genres` /
  * `board_game_genres`. გლობალურ `genres`-ს აქაც განზრახ არ ვიყენებთ: ის
@@ -18,13 +18,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class NoteCategory extends Model
 {
     /**
-     * ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — წაშლა რიგს ურნაში აგზავნის
+     * ⚠️ **ურნა** — წაშლა რიგს ურნაში აგზავნის
      * (`DictionaryTrash::trash()`); `trash_meta` იმახსოვრებს გადატანილ
      * ჩანაწერებს, რომ აღდგენამ მათი დაბრუნება შემოგთავაზოს.
      */
     use BelongsToUser, HasTrash;
 
-    /** §B3 — უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
+    /** უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
     use HasDictionaryKey;
 
     /** ახალ ანგარიშზე ავტომატურად შექმნილი კატეგორიები (იგივე სია მიგრაციაშიც) */
@@ -62,7 +62,7 @@ class NoteCategory extends Model
      */
     public static function ensureDefaults(int $userId): void
     {
-        // ⚠️ ურნაში მყოფიც (Tasks §29) — სხვაგვარად ნაგულისხმევები იმავე გასაღებით ჩაიწერებოდა და ინდექსი დაიძვრებოდა
+        // ⚠️ ურნაში მყოფიც — სხვაგვარად ნაგულისხმევები იმავე გასაღებით ჩაიწერებოდა და ინდექსი დაიძვრებოდა
         if (static::withoutGlobalScopes(['owner', 'trash'])->where('user_id', $userId)->exists()) {
             return;
         }

@@ -51,7 +51,7 @@ export function PlaylistsPage() {
 
   const [editing, setEditing] = useState<Playlist | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Playlist | null>(null)
-  // Tasks §45 — ფლეილისტების ხედი სიმღერის მოდულზე, თავისი გასაღებით (სიმღერების ხედს არ ეხება)
+  // ფლეილისტების ხედი სიმღერის მოდულზე, თავისი გასაღებით (სიმღერების ხედს არ ეხება)
   const [layout, setLayout] = useRecordLayout('song', 'rows', 'playlist_view')
 
   const { data: playlists = [], isLoading } = useQuery({
@@ -62,7 +62,7 @@ export function PlaylistsPage() {
   const navigate = useNavigate()
   const reorder = useMutation({
     mutationFn: reorderPlaylists,
-    // Tasks §11 — ოპტიმისტურად: რიგი ჩაშვებისთანავე დგება, პასუხი მას ადასტურებს
+    // ოპტიმისტურად: რიგი ჩაშვებისთანავე დგება, პასუხი მას ადასტურებს
     onMutate: (ids) => qc.setQueryData<Playlist[]>(['playlists'], (old) => (old ? sortByIds(old, ids, (p) => p.id) : old)),
     onSuccess: (next) => qc.setQueryData(['playlists'], next),
     onError: (e) => {
@@ -89,7 +89,7 @@ export function PlaylistsPage() {
         hint={<InfoHint info={t('playlists.subtitle')} />}
         actions={
           <>
-            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (სიმღერის მოდულზე ინახება) */}
+            {/* ბარათები · ბადე · სტრიქონები (სიმღერის მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             <Button onClick={() => setEditing('new')}>
               <Plus className="size-4" />
@@ -106,10 +106,10 @@ export function PlaylistsPage() {
         </p>
       )}
 
-      {/* Tasks §45 — სამი განლაგება, გადათრევა (§11) სამივეში */}
+      {/* სამი განლაგება, გადათრევა სამივეში */}
       <RecordList layout={layout} sortable={{ ids: playlistIds, onReorder: (ids) => reorder.mutate(ids) }}>
         {playlists.map((playlist) => {
-          /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · — · რედაქტირება · წაშლა */
+          /* მარჯვენა ღილაკის მენიუ: გახსნა · — · რედაქტირება · წაშლა */
           const actions: MenuAction[] = [
             { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => navigate(`/playlists/${playlist.id}`) },
             { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(playlist) },
@@ -134,7 +134,7 @@ export function PlaylistsPage() {
               onEdit={() => setEditing(playlist)}
               bar={
                 <span className="flex shrink-0 items-center gap-1">
-                  {/* §7.2 — სიმღერები სიაში არ მოდის (`songs_count`-ია), ამიტომ
+                  {/* სიმღერები სიაში არ მოდის (`songs_count`-ია), ამიტომ
                       ღილაკი ჯერ პლეილისტს ჩამოტვირთავს და მერე უშვებს */}
                   <PlayPlaylistButton playlist={playlist} />
                   <Button variant="edit" size="sm" onClick={() => setEditing(playlist)}>
@@ -170,7 +170,7 @@ export function PlaylistsPage() {
 }
 
 /**
- * პლეილისტის გაშვება სიიდან (§7.2).
+ * პლეილისტის გაშვება სიიდან.
  *
  * ⚠️ ცალკე კომპონენტია, რომ ჩამოტვირთვის მდგომარეობა **თითო რიგს** ჰქონდეს:
  * გვერდის დონეზე ერთი `isPending` ყველა ღილაკს ერთდროულად დაატრიალებდა.

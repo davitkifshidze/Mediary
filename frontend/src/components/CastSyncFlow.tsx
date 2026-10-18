@@ -26,11 +26,11 @@ import { ModalFooter } from '@/components/ui/modal-shell'
 import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 
 /* ============================================================
-   **მსახიობების მონაცემები — სინქრონიზაციის მეორე ნაკადი** (Tasks §39).
+   **მსახიობების მონაცემები — სინქრონიზაციის მეორე ნაკადი**.
 
    შენი სიტყვები: „მინდა მასობრივი მსახიობების ინფოს სინქრონიზაცია —
    პროფილი, სოციალები და რაც ხდება ახლა სათითაოდ"; „მსახიობების
-   ბიოგრაფიების გლობალური სინქრონიზაცია სინქრონიზაციაში შეიტანე" (§20).
+   ბიოგრაფიების გლობალური სინქრონიზაცია სინქრონიზაციაში შეიტანე".
 
    ⚠️ **დომენის ბარათები ორივე ნაკადში ერთსა და იმავეს ნიშნავს** —
    „რომელ ბიბლიოთეკაში". ჩანაწერების ნაკადში ეს ამ ბიბლიოთეკის ჩანაწერებია,
@@ -41,7 +41,7 @@ import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
    ⚠️ **ველები გეგმის გასაღებში არ ზის** — ისინი „რომელ მსახიობებს"
    არ ცვლის, ე.ი. ჩამრთველზე ყოველი დაჭერა ცარიელ რექვესთს გაგზავნიდა.
 
-   ⚠️ **`placeholderData` ერთ კონტექსტში** — §18-ის გაკვეთილი: გეგმის
+   ⚠️ **`placeholderData` ერთ კონტექსტში**: გეგმის
    გასაღები მონიშნულ მსახიობებსაც შეიცავს, ე.ი. ყოველი ტიკი ახალი
    რექვესთია და მის გარეშე ამრჩევი ყოველ დაჭერაზე ქრებოდა და ბრუნდებოდა.
    ============================================================ */
@@ -166,7 +166,7 @@ export function CastSyncFlow({
       <div className="mt-4 space-y-5">
         {header}
 
-        {/* ---------- რომელი მსახიობები (§39.1) ---------- */}
+        {/* ---------- რომელი მსახიობები ---------- */}
         <div>
           <Label className="mb-2 block">{t('castSync.scope')}</Label>
           <RadioGroup value={scope} onValueChange={(v) => setScope(v as CastSyncScope)} className="gap-2">
@@ -221,7 +221,7 @@ export function CastSyncFlow({
                 </div>
 
                 {/* ⚠️ ფიქსირებული სიმაღლე — მონიშვნამ და ძებნამ ფანჯრის ზომა არ
-                    უნდა შეცვალოს (გალერეის ჩამოტვირთვის §18.2-ის წესი) */}
+                    უნდა შეცვალოს (იგივე წესი, რაც გალერეის ჩამოტვირთვაშია) */}
                 <div className="fb-scroll h-56 space-y-1 overflow-y-auto rounded-md border border-border p-2">
                   {candidates.map((member) => (
                     <label
@@ -261,7 +261,7 @@ export function CastSyncFlow({
           </RadioGroup>
         </div>
 
-        {/* ---------- რა განახლდეს (§39.2) ---------- */}
+        {/* ---------- რა განახლდეს ---------- */}
         <div>
           <Label className="mb-2 block">{t('sync.what')}</Label>
           <div className="space-y-2.5 rounded-lg border border-border p-3">
@@ -297,7 +297,7 @@ export function CastSyncFlow({
           {!types.length ? null : !fields.length ? (
             <span className="text-destructive">{t('sync.pickSomething')}</span>
           ) : plan && !plan.tmdb ? (
-            // Tasks §30.6 — გასაღები ანგარიშისაა: ერთი შეტყობინება ყველგან, „მონაცემების" ბმულით
+            // გასაღები ანგარიშისაა: ერთი შეტყობინება ყველგან, „მონაცემების" ბმულით
             <CredentialMissingNotice provider="tmdb" />
           ) : plan ? (
             <>

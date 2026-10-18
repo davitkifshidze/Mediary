@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * **Tasks §16.2 — დამთხვევები.**
+ * **დამთხვევები.**
  *
  * ტესტი სამ რამეს იჭერს: (1) პრივატული ჩანაწერი დამთხვევაში **არასდროს**
  * ხვდება, (2) მსგავსების ინდექსი Jaccard-ია და არა ასიმეტრიული წილადი,
@@ -52,7 +52,7 @@ class MatchTest extends TestCase
             ->all();
         $user->modules()->sync($ids);
 
-        // ორივე პროფილი საჯაროა — 16.2 „ორ საჯარო პროფილს შორის"-ს ითხოვს
+        // ორივე პროფილი საჯაროა — დამთხვევა „ორ საჯარო პროფილს შორის" ითვლება
         $user->forceFill(['profile_visibility' => 'public'])->save();
 
         return $user->refresh();
@@ -70,7 +70,7 @@ class MatchTest extends TestCase
             'visibility' => $visibility,
         ]);
 
-        // §6.4 — სტატუსი ლექსიკონის რიგია; გასაღები იმავე რჩება
+        // სტატუსი ლექსიკონის რიგია; გასაღები იმავე რჩება
         $movie->applyStatusKey($status);
         $movie->save();
 
@@ -98,7 +98,7 @@ class MatchTest extends TestCase
     }
 
     /**
-     * ⚠️ **§16.2-ის მთავარი წესი:** დამთხვევა მხოლოდ `public` ჩანაწერებზე
+     * ⚠️ **მთავარი წესი:** დამთხვევა მხოლოდ `public` ჩანაწერებზე
      * ითვლება — პრივატული არც ერთი მხრიდან არ ჟონავს.
      */
     public function test_private_records_never_count(): void
@@ -139,13 +139,13 @@ class MatchTest extends TestCase
 
         $this->assertSame(2, $res->json('domains.0.shared'));
         $this->assertSame(1, $res->json('domains.0.both_done'));
-        /* ⚠️ §6.4 — ლექსიკონიან დომენზე `done_status` **`null`-ია**: „ნანახს"
+        /* ⚠️ ლექსიკონიან დომენზე `done_status` **`null`-ია**: „ნანახს"
            ყველა ანგარიშზე თავისი სახელი აქვს, კრიტერიუმი კი `role = done`-ია. */
         $this->assertNull($res->json('domains.0.done_status'));
     }
 
     /**
-     * ⚠️ **ვიდეოს სტატუსი §6.4-ის შემდეგ აქვს**, ე.ი. `both_done` ითვლება
+     * ⚠️ **ვიდეოს სტატუსი აქვს**, ე.ი. `both_done` ითვლება
      * (აქ — 0, რადგან არცერთი არაა „ნანახი"). „არ ითვლება" (`null`) მხოლოდ
      * სიმღერაზე რჩება — ორი სხვადასხვა რამაა და ასე უნდა დარჩეს.
      */
@@ -285,7 +285,7 @@ class MatchTest extends TestCase
 
     /**
      * ⚠️ **დამთხვევის გარეშე პროფილიც ჩანს** — ეს კატალოგიცაა და არა მარტო
-     * რეიტინგი (§16.2 „საჯარო პროფილების ძებნა/კატალოგი"). უბრალოდ ბოლოშია.
+     * რეიტინგი („საჯარო პროფილების ძებნა/კატალოგი"). უბრალოდ ბოლოშია.
      */
     public function test_profiles_without_matches_stay_in_the_list(): void
     {
@@ -314,7 +314,7 @@ class MatchTest extends TestCase
     }
 
     /**
-     * **`PUBLIC_PROFILES=false` მატჩინგსაც თიშავს** (Tasks GAP-07).
+     * **`PUBLIC_PROFILES=false` მატჩინგსაც თიშავს**.
      *
      * ⚠️ `ranking()` username-ით არავის ეძებს, ე.ი. `resolve()`-ს არ იძახებს —
      * სწორედ ამიტომ იყო ის ერთადერთი გზა, რომლითაც გადამრთველს გვერდი
@@ -360,7 +360,7 @@ class MatchTest extends TestCase
     }
 
     /**
-     * **`module_user` კანდიდატთა რიცხვზე აღარ იზრდება (Tasks PERF-06).**
+     * **`module_user` კანდიდატთა რიცხვზე აღარ იზრდება.**
      *
      * ⚠️ `ranking()` თითო კანდიდატზე `summary()`-ს იძახებს, ის კი
      * `domains($me, $other)`-ს — ე.ი. **ჩემი** საჯარო მოდულები ყოველ
@@ -369,7 +369,7 @@ class MatchTest extends TestCase
      *
      * ⚠️ **მთელი რიცხვი აქ განზრახ არ მოწმდება**: შედარება ზუსტია და არა
      * მიახლოებითი, ე.ი. ჩანაწერების წაკითხვა კანდიდატებზე წრფივი **რჩება**
-     * (ასეა ჩაფიქრებული, იხ. `MAX_PROFILES`). ტასკიც ზუსტად `module_user`-ზეა.
+     * (ასეა ჩაფიქრებული, იხ. `MAX_PROFILES`). გასწორებაც ზუსტად `module_user`-ზეა.
      */
     public function test_the_ranking_reads_the_module_pivot_a_constant_number_of_times(): void
     {
@@ -401,7 +401,7 @@ class MatchTest extends TestCase
     }
 
     /**
-     * **სქემის query-ები კანდიდატთა რიცხვზე აღარ იზრდება (Tasks PERF-15).**
+     * **სქემის query-ები კანდიდატთა რიცხვზე აღარ იზრდება.**
      *
      * ⚠️ `thinColumns()` სვეტის არსებობას `Schema::hasColumn()`-ით ამოწმებდა
      * და ეს **ნამდვილი query-ა** (`information_schema`, sqlite-ზე `PRAGMA`),

@@ -5,7 +5,7 @@ namespace App\Models\Concerns;
 use App\Support\DictionaryKey;
 
 /**
- * **per-user ლექსიკონის `key` (აუდიტი 2026-09-14, §B3).**
+ * **per-user ლექსიკონის `key`.**
  *
  * შვიდ ლექსიკონს — ვიდეოს ტიპები, ოთხი ჟანრის სია და ორი კატეგორიის სია —
  * **სიმბოლო-სიმბოლოში იდენტური** `makeKey()` ჰქონდა, და მასთან ერთად
@@ -32,7 +32,7 @@ trait HasDictionaryKey
     {
         return DictionaryKey::make(
             $name,
-            // ⚠️ ურნაში მყოფი რიგიც (Tasks §29) — ის თავის გასაღებს უნიკალურ ინდექსში ინარჩუნებს
+            // ⚠️ ურნაში მყოფი რიგიც — ის თავის გასაღებს უნიკალურ ინდექსში ინარჩუნებს
             fn (string $key) => static::withoutGlobalScopes(['owner', 'trash'])
                 ->where('user_id', $userId)
                 ->where('key', $key)

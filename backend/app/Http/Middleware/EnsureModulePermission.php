@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 
 /**
- * მოდულის შიდა უფლება (Tasks 1.6 / 19.8) — `permission:movie` ან `permission:movie,update`.
+ * მოდულის შიდა უფლება — `permission:movie` ან `permission:movie,update`.
  *
  * `module:` middleware ამოწმებს **წვდომას** (მოდული ჩართულია თუ არა), ეს კი —
  * **რის უფლება აქვს შიგნით**. ორივე სჭირდება და ერთმანეთს არ ცვლის.
@@ -23,7 +23,7 @@ class EnsureModulePermission
     /* ⚠️ `unlock`/`lock` (2026-09-16) — ალბომის გახსნა/ჩაკეტვა **არსებულ**
        ჩანაწერს ეხება; მათ გარეშე POST-იდან `create` გამოიყვანებოდა და
        view+update უფლების მქონე user-ს საკუთარი ალბომი 403-ით დაეხურებოდა. */
-    /* ⚠️ `move` (Tasks SEC-07, 2026-09-17) — `POST /gallery/images/move`
+    /* ⚠️ `move` (2026-09-17) — `POST /gallery/images/move`
        **არსებულ** ფოტოებს მშობელს/ალბომს უცვლის (ჩაკეტილ ალბომში/ალბომიდან
        ჩათვლით, ე.ი. დამალვა/გამოჩენა). სიის გარეშე `create`-ად იკითხებოდა:
        create-only როლი სხვის ნებართვის გარეშე ფოტოებს აჩრადავდა, update-only
@@ -33,7 +33,7 @@ class EnsureModulePermission
     private const UPDATE_ENDPOINTS = ['resync', 'watched', 'played', 'visited', 'bulk-status', 'bulk', 'reorder', 'primary', 'download', 'unlock', 'lock', 'move', 'restore'];
 
     /**
-     * POST, რომელიც **არაფერს ცვლის** — probe ან „რამდენს შეეხება" (Tasks GAP-04).
+     * POST, რომელიც **არაფერს ცვლის** — probe ან „რამდენს შეეხება".
      *
      * ⚠️ `POST` მხოლოდ იმიტომაა, რომ არგუმენტი body-შია (URL, მასშტაბის
      * ფილტრი) — შედეგი კითხვაა და არა ჩანაწერი. `GET /videos/bulk-preview`-ის
@@ -51,7 +51,7 @@ class EnsureModulePermission
      * საკუთარი `permission:<module>` რჩება და **ორივე** ეშვება (იგივე
      * ხაფანგი, რაც `move`-ს ეწერა ზემოთ). ამიტომ სია და არა როუტის დროშა.
      *
-     * ⚠️ **ბოლო სეგმენტი უნდა თქვას, რა ხდება** (audit §A4-ის წესი): POST,
+     * ⚠️ **ბოლო სეგმენტი უნდა თქვას, რა ხდება**: POST,
      * რომელიც `metadata`-ზე ან `plan`-ზე ბოლოვდება და **მაინც წერს**,
      * ამ სიაში მოხვედრით ჩუმად გაიხსნება — ახალი ასეთი endpoint-ი ან
      * სხვა სახელს უნდა ატარებდეს, ან ცხად უფლებას.

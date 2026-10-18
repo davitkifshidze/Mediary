@@ -5,7 +5,7 @@ namespace App\Models\Concerns;
 use App\Support\PublicDomain;
 
 /**
- * **„როდის დავასრულე" — enum-სტატუსიანი მოდულების ერთადერთი მწერალი (FEAT-21).**
+ * **„როდის დავასრულე" — enum-სტატუსიანი მოდულების ერთადერთი მწერალი.**
  *
  * ლექსიკონიან ექვს დომენს ეს უკვე აქვს: `HasStatus::applyStatus()` `done`
  * როლზე `statusDoneColumn()`-ს ავსებს და უკან დაბრუნებაზე წმენდს. enum-იან

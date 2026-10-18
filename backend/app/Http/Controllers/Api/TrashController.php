@@ -8,7 +8,7 @@ use App\Support\TrashDomain;
 use Illuminate\Http\Request;
 
 /**
- * **ურნა (FEAT-11 → Tasks §29).**
+ * **ურნა.**
  *
  * `GET /api/trash` · `POST /api/trash/{kind}/{id}/restore` (აღდგენა) ·
  * `DELETE /api/trash/{kind}/{id}` (ახლავე წაშლა) · `GET /api/trash/{kind}/{id}/file`
@@ -35,7 +35,7 @@ class TrashController extends Controller
         return response()->json($this->bin->listing($request->user()));
     }
 
-    /** Tasks §46 — ერთი ჯგუფის გვერდი (`?page=&per_page=`); ჯამური სია პირველს უკვე შეიცავს */
+    /** ერთი ჯგუფის გვერდი (`?page=&per_page=`); ჯამური სია პირველს უკვე შეიცავს */
     public function items(Request $request, string $kind)
     {
         return response()->json($this->bin->page(
@@ -47,7 +47,7 @@ class TrashController extends Controller
     }
 
     /**
-     * **ვადის გადახედვა** (Tasks §29.6) — `/settings`-ი შენახვამდე ეკითხება,
+     * **ვადის გადახედვა** — `/settings`-ი შენახვამდე ეკითხება,
      * რამდენი წაიშლება მომდევნო ღამით ამ ვადით.
      *
      * ⚠️ `GET` და არა `POST`: ეს წაკითხვაა, და ვადა თვითონ ისევ
@@ -66,16 +66,16 @@ class TrashController extends Controller
     }
 
     /**
-     * აღდგენა — საჭიროებისას მშობელ ჩანაწერთან ერთად (29.5).
+     * აღდგენა — საჭიროებისას მშობელ ჩანაწერთან ერთად.
      *
      * `records: true` — კლასიფიკატორის რიგზე წაშლამ გადატანილი ჩანაწერებიც
-     * ბრუნდება (Tasks §29, ეტაპი 3).
+     * ბრუნდება.
      */
     public function restore(Request $request, string $domain, int $id)
     {
         $data = $request->validate([
             'records' => ['nullable', 'boolean'],
-            // ეტაპი 4 — მთავარი ფოტო/ავატარი დაკავებულ სვეტში: ახლანდელი ურნაში გადავა
+            // მთავარი ფოტო/ავატარი დაკავებულ სვეტში: ახლანდელი ურნაში გადავა
             'replace' => ['nullable', 'boolean'],
         ]);
 

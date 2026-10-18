@@ -5,7 +5,7 @@ import type { LoginInput, RegisterInput, User } from '@/api/account'
 import { STORAGE_CHANGED_EVENT, UNAUTHENTICATED_EVENT } from '@/lib/api'
 
 /* ============================================================
-   ავტორიზაციის კონტექსტი (F4 / I7).
+   ავტორიზაციის კონტექსტი.
    სესია cookie-შია; აქ მხოლოდ მიმდინარე user-ს ვინახავთ.
    ============================================================ */
 
@@ -15,13 +15,13 @@ interface AuthApi {
   loading: boolean
   isAdmin: boolean
   /**
-   * მოდულის შიდა უფლება (Tasks 1.6 / 19.8) — `can('movie', 'delete')`.
+   * მოდულის შიდა უფლება — `can('movie', 'delete')`.
    * მხოლოდ ინტერფეისს ემსახურება (ღილაკის დამალვა); ნამდვილი შემოწმება
    * backend-ის `permission:` middleware-შია.
    */
   can: (module: string, action: string) => boolean
   /**
-   * ადმინის სექციაზე წვდომა (Tasks 1.6) — `canAdmin('users')` სექციისთვის,
+   * ადმინის სექციაზე წვდომა — `canAdmin('users')` სექციისთვის,
    * `canAdmin('users', 'delete')` კონკრეტული ღილაკისთვის.
    * ⚠️ **`is_super_admin`-ს ნუ შეამოწმებ პირდაპირ** ბმულების დასამალად:
    * წვდომა როლიდანაც შეიძლება მოვიდეს.
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener(UNAUTHENTICATED_EVENT, onUnauth)
   }, [qc])
 
-  // ატვირთვა/წაშლა კვოტას ცვლის (17.3) — ჰედერის ინდიკატორი `['me']`-დან იკვებება
+  // ატვირთვა/წაშლა კვოტას ცვლის — ჰედერის ინდიკატორი `['me']`-დან იკვებება
   React.useEffect(() => {
     const onStorage = () => {
       qc.invalidateQueries({ queryKey: ['me'] })
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!user) return false
         // სუპერ-ადმინს (permissions === null) ყველაფერი შეუძლია
         if (user.is_super_admin || user.permissions == null) return true
-        /* ⚠️ `'*'` ფოლბექი ამოღებულია (Tasks DEBT-19): wildcard 2026-09-15-ს
+        /* ⚠️ `'*'` ფოლბექი ამოღებულია: wildcard 2026-09-15-ს
            მოიხსნა — `Role`-იდან, ვალიდატორიდან და მონაცემებიდანაც (მიგრაციამ
            `user` როლის მასკა მოდულებად გაშალა). backend `'*'`-ს **არასდროს**
            აბრუნებს, ე.ი. ეს ბრანჩი მკვდარი იყო და ცრუ შთაბეჭდილებას ტოვებდა,

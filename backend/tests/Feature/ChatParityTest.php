@@ -12,14 +12,14 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * **Tasks §10 — ჩატი Messenger-ის დონემდე.**
+ * **ჩატი Messenger-ის დონემდე.**
  *
  * აქ ის წესებია ჩამაგრებული, რომელთა დარღვევაც **ჩუმია**:
- *  · დადუმება **ბეჯს აჩუმებს, რიცხვს კი არ ცვლის** (§10.5);
+ *  · დადუმება **ბეჯს აჩუმებს, რიცხვს კი არ ცვლის**;
  *  · პინი და რეაქცია `scopeVisibleTo()`-ს ემორჩილება, ე.ი. წაშლილი თავისით ცვივა;
- *  · თითო კაცზე **ერთი** რეაქცია, იმავე ემოჯის ხელახლა დაჭერა — მოხსნა (§10.10);
- *  · ნიკნეიმი **მხოლოდ ჩემს ხედშია** და ნამდვილ სახელს არ შლის (§10.11);
- *  · `around_id` **წაკითხულად არ ნიშნავს** (§10.8).
+ *  · თითო კაცზე **ერთი** რეაქცია, იმავე ემოჯის ხელახლა დაჭერა — მოხსნა;
+ *  · ნიკნეიმი **მხოლოდ ჩემს ხედშია** და ნამდვილ სახელს არ შლის;
+ *  · `around_id` **წაკითხულად არ ნიშნავს**.
  */
 class ChatParityTest extends TestCase
 {
@@ -67,7 +67,7 @@ class ChatParityTest extends TestCase
             ->json('data.id');
     }
 
-    /* ---------- §10.5 დადუმება ---------- */
+    /* ---------- დადუმება ---------- */
 
     public function test_muting_silences_the_badge_but_keeps_the_row_honest(): void
     {
@@ -111,7 +111,7 @@ class ChatParityTest extends TestCase
         $this->actingAs($this->alice)->getJson('/api/chat/unread')->assertJsonPath('unread', 1);
     }
 
-    /* ---------- §10.7 პინები ---------- */
+    /* ---------- პინები ---------- */
 
     public function test_either_participant_can_pin_and_deleted_messages_drop_out(): void
     {
@@ -157,7 +157,7 @@ class ChatParityTest extends TestCase
             ->assertJsonPath('message', 'pin_limit_reached');
     }
 
-    /* ---------- §10.10 რეაქციები ---------- */
+    /* ---------- რეაქციები ---------- */
 
     public function test_one_reaction_per_person_and_the_same_emoji_removes_it(): void
     {
@@ -183,7 +183,7 @@ class ChatParityTest extends TestCase
             ->assertJsonPath('data.my_reaction', null);
     }
 
-    /* ---------- §10.11 ნიკნეიმები ---------- */
+    /* ---------- ნიკნეიმები ---------- */
 
     public function test_a_nickname_is_only_my_own_view(): void
     {
@@ -210,7 +210,7 @@ class ChatParityTest extends TestCase
             ->assertJsonPath('nickname', null);
     }
 
-    /* ---------- §10.9 ძებნა ---------- */
+    /* ---------- ძებნა ---------- */
 
     public function test_search_skips_hidden_messages_and_finds_file_names(): void
     {
@@ -232,7 +232,7 @@ class ChatParityTest extends TestCase
         $this->assertStringContainsString('ინფორმაცია', (string) $response->json('data.0.snippet'));
     }
 
-    /* ---------- §10.8 კურსორი და §10.3 „ნანახია" ---------- */
+    /* ---------- კურსორი და „ნანახია" ---------- */
 
     public function test_older_messages_load_by_cursor_and_a_jump_does_not_mark_read(): void
     {
@@ -258,14 +258,14 @@ class ChatParityTest extends TestCase
             array_column($older->json('data'), 'id'),
         ));
 
-        // §10.3 — ბობმა ჯერ არ წაუკითხავს, ე.ი. მისთვის alice-ის ნიშანი ცარიელია
+        // ბობმა ჯერ არ წაუკითხავს, ე.ი. მისთვის alice-ის ნიშანი ცარიელია
         $this->assertNotNull(
             $this->actingAs($this->alice)->getJson("/api/chat/{$this->conversation}")->json('other_read_at'),
         );
     }
 
     /**
-     * ⚠️ **ისტორიაში ჩახტომა „ყველაფერი წავიკითხე" არ არის** (§10.8).
+     * ⚠️ **ისტორიაში ჩახტომა „ყველაფერი წავიკითხე" არ არის**.
      */
     public function test_a_jump_leaves_the_unread_count_alone(): void
     {
@@ -283,7 +283,7 @@ class ChatParityTest extends TestCase
             ->assertJsonPath('unread', 3);
     }
 
-    /* ---------- §10.6 თემა ---------- */
+    /* ---------- თემა ---------- */
 
     public function test_the_theme_is_shared_by_both_sides(): void
     {
@@ -302,7 +302,7 @@ class ChatParityTest extends TestCase
             ->assertStatus(422);
     }
 
-    /* ---------- SEC-04 ფაილის უსაფრთხო გაცემა ---------- */
+    /* ---------- ფაილის უსაფრთხო გაცემა ---------- */
 
     /** alice ფაილს აგზავნის; ბრუნდება შეტყობინების id */
     private function aliceSends(UploadedFile $file, string $type = 'file'): int
@@ -314,14 +314,14 @@ class ChatParityTest extends TestCase
     }
 
     /**
-     * ⚠️ **SEC-04 (High, 2026-09-17).** HTML-ფაილი `text/html`-ით `inline`
+     * ⚠️ HTML-ფაილი `text/html`-ით `inline`
      * ბრუნდებოდა, ე.ი. ბობის ბრაუზერში აპის origin-ზე, ბობის ქუქით
      * სრულდებოდა. ახლა — `octet-stream` + `attachment` + `nosniff`.
      *
-     * ⚠️ **Tasks §34.4-იდან ახალი HTML ატვირთვამდე ცვივა** — ჩატის ფაილს
+     * ⚠️ **ახალი HTML ატვირთვამდე ცვივა** — ჩატის ფაილს
      * ნამდვილი სია აქვს და აქტიური შიგთავსი მასში ვერასდროს მოხვდება. გაცემის
      * წესი მაინც ჩამაგრებულია: **ძველი** რიგი (სიამდე ატვირთული) ისევ
-     * არსებობს, ამიტომ ის პირდაპირ იწერება — SEC-08-ის იგივე ხერხი.
+     * არსებობს, ამიტომ ის პირდაპირ იწერება.
      */
     public function test_an_html_attachment_is_downloaded_never_rendered(): void
     {
@@ -355,7 +355,7 @@ class ChatParityTest extends TestCase
     }
 
     /**
-     * SEC-04 — ⚠️ **კლიენტის MIME არც ინახება, არც ბრუნდება**: ნამდვილი JPEG,
+     * ⚠️ **კლიენტის MIME არც ინახება, არც ბრუნდება**: ნამდვილი JPEG,
      * `text/html`-ად შეთხზული ჰედერით, `image/jpeg`-ად ინახება და ისე იხატება.
      */
     public function test_the_client_mime_never_reaches_the_response(): void
@@ -381,7 +381,7 @@ class ChatParityTest extends TestCase
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 
-    /** SEC-04 — ⚠️ ფიქსი ლეგიტიმურ ფაილს **არ** ამტვრევს: JPEG და PDF კვლავ `inline`-ია */
+    /** ⚠️ ფიქსი ლეგიტიმურ ფაილს **არ** ამტვრევს: JPEG და PDF კვლავ `inline`-ია */
     public function test_images_and_pdfs_still_render_inline(): void
     {
         Storage::fake('private');
@@ -400,7 +400,7 @@ class ChatParityTest extends TestCase
         }
     }
 
-    /** SEC-04 — `nosniff` გლობალურია: JSON-ზეც და `abort(404)`-ზეც */
+    /** `nosniff` გლობალურია: JSON-ზეც და `abort(404)`-ზეც */
     public function test_nosniff_is_on_every_response(): void
     {
         $this->actingAs($this->alice)->getJson('/api/chat/unread')

@@ -14,7 +14,7 @@ class NoteEntryFileResource extends JsonResource
             'id' => $this->id,
             'kind' => $this->kind,
             /*
-             * ⚠️ **`url` აღარ არის storage-ის გზა** (Tasks §17.5): ფაილი
+             * ⚠️ **`url` აღარ არის storage-ის გზა**: ფაილი
              * პრივატულ დისკზეა და `/storage/*`-ით არ იხსნება. აქ API-ს
              * მისამართია, რომელიც მფლობელობას ამოწმებს — ფრონტი მას
              * blob-ად კითხულობს (`noteFileUrl()` / `fetchNoteFileBlob()`).

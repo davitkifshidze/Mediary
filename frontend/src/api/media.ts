@@ -21,23 +21,23 @@ export interface MediaFilters extends ListParams {
   year_max?: number
   rating_min?: number
   rating_max?: number
-  /** Tasks §35.5 — ფილტრი „ჩაკეტილები" (დამალული — ბოქლომიანი ბარათით) */
+  /** ფილტრი „ჩაკეტილები" (დამალული — ბოქლომიანი ბარათით) */
   locked?: boolean
   /**
-   * ფრანჩაიზის დაჯგუფება (მხოლოდ ფილმებს ეხება, Tasks D1).
+   * ფრანჩაიზის დაჯგუფება (მხოლოდ ფილმებს ეხება).
    * `false` → სუფთა დალაგება, ჯგუფი დაიშლება. undefined → backend-ის default (ჩართული).
    */
   group?: boolean
 }
 
 export interface BulkStatusInput {
-  /** ⚠️ §6.4 — ლექსიკონის **გასაღები** (`watched`), და არა თვითონ რიგი */
+  /** ⚠️ ლექსიკონის **გასაღები** (`watched`), და არა თვითონ რიგი */
   status: string
   ids?: number[]
   from_status?: string
 }
 
-/** Tasks §18.3 — რიგით დამატებისას სტატუსი და რჩეული ერთეულს მიჰყვება */
+/** რიგით დამატებისას სტატუსი და რჩეული ერთეულს მიჰყვება */
 export interface AddFromTmdbOptions {
   status?: string
   favorite?: boolean
@@ -73,7 +73,7 @@ export function createMediaApi(base: string) {
       return data.data
     },
     /**
-     * Tasks §18 — რჩეულის **ცხადი** დაყენება; `parts` — ფრანჩაიზის სხვა ნაწილების
+     * რჩეულის **ცხადი** დაყენება; `parts` — ფრანჩაიზის სხვა ნაწილების
      * (ბიბლიოთეკაში არსებულების) id-ები, რომლებიც პოპაპში მოინიშნა. ⚠️ ჩუმი
      * გავრცელება სერვერზე აღარ არის — რაც აქ არ ჩამოითვალა, არ შეიცვლება.
      */
@@ -95,17 +95,17 @@ export function createMediaApi(base: string) {
       return data.updated as number
     },
     /**
-     * **„რა ვნახო დღეს" — შემთხვევითი ჩანაწერი ფილტრის ფარგლებში (FEAT-20).**
+     * **„რა ვნახო დღეს" — შემთხვევითი ჩანაწერი ფილტრის ფარგლებში.**
      *
      * ⚠️ **იგივე `filters` მიდის, რაც სიას**: არჩევანი ზუსტად იმ სიიდან
      * უნდა მოდიოდეს, რომელსაც ეკრანზე ხედავ.
      * ⚠️ **`null` ნორმალური პასუხია** — „ფილტრში არაფერია" და არა შეცდომა.
      */
     /**
-     * „რა ვნახო დღეს" — **N შემთხვევითი ჩანაწერი** (Tasks §17.5). ⚠️ `all`
+     * „რა ვნახო დღეს" — **N შემთხვევითი ჩანაწერი**. ⚠️ `all`
      * განზრახ ვარდება: არჩევა სერვერზე ხდება, ე.ი. მთელი სიის ჩამოტვირთვას
      * აზრი არ აქვს. `status` — დიალოგის ჩიპები (სიის `?view=`-ზე მაღლა დგას),
-     * `exclude` — უკვე ნაჩვენებები (§6.5), რომ „სხვა" იგივეს არ დააბრუნებდეს.
+     * `exclude` — უკვე ნაჩვენებები, რომ „სხვა" იგივეს არ დააბრუნებდეს.
      */
     pickRandom: async (filters: MediaFilters = {}, opts: PickOptions = {}): Promise<Movie[]> => {
       const { all: _all, status: _status, ...rest } = filters
@@ -113,7 +113,7 @@ export function createMediaApi(base: string) {
       return data.data ?? []
     },
     /**
-     * TMDB id-ით პირდაპირ დამატება (ქმნის + ამდიდრებს). Tasks §18.3 — `status` და
+     * TMDB id-ით პირდაპირ დამატება (ქმნის + ამდიდრებს). `status` და
      * `is_favorite` არჩევითია (ფრანჩაიზის პოპაპი ახალ ნაწილს ასე ამატებს).
      */
     addFromTmdb: async (tmdbId: number, extra: AddFromTmdbOptions = {}): Promise<Movie> => {
@@ -134,7 +134,7 @@ export const seriesApi = createMediaApi(MEDIA.series.apiBase)
 export const animeApi = createMediaApi(MEDIA.anime.apiBase)
 
 /**
- * ⚠️ **რუკა და არა ტერნარი** (§7.1): `type === 'series' ? … : …` მესამე
+ * ⚠️ **რუკა და არა ტერნარი**: `type === 'series' ? … : …` მესამე
  * დომენს ჩუმად ფილმების endpoint-ზე გაუშვებდა.
  */
 const MEDIA_APIS: Record<MediaType, MediaApi> = {
@@ -147,7 +147,7 @@ export function mediaApi(type: MediaType): MediaApi {
   return MEDIA_APIS[type] ?? moviesApi
 }
 
-/* ---------- მასობრივი სინქრონი TMDB-დან — სათითაოდ (Tasks J2/J3/J4) ---------- */
+/* ---------- მასობრივი სინქრონი TMDB-დან — სათითაოდ ---------- */
 
 export interface SyncPlanFilters {
   /** დომენები; ცარიელი = ორივე */
@@ -160,7 +160,7 @@ export interface SyncPlanFilters {
   ids?: Partial<Record<MediaType, number[]>>
   /** მხოლოდ ისინი, ვისაც პოსტერი ან მსახიობის ფოტო აკლია */
   missing_media_only?: boolean
-  /** Tasks §31.2 — წარმატებით განახლებული/უცვლელი აღარ ჩანს; ცარიელი და ჩავარდნილი რჩება */
+  /** წარმატებით განახლებული/უცვლელი აღარ ჩანს; ცარიელი და ჩავარდნილი რჩება */
   hide_processed?: boolean
 }
 
@@ -177,9 +177,9 @@ export interface SyncPlan {
   eta_seconds: number
   /** tmdb_id-ის გარეშე ჩანაწერები — მათი სინქრონი შეუძლებელია */
   skipped_without_tmdb: number
-  /** Tasks §30.6 — ჩემი TMDB-ის გასაღები მაქვს? (`false` — გაშვება ვერ დაიწყება) */
+  /** ჩემი TMDB-ის გასაღები მაქვს? (`false` — გაშვება ვერ დაიწყება) */
   tmdb: boolean
-  /** Tasks §31 — რამდენი დაიმალა „დამუშავებულების დამალვით" და რამდენია შეჩერებული */
+  /** რამდენი დაიმალა „დამუშავებულების დამალვით" და რამდენია შეჩერებული */
   skipped_processed: number
   skipped_paused: number
 }
@@ -198,7 +198,7 @@ export type SyncField =
   | 'genres'
   | 'cast'
   | 'details'
-  /** ოფიციალური ტრეილერი TMDB-დან (Tasks 9) — ცალკე რექვესთია, ამიტომ არჩევადი */
+  /** ოფიციალური ტრეილერი TMDB-დან — ცალკე რექვესთია, ამიტომ არჩევადი */
   | 'trailer'
 
 export const SYNC_FIELDS: SyncField[] = [
@@ -226,7 +226,7 @@ export interface SyncItemResult {
   ok: boolean
   skipped: boolean
   changed: string[]
-  /** Tasks §31.4 — ოთხი შედეგი ცალკე; გამოტოვებაზე `null` */
+  /** ოთხი შედეგი ცალკე; გამოტოვებაზე `null` */
   result: SyncOutcome | null
   error: string | null
   title: string
@@ -243,13 +243,13 @@ export async function syncItem(
   return data
 }
 
-/** Tasks §31.3 — „აღარ განაახლო" ჩანაწერზე: გეგმები და რიგი მას გამოტოვებენ */
+/** „აღარ განაახლო" ჩანაწერზე: გეგმები და რიგი მას გამოტოვებენ */
 export async function setSyncPaused(type: MediaType, id: number, paused: boolean): Promise<{ ok: boolean; sync_paused: boolean }> {
   const { data } = await api.patch(`/media/sync/${type}/${id}/pause`, { paused })
   return data
 }
 
-/** Tasks §31.3 — იგივე მსახიობზე; **ჩემი** პარამეტრია (მსახიობი გლობალურია) */
+/** იგივე მსახიობზე; **ჩემი** პარამეტრია (მსახიობი გლობალურია) */
 export async function setActorSyncPaused(id: number, paused: boolean): Promise<{ ok: boolean; paused: boolean }> {
   const { data } = await api.patch(`/cast/sync/${id}/pause`, { paused })
   return data
@@ -278,7 +278,7 @@ export async function updateGenre(id: number, payload: GenrePayload): Promise<Ge
   return data.data
 }
 
-/* ---------- ჟანრზე მიბმული ჩანაწერები (Tasks C1/C2) ---------- */
+/* ---------- ჟანრზე მიბმული ჩანაწერები ---------- */
 
 export interface GenreItems {
   movies: MovieListItem[]
@@ -332,7 +332,7 @@ export async function updateGenreItems(
  * წაშლა — reassign_to (გადაბმა სხვა ჟანრზე) ან force (უჟანროდ დატოვება).
  *
  * ჟანრი **გლობალურია**: ჩვეულებრივი მომხმარებლის წაშლა პირდაპირ არ სრულდება —
- * backend აბრუნებს 202-ს და მოთხოვნა ადმინთან მიდის (I7). super_admin-ზე — 204.
+ * backend აბრუნებს 202-ს და მოთხოვნა ადმინთან მიდის. super_admin-ზე — 204.
  */
 export async function deleteGenre(
   id: number,
@@ -377,7 +377,7 @@ export interface Candidate {
   poster: string | null
 }
 
-/** Tasks §50 — ნაპოვნი სხვა ტიპისაა (სერიალი ფილმის ფორმაში …): გადასვლის მინიშნება */
+/** ნაპოვნი სხვა ტიპისაა (სერიალი ფილმის ფორმაში …): გადასვლის მინიშნება */
 export interface TypeSuggest {
   type: MediaType
   tmdb_id: number
@@ -386,7 +386,7 @@ export interface TypeSuggest {
   poster: string | null
 }
 
-/** ლინკი/IMDb/სახელი → კანდიდატების სია (ასარჩევად) + §50-ის მინიშნება */
+/** ლინკი/IMDb/სახელი → კანდიდატების სია (ასარჩევად) + სხვა ტიპზე გადასვლის მინიშნება */
 export async function lookupCandidates(
   input: LookupInput,
   type: MediaType = 'movie',
@@ -437,9 +437,9 @@ export interface DiscoverFilters {
   sort?: string
   page?: number
   refresh?: boolean
-  /** რამდენ TMDB გვერდამდე მივყვეთ (E3); TMDB-ის ლიმიტი 500 */
+  /** რამდენ TMDB გვერდამდე მივყვეთ; TMDB-ის ლიმიტი 500 */
   max_pages?: number
-  /** ჩანაწერი გვერდზე — TMDB-ის 20-ის ჯერადი (E3) */
+  /** ჩანაწერი გვერდზე — TMDB-ის 20-ის ჯერადი */
   per_page?: number
 }
 
@@ -461,11 +461,11 @@ export interface CollectionPart {
   year: number | null
   rating: number | null
   poster: string | null
-  /** Tasks §18.3 — TMDB-ის აღწერა პოპაპის ორხაზიანი ხაზისთვის */
+  /** TMDB-ის აღწერა პოპაპის ორხაზიანი ხაზისთვის */
   overview: string | null
   owned: boolean
   movie_id: number | null
-  /** Tasks §51.2 — ბიბლიოთეკაშია და უკვე რჩეულია (ფანჯარაში ჩაკეტილი) */
+  /** ბიბლიოთეკაშია და უკვე რჩეულია (ფანჯარაში ჩაკეტილი) */
   is_favorite: boolean
 }
 
@@ -487,14 +487,14 @@ export interface Actor {
   name_ka: string | null
   photo: string | null
   /**
-   * §7.5 — საძიებო ტეგები ვებიდან ფოტოს მოსატანად.
+   * საძიებო ტეგები ვებიდან ფოტოს მოსატანად.
    * ⚠️ **ესენი ჩემია და არა გლობალური:** `cast_members` საერთო ლექსიკონია
    * (ერთი მსახიობი ყველა ანგარიშზე ერთი რიგია), ტეგები კი ცალკე ცხრილშია,
    * მომხმარებელზე მიბმული.
    */
   tags: string[]
 
-  /* §8.1 — პიროვნების მონაცემები TMDB-დან. ⚠️ ეს **ფაქტებია** და ამიტომ
+  /* პიროვნების მონაცემები TMDB-დან. ⚠️ ეს **ფაქტებია** და ამიტომ
      გლობალურ ლექსიკონში ზის (სახელისა და სქესის რიგში); ჩემი მხოლოდ
      ტეგები და ფოტოებია. */
   gender?: number | null
@@ -507,11 +507,11 @@ export interface Actor {
   biography?: string | null
   known_for?: string | null
   popularity?: number | null
-  /** Tasks §35.3 — ჩემ მიერ ხელით შექმნილი (რედაქტირდება) */
+  /** ჩემ მიერ ხელით შექმნილი (რედაქტირდება) */
   created_by_me?: boolean
-  /** ხელით შექმნილი და TMDB-ს დაუკავშირებელი — მხოლოდ შემქმნელს უჩანს (Q9) */
+  /** ხელით შექმნილი და TMDB-ს დაუკავშირებელი — მხოლოდ შემქმნელს უჩანს */
   is_private?: boolean
-  /* §35.5 — ჩემი ლოკი; `hidden` — სერვერმა მხოლოდ სახელი და ბოქლომი გამოგზავნა */
+  /* ჩემი ლოკი; `hidden` — სერვერმა მხოლოდ სახელი და ბოქლომი გამოგზავნა */
   hidden?: boolean
   locked?: boolean
   unlocked?: boolean
@@ -532,7 +532,7 @@ export interface Suggestion {
   poster: string | null
   overview?: string | null
   genres?: GenreName[]
-  /** უკვე ჩემს კოლექციაშია — სიიდან არ ვშლით, ვნიშნავთ (იხ. Tasks B3) */
+  /** უკვე ჩემს კოლექციაშია — სიიდან არ ვშლით, ვნიშნავთ */
   owned: boolean
   /** ლოკალური ჩანაწერის id, თუ owned */
   movie_id: number | null
@@ -542,7 +542,7 @@ export interface ActorPageData {
   actor: Actor
   movies: MovieListItem[]
   series: MovieListItem[]
-  /** §7.1 — მესამე მედია-დომენი; ცალკე შემოთავაზება მას განზრახ არ აქვს */
+  /** მესამე მედია-დომენი; ცალკე შემოთავაზება მას განზრახ არ აქვს */
   animes: MovieListItem[]
   suggestions: Suggestion[]
   series_suggestions: Suggestion[]
@@ -555,7 +555,7 @@ export async function fetchActor(id: number | string): Promise<ActorPageData> {
 }
 
 /**
- * მსახიობის საძიებო ტეგები (§7.5) — მთელი ნაკრების ჩანაცვლება.
+ * მსახიობის საძიებო ტეგები — მთელი ნაკრების ჩანაცვლება.
  * ⚠️ **`PUT`-ია და არა `POST`**: POST-ს ნებართვების middleware `create`-ად
  * კითხულობს, ე.ი. update-ის უფლებით მომხმარებელი 403-ს მიიღებდა.
  */
@@ -565,7 +565,7 @@ export async function updateActorTags(id: number | string, tags: string[]): Prom
 }
 
 /**
- * **მსახიობის მონაცემების განახლება TMDB-დან (§8.1)** — ბიოგრაფია,
+ * **მსახიობის მონაცემების განახლება TMDB-დან** — ბიოგრაფია,
  * დაბადების თარიღი, IMDb-ის id, ოფიციალური ბმულები.
  *
  * ⚠️ **ცხადი ღილაკია და არა ავტომატური შევსება ყოველ გახსნაზე**: TMDB-ის
@@ -579,7 +579,7 @@ export async function resyncActor(id: number | string): Promise<{ updated: boole
   return data
 }
 
-/* ---------- მსახიობების მასობრივი სინქრონიზაცია (Tasks §39) ---------- */
+/* ---------- მსახიობების მასობრივი სინქრონიზაცია ---------- */
 
 /**
  * ფარგლები. ⚠️ `never` ნაგულისხმევია (TMDB-ის ბიუჯეტი საერთოა); `stale`
@@ -633,7 +633,7 @@ export interface CastSyncCandidate {
 }
 
 export interface CastSyncPlan {
-  /** Tasks §31.3 — რამდენი მსახიობია შეჩერებული ამ ფარგლებში */
+  /** რამდენი მსახიობია შეჩერებული ამ ფარგლებში */
   skipped_paused?: number
   types: MediaType[]
   items: CastSyncPlanItem[]

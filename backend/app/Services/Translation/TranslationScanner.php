@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * რას აკლია თარგმანი (Tasks 7).
+ * რას აკლია თარგმანი.
  *
  * ⚠️ **მთავარი წესი: თარგმანს წყარო სჭირდება.** ჩანაწერი „სათარგმნია" მხოლოდ
  * მაშინ, თუ ველი ერთ ენაზე **არის** და მეორეზე არა. თუ აღწერა არც ka-ზეა და
@@ -106,7 +106,7 @@ class TranslationScanner
         $out['genres'] = $this->missingNameQuery(Genre::query(), 'name')->count();
 
         // ⚠️ ჯამი **`TYPES`-ზე** ითვლება და არა ხელით ჩამოთვლილ ორ დომენზე:
-        // მესამე დომენის (`anime`, §7.1) დამატებისას სხვაობა ჩუმი იქნებოდა —
+        // მესამე დომენის (`anime`) დამატებისას სხვაობა ჩუმი იქნებოდა —
         // ბეჯი ნაკლებს აჩვენებდა, ვიდრე გვერდი.
         $out['total'] = $out['genres'];
         foreach (self::TYPES as $type) {
@@ -137,7 +137,7 @@ class TranslationScanner
             $query = $this->query($type);
 
             if (! empty($filters['status'])) {
-                // §6.4 — გასაღები ლექსიკონშია და არა ჩანაწერზე
+                // გასაღები ლექსიკონშია და არა ჩანაწერზე
                 $query->statusKey($filters['status']);
             }
             if (! empty($filters['favorite'])) {
@@ -149,7 +149,7 @@ class TranslationScanner
             if (! empty($ids[$type])) {
                 $query->whereIn('id', array_map('intval', $ids[$type]));
             }
-            /* Tasks §31.3 — „აღარ განაახლო" თარგმანსაც ეხება; §31.2 — ბოლო გაშვებაზე
+            /* „აღარ განაახლო" თარგმანსაც ეხება; ბოლო გაშვებაზე
                წარმატებით ნათარგმნი `hide_processed`-ზე იმალება, ცარიელი და ჩავარდნილი რჩება */
             $query->where('sync_paused', false);
             if (! empty($filters['hide_processed'])) {
@@ -192,7 +192,7 @@ class TranslationScanner
     }
 
     /**
-     * **`missing()`-ის SQL-ტყუპი** (Tasks PERF-17).
+     * **`missing()`-ის SQL-ტყუპი**.
      *
      * ⚠️ ჰედერის badge ყველა გვერდზეა და 5 წუთში ერთხელ ახლდება, ე.ი. ეს
      * აპის ყველაზე ხშირად შესრულებული query-ა. ადრე `summary()` **მთელ
@@ -245,7 +245,7 @@ class TranslationScanner
 
     private function newQuery(string $type): Builder
     {
-        /* Tasks §35.4 (Q9) — თარგმნის გეგმა და მრიცხველი ჩაკეტილის გარეშე (რიგია);
+        /* თარგმნის გეგმა და მრიცხველი ჩაკეტილის გარეშე (რიგია);
            ერთი ჩანაწერის თარგმნა მისივე გვერდიდან ჩვეულებრივად მუშაობს */
         return (match ($type) {
             'series' => Series::query(),

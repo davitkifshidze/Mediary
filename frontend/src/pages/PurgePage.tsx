@@ -55,13 +55,13 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { PurgeItemList } from '@/components/purge/PurgeItemList'
 
 /* ============================================================
-   მასობრივი წაშლა (Tasks 20) — `/purge`, მხოლოდ super_admin-ს.
+   მასობრივი წაშლა — `/purge`, მხოლოდ super_admin-ს.
 
    ორნაბიჯიანია: ჯერ **გეგმა** (რამდენი ჩანაწერი, ფოტო და მეგაბაიტი
    წაიშლება), მერე დადასტურება **სიტყვის ჩაწერით**. ერთი „დიახ" განზრახ
    არ კმარა — ეს ერთადერთი ადგილია, საიდანაც ბიბლიოთეკა შეიძლება გაქრეს.
 
-   ციკლს **queue ატარებს** (20.2), როგორც `/sync`-სა და თარგმანებზე: თითო
+   ციკლს **queue ატარებს**, როგორც `/sync`-სა და თარგმანებზე: თითო
    ჩანაწერი = თითო მოკლე რექვესთი, ე.ი. პროგრესი ჩანს, გაჩერება შეიძლება
    და 1000+ ჩანაწერზე `artisan serve` არ იბლოკება.
    ============================================================ */
@@ -91,20 +91,20 @@ const DICTIONARIES: Record<PurgeTargetWithType, { key: string; load: () => Promi
   book: { key: 'book-genres', load: fetchBookGenres },
   board_game: { key: 'board-game-genres', load: fetchBoardGameGenres },
   game: { key: 'game-genres', load: fetchGameGenres },
-  // §13 — „ტიპი" აქ კატეგორიაა
+  // „ტიპი" აქ კატეგორიაა
   note: { key: 'note-categories', load: fetchNoteCategories },
-  // §18 — ბუკმარკზეც კატეგორიაა
+  // ბუკმარკზეც კატეგორიაა
   bookmark: { key: 'bookmark-categories', load: fetchBookmarkCategories },
   course: { key: 'course-categories', load: fetchCourseCategories },
-  // FEAT-26 — ადგილზეც კატეგორიაა
+  // ადგილზეც კატეგორიაა
   place: { key: 'place-categories', load: fetchPlaceCategories },
 }
 
 /**
  * სტატუსის ლეიბლი `enum`-იან დომენებზე — i18n-ის namespace.
  *
- * ⚠️ **§6.4-ის შემდეგ აქ მხოლოდ სამი დომენია.** ექვსს per-user ლექსიკონი
- * აქვს, ე.ი. მათი სახელი ბაზიდან მოდის და თარგმანში არც არსებობს.
+ * ⚠️ **აქ მხოლოდ `enum`-სტატუსიანი დომენებია** (`ENUM_STATUS_NS`). დანარჩენებს
+ * per-user ლექსიკონი აქვს, ე.ი. მათი სახელი ბაზიდან მოდის და თარგმანში არც არსებობს.
  *
  * ⚠️ გასაღებები აქაც **გამოთვლილია** — `status` სკოუპიანი სამიზნეები,
  * გამოკლებული ლექსიკონიანები და `gallery` (ჩანაწერს არ შლის, სტატუსს
@@ -148,7 +148,7 @@ export function PurgePage() {
   const [tags, setTags] = useState<string[]>([])
   const [keepFavorites, setKeepFavorites] = useState(true)
   /**
-   * §25.5 — „ფოტოები გალერეაში დამიტოვე".
+   * „ფოტოები გალერეაში დამიტოვე".
    *
    * ⚠️ **ნაგულისხმევად გამორთულია**: ჩანაწერის წაშლა დღემდე ფოტოებსაც
    * შლიდა და ეს ქცევა ჩუმად ვერ შეიცვლება — „დატოვება" ცხადი არჩევანია.
@@ -156,13 +156,13 @@ export function PurgePage() {
   const [keepGallery, setKeepGallery] = useState(false)
   const [userId, setUserId] = useState<number | undefined>(undefined)
   const [confirmWord, setConfirmWord] = useState('')
-  /** §25.3 — რიგიდან ხელით ამოღებული ერთეულები (id-ებით, იხ. `PurgeItemList`) */
+  /** რიგიდან ხელით ამოღებული ერთეულები (id-ებით, იხ. `PurgeItemList`) */
   const [excluded, setExcluded] = useState<Set<number>>(new Set())
   /** რომელი ერთეული იშლება ცალკე ახლა */
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
-  /* **§37.5 — სამიზნე ანგარიშის პირადი მოდულები** (სახელი, სკოუპები,
-     კლასიფიკატორი). ⚠️ სხვისი პირადი მოდული `/modules`-ში არ ჩანს (Q28), ე.ი.
+  /* **სამიზნე ანგარიშის პირადი მოდულები** (სახელი, სკოუპები,
+     კლასიფიკატორი). ⚠️ სხვისი პირადი მოდული `/modules`-ში არ ჩანს, ე.ი.
      ბარათები მხოლოდ აქედან მოდის — და **ანგარიშს მიჰყვება**. */
   const customQ = useQuery({
     queryKey: ['purge-targets', userId ?? 'me'],
@@ -183,12 +183,12 @@ export function PurgePage() {
   const isPlace = domain === 'place'
   /** per-user ლექსიკონიანი დომენი (იხ. `DICTIONARIES`) vs გლობალური `genres` */
   const dict = dictionaryFor(domain)
-  // §37.5 — პირადი მოდულის კლასიფიკატორი სამიზნის სიიდან მოდის (`customTarget`)
+  // პირადი მოდულის კლასიფიკატორი სამიზნის სიიდან მოდის (`customTarget`)
   const byDictionary = !!dict || isCustomModuleKey(domain)
 
   /**
    * რეჟიმების სია სამიზნეს მიჰყვება (სარკე `PurgeService::TARGET_MODES`-ისა).
-   * ⚠️ **„კონკრეტული" ახლა თერთმეტივეს აქვს** (§25.1) — აქამდე ის მხოლოდ
+   * ⚠️ **„კონკრეტული" ახლა თერთმეტივეს აქვს** — აქამდე ის მხოლოდ
    * მედია-დომენებზე ეწერა და შენი შენიშვნაც სწორედ ესაა: ბუკმარკიდან ერთი
    * ჩანაწერის წაშლა `/purge`-ით საერთოდ არ შეიძლებოდა, მთელი კატეგორია
    * უნდა წაგეშალა ან არაფერი.
@@ -197,11 +197,11 @@ export function PurgePage() {
   const modes: readonly PurgeMode[] = isCustomModuleKey(target)
     ? (customTarget?.modes ?? ['all'])
     : PURGE_TARGET_MODES[target]
-  /* §6.4 — ორი მექანიზმი ერთდროულად: ექვს დომენს per-user ლექსიკონი აქვს
+  /* ორი მექანიზმი ერთდროულად: ექვს დომენს per-user ლექსიკონი აქვს
      (და სია **სამიზნე ანგარიშიდან** მოდის, რადგან `/purge` სხვისას შლის),
      წიგნს/თამაშს/ბორდგეიმს კი `enum`. ორივე მხარე გასაღებებით მუშაობს,
      ე.ი. ქვემოთ განსხვავება მხოლოდ ლეიბლშია. */
-  // §37.5 — პირად მოდულსაც ლექსიკონი აქვს (და ის **სამიზნისაა**)
+  // პირად მოდულსაც ლექსიკონი აქვს (და ის **სამიზნისაა**)
   const dictionaryStatuses = isStatusDomain(domain) || isCustomModuleKey(domain)
   const statusQ = useQuery({
     queryKey: ['statuses', domain, userId ?? 'me'],
@@ -255,7 +255,7 @@ export function PurgePage() {
     enabled: !!dict,
   })
   const dictionary = isCustomModuleKey(domain) ? (customTarget?.categories ?? []) : (dictQ.data ?? [])
-  /* **„კონკრეტული ჩანაწერები" — თერთმეტივე სამიზნეზე ერთი წყარო** (§25.2).
+  /* **„კონკრეტული ჩანაწერები" — თერთმეტივე სამიზნეზე ერთი წყარო**.
 
      ⚠️ **აქამდე სია `mediaApi(domain).list()`-იდან მოდიოდა და ორმაგად
      მცდარი იყო.** ჯერ ერთი, ის მხოლოდ მედია-დომენს იცნობდა, ე.ი. ბუკმარკს/
@@ -337,7 +337,7 @@ export function PurgePage() {
 
   const planItems = useMemo(() => planQ.data?.plan.items ?? [], [planQ.data])
 
-  /** რიგში ჩასაყრელი — გეგმა მინუს ხელით ამოღებული (§25.3) */
+  /** რიგში ჩასაყრელი — გეგმა მინუს ხელით ამოღებული */
   const queued = useMemo(
     () => planItems.filter((item) => !excluded.has(item.id)),
     [planItems, excluded],
@@ -361,7 +361,7 @@ export function PurgePage() {
     })
 
   /**
-   * **ერთეულის წაშლა სიიდან** (§25.3).
+   * **ერთეულის წაშლა სიიდან**.
    *
    * ⚠️ აკრეფილი `DELETE` აქ არ მოითხოვება: სიტყვა იმისთვისაა, რომ მთელი
    * ბიბლიოთეკა ერთი ღილაკით ვერ გაქრეს — ერთი ჩანაწერის წაშლა კი ისეთივე
@@ -406,7 +406,7 @@ export function PurgePage() {
    * queue თვითონ აკეთებს, ე.ი. გვერდიდან გასვლაც უსაფრთხოა.
    */
   const run = () => {
-    /* ⚠️ რიგში **მხოლოდ დატოვებული** ერთეულები ჩადის (§25.3). სკოუპი
+    /* ⚠️ რიგში **მხოლოდ დატოვებული** ერთეულები ჩადის. სკოუპი
        (`mode`/`ids`) უცვლელია — აქ მხოლოდ ისაა ამოღებული, რაც ხელით
        მოვნიშნეთ, ე.ი. „გეგმა" და „წაშლილი" ისევ ერთი query-დან მოდის. */
     const items = queued
@@ -433,7 +433,7 @@ export function PurgePage() {
 
   const plan = planQ.data?.plan
   const nothing = !!plan && plan.items.length === 0
-  /* ⚠️ `queued.length` და არა `plan.items.length` (§25.3): ყველას ამოღების
+  /* ⚠️ `queued.length` და არა `plan.items.length`: ყველას ამოღების
      შემდეგ „წაშლა" ღილაკი აქტიური რომ დარჩეს, ის ცარიელ რიგს გაუშვებდა. */
   const canRun =
     scopeReady && !!plan && !nothing && queued.length > 0 && confirmWord.trim() === CONFIRM_WORD
@@ -448,7 +448,7 @@ export function PurgePage() {
     setMode(firstMode)
     // ⚠️ სტატუსების ლექსიკონი დომენზეა: `read` ფილმზე 422-ს იძლევა
     setStatus('')
-    /* ⚠️ **არჩეული id-ები დომენს ეკუთვნის და არა გვერდს** (§25.1):
+    /* ⚠️ **არჩეული id-ები დომენს ეკუთვნის და არა გვერდს**:
        ისინი რომ დარჩნენ, ფილმის id ბუკმარკის სკოუპში გადავიდოდა
        და სულ სხვა ჩანაწერს წაშლიდა. */
     setIds([])
@@ -495,7 +495,7 @@ export function PurgePage() {
               />
             )
           })}
-          {/* §37.5 — სამიზნე ანგარიშის პირადი მოდულები, თავისი სახელით და ფერით */}
+          {/* სამიზნე ანგარიშის პირადი მოდულები, თავისი სახელით და ფერით */}
           {customTargets.map((c) => (
             <ScopeCard
               key={c.key}
@@ -627,7 +627,7 @@ export function PurgePage() {
           </span>
         </label>
 
-        {/* §25.5 — „ფილმს თუ შლი, გალერეაც იშლება, თუ დარჩეს?"
+        {/* „ფილმს თუ შლი, გალერეაც იშლება, თუ დარჩეს?"
             ⚠️ გალერეის სამიზნეზე არ იხატება: იქ სწორედ ფოტოებია წასაშლელი,
             ე.ი. ეს checkbox თავის თავს გააუქმებდა. */}
         {target !== 'gallery' && (
@@ -648,7 +648,7 @@ export function PurgePage() {
             value={String(userId ?? me.id)}
             onValueChange={(v) => {
               setUserId(Number(v) === me.id ? undefined : Number(v))
-              // ⚠️ §37.5 — პირადი მოდული **წინა** ანგარიშისაა; ახალში ის არ არსებობს
+              // ⚠️ პირადი მოდული **წინა** ანგარიშისაა; ახალში ის არ არსებობს
               if (isCustomModuleKey(target)) selectTarget('movie', PURGE_TARGET_MODES.movie[0])
             }}
           >
@@ -694,12 +694,12 @@ export function PurgePage() {
                   {t('purge.willKeepPhotos', { count: plan.kept_photos })}
                 </li>
               )}
-              {/* ⚠️ Tasks §29.8 — ურნაშია: ადგილი სამიზნის ურნის დაცლისას ან მისი ვადით თავისუფლდება */}
+              {/* ⚠️ ურნაშია: ადგილი სამიზნის ურნის დაცლისას ან მისი ვადით თავისუფლდება */}
               <li className="font-medium">
                 {t('purge.willFree', { size: formatBytes(plan.bytes), days: plan.trash_days })}
               </li>
-              {/* 20.2 — რიგის სიგრძე და სავარაუდო დრო, როგორც `/sync`-ზე.
-                  ⚠️ რიცხვი **დატოვებულია** და არა გეგმისა (§25.3) — თორემ
+              {/* რიგის სიგრძე და სავარაუდო დრო, როგორც `/sync`-ზე.
+                  ⚠️ რიცხვი **დატოვებულია** და არა გეგმისა — თორემ
                   ეკრანზე ხაზგადასმული ერთეულებიც ჩაითვლებოდა. */}
               {queued.length > 0 && (
                 <li className="text-muted-foreground">
@@ -712,7 +712,7 @@ export function PurgePage() {
               )}
             </ul>
 
-            {/* ---------- ჩაშლა: რიგი სიად (§25.3) ---------- */}
+            {/* ---------- ჩაშლა: რიგი სიად ---------- */}
             {planItems.length > 0 && (
               <PurgeItemList
                 items={planItems}

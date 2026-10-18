@@ -96,13 +96,13 @@ import { cn } from '@/lib/utils'
 import { StatusBadge, StatusLabel } from '@/components/StatusBadge'
 
 /* ============================================================
-   ბუკმარკების მოდული (`bookmark`, Tasks §18 — `DECISIONS.md` §10).
+   ბუკმარკების მოდული (`bookmark`).
 
    ⚠️ სექციები საიდბარშია (`?view=`) და პანელში მხოლოდ კატეგორია/ტეგია —
-   Tasks 3-ის წესი, იგივე რაც ჩანაწერებზე.
+   იგივე წესი, რაც ჩანაწერებზე.
 
-   ⚠️ Tasks §36.1 — **სათაურსა და ფოტოზე დაჭერა ფანჯარას ხსნის და არა ბმულს**
-   (`BookmarkDetail`); გარე ბმული რიგის „ბმული" ღილაკით (§29-ის ზოლი) და
+   ⚠️ **სათაურსა და ფოტოზე დაჭერა ფანჯარას ხსნის და არა ბმულს**
+   (`BookmarkDetail`); გარე ბმული რიგის „ბმული" ღილაკით (მოქმედებების ზოლი) და
    ფანჯრის შიგნით იხსნება — ორივე იმავე „გახსნის" მთვლელს ზრდის.
    ============================================================ */
 
@@ -115,20 +115,20 @@ type PanelFilters = typeof EMPTY_FILTERS
 export function BookmarksPage() {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
-  // §6.4 — სექციები, ბეჯი და ფორმა ერთსა და იმავე ლექსიკონს კითხულობს
+  // სექციები, ბეჯი და ფორმა ერთსა და იმავე ლექსიკონს კითხულობს
   const { data: statuses = [] } = useStatuses('bookmark')
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი სტრიქონები
+  // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი სტრიქონები
   const [layout, setLayout] = useRecordLayout('bookmark', 'rows')
 
   const search = params.toString()
   const view = params.get('view') ?? 'all'
 
-  // მოქმედი ფილტრი მისამართშია (2.2-ის მოდელი): საიდბარი და პანელი ერთსა და იმავეს ხედავს
+  // მოქმედი ფილტრი მისამართშია (ბიბლიოთეკის მოდელი): საიდბარი და პანელი ერთსა და იმავეს ხედავს
   const categories = useMemo(
     () => new URLSearchParams(search).get('category')?.split(',').filter(Boolean) ?? [],
     [search],
@@ -143,10 +143,10 @@ export function BookmarksPage() {
   const [term, setTerm] = useState('')
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<Bookmark | 'new' | null>(null)
-  /* Tasks §36.1 — დეტალის ფანჯარა id-ით: ჩანაწერი სიიდან იკითხება, ფილტრს მიღმა
+  /* დეტალის ფანჯარა id-ით: ჩანაწერი სიიდან იკითხება, ფილტრს მიღმა
      მდგომი კი (`?open=<id>`) — ცალკე (`['bookmark', id]`) */
   const [detail, setDetail] = useState<{ id: number; focus?: 'gallery'; seed?: Bookmark } | null>(null)
-  // Tasks §36.5 — „ბმულის დამატება" მარჯვენა კლიკიდან, ფორმის გარეშე
+  // „ბმულის დამატება" მარჯვენა კლიკიდან, ფორმის გარეშე
   const [linkFor, setLinkFor] = useState<Bookmark | null>(null)
 
   useEffect(() => {
@@ -154,7 +154,7 @@ export function BookmarksPage() {
     return () => clearTimeout(timer)
   }, [q])
 
-  // §6.4 — „ყველა"/„რჩეული" სტატუსები არაა; დანარჩენი ლექსიკონის გასაღებია
+  // „ყველა"/„რჩეული" სტატუსები არაა; დანარჩენი ლექსიკონის გასაღებია
   const isStatusView = view !== 'all' && view !== 'favorite'
 
   const drill = useDrillParams()
@@ -165,11 +165,11 @@ export function BookmarksPage() {
     status: isStatusView ? view : undefined,
     favorite: view === 'favorite' ? true : undefined,
     sort: sort === 'newest' ? undefined : sort,
-    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
   }
 
-  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['bookmarks', filters],
     fetchPage: (page) => fetchBookmarks({ ...filters, page, per_page: LIST_PAGE_SIZE }),
@@ -188,7 +188,7 @@ export function BookmarksPage() {
     }
   }, [params, navigate])
 
-  /* Tasks §36.1 — ღრმა ბმული `?open=<id>` (ვიდეოს §19.6-ის პატერნი). ⚠️ პარამეტრი
+  /* ღრმა ბმული `?open=<id>` (ვიდეოს პატერნი). ⚠️ პარამეტრი
      მაშინვე იშლება, თორემ ფანჯრის დახურვა და „უკან" მას ხელახლა გახსნიდა. */
   useEffect(() => {
     const open = Number(params.get('open'))
@@ -233,7 +233,7 @@ export function BookmarksPage() {
     onSuccess: invalidate,
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
-  /* Tasks §24.3 — ⚠️ „ნანახის" მთვლელის ჩავარდნა აქამდე **ჩუმად** იკარგებოდა:
+  /* ⚠️ „ნანახის" მთვლელის ჩავარდნა აქამდე **ჩუმად** იკარგებოდა:
      ბმული იხსნებოდა, რიცხვი კი არ იზრდებოდა და მიზეზი არსად ჩანდა. */
   const visited = useMutation({
     mutationFn: markBookmarkVisited,
@@ -321,7 +321,7 @@ export function BookmarksPage() {
         subtitle={t('bookmarks.count', { count: total })}
         actions={
           <>
-            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             <Tooltip>
               <TooltipTrigger asChild>
@@ -373,7 +373,7 @@ export function BookmarksPage() {
       <div className="flex gap-6">
         <div className="min-w-0 flex-1">
           {query.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
-          {/* ⚠️ §2.4 — ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
+          {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !bookmarks.length && (
             <EmptyState
@@ -398,7 +398,7 @@ export function BookmarksPage() {
           <RecordList layout={layout}>
             {bookmarks.map((bookmark) => {
               const image = storageUrl(bookmark.image)
-              /* Tasks §7 → §36.5 — ერთი სია (`record-menu`): გახსნა (ფანჯარა) · ბმულის გახსნა ·
+              /* ერთი სია (`record-menu`): გახსნა (ფანჯარა) · ბმულის გახსნა ·
                  სტატუსი ▸ · რჩეული · ბმულის დამატება · გალერეა · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
                 { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => openDetail(bookmark) },
@@ -421,7 +421,7 @@ export function BookmarksPage() {
                 { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete(bookmark) },
               ]
               return (
-                /* Tasks §36.1 — ფოტო და სათაური **ფანჯარას** ხსნის და არა ბმულს; §45 — ერთი აღწერა სამ განლაგებაში */
+                /* ფოტო და სათაური **ფანჯარას** ხსნის და არა ბმულს; ერთი აღწერა სამ განლაგებაში */
                 <RecordView
                   key={bookmark.id}
                   title={bookmark.title}
@@ -445,7 +445,7 @@ export function BookmarksPage() {
                       {bookmark.visit_count > 0 && (
                         <span>{t('bookmarks.visits', { count: bookmark.visit_count })}</span>
                       )}
-                      {/* Tasks §36.3 — დამატებითი ბმულების რიცხვი */}
+                      {/* დამატებითი ბმულების რიცხვი */}
                       {(bookmark.links?.length ?? 0) > 0 && (
                         <span className="inline-flex items-center gap-1">
                           <Link2 className="size-3" />
@@ -462,7 +462,7 @@ export function BookmarksPage() {
                   tags={bookmark.tags}
                   actions={actions}
                   onEdit={() => setEditing(bookmark)}
-                  /* Tasks §29.1 → §36.2 — ერთი ზოლი ყველა სიაზე: სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული ·
+                  /* ერთი ზოლი ყველა სიაზე: სტატუსი (ჩამოსაშლელი) · რჩეული ·
                      ფაილები (ფოტოები — ფანჯარა გალერეაზე) · ბმული (იგივე „გახსნის" მთვლელით) ·
                      რედაქტირება · წაშლა. ⚠️ ბმულის პატარა ღილაკი რჩება — ვინც პირდაპირ გახსნას
                      ეჩვევა, ერთი დაჭერით მიდის. */
@@ -470,7 +470,7 @@ export function BookmarksPage() {
                     <RecordActionBar
                       before={
                         <>
-                          {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი (§24.2 — რიგის ზომით) */}
+                          {/* ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი (რიგის ზომით) */}
                           <VisibilityBadge value={bookmark.visibility} />
                         </>
                       }
@@ -479,7 +479,7 @@ export function BookmarksPage() {
                           label={t('bookmarks.statusChange')}
                           trigger={
                             <button type="button" className="cursor-pointer rounded-md">
-                              {/* Tasks §16.4 — ერთი სიგანის ჩამოსაშლელი: `StatusBadge` აიქონითა და ფერით, ისარი ბოლოში */}
+                              {/* ერთი სიგანის ჩამოსაშლელი: `StatusBadge` აიქონითა და ფერით, ისარი ბოლოში */}
                               {bookmark.status ? (
                                 <StatusBadge
                                   status={bookmark.status}
@@ -496,7 +496,7 @@ export function BookmarksPage() {
                             </button>
                           }
                         >
-                          {/* §6.4 — სია ლექსიკონიდან */}
+                          {/* სია ლექსიკონიდან */}
                           {statuses.map((s) => (
                             <ActionMenuClose key={s.id} asChild>
                               <button
@@ -518,7 +518,7 @@ export function BookmarksPage() {
                         pending: favorite.isPending && favorite.variables === bookmark.id,
                         onToggle: () => favorite.mutate(bookmark.id),
                       }}
-                      // §36.4 — ჩემი ფოტოები + ვებიდან მოტანილი: ფანჯარა გალერეის სექციაზე იხსნება
+                      // ჩემი ფოტოები + ვებიდან მოტანილი: ფანჯარა გალერეის სექციაზე იხსნება
                       files={{
                         count: (bookmark.files_count ?? 0) + (bookmark.photos_count ?? 0),
                         onOpen: () => openDetail(bookmark, 'gallery'),
@@ -550,7 +550,7 @@ export function BookmarksPage() {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
-          {/* „ყველა"/სტატუსები აქ განზრახ არ არის (Tasks 3) — ისინი საიდბარის სექციებია */}
+          {/* „ყველა"/სტატუსები აქ განზრახ არ არის — ისინი საიდბარის სექციებია */}
           <FilterGroup title={t('filter.types')} count={draft.categories.length}>
             <FilterOptionList>
               {allCategories.map((category) => (
@@ -580,7 +580,7 @@ export function BookmarksPage() {
         </FilterPanel>
       </div>
 
-      {/* Tasks §36.1 — დეტალის ფანჯარა; რედაქტირება მის თავზე იხსნება (მოდალები ეწყობა) */}
+      {/* დეტალის ფანჯარა; რედაქტირება მის თავზე იხსნება (მოდალები ეწყობა) */}
       {detail && shown && (
         <BookmarkDetail
           bookmark={shown}
@@ -622,7 +622,7 @@ export function BookmarksPage() {
 /** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
 const FORM_ID = 'bookmark-form'
 
-/** §41.1 — დამატებითი ბმულები და გალერეა ცალ-ცალკე ბარათად (`CustomFieldsCard`-ის ჩარჩო) */
+/** დამატებითი ბმულები და გალერეა ცალ-ცალკე ბარათად (`CustomFieldsCard`-ის ჩარჩო) */
 const CARD = 'rounded-xl border border-border bg-card p-4'
 
 function BookmarkForm({
@@ -640,12 +640,12 @@ function BookmarkForm({
 }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
-  // §22.2 → §41.3 — ვებძებნის ჩიპები შინაარსის ენაზე (დეტალის ფანჯრის წესი)
+  // ვებძებნის ჩიპები შინაარსის ენაზე (დეტალის ფანჯრის წესი)
   const fixedT = i18n.getFixedT(lang)
-  // §6.4 — სექციები, ბეჯი და ფორმა ერთსა და იმავე ლექსიკონს კითხულობს
+  // სექციები, ბეჯი და ფორმა ერთსა და იმავე ლექსიკონს კითხულობს
   const { data: statuses = [] } = useStatuses('bookmark')
   const { toast } = useToast()
-  // §6 — რომელი არჩევითი ველი ჩანს ამ ფორმაზე
+  // რომელი არჩევითი ველი ჩანს ამ ფორმაზე
   const fields = useModuleFields('bookmark')
 
   const [form, setForm] = useState({
@@ -653,11 +653,11 @@ function BookmarkForm({
     url: bookmark?.url ?? '',
     description: bookmark?.description ?? '',
     categoryId: bookmark?.category_id ? String(bookmark.category_id) : '',
-    // §6.4 — გასაღები; ცარიელი = ნაგულისხმევი (backend დაადებს)
+    // გასაღები; ცარიელი = ნაგულისხმევი (backend დაადებს)
     status: bookmark?.status?.key ?? '',
     tags: bookmark?.tags ?? [],
   })
-  /* ⚠️ Tasks §36.4 — `image` სამიდან ერთია: ატვირთული ფოტოს გზა (`bookmarks/…`),
+  /* ⚠️ `image` სამიდან ერთია: ატვირთული ფოტოს გზა (`bookmarks/…`),
      გალერეიდან არჩეულის გზა (`gallery/…`) ან გვერდის og:image. დაშორებულად მხოლოდ
      `http(s)` ითვლება — თორემ გალერეის გზა `image_url`-ად გაიგზავნებოდა და `url`-ის
      წესი შენახვას 422-ით ჩააგდებდა. */
@@ -672,22 +672,22 @@ function BookmarkForm({
   const [newCategory, setNewCategory] = useState(false)
   const qc = useQueryClient()
   const { has } = useModules()
-  // §26.5 — დამატებითი ველები ახალ ჩანაწერზე; ჩავარდნისას შექმნილი რჩება
+  // დამატებითი ველები ახალ ჩანაწერზე; ჩავარდნისას შექმნილი რჩება
   const extras = useRecordExtras('bookmark', bookmark)
-  /* Tasks §36.3 — დამატებითი ბმულები; რიგს სტაბილური გასაღები აქვს (`lib/rowKeys.ts`),
+  /* დამატებითი ბმულები; რიგს სტაბილური გასაღები აქვს (`lib/rowKeys.ts`),
      გაგზავნამდე იჭრება (`unkeyRows`) */
   const [links, setLinks] = useState<Keyed<BookmarkLink>[]>(() => keyRows(bookmark?.links ?? []))
-  /* Tasks §36.4 — ფოტოები **შექმნისთანავე** (კურსისა და ადგილის §29.3-ის პატერნი): შენახვამდე
+  /* ფოტოები **შექმნისთანავე** (კურსისა და ადგილის პატერნი): შენახვამდე
      ბრაუზერშია, შენახვისას ჯერ ბუკმარკი, მერე ფოტოები სათითაოდ. ⚠️ ჩავარდნა ბუკმარკს არ
      აუქმებს — ფანჯარა ღია რჩება, „შენახვა" ხელახლა ცდის. */
   const pending = usePendingUploads<'image'>()
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  /* Tasks §41.3 — ვებიდან არჩეული ფოტოები და ვიდეოები ახალ ბუკმარკზე: შექმნისთანავე
+  /* ვებიდან არჩეული ფოტოები და ვიდეოები ახალ ბუკმარკზე: შექმნისთანავე
      იგზავნება, ფანჯრის იგივე გზით (`lib/pendingWeb.ts`) */
   const [web, setWeb] = useState<PendingWeb>(NO_PENDING_WEB)
 
   /**
-   * ბმულიდან სათაური/აღწერა/ფოტო (`LinkField` — `paste` და `blur`, §15 → §41.1).
+   * ბმულიდან სათაური/აღწერა/ფოტო (`LinkField` — `paste` და `blur`).
    * `onFound` მხოლოდ **ცარიელ** ველებს ავსებს — ხელით შეყვანილს არ ვაბათილებთ;
    * ბარათის „ჩასმა" (`overwrite`) შევსებულსაც გადაწერს. ⚠️ ატვირთული ფოტო
    * (`thumbnail_path`) ამით არ იცვლება — ის `image_url`-ზე უპირატესია.
@@ -731,7 +731,7 @@ function BookmarkForm({
         }
       }
 
-      // §41.3 — ვებიდან არჩეული: ჩავარდნილი სიაში რჩება და „შენახვა" ხელახლა ცდის
+      // ვებიდან არჩეული: ჩავარდნილი სიაში რჩება და „შენახვა" ხელახლა ცდის
       if (web.images.length || web.videos.length) {
         const { left } = await sendPendingWeb('bookmark', saved.id, web)
         setWeb(left)
@@ -757,7 +757,7 @@ function BookmarkForm({
   })
 
 
-  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს**: ბლოკი
      `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
      ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
   const warnHidden = (missing: string[]) => {
@@ -791,7 +791,7 @@ function BookmarkForm({
 
     setErrors({})
 
-    // ⚠️ `TagSelect` უკვე ჭრის და ატყობინებს (§2.6) — ეს გარანტიაა
+    // ⚠️ `TagSelect` უკვე ჭრის და ატყობინებს — ეს გარანტიაა
     const { tags } = dedupeTags(form.tags)
 
     save.mutate({
@@ -801,7 +801,7 @@ function BookmarkForm({
       category_id: form.categoryId ? Number(form.categoryId) : null,
       status: form.status || undefined,
       tags,
-      // Tasks §36.3 — ცარიელმისამართიანი რიგი არ იგზავნება
+      // ცარიელმისამართიანი რიგი არ იგზავნება
       links: unkeyRows(links.filter((l) => l.url.trim())),
       image_url: imageUrl,
       favicon_url: faviconUrl,
@@ -813,18 +813,18 @@ function BookmarkForm({
   return (
     <ModalShell title={t(bookmark ? 'bookmarks.edit' : 'bookmarks.add')} onClose={onClose} wide>
       {/* ============================================================
-          Tasks §41 — „ბმული ყოველთვის, ყველგან თავშია — მთელ სიგრძეზე; მერე მარცხნივ
+          „ბმული ყოველთვის, ყველგან თავშია — მთელ სიგრძეზე; მერე მარცხნივ
           ფოტო და მარჯვნივ რამდენიმე როუდ, რამდენიმე სვეტად ინფუთები, და ზოგი ქვევით".
           1) ბმული — სრულ სიგანეზე (`LinkField`: `paste` + `blur`, ნაპოვნის ბარათი);
-          2) მარცხნივ მთავარი ფოტო (§38-ის `MediaRow`), მარჯვნივ ბადე — სათაური, კლასიფიკატორი ·
+          2) მარცხნივ მთავარი ფოტო (`MediaRow`), მარჯვნივ ბადე — სათაური, კლასიფიკატორი ·
              სტატუსი; 3) სრულ სიგანეზე — აღწერა, ტეგები; 4) დამატებითი ბმულები და გალერეა
           (ახალზე: ატვირთვა + ვებიდან) — ცალ-ცალკე ბარათებად. დამატებაც და რედაქტირებაც —
-          ერთი განლაგება. ⚠️ ხილვადობა აქ არ არის — ის პროფილზე იმართება (§6.1).
+          ერთი განლაგება. ⚠️ ხილვადობა აქ არ არის — ის პროფილზე იმართება.
           ============================================================ */}
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6" data-testid="bookmark-form">
-        {/* §26.2 — ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
-            ⚠️ `url` `locked`-ია (§6.5) — ბუკმარკის იდენტობა თვითონ ბმულია;
-            ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
+        {/* ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
+            ⚠️ `url` `locked`-ია — ბუკმარკის იდენტობა თვითონ ბმულია;
+            ჩაკეტვის მოხსნა ცხადი ქმედებაა, ამიტომ `shows()` აქაც ისმის. */}
         <QuickFill
           show={fields.shows('url')}
           title={fields.label('url')}
@@ -915,7 +915,7 @@ function BookmarkForm({
             </div>
           </FormField>
 
-          {/* §16.3 — პუნქტები აიქონითა და ფერით (`StatusLabel`) */}
+          {/* პუნქტები აიქონითა და ფერით (`StatusLabel`) */}
           <FormField size="half" {...fields.field('status')} htmlFor="b-status" error={errors.status}>
             <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
               <SelectTrigger id="b-status" className={errors.status ? 'border-destructive' : undefined}>
@@ -934,7 +934,7 @@ function BookmarkForm({
 
         {/* სრულ სიგანეზე — აღწერა და ტეგები */}
         <FormGrid>
-          {/* ⚠️ §26 — საერთო `Textarea` (აქამდე ნედლი `<textarea>` იყო სხვა ჩარჩოთი და ფონით) */}
+          {/* ⚠️ საერთო `Textarea` (აქამდე ნედლი `<textarea>` იყო სხვა ჩარჩოთი და ფონით) */}
           <FormField {...fields.field('description')} htmlFor="b-desc">
             <RichText
               id="b-desc"
@@ -960,8 +960,8 @@ function BookmarkForm({
           </FormField>
         </FormGrid>
 
-        {/* Tasks §36.3 → §41.1 — დამატებითი ბმულები ცალკე ბარათად (მაღაზია, ფასი, მიმოხილვა…);
-            ჩასმისას §15-ის მეტა-მონაცემი წარწერას და favicon-ს ავსებს */}
+        {/* დამატებითი ბმულები ცალკე ბარათად (მაღაზია, ფასი, მიმოხილვა…);
+            ჩასმისას ბმულის მეტა-მონაცემი წარწერას და favicon-ს ავსებს */}
         <FormSection
           title={t('form.sections.details')}
           className={cn(CARD, !fields.shows('links') && 'hidden')}
@@ -971,7 +971,7 @@ function BookmarkForm({
           </FormField>
         </FormSection>
 
-        {/* §36.4 → §41.3 — გალერეა ახალ ბუკმარკზე, ცალკე ბარათად: ატვირთვა და „ვებიდან"
+        {/* გალერეა ახალ ბუკმარკზე, ცალკე ბარათად: ატვირთვა და „ვებიდან"
             (დეტალის ფანჯრის იგივე ძებნა); არსებულს გალერეა დეტალის ფანჯარაში აქვს */}
         {!bookmark && (
           <div className={CARD} data-testid="bookmark-gallery-card">
@@ -996,7 +996,7 @@ function BookmarkForm({
         )}
       </form>
 
-      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ ჩანაწერზე მონახაზი */}
+      {/* დამატებითი ველები; ახალ ჩანაწერზე მონახაზი */}
       <CustomFieldsCard
         module="bookmark"
         recordId={extras.current?.id ?? null}
