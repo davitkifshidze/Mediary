@@ -52,13 +52,15 @@ class CastMember extends Model
         'popularity' => 'float',
         'profile_links' => 'array',
         'details_synced_at' => 'datetime',
+        // Tasks §35.9 (Q17) — ხელით შექმნილი მსახიობი ურნაში (`CastMemberTrash`)
+        'trashed_at' => 'datetime',
     ];
 
     /**
      * ⚠️ **გლობალური ლექსიკონია, მაგრამ წაშლადი მაინც უნდა იყოს უსაფრთხო.**
-     * მსახიობი დღეს არსად არ იშლება, თუმცა `morphs()` კასკადს არ ქმნის:
-     * წაშლის დღეს მისი ფოტოები (ყველა ანგარიშისა) და ვიდეო-ბმულები
-     * ორფნად დარჩებოდა და კვოტაც სამუდამოდ დაკავებული.
+     * იშლება მხოლოდ ხელით შექმნილი — ურნის გავლით (Tasks §35.9, `CastMemberTrash`)
+     * და ანგარიშის წაშლისას; `morphs()` კი კასკადს არ ქმნის, ე.ი. მისი ფოტოები
+     * და ვიდეო-ბმულები ორფნად დარჩებოდა და კვოტაც სამუდამოდ დაკავებული.
      */
     protected static function booted(): void
     {
@@ -74,6 +76,12 @@ class CastMember extends Model
                 self::constrainVisible($query, (int) $id);
             }
         });
+
+        /* **Tasks §35.9 (Q17) — ურნაში მყოფი მსახიობი ყველა კარიდან ქრება**: სია,
+           გვერდი (404), ძებნა, ჩანაწერის მსახიობები, გალერეის ჯგუფები, საჯარო
+           პროფილი. ⚠️ `creator`-ისგან განსხვავებით **ავტორიზაციის გარეშეც** —
+           ურნაში მხოლოდ კერძო მსახიობი ხვდება, ე.ი. მისი დამალვა სხვას არაფერს უცვლის. */
+        static::addGlobalScope('trash', fn (Builder $query) => $query->whereNull($query->getModel()->qualifyColumn('trashed_at')));
 
         static::deleting(function (self $member) {
             $member->deleteGalleryMedia();

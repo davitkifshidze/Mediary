@@ -28,6 +28,8 @@ export interface ActorCard {
   known_for: string | null
   popularity: number | null
   has_tmdb: boolean
+  /** §35.9 — ჩემი ხელით შექმნილი: რედაქტირდება და ურნაში იშლება */
+  editable?: boolean
   /** ბიოგრაფია და ბმულები TMDB-დან ჩამოსულია (§8.1) */
   synced: boolean
   counts: { movie: number; series: number; anime: number }
@@ -146,5 +148,17 @@ export async function fetchActors(filters: ActorFilters): Promise<ActorList> {
  */
 export async function detachActorEverywhere(id: number): Promise<{ removed: number; skipped: number }> {
   const { data } = await api.delete(`/actors/${id}/records`)
+  return data
+}
+
+/**
+ * **Tasks §35.9 (Q17) — ხელით შექმნილი მსახიობის წაშლა ურნაში.**
+ *
+ * ⚠️ „წაშლა ჩემი ჩანაწერებიდან"-ისგან (`detachActorEverywhere`) განსხვავდება:
+ * იქ მსახიობი რჩება, აქ კი თვითონ მიდის — ბმულებთან და ფოტოებთან ერთად,
+ * ერთ ელემენტად, და ურნიდან ერთად ბრუნდება. მხოლოდ ჩემს კერძოზე (სხვაზე — 403).
+ */
+export async function trashActor(id: number): Promise<{ trashed: boolean; trash_id: number; links: number; photos: number }> {
+  const { data } = await api.delete(`/cast/${id}`)
   return data
 }

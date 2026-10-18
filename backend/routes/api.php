@@ -1415,6 +1415,8 @@ Route::middleware('auth:sanctum')->group(function () {
        (`CastMember`-ის `creator` scope) — სხვისი 404-ია. */
     Route::post('/cast', [CastController::class, 'store']);
     Route::match(['put', 'patch'], '/cast/{castMember}', [CastController::class, 'update'])->whereNumber('castMember');
+    // Tasks §35.9 (Q17) — ხელით შექმნილის წაშლა ურნაში (ბმულებთან და ფოტოებთან ერთად)
+    Route::delete('/cast/{castMember}', [CastController::class, 'destroy'])->whereNumber('castMember');
     /* §7.5 — მსახიობის საძიებო ტეგები. ⚠️ `cast_members` გლობალური
        ლექსიკონია, ტეგები კი **ჩემია** (`cast_member_tags`, user-ზე).
        ⚠️ `PUT`-ია: მთელი ნაკრების ჩანაცვლებაა და POST `create`-ად იკითხებოდა. */

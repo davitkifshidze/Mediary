@@ -24,6 +24,7 @@ use App\Models\VideoFile;
 use App\Services\Chat\ChatService;
 use App\Services\Modules\CustomFieldService;
 use App\Services\Notify\Notifier;
+use App\Support\CastMemberTrash;
 use App\Support\ColumnTrash;
 use App\Support\CustomFields;
 use App\Support\CustomModules;
@@ -1644,13 +1645,26 @@ class StorageMeter
            მოდულის ჩანაწერზე მშობლით იცნობა (`_parent`). */
         $trashedModules = CustomModuleTrash::entriesOf($user);
 
-        return $files->map(function (array $f) use ($parentOf, $trashed, $trashedModules) {
+        /* ⚠️ **§35.9 — ურნაში მყოფი მსახიობის ფაილებიც მის ელემენტს ეკუთვნის**
+           (`cast_member:{id}`): ატვირთული ფოტო (`cast/uploads`) და გალერეის ფოტოები
+           მასთან ერთად წავიდა და მასთან ერთად ბრუნდება — მოდულის იგივე წესი. */
+        $trashedActors = CastMemberTrash::entriesOf($user);
+
+        return $files->map(function (array $f) use ($parentOf, $trashed, $trashedModules, $trashedActors) {
             $parent = $parentOf($f);
             $moduleEntry = $trashedModules[(string) ($f['module'] ?? '')]
                 ?? ($parent !== null ? ($trashedModules[$parent[0]] ?? null) : null);
 
+            $actor = match (true) {
+                $f['owner_type'] === GalleryParent::ACTOR => (int) $f['owner_id'],
+                ($f['_parent'][0] ?? null) === GalleryParent::ACTOR => (int) $f['_parent'][1],
+                default => null,
+            };
+            $actorEntry = $actor !== null ? ($trashedActors[$actor] ?? null) : null;
+
             $f['trash'] = match (true) {
                 $moduleEntry !== null => CustomModuleTrash::KIND.':'.$moduleEntry,
+                $actorEntry !== null => CastMemberTrash::KIND.':'.$actorEntry,
                 (bool) ($f['_trashed'] ?? false) => ($f['_trash_kind'] ?? $f['owner_type']).':'.$f['owner_id'],
                 $parent !== null && isset($trashed[$parent[0]][$parent[1]]) => $parent[0].':'.$parent[1],
                 default => null,

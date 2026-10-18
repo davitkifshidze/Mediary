@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Support\CastMemberTrash;
 use App\Support\CustomModuleTrash;
 use Illuminate\Database\Eloquent\Model;
 
@@ -41,6 +42,11 @@ class TrashEntry extends Model
         static::deleting(function (TrashEntry $entry) {
             if ($entry->kind === CustomModuleTrash::KIND) {
                 CustomModuleTrash::erase($entry);
+            }
+
+            // Tasks §35.9 (Q17) — ხელით შექმნილი მსახიობი: იგივე წესი, იგივე სამი გზა
+            if ($entry->kind === CastMemberTrash::KIND) {
+                CastMemberTrash::erase($entry);
             }
         });
     }

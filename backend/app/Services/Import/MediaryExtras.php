@@ -247,9 +247,10 @@ class MediaryExtras
             }
 
             $tmdb = is_numeric($item['tmdb_person_id'] ?? null) ? (int) $item['tmdb_person_id'] : null;
+            // ⚠️ ურნაში მყოფ მსახიობზე (§35.9) ბმული არ ჯდება — ის დამალულია
             $member = $tmdb
-                ? CastMember::withoutGlobalScopes()->where('tmdb_person_id', $tmdb)->first()
-                : CastMember::withoutGlobalScopes()->whereNull('tmdb_person_id')->where('created_by', $user->getKey())->where('name', $name)->first();
+                ? CastMember::withoutGlobalScopes()->where('tmdb_person_id', $tmdb)->whereNull('trashed_at')->first()
+                : CastMember::withoutGlobalScopes()->whereNull('tmdb_person_id')->whereNull('trashed_at')->where('created_by', $user->getKey())->where('name', $name)->first();
 
             if (! $member) {
                 $member = $this->newMember($user, $item, $name, $tmdb, $files);

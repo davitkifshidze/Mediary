@@ -43,6 +43,7 @@ const list = (items: (ActorCard | HiddenActorCard)[]): ActorList => ({
 const mocks = vi.hoisted(() => ({
   fetchActors: vi.fn(),
   detachActorEverywhere: vi.fn(),
+  trashActor: vi.fn(),
 }))
 
 vi.mock('@/api/actors', async (original) => ({
@@ -76,9 +77,10 @@ async function flush(times = 4) {
   }
 }
 
-async function render(path = '/actors') {
-  mocks.fetchActors.mockResolvedValue(list([liam]))
+async function render(path = '/actors', items: (ActorCard | HiddenActorCard)[] = [liam]) {
+  mocks.fetchActors.mockResolvedValue(list(items))
   mocks.detachActorEverywhere.mockResolvedValue({ removed: 4, skipped: 0 })
+  mocks.trashActor.mockResolvedValue({ trashed: true, trash_id: 1, links: 1, photos: 0 })
 
   container = document.createElement('div')
   document.body.appendChild(container)
@@ -155,6 +157,41 @@ describe('ActorsPage', () => {
     await flush()
 
     expect(mocks.detachActorEverywhere).toHaveBeenCalledWith(7)
+  })
+
+  /* Tasks §35.9 (Q17) — „წაშლა" მხოლოდ ჩემს ხელით შექმნილზე: მსახიობი ურნაში მიდის დადასტურების შემდეგ */
+  it('offers deleting only my hand-made actor and sends it to the trash after confirming', async () => {
+    const menuOf = async (tile: Element) => {
+      await act(async () => {
+        tile.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
+      })
+      await flush()
+      return (label: string) =>
+        [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((m) => m.textContent?.trim() === label)
+    }
+
+    // TMDB-ის მსახიობი — „წაშლა" არ არის (მხოლოდ „ჩემი ჩანაწერებიდან")
+    await render()
+    let item = await menuOf(container!.querySelector('[data-testid="actor-tile"]')!)
+    expect(item(i18n.t('actors.menuRemove'))).toBeTruthy()
+    expect(item(i18n.t('actors.menuDelete'))).toBeUndefined()
+    act(() => root?.unmount())
+    container?.remove()
+
+    const mine: ActorCard = { ...liam, id: 8, name: 'Nino Kasradze', name_ka: 'ნინო ქასრაძე', has_tmdb: false, editable: true, records: 1, photos: 0 }
+    await render('/actors', [mine])
+    item = await menuOf(container!.querySelector('[data-testid="actor-tile"]')!)
+
+    await act(async () => item(i18n.t('actors.menuDelete'))!.click())
+    await flush()
+    expect(mocks.trashActor).not.toHaveBeenCalled()
+    expect(document.body.textContent).toContain(i18n.t('actors.deleteTitle'))
+
+    const dialog = [...document.querySelectorAll<HTMLElement>('[role="dialog"], [role="alertdialog"]')].at(-1)!
+    await act(async () => button(i18n.t('confirm.delete'), dialog).click())
+    await flush()
+
+    expect(mocks.trashActor).toHaveBeenCalledWith(8)
   })
 
   /* Tasks §35.5 — ჩემ მიერ ჩაკეტილი: მხოლოდ სახელი და ბოქლომი, მენიუს გარეშე; ფილტრი სერვერამდე მიდის */

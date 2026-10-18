@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Drama, Globe, Plus, RefreshCw, Search, Tags, UserMinus } from 'lucide-react'
+import { Drama, Globe, Plus, RefreshCw, Search, Tags, Trash2, UserMinus } from 'lucide-react'
 import {
   ACTOR_RECORD_STEPS,
   ACTOR_SORTS,
   ACTORS_KEY,
   detachActorEverywhere,
   fetchActors,
+  trashActor,
   type ActorCard,
   type ActorListItem,
   type ActorFilters,
@@ -157,6 +158,16 @@ export function ActorsPage() {
     onError: fail,
   })
 
+  /* §35.9 (Q17) — ხელით შექმნილი ურნაში: ბმულებთან და ფოტოებთან ერთად */
+  const trash = useMutation({
+    mutationFn: (actor: ActorCard) => trashActor(actor.id),
+    onSuccess: (_, actor) => {
+      ;[ACTORS_KEY, 'trash', 'gallery'].forEach((key) => qc.invalidateQueries({ queryKey: [key] }))
+      toast({ title: t('actors.deleted', { name: actorName(actor, lang).title }), variant: 'success' })
+    },
+    onError: fail,
+  })
+
   const relock = useMutation({
     mutationFn: (actor: ActorCard) => relockRecord(actorLockBase(actor.id)),
     onSuccess: () => {
@@ -196,6 +207,27 @@ export function ActorsPage() {
                   variant: 'destructive',
                 })
                 if (ok) detach.mutate(actor)
+              },
+            },
+          ]
+        : []),
+      /* §35.9 (Q17) — მხოლოდ ჩემი ხელით შექმნილი: მსახიობი თვითონ მიდის ურნაში */
+      ...(actor.editable
+        ? [
+            {
+              key: 'trash',
+              label: t('actors.menuDelete'),
+              icon: Trash2,
+              danger: true,
+              separator: actor.records === 0,
+              run: async () => {
+                const ok = await confirm({
+                  title: t('actors.deleteTitle'),
+                  description: t('actors.deleteDesc', { name, links: actor.records, photos: actor.photos }),
+                  confirmText: t('confirm.delete'),
+                  variant: 'destructive',
+                })
+                if (ok) trash.mutate(actor)
               },
             },
           ]

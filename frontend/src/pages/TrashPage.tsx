@@ -22,6 +22,7 @@ import {
   Trash2,
   Undo2,
   UserRound,
+  UserRoundX,
   CircleDashed,
   CircleUserRound,
   Replace,
@@ -94,6 +95,8 @@ function kindIcon(kind: string): ReactNode {
   if (kind === 'audit_log') return <ScrollText />
   // §37.7 — პირადი მოდული, ჩანაწერებთან ერთად
   if (kind === 'custom_module') return <Blocks />
+  // §35.9 — ხელით შექმნილი მსახიობი, ბმულებთან და ფოტოებთან ერთად
+  if (kind === 'cast_member') return <UserRoundX />
   if (kind === 'field_file') return <FormInput />
   if (kind.endsWith('_note')) return <StickyNote />
   if (kind === 'playlist') return <ListMusic />
@@ -198,6 +201,8 @@ export function TrashPage() {
               ? t('trash.deleteAuditHint', { count: item.count ?? 0 })
               : group.kind === 'custom_module'
                 ? t('trash.deleteModuleHint', { name: item.title, count: item.count ?? 0, size: formatBytes(item.size) })
+                : group.kind === 'cast_member'
+                  ? t('trash.deleteActorHint', { name: item.title, size: formatBytes(item.size) })
                 : t('trash.deleteFileHint', { name: item.title, size: formatBytes(item.size) }),
       confirmText: t('confirm.delete'),
       variant: 'destructive',
@@ -317,6 +322,8 @@ export function TrashPage() {
                                   ? t('trash.albumPhotos', { count: item.count })
                                   : group.kind === 'custom_module'
                                     ? t('trash.moduleRecords', { count: item.count })
+                                    : group.kind === 'cast_member'
+                                      ? t('trash.actorLinks', { count: item.count })
                                     : t('trash.recordsMoved', { count: item.count })}
                               </span>
                             )}

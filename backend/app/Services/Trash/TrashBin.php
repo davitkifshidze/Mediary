@@ -20,10 +20,12 @@ use App\Services\Modules\CustomFieldService;
 use App\Services\Storage\StorageMeter;
 use App\Support\AlbumLock;
 use App\Support\AuditLogTrash;
+use App\Support\CastMemberTrash;
 use App\Support\ColumnTrash;
 use App\Support\CustomModules;
 use App\Support\CustomModuleTrash;
 use App\Support\DictionaryTrash;
+use App\Support\GalleryParent;
 use App\Support\MediaDomain;
 use App\Support\RecordLocks;
 use App\Support\SafeMime;
@@ -157,8 +159,8 @@ final class TrashBin
 
             $category = TrashDomain::category($kind);
             $groupBytes = match (true) {
-                // §37.7 — მოდულის ელემენტი: მისი ყველა ჩანაწერის ფაილები (`markTrash()`)
-                $category === 'record', $kind === CustomModuleTrash::KIND => array_sum(array_map(
+                // §37.7 — მოდულის ელემენტი: მისი ყველა ჩანაწერის ფაილები (`markTrash()`); §35.9 — მსახიობისაც
+                $category === 'record', $kind === CustomModuleTrash::KIND, $kind === CastMemberTrash::KIND => array_sum(array_map(
                     fn (int $id) => $recordSizes["{$kind}:{$id}"] ?? 0,
                     (clone $query)->pluck('id')->map(fn ($id) => (int) $id)->all(),
                 )),
@@ -321,6 +323,8 @@ final class TrashBin
                 $byParent => $parent['title'],
                 // §37.7 — მოდულის სახელი ინტერფეისის ენაზე (ორივე `payload`-შია)
                 $kind === CustomModuleTrash::KIND => CustomModuleTrash::title($row),
+                // §35.9 — მსახიობის სახელი (ქართულ ინტერფეისზე ქართულით)
+                $kind === CastMemberTrash::KIND => CastMemberTrash::title($row),
                 default => $this->titleOf($kind, $row),
             },
             // ⚠️ ჩატის წერილზე — ვისთან იყო მიმოწერა (ის სერვერმა იცის, ენას არ ეკითხება)
@@ -335,7 +339,7 @@ final class TrashBin
                კლიენტში მისი ასლი პირველივე შეცვლაზე დაშორდებოდა. */
             'expires_in_days' => max(0, $days - (int) $row->trashed_at?->diffInDays(now())),
             'size' => match (true) {
-                $category === 'record', $kind === CustomModuleTrash::KIND => $recordSizes["{$kind}:{$row->getKey()}"] ?? 0,
+                $category === 'record', $kind === CustomModuleTrash::KIND, $kind === CastMemberTrash::KIND => $recordSizes["{$kind}:{$row->getKey()}"] ?? 0,
                 $this->sized($kind) => (int) $row->getAttribute('size'),
                 default => 0,
             },
@@ -358,6 +362,8 @@ final class TrashBin
                 $kind === AuditLogTrash::KIND => AuditLogTrash::count($row),
                 // §37.7 — რამდენი ჩანაწერი გადავიდა მოდულთან ერთად
                 $kind === CustomModuleTrash::KIND => CustomModuleTrash::count($row),
+                // §35.9 — რამდენ ჩანაწერზე იყო მიბმული (აღდგენა იმდენ ბმულს დააბრუნებს)
+                $kind === CastMemberTrash::KIND => CastMemberTrash::count($row),
                 DictionaryTrash::has($kind) => DictionaryTrash::remembered($row),
                 default => null,
             },
@@ -391,7 +397,10 @@ final class TrashBin
                 ->when(isset(TrashDomain::ITEMS[$kind]['module_column']), fn (Builder $q) => $q->whereIn(
                     TrashDomain::ITEMS[$kind]['module_column'],
                     $this->permitted($user, $this->columnModules($kind), 'delete'),
-                )),
+                ))
+                /* §35.9 — ურნაში მყოფი მსახიობის ფოტოები და ვიდეოები მის ელემენტშია
+                   (ერთად ბრუნდება) და ცალკე ელემენტად აღარ ჩანს */
+                ->when(in_array($kind, ['gallery_image', 'gallery_video'], true), fn (Builder $q) => $this->withoutTrashedActors($q, $kind, $user)),
             'file' => TrashedFile::withoutGlobalScope('owner')
                 ->where('user_id', $userId)
                 ->where('kind', $kind)
@@ -411,7 +420,7 @@ final class TrashBin
                 ->where('kind', $kind)
                 /* ⚠️ აუდიტის ელემენტს მოდული არ აქვს — ის გამწმენდისაა (`AuditLogTrash`);
                    §37.7 — პირადი მოდულის ელემენტი კი თვითონ მოდულია და მფლობელისაა */
-                ->when(! in_array($kind, [AuditLogTrash::KIND, CustomModuleTrash::KIND], true), fn (Builder $q) => $q->whereIn(
+                ->when(! in_array($kind, [AuditLogTrash::KIND, CustomModuleTrash::KIND, CastMemberTrash::KIND], true), fn (Builder $q) => $q->whereIn(
                     'record_type',
                     $this->permitted($user, MediaDomain::TYPES, (string) TrashDomain::ENTRIES[$kind]['permission']),
                 )),
@@ -497,6 +506,17 @@ final class TrashBin
             // §37.7 — პირადი მოდული ბრუნდება ჩანაწერებთან ერთად; ელემენტი ქრება
             if ($row instanceof TrashEntry && $row->kind === CustomModuleTrash::KIND) {
                 $reason = CustomModuleTrash::restore($row);
+
+                if ($reason) {
+                    $this->fail($reason, 409);
+                }
+
+                return;
+            }
+
+            // §35.9 — მსახიობი ბრუნდება ბმულებითა და ფოტოებით; ელემენტი ქრება
+            if ($row instanceof TrashEntry && $row->kind === CastMemberTrash::KIND) {
+                $reason = CastMemberTrash::restore($row);
 
                 if ($reason) {
                     $this->fail($reason, 409);
@@ -789,6 +809,8 @@ final class TrashBin
             $kind === AuditLogTrash::KIND => true,
             // §37.7 — საკუთარი მოდული; უფლება მფლობელობაა (`query()`-ის `user_id`)
             $kind === CustomModuleTrash::KIND => true,
+            // §35.9 — საკუთარი (ხელით შექმნილი) მსახიობი; იგივე წესი
+            $kind === CastMemberTrash::KIND => true,
             $category === 'entry' => $this->permitted($user, MediaDomain::TYPES, (string) TrashDomain::ENTRIES[$kind]['permission']) !== [],
             $category === 'item' && isset(TrashDomain::ITEMS[$kind]['module_column']) => $this->permitted($user, $this->columnModules($kind), 'delete') !== [],
             default => ($module = $this->moduleOf($kind)) !== null && $user->hasPermission($module, 'delete'),
@@ -812,6 +834,8 @@ final class TrashBin
             /* §37.7 — მოდულის ელემენტს „მოდულის ჩართულობა" არ ეკითხება: ის თვითონ
                ურნაში მყოფი მოდულია, ე.ი. `hasModule()` ყოველთვის `false` იქნებოდა */
             $row instanceof TrashEntry && $row->kind === CustomModuleTrash::KIND => null,
+            // §35.9 — მსახიობს მოდული არ აქვს (გლობალური ლექსიკონი)
+            $row instanceof TrashEntry && $row->kind === CastMemberTrash::KIND => null,
             $row instanceof TrashEntry => $row->record_type,
             $row instanceof TrashedFile => in_array($row->kind, ['field_file', 'record_photo'], true) ? $row->record_type : null,
             isset(TrashDomain::ITEMS[$kind]['module_column']) => (string) $row->getAttribute(TrashDomain::ITEMS[$kind]['module_column']),
@@ -905,6 +929,13 @@ final class TrashBin
         // §37.7 — მოდული ისევ უნდა არსებობდეს და ურნაში იყოს
         if ($row instanceof TrashEntry && $row->kind === CustomModuleTrash::KIND) {
             return Module::withoutGlobalScope('trash')->whereKey($row->record_id)->whereNotNull('trashed_at')->exists()
+                ? null
+                : 'parent_missing';
+        }
+
+        // §35.9 — მსახიობიც
+        if ($row instanceof TrashEntry && $row->kind === CastMemberTrash::KIND) {
+            return CastMember::withoutGlobalScopes()->whereKey($row->record_id)->whereNotNull('trashed_at')->exists()
                 ? null
                 : 'parent_missing';
         }
@@ -1269,12 +1300,32 @@ final class TrashBin
 
             $kind = $key ? strstr($key, ':', true) : null;
 
-            if ($key && (TrashDomain::category($kind) === 'record' || $kind === CustomModuleTrash::KIND)) {
+            if ($key && (TrashDomain::category($kind) === 'record' || in_array($kind, [CustomModuleTrash::KIND, CastMemberTrash::KIND], true))) {
                 $sizes[$key] = ($sizes[$key] ?? 0) + (int) $file['size'];
             }
         }
 
         return $sizes;
+    }
+
+    /**
+     * §35.9 — ურნაში მყოფი მსახიობის ფოტოები/ვიდეოები ცალკე ელემენტად არ ჩანს:
+     * ისინი მსახიობთან ერთად წავიდა და მასთან ერთად ბრუნდება (`CastMemberTrash`).
+     */
+    private function withoutTrashedActors(Builder $query, string $kind, User $user): Builder
+    {
+        $actors = array_keys(CastMemberTrash::entriesOf($user));
+
+        if ($actors === []) {
+            return $query;
+        }
+
+        [$type, $id] = $kind === 'gallery_video' ? ['videoable_type', 'videoable_id'] : ['imageable_type', 'imageable_id'];
+
+        return $query->where(fn (Builder $w) => $w
+            ->whereNull($type)
+            ->orWhere($type, '!=', GalleryParent::ACTOR)
+            ->orWhereNotIn($id, $actors));
     }
 
     /** @return never */

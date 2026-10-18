@@ -123,6 +123,8 @@ class ActorController extends Controller
             'known_for' => $member->known_for,
             'popularity' => $member->popularity,
             'has_tmdb' => (bool) $member->tmdb_person_id,
+            // §35.9 (Q17) — ჩემი ხელით შექმნილი: რედაქტირდება და ურნაში იშლება
+            'editable' => $member->isEditableBy((int) auth()->id()),
             'synced' => $member->details_synced_at !== null,
             'counts' => [
                 'movie' => (int) $member->getAttribute('movie_count'),

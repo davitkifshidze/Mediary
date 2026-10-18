@@ -3895,7 +3895,8 @@
       "personal_media": "Personal gallery photos and videos",
       "personal_album": "Personal gallery albums",
       "duty_workplace": "Duty workplaces",
-      "duty_type": "Duty shift types"
+      "duty_type": "Duty shift types",
+      "cast_member": "Hand-made actors"
     },
     "when": {
       "media_watch": "Watched: {{date}}",
@@ -3916,7 +3917,9 @@
     "auditTitle": "Audit log: {{count}} entries",
     "deleteAuditHint": "{{count}} log entries are deleted for good — nothing stays in the trash.",
     "moduleRecords": "With its records: {{count}}",
-    "deleteModuleHint": "“{{name}}” and its records ({{count}}) will be deleted for good, files included — {{size}} will be freed. This cannot be undone."
+    "deleteModuleHint": "“{{name}}” and its records ({{count}}) will be deleted for good, files included — {{size}} will be freed. This cannot be undone.",
+    "actorLinks": "Restoring brings back its link on {{count}} records",
+    "deleteActorHint": "“{{name}}” will be deleted for good — links on records, photos and the uploaded photo; {{size}} will be freed. This cannot be undone."
   },
   "watchLog": {
     "title": "Watches",
@@ -4921,7 +4924,12 @@
       "submit": "Attach ({{count}})",
       "done": "Attached to {{count}} record(s)",
       "already": "Already on {{count}} record(s)."
-    }
+    },
+    "menuDelete": "Delete",
+    "deleteTitle": "Delete the actor",
+    "deleteDesc": "“{{name}}” moves to the trash with its links (on {{links}} records) and photos ({{photos}}) — they come back together, and are deleted for good when the trash period ends.",
+    "deleteDescShort": "“{{name}}” moves to the trash with its links on records and its photos — they come back together, and are deleted for good when the trash period ends.",
+    "deleted": "“{{name}}” moved to the trash"
   },
   "lock": {
     "lock": "Lock",

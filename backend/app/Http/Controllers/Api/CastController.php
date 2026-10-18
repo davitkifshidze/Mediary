@@ -14,6 +14,7 @@ use App\Services\Cast\CastEnricher;
 use App\Services\Cast\CastResolver;
 use App\Services\Storage\StorageMeter;
 use App\Services\Tmdb\TmdbClient;
+use App\Support\CastMemberTrash;
 use App\Support\CastSync;
 use App\Support\CredentialProviders;
 use App\Support\Lang;
@@ -254,6 +255,33 @@ class CastController extends Controller
         }
 
         return response()->json(['actor' => $this->actorPayload($castMember->refresh())]);
+    }
+
+    /**
+     * **ხელით შექმნილი მსახიობის წაშლა — ურნაში (Tasks §35.9, Q17 — „ა").**
+     *
+     * მსახიობი, მისი ბმულები ჩანაწერებზე და ჩემი ფოტოები ერთ ელემენტად გადადის
+     * ურნაში და ერთად ბრუნდება (`CastMemberTrash`); ვადის ბოლოს — სამუდამოდ.
+     *
+     * ⚠️ **მხოლოდ შემქმნელს და მხოლოდ კერძოზე** (`isEditableBy()`, `update()`-ის
+     * წესი): TMDB-ის მსახიობი ყველასია — მისგან მხოლოდ „ჩემი ჩანაწერებიდან"
+     * მოხსნა შეიძლება (`ActorController::detachEverywhere()`). სხვისი კერძო
+     * `creator` scope-ით ისედაც 404-ია, დამალული (ჩაკეტილი) — 423.
+     */
+    public function destroy(Request $request, CastMember $castMember): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($castMember->isEditableBy((int) $user->id), 403, 'cast_member_readonly');
+        RecordLocks::ensureOpen($castMember);
+
+        $entry = CastMemberTrash::trash($user, $castMember);
+
+        return response()->json([
+            'trashed' => true,
+            'trash_id' => $entry->id,
+            'links' => CastMemberTrash::count($entry),
+            'photos' => count((array) ($entry->payload['image_ids'] ?? [])),
+        ]);
     }
 
     /**

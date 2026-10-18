@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Cake, ExternalLink, Globe, Link2, Loader2, Lock, MapPin, RefreshCw, SquarePen, Star } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Cake, ExternalLink, Globe, Link2, Loader2, Lock, MapPin, RefreshCw, SquarePen, Star, Trash2 } from 'lucide-react'
 import { resyncActor, type Actor } from '@/api/media'
 import { errorMessage } from '@/lib/errors'
 import { useDateFormat } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { PosterImage } from '@/components/PosterImage'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/feedback'
+import { useConfirm, useToast } from '@/components/ui/feedback'
+import { trashActor } from '@/api/actors'
 import { ActorAttachDialog } from '@/components/actors/ActorAttachDialog'
 import { ActorFormDialog } from '@/components/actors/ActorFormDialog'
 import { RecordLockActions } from '@/components/locks/RecordLock'
@@ -55,6 +57,29 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
   const [editing, setEditing] = useState(false)
   const [attaching, setAttaching] = useState(false)
   const editable = !!actor.created_by_me && !!actor.is_private
+  const confirm = useConfirm()
+  const navigate = useNavigate()
+
+  /* §35.9 (Q17) — ხელით შექმნილის წაშლა ურნაში; გვერდი აღარ არსებობს, ე.ი. სიაში ბრუნდება */
+  const trash = useMutation({
+    mutationFn: () => trashActor(actor.id),
+    onSuccess: () => {
+      ;['actors', 'trash', 'gallery'].forEach((key) => qc.invalidateQueries({ queryKey: [key] }))
+      toast({ title: t('actors.deleted', { name }), variant: 'success' })
+      navigate('/actors')
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  const askTrash = async () => {
+    const ok = await confirm({
+      title: t('actors.deleteTitle'),
+      description: t('actors.deleteDescShort', { name }),
+      confirmText: t('confirm.delete'),
+      variant: 'destructive',
+    })
+    if (ok) trash.mutate()
+  }
 
   const resync = useMutation({
     mutationFn: () => resyncActor(actor.id),
@@ -190,6 +215,12 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
             <Button variant="edit" size="sm" onClick={() => setEditing(true)}>
               <SquarePen className="size-4" />
               {t('actions.edit')}
+            </Button>
+          )}
+          {editable && (
+            <Button variant="destructiveOutline" size="sm" disabled={trash.isPending} onClick={() => void askTrash()}>
+              {trash.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              {t('actions.delete')}
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={() => setAttaching(true)}>
