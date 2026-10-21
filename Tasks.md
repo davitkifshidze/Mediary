@@ -87,7 +87,7 @@
 |---|---|---|---|---|---|
 | | **ფაზა 1 — ცოცხალი ავარია** | | | | |
 | §1 | ხუთი გაუშვებელი მიგრაცია — ფილმები, სერიალები, ანიმე, მსახიობები, სტატისტიკა, გალერია, ადგილები ერთი მიზეზით | ⚡ | S | — | ✅ |
-| §2 | სერვერის შეცდომა ცარიელ მდგომარეობად აღარ გამოჩნდეს — ერთი შეცდომის ბარათი ექვს გვერდზე | ⚡🌐 | S–M | §1 | ⬜ |
+| §2 | სერვერის შეცდომა ცარიელ მდგომარეობად აღარ გამოჩნდეს — ერთი შეცდომის ბარათი ექვს გვერდზე | ⚡🌐 | S–M | §1 | ✅ |
 | | **ფაზა 2 — გლობალური საფუძველი** | | | | |
 | §3 | ღილაკების სისტემა — წაშლა ბორდერით და შებრუნებული ჰოვერით, ტოლი ზომები, რიცხვის ადგილი ყოველთვის | 🌐 | M | — | ⬜ |
 | §4 | გვერდის სიგანე — შიდა ჰედერი და შიგთავსი უფრო ფართო; სიმღერების ჰედერი აღარ იჭრება | 🌐 | S | — | ⬜ |
@@ -208,17 +208,27 @@
 108,204-222` (`pick.emptyTitle`). საერთო შეცდომის კომპონენტი `components/ui`-ში არ არსებობს; `errorMessage(e)`
 (`lib/errors.ts:364`) კი არის. `QueryClient` `retry: 1` (`main.tsx:14`) — ყოველი ვარდნა ორჯერ იწერება ლოგში.
 
-- [ ] **2.1** ერთი `QueryErrorState` `components/ui`-ში — `EmptyState`-ის სახით: აიქონი, `errorMessage(e)`, „თავიდან"
+- [x] **2.1** ერთი `QueryErrorState` `components/ui`-ში — `EmptyState`-ის სახით: აიქონი, `errorMessage(e)`, „თავიდან"
       ღილაკი (`refetch`); 404 ცალკე (ის ისევ `NotFound`-ია).
-- [ ] **2.2** ჩასმა ექვსივე ადგილას: `MoviePage` (404 → `NotFound`, სხვა → შეცდომა), `StatsPage`, `ActorsPage`,
+- [x] **2.2** ჩასმა ექვსივე ადგილას: `MoviePage` (404 → `NotFound`, სხვა → შეცდომა), `StatsPage`, `ActorsPage`,
       `ActorPage`, `GroupsCut`/`GroupPhotos`/`ModulesCut`, `RandomPickDialog`. `usePagedList`-ის `keepPreviousData`
       გასათვალისწინებელია (წინა გვერდი ეკრანზე რჩება — შეცდომა მის ზემოთ ჩანდეს).
-- [ ] **2.3** i18n: `errors.loadFailed`, `actions.retry` (ან არსებული) ორივე ენაზე; `audit.py` OK.
-- [ ] **2.4** ტესტები: `StatsPage.test.ts` (უარყოფილი `fetchStats` → შეცდომის ბარათი და არა `stats.empty`), `MoviePage`
+- [x] **2.3** i18n: `errors.loadFailed`, `actions.retry` (ან არსებული) ორივე ენაზე; `audit.py` OK.
+- [x] **2.4** ტესტები: `StatsPage.test.ts` (უარყოფილი `fetchStats` → შეცდომის ბარათი და არა `stats.empty`), `MoviePage`
       (500 ≠ `NotFound`), `ActorsPage.test.ts`, `GroupsCut.test.ts` (უარყოფილი `fetchGroups` მსახიობების ჭრილზე → შეცდომის
       ბარათი და არა `gallery.noPhotosYet`).
 
-**ზომა:** S–M · **დამოკიდებულება:** §1 · **სტატუსი:** ⬜
+**შედეგი (2026-10-21).** `components/ui/query-error-state.tsx` — `QueryErrorState` `EmptyState`-ის სახით: წითელი სამკუთხედი, სათაური
+`errors.loadFailed` („ვერ ჩაიტვირთა"), ტექსტი `errorMessage(e)`, ღილაკი `actions.retry` („თავიდან სცადე") → `refetch`, გამეორებისას
+გათიშული და მბრუნავი აიქონით. 404 ცალკეა — `lib/errors.ts`-ის ახალი `isNotFound()`: ფილმი/სერიალი/ანიმე და მსახიობის გვერდი 404-ზე ისევ
+`NotFound`-ს ხატავს (მსახიობზე „სიაში დაბრუნება" `/actors`-ზე), ყველა სხვა ჩავარდნაზე — შეცდომის ბარათს. ჩასმულია ექვსივე ადგილას: `MoviePage`,
+`StatsPage`, `ActorsPage` (ბარათი სიის ზემოთ; `usePagedList`/`usePages` ახლა `isError`/`error`/`refetch`-საც აბრუნებს), `ActorPage` (სამუდამო
+„იტვირთება" აღარ არის), `GroupsCut`/`GroupPhotos`/`ModulesCut` (ორივე დონე — ჯგუფები და ჯგუფის ფოტოები), `RandomPickDialog`. ტესტები:
+ახალი `MoviePage.test.ts` (500 → შეცდომის ბარათი და „თავიდან სცადე" იმავე ჩანაწერს ხელახლა ითხოვს; 404 → `NotFound`), `StatsPage`,
+`ActorsPage` (გამეორებაც), `GroupsCut` — უარყოფილი მოთხოვნა ცარიელ მდგომარეობად აღარ იხატება. `audit.py` OK, `lint` და `build` სუფთაა.
+`QueryClient`-ის `retry: 1` უცვლელია.
+
+**ზომა:** S–M · **დამოკიდებულება:** §1 · **სტატუსი:** ✅
 
 ---
 

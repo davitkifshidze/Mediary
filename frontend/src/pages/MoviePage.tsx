@@ -29,6 +29,7 @@ import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { InfoHint, type InfoTone } from '@/components/ui/info-hint'
 import { Markdown } from '@/components/ui/markdown'
 import { pageContainer } from '@/components/ui/page'
+import { QueryErrorState } from '@/components/ui/query-error-state'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -41,7 +42,7 @@ import { STATUS_ACTIVE, STATUS_INACTIVE } from '@/lib/statusStyles'
 import { genreName, movieSubtitle, movieTitle } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { statusName, statusTone, useStatuses } from '@/lib/statuses'
-import { errorMessage } from '@/lib/errors'
+import { errorMessage, isNotFound } from '@/lib/errors'
 import { statusStyle } from '@/lib/statusColor'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { RecordLockActions, RecordLockedScreen } from '@/components/locks/RecordLock'
@@ -76,7 +77,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   const from = (loc.state as { from?: string } | null)?.from
   const backTo = from && !isDetailPath(from) ? from : libraryPath
 
-  const { data: m, isLoading } = useQuery({ queryKey: [type, 'detail', id], queryFn: () => api.get(id!) })
+  const { data: m, isLoading, isError, error, refetch, isFetching } = useQuery({ queryKey: [type, 'detail', id], queryFn: () => api.get(id!) })
   // გახსნა ჟურნალში (გვერდის მაუნთზე; ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen(type, m?.id)
   const collectionQ = useQuery({
@@ -145,6 +146,17 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
 
   if (isLoading) {
     return <div className={pageContainer('wide', 'py-10 text-muted-foreground')}>{t('api.loading')}</div>
+  }
+
+  /* ⚠️ **სერვერის ვარდნა „ასეთი ჩანაწერი არ არის" არ არის.** აქამდე ყველა ჩავარდნა
+     (500, 503, ქსელი) ქვემოთა `NotFound`-ში ვარდებოდა — ჩამორჩენილი სქემა მთელი დღე
+     „წაშლილ ფილმად" ჩანდა. 404 ერთადერთია, რომელიც ნამდვილ არარსებობას ნიშნავს. */
+  if (isError && !isNotFound(error)) {
+    return (
+      <div className={pageContainer('wide', 'py-10')}>
+        <QueryErrorState error={error} onRetry={() => void refetch()} retrying={isFetching} />
+      </div>
+    )
   }
 
   /* ⚠️ **წაშლილი/სხვისი ჩანაწერი აქამდე სამუდამოდ „იტვირთებოდა"**:

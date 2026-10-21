@@ -31,6 +31,7 @@ import { WebImageDialog } from '@/components/WebImageDialog'
 import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { EmptyState } from '@/components/ui/empty-state'
+import { QueryErrorState } from '@/components/ui/query-error-state'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
 import { PageContainer } from '@/components/ui/page'
@@ -290,27 +291,31 @@ export function ActorsPage() {
 
       <div className="flex gap-6">
         <div className="min-w-0 flex-1">
+          {/* ჩავარდნილი მოთხოვნა — ბარათი სიის ზემოთ; წინა გვერდი (თუ ეკრანზეა) ქვემოთ რჩება */}
+          {query.isError && <QueryErrorState error={query.error} onRetry={query.refetch} retrying={query.isFetching} className="mb-6" />}
           {query.isLoading ? (
             <p className="text-sm text-muted-foreground">{t('api.loading')}</p>
           ) : items.length === 0 ? (
-            <EmptyState
-              icon={<Drama className="size-6" />}
-              title={filtered ? t('actors.emptyFiltered') : t('actors.empty')}
-              hint={filtered ? t('empty.filteredHint') : t('actors.emptyHint')}
-              actions={
-                filtered ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setQ('')
-                      write(EMPTY_FILTERS, 'all')
-                    }}
-                  >
-                    {t('filter.clear')}
-                  </Button>
-                ) : undefined
-              }
-            />
+            query.isError ? null : (
+              <EmptyState
+                icon={<Drama className="size-6" />}
+                title={filtered ? t('actors.emptyFiltered') : t('actors.empty')}
+                hint={filtered ? t('empty.filteredHint') : t('actors.emptyHint')}
+                actions={
+                  filtered ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setQ('')
+                        write(EMPTY_FILTERS, 'all')
+                      }}
+                    >
+                      {t('filter.clear')}
+                    </Button>
+                  ) : undefined
+                }
+              />
+            )
           ) : (
             <>
               <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" data-testid="actors-grid">

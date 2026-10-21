@@ -37,6 +37,7 @@ import {
 } from '@/lib/galleryGroups'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { QueryErrorState } from '@/components/ui/query-error-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { PhotoStack } from '@/components/ui/photo-stack'
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
@@ -812,7 +813,10 @@ export function GroupsCut({
           />
         ) : groupsQ.isLoading ? (
           <GalleryStackSkeleton aspect={by === 'actor' ? 'portrait' : 'wide'} />
-        ) :!groups.length ? (
+        ) : groupsQ.isError ? (
+          /* სერვერის ვარდნა ≠ „ფოტო ჯერ არ არის" */
+          <QueryErrorState error={groupsQ.error} onRetry={() => void groupsQ.refetch()} retrying={groupsQ.isFetching} />
+        ) : !groups.length ? (
           <EmptyState
             icon={<Images className="size-6" />}
             title={have === 'without' ? t('gallery.allHavePhotos') : t('gallery.noPhotosYet')}

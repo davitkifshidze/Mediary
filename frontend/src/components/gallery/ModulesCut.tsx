@@ -8,6 +8,7 @@ import { moduleName, useModules } from '@/lib/modules'
 import { formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { QueryErrorState } from '@/components/ui/query-error-state'
 import { PhotoGrid, PHOTO_PAGE_DEFAULT } from '@/components/ui/photo-grid'
 import { PhotoStack } from '@/components/ui/photo-stack'
 import { contextMenuItems, MENU_ICONS } from '@/components/ui/record-menu'
@@ -61,6 +62,8 @@ export function ModulesCut() {
   const open = openKey ? (groups.find((group) => group.module === openKey) ?? null) : null
 
   if (groupsQ.isLoading) return <GalleryStackSkeleton count={5} aspect="wide" />
+  // სერვერის ვარდნა ≠ „მოდულების ფოტოები არ არის"
+  if (groupsQ.isError) return <QueryErrorState error={groupsQ.error} onRetry={() => void groupsQ.refetch()} retrying={groupsQ.isFetching} />
 
   if (open) return <ModulePhotos group={open} title={nameOf(open.module)} onBack={() => setOpen(null)} />
 
@@ -147,6 +150,8 @@ function ModulePhotos({
 
       {query.isLoading ? (
         <GallerySkeletonGrid />
+      ) : query.isError ? (
+        <QueryErrorState error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
       ) : (
         <PhotoGrid
           emptyText={t('gallery.noModulePhotos')}

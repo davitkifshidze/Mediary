@@ -77,8 +77,9 @@ async function flush(times = 4) {
   }
 }
 
-async function render(path = '/actors', items: (ActorCard | HiddenActorCard)[] = [liam]) {
-  mocks.fetchActors.mockResolvedValue(list(items))
+async function render(path = '/actors', items: (ActorCard | HiddenActorCard)[] = [liam], failure?: Error) {
+  if (failure) mocks.fetchActors.mockRejectedValue(failure)
+  else mocks.fetchActors.mockResolvedValue(list(items))
   mocks.detachActorEverywhere.mockResolvedValue({ removed: 4, skipped: 0 })
   mocks.trashActor.mockResolvedValue({ trashed: true, trash_id: 1, links: 1, photos: 0 })
 
@@ -195,6 +196,23 @@ describe('ActorsPage', () => {
   })
 
   /* ჩემ მიერ ჩაკეტილი: მხოლოდ სახელი და ბოქლომი, მენიუს გარეშე; ფილტრი სერვერამდე მიდის */
+  it('draws an error card instead of "no actors yet" when the request fails, and retries from it', async () => {
+    await render('/actors', [], new Error('boom'))
+    await flush()
+
+    expect(document.body.textContent).toContain(i18n.t('errors.loadFailed'))
+    expect(document.body.textContent).not.toContain(i18n.t('actors.empty'))
+
+    // „თავიდან სცადე" იმავე სიას ხელახლა ითხოვს
+    const calls = mocks.fetchActors.mock.calls.length
+    mocks.fetchActors.mockResolvedValue(list([liam]))
+    await act(async () => button(i18n.t('actions.retry')).click())
+    await flush()
+
+    expect(mocks.fetchActors.mock.calls.length).toBe(calls + 1)
+    expect(container!.querySelector('[data-testid="actors-grid"]')).toBeTruthy()
+  })
+
   it('draws a hidden actor as a padlock tile and sends the locked-only filter', async () => {
     await render()
     const hidden: HiddenActorCard = {

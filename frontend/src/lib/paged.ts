@@ -76,6 +76,11 @@ export interface PagedList<T, P = Page<T>> {
   total: number
   isLoading: boolean
   isFetching: boolean
+  /** მოთხოვნა ჩავარდა — სია ცარიელი კი არა, შეცდომის ბარათია (`QueryErrorState`) */
+  isError: boolean
+  error: unknown
+  /** იმავე გვერდის ხელახლა კითხვა („თავიდან სცადე") */
+  refetch: () => void
   /** პირველი ჩატვირთული გვერდის სრული პასუხი — ფასეტები, ფილტრის ვარიანტები (მსახიობები) */
   first: P | undefined
   /** `<Pagination {...list.pagination} />` */
@@ -144,6 +149,9 @@ function usePageRange<P extends Page<unknown>>(
     total,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error,
+    refetch: () => void query.refetch(),
     first: pages?.[0],
     pagination: {
       page,

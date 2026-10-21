@@ -10,6 +10,7 @@ import {
 import { PHOTO_PAGE_ALL, PHOTO_PAGE_DEFAULT } from '@/components/ui/photo-grid'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/ui/pagination'
+import { QueryErrorState } from '@/components/ui/query-error-state'
 import { GalleryPhotoGrid } from '@/components/gallery/GalleryPhotoGrid'
 import { LockedPhotos } from '@/components/gallery/LockedPhotos'
 import { SortPick } from '@/components/gallery/SortPick'
@@ -154,6 +155,9 @@ export function GroupPhotos({
 
       {locked ? (
         <LockedPhotos photos={locked.data} total={locked.meta.total} onUnlock={onUnlock} />
+      ) : query.isError ? (
+        /* სერვერის ვარდნა ≠ „ფოტო ჯერ არ არის" */
+        <QueryErrorState error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
       ) : (
         <GalleryPhotoGrid
           images={photos}

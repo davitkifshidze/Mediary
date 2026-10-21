@@ -22,6 +22,7 @@ import {
 } from '@/components/stats/StatsCharts'
 import { CutTabs, type CutOption } from '@/components/ui/cut-tabs'
 import { EmptyState } from '@/components/ui/empty-state'
+import { QueryErrorState } from '@/components/ui/query-error-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -55,7 +56,7 @@ export function StatsPage() {
 
   const year = Number(params.get('year')) || undefined
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['stats', year ?? 'auto'],
     queryFn: () => fetchStats(year),
     staleTime: 60_000,
@@ -117,6 +118,9 @@ export function StatsPage() {
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+      ) : isError ? (
+        /* სერვერის ვარდნა ≠ „ჯერ არაფერია დასათვლელი" */
+        <QueryErrorState error={error} onRetry={() => void refetch()} retrying={isFetching} />
       ) : !module ? (
         <EmptyState icon={<ChartColumn className="size-6" />} title={t('stats.empty')} hint={t('stats.emptyHint')} />
       ) : (

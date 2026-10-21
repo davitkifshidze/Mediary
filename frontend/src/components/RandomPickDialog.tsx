@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
+import { QueryErrorState } from '@/components/ui/query-error-state'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { NumberPick } from '@/components/ui/number-pick'
 import { useToast } from '@/components/ui/feedback'
@@ -105,7 +106,7 @@ export function RandomPickDialog({ source, onClose }: { source: PickSource; onCl
      მოვიდეს, „სხვა" კი გასაღების ცვლილებაა (`seen`). `staleTime: 0` + `gcTime: 0`:
      ქეშირებული „შემთხვევითი" ყოველ გახსნაზე ერთსა და იმავეს დააბრუნებდა.
      სტატუსების ლექსიკონამდე არ იწყება — ფარგლები მასზეა დამოკიდებული. */
-  const { data: records = [], isFetching } = useQuery({
+  const { data: records = [], isFetching, isError, error, refetch } = useQuery({
     queryKey: ['random-pick', source.domain, source.filterKey, count, active, seen],
     queryFn: () => source.fetch({ count, status: active, exclude: seen }),
     enabled: statusesQ.isSuccess,
@@ -201,6 +202,9 @@ export function RandomPickDialog({ source, onClose }: { source: PickSource; onCl
               <PickSkeleton key={i} shape={source.shape} />
             ))}
           </div>
+        ) : isError ? (
+          /* სერვერის ვარდნა ≠ „ამ ფილტრში არაფერია" */
+          <QueryErrorState error={error} onRetry={() => void refetch()} />
         ) : records.length === 0 ? (
           seen.length > 0 ? (
             <EmptyState

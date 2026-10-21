@@ -333,6 +333,7 @@
     "courses": "კურსები"
   },
   "actions": {
+    "retry": "თავიდან სცადე",
     "add": "დამატება",
     "addSeries": "სერიალის დამატება",
     "addShort": "დამატება",
@@ -1118,6 +1119,7 @@
     "openTrash": "ურნის გახსნა"
   },
   "errors": {
+    "loadFailed": "ვერ ჩაიტვირთა",
     "storage_quota_exceeded": "ადგილი აღარ არის: საჭიროა {{needed}}, დარჩა {{remaining}} (ლიმიტი {{quota}}).",
     "storage_request_pending": "მოთხოვნა უკვე გაგზავნილია და პასუხს ელოდება.",
     "storage_request_not_an_increase": "მითითებული ლიმიტი მიმდინარეზე მეტი უნდა იყოს.",

@@ -318,6 +318,17 @@ export function isApiCode(e: unknown, code: string): boolean {
 }
 
 /**
+ * 404 — ჩანაწერი არ არსებობს (წაშლილია, სხვისია ან მისამართი მცდარია).
+ *
+ * ⚠️ ეს **ერთადერთი** შეცდომაა, რომელიც გვერდზე `NotFound`-ად იხატება; ყველა
+ * დანარჩენი (500, 503, ქსელი) `QueryErrorState`-ია — სერვერის ვარდნა „ასეთი
+ * ჩანაწერი არ არის"-ად რომ არ წაიკითხოს.
+ */
+export function isNotFound(e: unknown): boolean {
+  return axios.isAxiosError(e) && e.response?.status === 404
+}
+
+/**
  * შენახული ტექსტი, რომელიც მანქანური კოდიც შეიძლება იყოს.
  *
  * ⚠️ **შერეული სვეტი განზრახვაა**: `videos.download_error`-ში ან ჩვენი

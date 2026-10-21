@@ -11,6 +11,10 @@ import { mediaOf, type MediaType } from '@/lib/media'
 import { tmdbSubtitle, tmdbTitle } from '@/lib/display'
 import { useContentLang, useSettings } from '@/lib/settings'
 import { PageContainer } from '@/components/ui/page'
+import { buttonVariants } from '@/components/ui/button'
+import { QueryErrorState } from '@/components/ui/query-error-state'
+import { isNotFound } from '@/lib/errors'
+import { NotFound } from '@/pages/NotFoundPage'
 import { Pagination } from '@/components/ui/pagination'
 import { useClientPages } from '@/lib/paged'
 import { PosterImage } from '@/components/PosterImage'
@@ -169,7 +173,7 @@ export function ActorPage() {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { settings } = useSettings()
-  const { data, isLoading } = useQuery({ queryKey: ['actor', id], queryFn: () => fetchActor(id!) })
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({ queryKey: ['actor', id], queryFn: () => fetchActor(id!) })
   const qc = useQueryClient()
 
   const alreadyOwned = useAlreadyOwned(id, data)
@@ -181,6 +185,29 @@ export function ActorPage() {
     () => (data?.series_suggestions ?? []).filter((s) => !alreadyOwned.has(s.tmdb_id)),
     [data?.series_suggestions, alreadyOwned],
   )
+
+  /* ⚠️ აქამდე `isLoading || !data` ერთი პირობა იყო, ე.ი. ჩავარდნილი მოთხოვნა (500) და
+     წაშლილი მსახიობი (404) ერთნაირად სამუდამო „იტვირთება"-დ ჩანდა. 404 — `NotFound`,
+     დანარჩენი — შეცდომის ბარათი „თავიდან სცადე"-თი. */
+  if (isError) {
+    return (
+      <PageContainer>
+        {isNotFound(error) ? (
+          <NotFound
+            title={t('notFound.recordTitle')}
+            hint={t('notFound.recordHint')}
+            actions={
+              <Link to="/actors" className={buttonVariants()}>
+                {t('notFound.backToList')}
+              </Link>
+            }
+          />
+        ) : (
+          <QueryErrorState error={error} onRetry={() => void refetch()} retrying={isFetching} />
+        )}
+      </PageContainer>
+    )
+  }
 
   if (isLoading || !data) {
     return <PageContainer><p className="text-muted-foreground">{t('api.loading')}</p></PageContainer>

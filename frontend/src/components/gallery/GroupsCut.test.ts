@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import '@/i18n'
+import i18n from '@/i18n'
 
 /* ============================================================
    რეგრესია: **ჯგუფში შესვლისას ვებძებნა უნდა გაიხსნას**.
@@ -124,6 +124,16 @@ function button(scope: ParentNode, text: string) {
 const dialogs = () => document.body.querySelectorAll('[role="dialog"]').length
 
 describe('GroupsCut', () => {
+  it('ჩავარდნილ მოთხოვნაზე შეცდომის ბარათს ხატავს და არა „ფოტო ჯერ არ არის"-ს', async () => {
+    const { fetchGalleryGroups } = await import('@/api/gallery')
+    vi.mocked(fetchGalleryGroups).mockRejectedValueOnce(new Error('boom'))
+    const node = await mountGroupsCut()
+    await flush()
+
+    expect(node.textContent).toContain(i18n.t('errors.loadFailed'))
+    expect(node.textContent).not.toContain(i18n.t('gallery.noPhotosYet'))
+  })
+
   it('ჯგუფში შესვლის შემდეგაც ხსნის ფოტოების ვებძებნას', async () => {
     const node = await openGroup()
 

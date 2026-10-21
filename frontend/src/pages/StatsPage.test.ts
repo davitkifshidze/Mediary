@@ -221,6 +221,16 @@ describe('StatsPage', () => {
     }
   })
 
+  it('draws an error card, not the empty state, when the request fails', async () => {
+    const { fetchStats } = await import('@/api/stats')
+    vi.mocked(fetchStats).mockRejectedValueOnce(new Error('boom'))
+    await mount()
+    await flush()
+
+    expect(document.body.textContent).toContain(i18n.t('errors.loadFailed'))
+    expect(document.body.textContent).not.toContain(i18n.t('stats.empty'))
+  })
+
   it('an unknown or empty tab falls back to the first module', async () => {
     for (const url of ['/stats?tab=nope', '/stats?tab=game', '/stats?tab=calendar', '/stats?tab=media']) {
       await mount(url)

@@ -333,6 +333,7 @@
     "courses": "Courses"
   },
   "actions": {
+    "retry": "Try again",
     "add": "Add movie",
     "addSeries": "Add series",
     "addShort": "Add",
@@ -1118,6 +1119,7 @@
     "openTrash": "Open the trash"
   },
   "errors": {
+    "loadFailed": "Couldn't load",
     "storage_quota_exceeded": "Out of space: {{needed}} needed, {{remaining}} left (quota {{quota}}).",
     "storage_request_pending": "A request is already pending.",
     "storage_request_not_an_increase": "The requested quota must be larger than the current one.",
