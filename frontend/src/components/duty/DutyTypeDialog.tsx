@@ -57,25 +57,23 @@ export function DutyTypeDialog({ type, onClose }: { type: DutyShiftType | null; 
         }}
       >
         <FormSection>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label={t('genres.name_ka')} htmlFor="duty-type-ka" required error={errors.name_ka}>
-              <Input
-                id="duty-type-ka"
-                autoFocus
-                value={form.name_ka}
-                onChange={(e) => setForm((f) => ({ ...f, name_ka: e.target.value }))}
-                maxLength={80}
-              />
-            </FormField>
-            <FormField label={t('genres.name_en')} htmlFor="duty-type-en" required error={errors.name_en}>
-              <Input
-                id="duty-type-en"
-                value={form.name_en}
-                onChange={(e) => setForm((f) => ({ ...f, name_en: e.target.value }))}
-                maxLength={80}
-              />
-            </FormField>
-          </div>
+          <FormField size="half" label={t('genres.name_ka')} htmlFor="duty-type-ka" required error={errors.name_ka}>
+            <Input
+              id="duty-type-ka"
+              autoFocus
+              value={form.name_ka}
+              onChange={(e) => setForm((f) => ({ ...f, name_ka: e.target.value }))}
+              maxLength={80}
+            />
+          </FormField>
+          <FormField size="half" label={t('genres.name_en')} htmlFor="duty-type-en" required error={errors.name_en}>
+            <Input
+              id="duty-type-en"
+              value={form.name_en}
+              onChange={(e) => setForm((f) => ({ ...f, name_en: e.target.value }))}
+              maxLength={80}
+            />
+          </FormField>
 
           <FormField label={t('fields.name.duty.hours')} htmlFor="duty-type-hours" required error={errors.hours}>
             <Input

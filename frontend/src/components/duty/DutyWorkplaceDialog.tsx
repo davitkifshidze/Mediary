@@ -89,14 +89,13 @@ export function DutyWorkplaceDialog({
         }}
       >
         <FormSection>
-          <div className="grid gap-4 sm:grid-cols-[1fr_6rem]">
-            <FormField label={t('duty.workplace.name')} htmlFor="duty-wp-name" required>
-              <Input id="duty-wp-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
-            </FormField>
-            <FormField label={t('duty.workplace.short')} htmlFor="duty-wp-short" hint={t('duty.workplace.shortHint')}>
-              <Input id="duty-wp-short" value={short} onChange={(e) => setShort(e.target.value)} maxLength={3} />
-            </FormField>
-          </div>
+          {/* სახელი ფართოა, მოკლე სახელი (3 ასო) — ვიწრო: 9 + 3 სვეტი ბადის 12-დან */}
+          <FormField size="half" className="sm:col-span-9" label={t('duty.workplace.name')} htmlFor="duty-wp-name" required>
+            <Input id="duty-wp-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+          </FormField>
+          <FormField size="half" className="sm:col-span-3" label={t('duty.workplace.short')} htmlFor="duty-wp-short" hint={t('duty.workplace.shortHint')}>
+            <Input id="duty-wp-short" value={short} onChange={(e) => setShort(e.target.value)} maxLength={3} />
+          </FormField>
 
           <FormField label={t('duty.workplace.color')}>
             <div className="flex flex-wrap gap-2">

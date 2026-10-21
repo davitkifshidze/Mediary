@@ -105,76 +105,74 @@ export function DutySettingsDialog({
   return (
     <ModalShell title={t('duty.settings.title')} onClose={onClose} size="wide">
       <FormSection>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label={t('duty.settings.periodDay')} htmlFor="duty-period-day" hint={t('duty.settings.periodDayHint')}>
-            <NumberPick id="duty-period-day" value={day} onChange={setDay} options={DAY_OPTIONS} min={1} max={28} />
-            {settings.pending && (
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                {t('duty.settings.pending', { day: settings.pending.day, date: date(settings.pending.since) })}
-              </p>
-            )}
-          </FormField>
+        <FormField size="half" label={t('duty.settings.periodDay')} htmlFor="duty-period-day" hint={t('duty.settings.periodDayHint')}>
+          <NumberPick id="duty-period-day" value={day} onChange={setDay} options={DAY_OPTIONS} min={1} max={28} />
+          {settings.pending && (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {t('duty.settings.pending', { day: settings.pending.day, date: date(settings.pending.since) })}
+            </p>
+          )}
+        </FormField>
 
-          <FormField label={t('duty.settings.currency')} htmlFor="duty-currency">
-            <div className="flex items-center gap-2">
-              {CURRENCIES.map((c) => (
-                <Chip key={c} active={currency === c} onClick={() => setCurrency(c)}>
-                  {c}
-                </Chip>
+        <FormField size="half" label={t('duty.settings.currency')} htmlFor="duty-currency">
+          <div className="flex items-center gap-2">
+            {CURRENCIES.map((c) => (
+              <Chip key={c} active={currency === c} onClick={() => setCurrency(c)}>
+                {c}
+              </Chip>
+            ))}
+            <Input id="duty-currency" className="w-20" value={currency} onChange={(e) => setCurrency(e.target.value)} maxLength={5} />
+          </div>
+        </FormField>
+
+        <FormField size="half" label={t('duty.settings.defaultWorkplace')}>
+          <Select value={defaultWorkplace} onValueChange={setDefaultWorkplace}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE}>{t('duty.settings.firstInList')}</SelectItem>
+              {workplaces.map((w) => (
+                <SelectItem key={w.id} value={String(w.id)}>
+                  {w.name}
+                </SelectItem>
               ))}
-              <Input id="duty-currency" className="w-20" value={currency} onChange={(e) => setCurrency(e.target.value)} maxLength={5} />
-            </div>
-          </FormField>
+            </SelectContent>
+          </Select>
+        </FormField>
 
-          <FormField label={t('duty.settings.defaultWorkplace')}>
-            <Select value={defaultWorkplace} onValueChange={setDefaultWorkplace}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>{t('duty.settings.firstInList')}</SelectItem>
-                {workplaces.map((w) => (
-                  <SelectItem key={w.id} value={String(w.id)}>
-                    {w.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
+        {/* შეხსენება წინა დღეს (ბრაუზერი; ტელეგრამი — არჩევით) */}
+        <FormField size="half" label={t('duty.settings.remind')} htmlFor="duty-remind-at" hint={t('duty.settings.remindHint')}>
+          <div className="flex flex-wrap items-center gap-3">
+            <TimePicker id="duty-remind-at" value={remindAt} onChange={setRemindAt} clearable />
+            <label className="flex items-center gap-2 text-sm">
+              <Switch
+                checked={remindTelegram}
+                onCheckedChange={setRemindTelegram}
+                disabled={!remindAt}
+                aria-label={t('duty.settings.remindTelegram')}
+              />
+              {t('duty.settings.remindTelegram')}
+              <InfoHint info={t('duty.settings.remindTelegramHint')} />
+            </label>
+          </div>
+        </FormField>
 
-          {/* შეხსენება წინა დღეს (ბრაუზერი; ტელეგრამი — არჩევით) */}
-          <FormField label={t('duty.settings.remind')} htmlFor="duty-remind-at" hint={t('duty.settings.remindHint')}>
-            <div className="flex flex-wrap items-center gap-3">
-              <TimePicker id="duty-remind-at" value={remindAt} onChange={setRemindAt} clearable />
-              <label className="flex items-center gap-2 text-sm">
-                <Switch
-                  checked={remindTelegram}
-                  onCheckedChange={setRemindTelegram}
-                  disabled={!remindAt}
-                  aria-label={t('duty.settings.remindTelegram')}
-                />
-                {t('duty.settings.remindTelegram')}
-                <InfoHint info={t('duty.settings.remindTelegramHint')} />
-              </label>
-            </div>
-          </FormField>
-
-          <FormField label={t('duty.settings.defaultType')}>
-            <Select value={defaultType} onValueChange={setDefaultType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>{t('duty.settings.firstInList')}</SelectItem>
-                {types.map((type) => (
-                  <SelectItem key={type.id} value={String(type.id)}>
-                    {typeName(type, lang)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-        </div>
+        <FormField size="half" label={t('duty.settings.defaultType')}>
+          <Select value={defaultType} onValueChange={setDefaultType}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE}>{t('duty.settings.firstInList')}</SelectItem>
+              {types.map((type) => (
+                <SelectItem key={type.id} value={String(type.id)}>
+                  {typeName(type, lang)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormField>
       </FormSection>
 
       {/* ---------- სამსახურები ---------- */}

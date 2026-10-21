@@ -167,21 +167,19 @@ export function DutyShiftDialog({
             </div>
           </FormField>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label={t('fields.name.duty.hours')} htmlFor="duty-hours" required>
-              <NumberPick
-                id="duty-hours"
-                value={hours}
-                onChange={(v) => setHours(v)}
-                options={HOUR_OPTIONS.includes(hours) ? HOUR_OPTIONS : [...HOUR_OPTIONS, hours].sort((a, b) => a - b)}
-                min={0.5}
-                max={72}
-              />
-            </FormField>
-            <FormField label={t('fields.name.duty.start_time')} htmlFor="duty-start">
-              <TimePicker id="duty-start" value={startTime} onChange={setStartTime} clearable />
-            </FormField>
-          </div>
+          <FormField size="half" label={t('fields.name.duty.hours')} htmlFor="duty-hours" required>
+            <NumberPick
+              id="duty-hours"
+              value={hours}
+              onChange={(v) => setHours(v)}
+              options={HOUR_OPTIONS.includes(hours) ? HOUR_OPTIONS : [...HOUR_OPTIONS, hours].sort((a, b) => a - b)}
+              min={0.5}
+              max={72}
+            />
+          </FormField>
+          <FormField size="half" label={t('fields.name.duty.start_time')} htmlFor="duty-start">
+            <TimePicker id="duty-start" value={startTime} onChange={setStartTime} clearable />
+          </FormField>
 
           <FormField
             label={`${t('fields.name.duty.pay')} (${currency})`}

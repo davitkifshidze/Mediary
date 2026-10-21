@@ -83,6 +83,10 @@ describe('RecordLockDialog', () => {
     const { RecordLockDialog } = await import('@/components/locks/RecordLock')
     await render(h(RecordLockDialog, { base: '/media/movie/12', record: record(), onChanged, onClose: () => {}, hint: 'hint' }))
 
+    // ველები სრულ სიგანეზეა და არა 12-სვეტიანი ბადის უჯრაში — ბადეში ისინი ერთმანეთზე გადადიოდა
+    expect(document.querySelector('#record-lock-form .grid-cols-12')).toBeNull()
+    expect(document.getElementById('record-lock-password')!.closest('form')!.querySelector('.space-y-4')).toBeTruthy()
+
     type('record-lock-password', 'secret1')
     type('record-lock-repeat', 'secret1')
     type('record-lock-hint', 'ზღვა')
@@ -121,6 +125,7 @@ describe('RecordUnlockDialog', () => {
     )
 
     expect(document.body.textContent).toContain(i18n.t('lock.hintShown', { hint: 'ზღვა' }))
+    expect(document.querySelector('#record-unlock-form .grid-cols-12')).toBeNull()
 
     type('record-unlock', 'secret1')
     await act(async () => (document.getElementById('record-unlock-form') as HTMLFormElement).requestSubmit())

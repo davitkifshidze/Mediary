@@ -42,7 +42,8 @@ export function LockedPhotosAlbumDialog({
           if (ready) onSubmit(password)
         }}
       >
-        <FormSection>
+        {/* ⚠️ `plain`: პაროლის წყვილს თავისი ორსვეტიანი განლაგება აქვს — ბადის უჯრაში ის 1/12 სიგანეზე იჭყლიტებოდა */}
+        <FormSection plain>
           <AlbumPasswordFields idPrefix="locked-photos" password={password} repeat={repeat} onPassword={setPassword} onRepeat={setRepeat} />
         </FormSection>
       </form>

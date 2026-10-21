@@ -83,7 +83,8 @@ export function RecordUnlockDialog({
           if (password) unlock.mutate()
         }}
       >
-        <FormSection>
+        {/* ⚠️ `plain`: ბადე მხოლოდ `FormField`-ს იცნობს — უბრალო აბზაცი 1/12 სიგანის უჯრაში ჩაჯდებოდა */}
+        <FormSection plain className="space-y-4">
           {record.lock_hint && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <KeyRound className="size-4 shrink-0" />
@@ -180,7 +181,10 @@ export function RecordLockDialog({
           if (ready) save.mutate()
         }}
       >
-        <FormSection>
+        {/* ⚠️ `plain` + `space-y-4` (ალბომის ფანჯრის წესი): `FormSection`-ის 12-სვეტიანი ბადე
+            `col-span`-ს მხოლოდ `FormField`-ს აძლევს — აბზაცი, ანგარიშის პაროლის ბლოკი, პაროლის
+            ორი ველი და ღილაკი თითო 1/12 უჯრაში ჯდებოდა და ერთმანეთზე გადადიოდა. */}
+        <FormSection plain className="space-y-4">
           <p className="flex items-center gap-2 text-sm font-medium">
             {locked ? <Lock className="size-4 text-primary" /> : <LockOpen className="size-4 text-muted-foreground" />}
             {record.name}
@@ -260,6 +264,9 @@ export function LockBadge({ hidden }: { hidden: boolean }) {
  * **გვერდის ღილაკები** — „ჩაკეტვა" (ლოკის გარეშე), „ისევ ჩაკეტვა" და „პაროლი"
  * (ჩაკეტილი, ამ სესიაში გახსნილი). ⚠️ დაუხსნელ გვერდზე ეს ღილაკები არ ჩანს —
  * იქ `RecordLockedScreen` დგას.
+ *
+ * ⚠️ ზომას რიგი წყვეტს: მოქმედებების რიგში (ფილმი, მსახიობი) `sm` — `h-9`, აიქონი
+ * `size-3.5`; გვერდის ჰედერში (პირადი გალერეა) ნაგულისხმევი `h-10`, როგორც მეზობელი „რედაქტირება".
  */
 export function RecordLockActions({ base, record, onChanged, hint, size }: LockTarget & { hint: string; size?: 'sm' }) {
   const { t } = useTranslation()
