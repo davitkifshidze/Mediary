@@ -14,10 +14,10 @@ Mediary — a personal, bilingual (Georgian/English), multi-user media catalog.
 ## Working rules (the user's standing instructions)
 
 - Reply to the user in Georgian.
-- `Tasks.md` holds the current work and `Questions.md` the open questions — read both at the start of a session. A question carries context, options and a recommendation (⭐); once answered, the decision goes into its `Tasks.md` section and the question is deleted. Each new batch numbers from §1 / Q1.
+- `Tasks.md` holds the current work and `Questions.md` the open questions — read both at the start of a session. A question carries context, options and a recommendation (⭐); once answered, the full decision goes into its `Tasks.md` section as a „გადაწყვეტილება" paragraph and the question is deleted — no `Qn` number, ❓ mark or option letter stays behind anywhere, and with nothing open `Questions.md` is just its heading. Each new batch numbers from §1 / Q1.
 - **One `Tasks.md` section at a time.** When it is done: commit (no push), set its status (⬜ open · 🟡 partial · ✅ done), give a Georgian summary („რა გაკეთდა / რა დარჩა"), then stop and ask before starting the next one. Finished sections are deleted only when the user asks for a cleanup.
 - „ამიღე" means *remove*, not *take on*.
-- Comments, docblocks and test titles explain the code itself — never cite a `Tasks.md` section, question or stage (`§12`, `Tasks §4.2`, `Q7`, `FEAT-3`, `ეტაპი 2`): those files are emptied when the work is done, so such a pointer leads nowhere.
+- Comments, docblocks, test titles, identifiers, i18n keys and commit messages explain the code itself — never cite a `Tasks.md` section, question, stage, batch or request (`§12`, `Tasks §4.2`, `Q7`, `FEAT-3`, `ეტაპი 2`, „2026-10-21-ის პარტია"): those files are emptied when the work is done, so such a pointer leads nowhere.
 - The servers are started by hand (see *Run*); don't add a launcher script or an auto-start.
 - Verify with `npm run build`, the test suites and API calls — no Playwright, no screenshots.
 - Push only when asked; never with `--all`/`--mirror`/`--tags`, and never from a clone made before 2026-09-17 (its history still carries a leaked database dump).
