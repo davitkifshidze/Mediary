@@ -21,7 +21,8 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FormField, FormSection } from '@/components/ui/form-layout'
 import { Input } from '@/components/ui/input'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
-import { PHOTO_PAGE_ALL, PHOTO_PAGE_DEFAULT, PhotoGrid } from '@/components/ui/photo-grid'
+import { PhotoGrid } from '@/components/ui/photo-grid'
+import { usePhotoPageSize } from '@/lib/pageSize'
 import { Pagination } from '@/components/ui/pagination'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { PersonalMoveDialog } from '@/components/personal/PersonalMoveDialog'
@@ -66,10 +67,12 @@ export function PersonalMediaGrid({
   const [moving, setMoving] = useState<number[] | null>(null)
   const [captioning, setCaptioning] = useState<PersonalMedia | null>(null)
 
-  // ⚠️ ჩადგმული სიაა (ჩანართი, ალბომი) — გვერდი მისამართს არ ეხება
+  // ⚠️ ჩადგმული სიაა (ჩანართი, ალბომი) — გვერდი მისამართს არ ეხება; ზომა ფოტოს ბადის არჩევანია
+  const [pageSize, setPageSize] = usePhotoPageSize()
   const mediaQ = usePages({
     queryKey: [PERSONAL_KEY, 'media', filters],
-    fetchPage: (page) => fetchPersonalMedia({ ...filters, page, per_page: PHOTO_PAGE_DEFAULT }),
+    fetchPage: (page, per_page) => fetchPersonalMedia({ ...filters, page, per_page }),
+    pageSize,
   })
 
   const media = mediaQ.items
@@ -105,7 +108,9 @@ export function PersonalMediaGrid({
     <>
       <PhotoGrid
         items={items}
-        pageSize={PHOTO_PAGE_ALL}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        total={mediaQ.total}
         onDelete={(ids) => void remove(ids)}
         onMove={(ids) => setMoving(ids)}
         onFavorite={(id) => favorite.mutate(id)}

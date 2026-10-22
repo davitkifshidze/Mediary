@@ -42,14 +42,32 @@ export interface PaginationProps {
   lastPage: number
   /** „სულ N"; `null` — ჯამი უცნობია (TMDB-ის „აღმოაჩინე" — პოსტერის გარეშე ჩანაწერები იფილტრება) */
   total: number | null
+  /** რამდენია ეკრანზე — „ყველაზე" ჭერზე მეტ სიაში „ნაჩვენებია N / M" იწერება „სულ M"-ის ნაცვლად */
+  shown?: number
   onPage: (page: number) => void
   /** „მეტის ჩვენება" — შემდეგი გვერდი ქვემოთ ემატება; გარეშე — მხოლოდ ნომრები */
   onMore?: () => void
+  /**
+   * `false` — ნომრების გარეშე, მხოლოდ „ნაჩვენებია N / M" და „მეტის ჩვენება": ხელით
+   * დალაგებული სია, რომელიც ერთ სიად იკითხება (საჯარო პლეილისტი — დამკვრელი ბოლომდე მიჰყვება)
+   */
+  numbers?: boolean
   moreLoading?: boolean
   className?: string
 }
 
-export function Pagination({ page, from = page, lastPage, total, onPage, onMore, moreLoading, className }: PaginationProps) {
+export function Pagination({
+  page,
+  from = page,
+  lastPage,
+  total,
+  shown,
+  onPage,
+  onMore,
+  moreLoading,
+  numbers = true,
+  className,
+}: PaginationProps) {
   const { t } = useTranslation()
   /** რომელი „…" გახდა ველი (ფანჯრის ინდექსი) */
   const [typing, setTyping] = useState<number | null>(null)
@@ -64,7 +82,7 @@ export function Pagination({ page, from = page, lastPage, total, onPage, onMore,
 
   return (
     <nav aria-label={t('pagination.label')} className={cn('mt-6 flex flex-col items-center gap-2', className)} data-testid="pagination">
-      {lastPage > 1 && (
+      {numbers && lastPage > 1 && (
         <div className="flex flex-wrap items-center justify-center gap-1">
           <Button
             type="button"
@@ -132,7 +150,11 @@ export function Pagination({ page, from = page, lastPage, total, onPage, onMore,
         </div>
       )}
 
-      {total !== null && <p className="text-xs tabular-nums text-muted-foreground">{t('pagination.total', { count: total })}</p>}
+      {total !== null && (
+        <p className="text-xs tabular-nums text-muted-foreground">
+          {shown !== undefined && shown < total ? t('list.shown', { shown, total }) : t('pagination.total', { count: total })}
+        </p>
+      )}
 
       {onMore && page < lastPage && (
         <Button type="button" variant="outline" onClick={onMore} disabled={moreLoading} data-testid="pagination-more">

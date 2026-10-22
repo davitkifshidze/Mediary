@@ -101,7 +101,7 @@ describe('NumberPick', () => {
         onChange: setValue,
         options: [10, 20, 30, 40, 50],
         allowNone: true,
-        noneLabel: i18n.t('photos.showAll'),
+        noneLabel: i18n.t('list.all'),
         noneLast: true,
         size: 'sm',
       })
@@ -112,7 +112,7 @@ describe('NumberPick', () => {
   it('the trigger holds an invisible copy of every option, so it is as wide as the longest one', async () => {
     await mountPick()
 
-    expect(sizers().map(clean)).toEqual(['10', '20', '30', '40', '50', i18n.t('photos.showAll'), i18n.t('numberPick.other')])
+    expect(sizers().map(clean)).toEqual(['10', '20', '30', '40', '50', i18n.t('list.all'), i18n.t('numberPick.other')])
     for (const label of sizers()) {
       // `font-medium` — სიაში მონიშნული ვარიანტი მუქია და ოდნავ განიერი
       expect(label.className.split(/\s+/)).toEqual(expect.arrayContaining(['invisible', 'font-medium']))

@@ -244,7 +244,7 @@ export function BackupViewer({ backup, onClose }: { backup: Backup; onClose: () 
                   rows={rows.data?.data ?? []}
                   columns={columns}
                   rowKey={(row) => String(row.id ?? JSON.stringify(row))}
-                  pageSize={25}
+                  pageSize={20}
                   minWidth="900px"
                   empty={t('backups.noRows')}
                 />

@@ -2799,8 +2799,6 @@
     "deleteAll": "Delete all ({{count}})",
     "deleteSelected": "Delete selected ({{count}})",
     "empty": "No photos yet.",
-    "show": "Show",
-    "showAll": "All",
     "info": "About this photo",
     "infoName": "Name",
     "infoFrom": "From",
@@ -3019,7 +3017,6 @@
   },
   "table": {
     "search": "Search…",
-    "perPage": "{{count}} per page",
     "rowCount": "Showing {{shown}} / {{total}}",
     "empty": "Nothing found."
   },
@@ -3213,6 +3210,8 @@
   },
   "list": {
     "showMore": "Show more",
+    "perPage": "Per page",
+    "all": "All",
     "shown": "Showing {{shown}} of {{total}}"
   },
   "cast": {

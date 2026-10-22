@@ -2,7 +2,9 @@ import { useTranslation } from 'react-i18next'
 import { Lock } from 'lucide-react'
 import type { GalleryLockedImage } from '@/api/gallery'
 import { LOCKED_PHOTO_PLACEHOLDER } from '@/lib/lockedPhoto'
+import { PHOTO_COLUMNS, PHOTO_PER_PAGE_MAX } from '@/lib/pageSize'
 import { Button } from '@/components/ui/button'
+import { PageSizePick } from '@/components/ui/page-size-pick'
 
 /* ============================================================
    **ჩაკეტილი ალბომის ბადე.**
@@ -25,16 +27,24 @@ import { Button } from '@/components/ui/button'
    ⚠️ **ეს არ არის „დაბუნდოვნებული ნამდვილი ფოტო".** ფაილი პასუხში
    საერთოდ არ მოსულა (და თვითონაც პირად დისკზე გადავიდა), ე.ი.
    ინსპექტორში კლასის მოხსნას გასაშიშვლებელი არაფერი აქვს.
+
+   ⚠️ **სვეტები და „გვერდზე რამდენი" ჩვეულებრივი ბადისაა** (`PhotoGrid` — 4
+   სვეტი, იგივე ამრჩევი): აქამდე აქ `xl`-ზე 5 სვეტი იყო და გახსნის შემდეგ
+   ბადე სხვა ფორმას იღებდა; ზომის არჩევა კი საერთოდ არ იყო.
    ============================================================ */
 
 export function LockedPhotos({
   photos,
   total,
   onUnlock,
+  pageSize,
+  onPageSizeChange,
 }: {
   photos: GalleryLockedImage[]
   total: number
   onUnlock?: () => void
+  pageSize: number
+  onPageSizeChange: (size: number) => void
 }) {
   const { t } = useTranslation()
 
@@ -48,9 +58,17 @@ export function LockedPhotos({
             {t('gallery.albumUnlock')}
           </Button>
         )}
+        <PageSizePick
+          size="sm"
+          columns={PHOTO_COLUMNS}
+          max={PHOTO_PER_PAGE_MAX}
+          value={pageSize}
+          total={total}
+          onChange={onPageSizeChange}
+        />
       </div>
 
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {photos.map((photo) => (
           /* ფიქსირებული ჩარჩო (`aspect-video`), როგორც ჩვეულებრივ უჯრას: განბლოკვის შემდეგ ზომა არ იცვლება */
           <li key={photo.id} className="aspect-video overflow-hidden rounded-md border border-border bg-muted">

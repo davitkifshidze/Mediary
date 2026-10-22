@@ -11,7 +11,8 @@ import {
 import { useDateFormat } from '@/lib/dates'
 import { countLabel } from '@/lib/personal'
 import { ModalShell } from '@/components/ui/modal-shell'
-import { PHOTO_PAGE_ALL, PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
+import { PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
+import { PAGE_ALL } from '@/lib/pageSize'
 import { Pagination } from '@/components/ui/pagination'
 import { usePages } from '@/lib/paged'
 
@@ -94,7 +95,7 @@ export function PublicPersonalAlbumDialog({
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <PhotoGrid readOnly items={items} pageSize={PHOTO_PAGE_ALL} emptyText={t('publicProfile.personalEmpty')} />
+        <PhotoGrid readOnly items={items} pageSize={PAGE_ALL} emptyText={t('publicProfile.personalEmpty')} />
       )}
 
       <Pagination {...query.pagination} />

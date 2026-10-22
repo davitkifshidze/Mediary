@@ -34,7 +34,8 @@ import { Input } from '@/components/ui/input'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Pagination } from '@/components/ui/pagination'
 import { useClientPages } from '@/lib/paged'
-import { PHOTO_PAGE_DEFAULT, PhotoPageSizePick } from '@/components/ui/photo-grid'
+import { PageSizePick } from '@/components/ui/page-size-pick'
+import { defaultPageSize } from '@/lib/pageSize'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StepSection } from '@/components/ui/step-section'
 import { useToast } from '@/components/ui/feedback'
@@ -91,6 +92,9 @@ type VideoDestination =
   | { id: number; onPick?: undefined; picked?: undefined }
   | { id?: undefined; onPick: (video: SerpVideo) => void; /** უკვე არჩეულის ბმულები — ხელახლა გახსნისას მონიშნულია */ picked?: string[] }
 
+/** შედეგების სია `sm`-დან 2 სვეტია — „გვერდზე რამდენი" მისი ჯერადი */
+const VIDEO_COLUMNS = 2
+
 export function WebVideoDialog({
   target,
   id,
@@ -127,7 +131,8 @@ export function WebVideoDialog({
   const [saved, setSaved] = useState<Set<string>>(() => new Set(picked ?? []))
   const [searched, setSearched] = useState(false)
   /** რამდენი ჩანს ერთ გვერდზე (`0` = ყველა) და რომელი გვერდია */
-  const [pageSize, setPageSize] = useState(PHOTO_PAGE_DEFAULT)
+
+  const [pageSize, setPageSize] = useState(() => defaultPageSize(VIDEO_COLUMNS, 'photos'))
   /** აქვე ვიდეოებში დამატებული: ბმული → ახალი ჩანაწერი */
   const [inVideos, setInVideos] = useState<Record<string, { id: number; title: string | null }>>({})
   /** ამ ფანჯარაში არჩეული ტიპი; `null` = დამახსოვრებული */
@@ -388,7 +393,9 @@ export function WebVideoDialog({
           status={items.length > 0 ? t('web.found', { count: items.length }) : undefined}
           action={
             items.length > 0 ? (
-              <PhotoPageSizePick
+              <PageSizePick
+                size="sm"
+                columns={VIDEO_COLUMNS}
                 value={pageSize}
                 total={items.length}
                 onChange={(size) => {

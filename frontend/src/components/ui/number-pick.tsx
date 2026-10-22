@@ -56,12 +56,13 @@ export function NumberPick({
   className?: string
   /**
    * `sm` — ხელსაწყოთა ზოლისთვის (ფოტოს ბადე); `Button size="sm"`-ის
-   * სიმაღლეა (h-9), თორემ ზოლში ღილაკებს ვერ გაუსწორდება.
+   * სიმაღლეა (h-9), თორემ ზოლში ღილაკებს ვერ გაუსწორდება. `md` — იგივე
+   * შიგთავსის სიგანით, ოღონდ `h-10` (`PageHeader`-ის ზოლი, „გვერდზე რამდენი").
    * ⚠️ ზომა **კომპონენტშია**
    * და არა გამომძახებლის კლასებში: სელექტიც და „სხვა"-ს ველიც ერთად უნდა
    * დაბლდეს, თორემ ორი კონტროლი სხვადასხვა სიმაღლისა დარჩება.
    */
-  size?: 'sm' | 'default'
+  size?: 'sm' | 'md' | 'default'
   id?: string
 }) {
   const { t } = useTranslation()
@@ -73,6 +74,7 @@ export function NumberPick({
 
   const clamp = (n: number) => Math.min(max, Math.max(min, n))
   const small = size === 'sm'
+  const inline = size !== 'default'
   const labelOf = (n: number) => (n === 0 ? (noneLabel ?? t('numberPick.none')) : String(n))
 
   return (
@@ -92,7 +94,7 @@ export function NumberPick({
             „სხვა…"), თორემ „20"-ზე ვიწრო ტრიგერის ქვეშ სია უფრო ფართოდ
             იხსნებოდა. ნაგულისხმევ ზომაზე ტრიგერი ისედაც ველს ავსებს — იქ ეს
             მხოლოდ ვიწრო გარსში (`CastSyncFlow`-ის რიგი) ერთვება საქმეში. */}
-        <SelectTrigger id={id} className={cn(small && 'h-9 w-auto min-w-24')}>
+        <SelectTrigger id={id} className={cn(inline && 'w-auto min-w-24', small && 'h-9')}>
           <SelectFitValue labels={[...list.map(labelOf), t('numberPick.other')]} />
         </SelectTrigger>
         <SelectContent>
@@ -112,7 +114,7 @@ export function NumberPick({
           inputMode="numeric"
           min={min}
           max={max}
-          className={cn('w-24', small && 'h-9 w-20')}
+          className={cn('w-24', inline && 'w-20', small && 'h-9')}
           value={value}
           aria-label={t('numberPick.other')}
           onChange={(e) => onChange(clamp(Number(e.target.value) || 0))}

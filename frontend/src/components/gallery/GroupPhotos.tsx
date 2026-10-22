@@ -4,10 +4,13 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import {
   fetchGalleryPhotos,
+  type GalleryLockedImage,
+  type GalleryOwnedImage,
   type GalleryPhotoFilters,
   type GallerySort,
 } from '@/api/gallery'
-import { PHOTO_PAGE_ALL, PHOTO_PAGE_DEFAULT } from '@/components/ui/photo-grid'
+import { usePages } from '@/lib/paged'
+import { PHOTO_PER_PAGE_MAX, usePhotoPageSize } from '@/lib/pageSize'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/ui/pagination'
 import { QueryErrorState } from '@/components/ui/query-error-state'
@@ -25,10 +28,18 @@ import { CutTabs } from '@/components/ui/cut-tabs'
 
    ⚠️ **lightbox მთელ ჯგუფს ხედავს და არა მიმდინარე გვერდს** —
    ბოლო სურათზე „შემდეგი" ახალ გვერდზე უნდა გადავიდეს.
+
+   ⚠️ **ნომრები + „მეტის ჩვენება"** (`usePages`) ორივე მდგომარეობაში —
+   ჩაკეტილ ალბომშიც, სადაც აქამდე მხოლოდ ნომრები ჩანდა.
    ============================================================ */
 
-/** „ყველა" სერვერზე ჭერით მიდის — იხ. `GalleryController::MAX_PER_PAGE` */
-const ALL_PER_PAGE = 1000
+/** გვერდი — ჩაკეტილი ალბომის პასუხიც იმავე ფორმაშია (`locked` პირველი გვერდიდან) */
+interface PhotoPage {
+  items: (GalleryOwnedImage | GalleryLockedImage)[]
+  total: number
+  lastPage: number
+  locked: boolean
+}
 
 export function GroupPhotos({
   title,
@@ -64,8 +75,7 @@ export function GroupPhotos({
   categories?: boolean
 }) {
   const { t } = useTranslation()
-  const [page, setPage] = useState(1)
-  const [perPage, setPerPage] = useState(PHOTO_PAGE_DEFAULT)
+  const [pageSize, setPageSize] = usePhotoPageSize()
   const [sort, setSort] = useState<GallerySort>('new')
   /* ⚠️ სიდი **ერთხელ იბადება** და გვერდებს შორის არ იცვლება: უამისოდ მე-2
      გვერდი პირველზე უკვე ნანახ ფოტოებს გამოიტანდა. */
@@ -73,17 +83,19 @@ export function GroupPhotos({
   const [category, setCategory] = useState<string>('all')
   const categoryFilter = categories && category !== 'all' ? { category } : {}
 
-  const query = useQuery({
-    queryKey: ['gallery-photos', cacheKey, category, page, perPage, sort, seed],
-    queryFn: () =>
+  const query = usePages({
+    queryKey: ['gallery-photos', cacheKey, category, sort, seed],
+    fetchPage: (page, per_page): Promise<PhotoPage> =>
       fetchGalleryPhotos({
         ...filters,
         ...categoryFilter,
         sort,
         seed: sort === 'random' ? seed : undefined,
         page,
-        per_page: perPage === PHOTO_PAGE_ALL ? ALL_PER_PAGE : perPage,
-      }),
+        per_page,
+      }).then((r) => ({ items: r.data, total: r.meta.total, lastPage: r.meta.last_page, locked: 'locked' in r })),
+    pageSize,
+    maxPerPage: PHOTO_PER_PAGE_MAX,
   })
 
   const allQ = useQuery({
@@ -93,18 +105,16 @@ export function GroupPhotos({
         ...filters,
         sort,
         seed: sort === 'random' ? seed : undefined,
-        per_page: ALL_PER_PAGE,
+        per_page: PHOTO_PER_PAGE_MAX,
       }),
   })
-
-  const meta = query.data?.meta
 
   /* ⚠️ **ჩაკეტილი ალბომი ცარიელი აღარაა — ის ბლარიან ფილებად იხატება**.
      ადრე სერვერი 423-ს აბრუნებდა და ბადე საერთოდ
      არ იხატებოდა; შენი მითითებით ახლა რიგები ჩანს (მხოლოდ `id` და
      ზომები), პაროლის ღილაკი კი აქვეა. */
-  const locked = query.data && 'locked' in query.data ? query.data : null
-  const photos = query.data && !('locked' in query.data) ? query.data.data : []
+  const locked = query.first?.locked ?? false
+  const photos = query.items
   const everything = allQ.data && !('locked' in allQ.data) ? allQ.data.data : undefined
   // ლაითბოქსი არჩეული ჩანართის ფოტოებს ფურცლავს, რიცხვები კი მთელი ჯგუფისაა
   const lightbox =
@@ -131,7 +141,7 @@ export function GroupPhotos({
           </div>
           {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
         </div>
-        <SortPick value={sort} onChange={(next) => { setSort(next); setPage(1) }} />
+        <SortPick value={sort} onChange={setSort} />
         {actions}
       </div>
 
@@ -145,16 +155,19 @@ export function GroupPhotos({
               ...present.map((entry) => ({ key: entry.key, label: t(`gallery.category.${entry.key}`), count: entry.count })),
             ]}
             value={category}
-            onChange={(key) => {
-              setCategory(key)
-              setPage(1)
-            }}
+            onChange={setCategory}
           />
         </div>
       )}
 
       {locked ? (
-        <LockedPhotos photos={locked.data} total={locked.meta.total} onUnlock={onUnlock} />
+        <LockedPhotos
+          photos={photos as GalleryLockedImage[]}
+          total={query.total}
+          onUnlock={onUnlock}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+        />
       ) : query.isError ? (
         /* სერვერის ვარდნა ≠ „ფოტო ჯერ არ არის" */
         <QueryErrorState error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
@@ -165,19 +178,13 @@ export function GroupPhotos({
           loading={query.isLoading}
           showOwner={showOwner}
           emptyText={emptyText}
-          pageSize={perPage}
-          onPageSizeChange={(size) => {
-            setPerPage(size)
-            setPage(1)
-          }}
-          total={meta?.total}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          total={query.total}
         />
       )}
 
-      {meta && meta.last_page > 1 && (
-        // ნომრები; „მეტის ნახვა" ფოტოს ბადეში რაოდენობის არჩევაა
-        <Pagination page={meta.page} lastPage={meta.last_page} total={meta.total} onPage={setPage} />
-      )}
+      {!query.isLoading && !query.isError && <Pagination {...query.pagination} />}
     </section>
   )
 }

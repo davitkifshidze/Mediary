@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { usePagedList } from '@/lib/paged'
+import { usePageSize } from '@/lib/pageSize'
 import { useDrillParams } from '@/lib/statsLinks'
 import { Pagination } from '@/components/ui/pagination'
 import { useTranslation } from 'react-i18next'
@@ -27,6 +28,7 @@ import { genreName } from '@/lib/display'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
 import { MovieGrid } from '@/components/MovieGrid'
 import { ViewToggle } from '@/components/ui/view-toggle'
+import { PageSizePick } from '@/components/ui/page-size-pick'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { DiscoverModal } from '@/components/DiscoverModal'
 import {
@@ -90,6 +92,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   const { settings } = useSettings()
   // ხედი თითო დომენზე (ფილმი/სერიალი/ანიმე); ნაგულისხმევი — ახლანდელი ბარათები
   const [layout, setLayout] = useRecordLayout(type, 'cards')
+  const [pageSize, setPageSize, columns] = usePageSize(type, layout, settings.cardSize)
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const api = mediaApi(type)
@@ -205,12 +208,13 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     ...drill,
   }
 
-  /* გვერდზე 10 (ადრე `libraryPageSize`, ახლა ფიქსირებული): ნომრები + „მეტის ჩვენება";
+  /* გვერდზე რამდენი — `usePageSize` (პოსტერების სვეტების ჯერადი, მოდულზე ინახება): ნომრები + „მეტის ჩვენება";
      მიმდინარე გვერდი `?page=`-შია. ⚠️ ფრანჩაიზის კლასტერი სერვერზე იკვრება (`group=`), ე.ი. გვერდი
      მას არ წყვეტს; სექციებად დაჯგუფება ნაჩვენებ ჩანაწერებზე ითვლება. */
   const moviesQ = usePagedList({
     queryKey: [type, 'list', filters],
-    fetchPage: (page) => api.list({ ...filters, page, per_page: LIST_PAGE_SIZE }),
+    fetchPage: (page, per_page) => api.list({ ...filters, page, per_page }),
+    pageSize,
   })
   const genresQ = useQuery({ queryKey: ['genres', type], queryFn: () => fetchGenres(type) })
   const movies = moviesQ.items
@@ -246,6 +250,8 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
           <>
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
+            {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
+            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} total={total} />
             <div className="relative min-w-0 flex-1 sm:flex-none">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input

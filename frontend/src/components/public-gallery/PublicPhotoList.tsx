@@ -10,7 +10,8 @@ import type { GallerySort } from '@/api/gallery'
 import { isPortraitCategory } from '@/lib/galleryPhoto'
 import { useContentLang } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
-import { PHOTO_PAGE_ALL, PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
+import { PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
+import { PAGE_ALL } from '@/lib/pageSize'
 import { Pagination } from '@/components/ui/pagination'
 import { usePages } from '@/lib/paged'
 import { SortPick } from '@/components/gallery/SortPick'
@@ -139,7 +140,7 @@ export function PublicPhotoList({
           /* ⚠️ გვერდებს სერვერი ჭრის („მეტის ჩვენება" ქვემოთ), ე.ი. ბადე
              მიღებულ სიას მთლიანად ხატავს — საკუთარი გვერდები აქ მეორე,
              ცრუ დაყოფა იქნებოდა */
-          pageSize={PHOTO_PAGE_ALL}
+          pageSize={PAGE_ALL}
           emptyText={emptyText ?? t('publicProfile.gallery.empty')}
           onLocked={(item) => item.albumId != null && onLocked(item.albumId)}
         />

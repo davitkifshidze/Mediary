@@ -47,7 +47,8 @@ import { Input } from '@/components/ui/input'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Pagination } from '@/components/ui/pagination'
 import { useClientPages } from '@/lib/paged'
-import { PHOTO_PAGE_ALL, PHOTO_PAGE_DEFAULT, PhotoPageSizePick } from '@/components/ui/photo-grid'
+import { PageSizePick } from '@/components/ui/page-size-pick'
+import { PAGE_ALL, PHOTO_COLUMNS, defaultPageSize } from '@/lib/pageSize'
 import { StepSection } from '@/components/ui/step-section'
 import { Label } from '@/components/ui/label'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -175,7 +176,8 @@ export function WebImageDialog({
   const [quota, setQuota] = useState<SerpQuota | null>(null)
   const [searched, setSearched] = useState(false)
   /** რამდენი ჩანს ერთ გვერდზე (`0` = ყველა) და რომელი გვერდია */
-  const [pageSize, setPageSize] = useState(PHOTO_PAGE_DEFAULT)
+  // ბადე `md`-დან 4 სვეტია — ფოტოს ბადის ჯერადები
+  const [pageSize, setPageSize] = useState(() => defaultPageSize(PHOTO_COLUMNS, 'photos'))
 
   /** რომელ მსახიობებზე ნაწილდება */
   const [distribute, setDistribute] = useState<number[]>([])
@@ -306,7 +308,7 @@ export function WebImageDialog({
       setSources((cur) => mergeSources(cur, data.sources))
       setQuota(data.quota)
       // ⚠️ ახალი ფოტოები იქ ჩანს, სადაც იწყება — თორემ „კიდევ" ეკრანზე არაფერს ცვლიდა
-      if (pageSize !== PHOTO_PAGE_ALL && merged.length > before) pager.pagination.onPage(Math.floor(before / pageSize) + 1)
+      if (pageSize !== PAGE_ALL && merged.length > before) pager.pagination.onPage(Math.floor(before / pageSize) + 1)
 
       toast({
         title: merged.length > before ? t('web.moreFound', { count: merged.length - before }) : t('web.moreNothing'),
@@ -635,7 +637,9 @@ export function WebImageDialog({
               items.length > 0 ? (
                 <>
                   {/* „აჩვენე" უკვე ჩამოსულს ჰყოფს და ახალ ძებნას არ უშვებს */}
-                  <PhotoPageSizePick
+                  <PageSizePick
+                    size="sm"
+                    columns={PHOTO_COLUMNS}
                     value={pageSize}
                     total={items.length}
                     onChange={(size) => {

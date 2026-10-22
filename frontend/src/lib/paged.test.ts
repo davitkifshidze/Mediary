@@ -156,3 +156,85 @@ describe('Pagination numbers', () => {
     expect(container.querySelectorAll('button')).toHaveLength(0)
   })
 })
+
+describe('usePagedList with a page size', () => {
+  /** `per_page`-ს ემორჩილება — ბექენდის მსგავსად */
+  const sized = vi.fn(async (page: number, size: number): Promise<Page<number>> => {
+    const from = (page - 1) * size
+    const items = Array.from({ length: Math.max(0, Math.min(size, TOTAL - from)) }, (_, i) => from + i + 1)
+    return { items, total: TOTAL, lastPage: Math.ceil(TOTAL / size) }
+  })
+  let setSize: (value: number) => void = () => {}
+
+  async function mountSized(entry: string, initial: number) {
+    const { useState } = await import('react')
+
+    function Harness() {
+      const [size, set] = useState(initial)
+      setSize = set
+      const list = usePagedList({ queryKey: ['sized-list'], fetchPage: (page, perPage) => sized(page, perPage), pageSize: size })
+      location = useLocation().search
+      return h('div', null, h('p', { 'data-testid': 'items' }, list.items.join(',')), h(Pagination, list.pagination))
+    }
+
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    await act(async () =>
+      root!.render(h(MemoryRouter, { initialEntries: [entry] }, h(QueryClientProvider, { client: qc }, h(Harness)))),
+    )
+    await flush()
+    await flush()
+  }
+
+  it('sends the chosen size as per_page, and a size change returns to the first page', async () => {
+    sized.mockClear()
+    await mountSized('/books?page=3', 9)
+    expect(sized).toHaveBeenLastCalledWith(3, 9)
+    expect(shown()[0]).toBe(19)
+
+    await act(async () => setSize(24))
+    await flush()
+    await flush()
+    expect(sized).toHaveBeenLastCalledWith(1, 24)
+    expect(shown()).toHaveLength(24)
+    expect(location).toBe('')
+  })
+
+  it('"all" asks for the server cap, says how many are shown and keeps "show more"', async () => {
+    sized.mockClear()
+    await mountSized('/books', 0)
+
+    expect(sized).toHaveBeenLastCalledWith(1, 500)
+    expect(shown()).toHaveLength(500)
+    expect(document.querySelector('[data-testid="pagination"]')?.textContent).toContain(
+      i18n.t('list.shown', { shown: 500, total: TOTAL }),
+    )
+
+    await act(async () => (document.querySelector('[data-testid="pagination-more"]') as HTMLButtonElement).click())
+    await flush()
+    expect(sized).toHaveBeenLastCalledWith(2, 500)
+    expect(shown()).toHaveLength(1000)
+  })
+})
+
+describe('Pagination without numbers', () => {
+  it('a one-list view keeps "shown N of M" and "show more", without page numbers', async () => {
+    const onMore = vi.fn()
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    act(() =>
+      root!.render(
+        h(Pagination, { numbers: false, page: 1, lastPage: 3, total: 25, shown: 10, onPage: () => {}, onMore }),
+      ),
+    )
+
+    expect(container.textContent).toContain(i18n.t('list.shown', { shown: 10, total: 25 }))
+    expect(container.querySelector('[aria-current="page"]')).toBeNull()
+    const more = container.querySelector<HTMLButtonElement>('[data-testid="pagination-more"]')!
+    act(() => more.click())
+    expect(onMore).toHaveBeenCalledTimes(1)
+  })
+})

@@ -2,15 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { keepPreviousData, useInfiniteQuery, type QueryKey } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import type { PaginationProps } from '@/components/ui/pagination'
+import { LIST_PAGE_SIZE, PAGE_ALL, perPage } from '@/lib/pageSize'
 
 /* ============================================================
    სიების გვერდებად დაყოფა — ფრონტის მხარე.
 
-   ⚠️ **მოდელი: „გვერდი 10 ჩანაწერით + მეტის ჩვენება"**. სერვერს თითო
-   გვერდი ცალკე ეთხოვება (`page` + `per_page=10`), „მეტის ჩვენება" **შემდეგ
-   გვერდს** ითხოვს და ქვემოთ უმატებს (`useInfiniteQuery`). ⚠️ ადრე იზრდებოდა
-   `per_page` (60 → 120 → …), ბექენდი კი მას 500-ზე ჭრის — 500-ის შემდეგ ღილაკი
-   ჩანდა და არაფერს აკეთებდა. ახლა ყოველი მოთხოვნა 10-ია და ჭერი ვერ შეგვხვდება.
+   ⚠️ **მოდელი: „გვერდი + მეტის ჩვენება"**. სერვერს თითო გვერდი ცალკე ეთხოვება
+   (`page` + `per_page`), „მეტის ჩვენება" **შემდეგ გვერდს** ითხოვს და ქვემოთ
+   უმატებს (`useInfiniteQuery`). ⚠️ ადრე იზრდებოდა `per_page` (60 → 120 → …),
+   ბექენდი კი მას 500-ზე ჭრის — 500-ის შემდეგ ღილაკი ჩანდა და არაფერს აკეთებდა.
+   ახლა გვერდის ზომა არჩევანია (`pageSize` — `lib/pageSize.ts`, სვეტების
+   ჯერადი, „ყველა" = ჭერი) და მოთხოვნიდან მოთხოვნამდე არ იზრდება.
 
    ⚠️ **მიმდინარე გვერდი მისამართშია** (`?page=`, `usePagedList`) — ჩანაწერის
    გახსნის შემდეგ „უკან" იმავე გვერდზე აბრუნებს; ნომერზე დაჭერა ისტორიაში
@@ -22,14 +24,15 @@ import type { PaginationProps } from '@/components/ui/pagination'
    გვერდებს შორის ვერ გადაიტანება, ამიტომ ფლეილისტები ერთ სიად რჩება.
    ============================================================ */
 
-/** გვერდის ზომა — ფიქსირებული */
-export const LIST_PAGE_SIZE = 10
+/* `LIST_PAGE_SIZE` — სტრიქონების ნაგულისხმევი ზომა და ჩადგმული სიების (ჟურნალი, ურნა,
+   საჯარო გვერდი) ფიქსირებული ზომა; `pageSize.ts`-შია, რომ ორ ფაილს შორის წრე არ შეიკრას */
+export { LIST_PAGE_SIZE }
 
 /** სიის query-პარამეტრები — ყველა მოდულის `Filters` ამას აფართოებს */
 export interface ListParams {
   /** გვერდის ნომერი (1-დან) */
   page?: number
-  /** რამდენი ჩანაწერი გვერდზე — `LIST_PAGE_SIZE` */
+  /** რამდენი ჩანაწერი გვერდზე — `perPage()` (`lib/pageSize.ts`) ან `LIST_PAGE_SIZE` */
   per_page?: number
   /**
    * ⚠️ **მთელი სია.** მხოლოდ ოთხ გამომძახებელს სჭირდება — `/purge`-ის რიგს,
@@ -90,7 +93,16 @@ export interface PagedList<T, P = Page<T>> {
 interface PagedOptions<P> {
   /** ფილტრებიანი გასაღები — მისი ცვლილება პირველ გვერდზე აბრუნებს */
   queryKey: QueryKey
-  fetchPage: (page: number) => Promise<P>
+  /** `perPage` — `pageSize`-იდან გამოთვლილი `per_page` (მის გარეშე — `LIST_PAGE_SIZE`) */
+  fetchPage: (page: number, perPage: number) => Promise<P>
+  /**
+   * გვერდის ზომა (`usePageSize`); `0` — „ყველა" (`maxPerPage`-ის ჭერით, ზემოთ —
+   * „ნაჩვენებია N / M" და „მეტის ჩვენება"). ⚠️ გასაღების ნაწილია — შეცვლა
+   * პირველ გვერდზე აბრუნებს.
+   */
+  pageSize?: number
+  /** სერვერის ჭერი „ყველასთვის" — სიები 500 (ნაგულისხმევი), ფოტოები 1000 */
+  maxPerPage?: number
   enabled?: boolean
   /** ფოკუსზე ხელახლა კითხვა (გაზიარების გვერდი მას თიშავს — ყველა ჩატვირთული გვერდი ხელახლა მოვიდოდა) */
   refetchOnWindowFocus?: boolean
@@ -102,16 +114,22 @@ interface PagedOptions<P> {
   initial?: P
 }
 
+/** ზომა გასაღების ნაწილია — მისი შეცვლა ფილტრის შეცვლასავით პირველ გვერდზე აბრუნებს */
+function sizedKey(queryKey: QueryKey, pageSize: number | undefined): QueryKey {
+  return pageSize === undefined ? queryKey : [...queryKey, 'size', pageSize]
+}
+
 /** საერთო ნაწილი: `start`-იდან ჩატვირთული გვერდები და „მეტის ჩვენება" */
 function usePageRange<P extends Page<unknown>>(
-  { queryKey, fetchPage, enabled = true, refetchOnWindowFocus, initial }: PagedOptions<P>,
+  { queryKey, fetchPage, enabled = true, refetchOnWindowFocus, initial, pageSize, maxPerPage }: PagedOptions<P>,
   start: number,
   goTo: (page: number, replace?: boolean) => void,
   onMore: (page: number) => void,
 ): PagedList<ItemOf<P>, P> {
+  const size = pageSize === undefined ? LIST_PAGE_SIZE : perPage(pageSize, maxPerPage)
   const query = useInfiniteQuery({
-    queryKey: [...queryKey, 'from', start],
-    queryFn: ({ pageParam }) => fetchPage(pageParam),
+    queryKey: [...sizedKey(queryKey, pageSize), 'from', start],
+    queryFn: ({ pageParam }) => fetchPage(pageParam, size),
     initialPageParam: start,
     getNextPageParam: (last, _all, param) => (param < last.lastPage ? param + 1 : undefined),
     // ⚠️ ფილტრის/გვერდის შეცვლაზე ძველი სია ჩანს, სანამ ახალი მოვა — ბადე არ იცლება
@@ -158,6 +176,8 @@ function usePageRange<P extends Page<unknown>>(
       from,
       lastPage,
       total,
+      // „ყველა" ჭერზე მეტ სიაში — „ნაჩვენებია N / M"
+      shown: pageSize === PAGE_ALL ? items.length : undefined,
       onPage: (p) => goTo(p),
       onMore: more,
       moreLoading: isFetchingNextPage,
@@ -180,7 +200,7 @@ function scrollTop() {
 export function usePagedList<P extends Page<unknown>>(options: PagedOptions<P>): PagedList<ItemOf<P>, P> {
   const [params, setParams] = useSearchParams()
   const urlPage = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
-  const key = JSON.stringify(options.queryKey)
+  const key = JSON.stringify(sizedKey(options.queryKey, options.pageSize))
 
   const [range, setRange] = useState({ key, start: urlPage })
   const seen = useRef({ key, url: urlPage })
@@ -240,7 +260,7 @@ export function usePagedList<P extends Page<unknown>>(options: PagedOptions<P>):
 
 /** **ჩადგმული სია** (დიალოგი, ჭრილი, საჯარო გვერდის ბლოკი) — გვერდი მისამართს არ ეხება */
 export function usePages<P extends Page<unknown>>(options: PagedOptions<P>): PagedList<ItemOf<P>, P> {
-  const key = JSON.stringify(options.queryKey)
+  const key = JSON.stringify(sizedKey(options.queryKey, options.pageSize))
   const [range, setRange] = useState({ key, start: 1 })
   const start = range.key === key ? range.start : 1
 

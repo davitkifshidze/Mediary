@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { ModalShell } from '@/components/ui/modal-shell'
-import { ShowMore } from '@/components/ui/show-more'
+import { Pagination } from '@/components/ui/pagination'
 import { PlayerStage } from '@/components/PlayerStage'
 
 /* ============================================================
@@ -339,11 +339,16 @@ export function PlaylistPlayerDialog({
             })}
           </ol>
 
-          <ShowMore
-            shown={items.length}
+          {/* ერთი სია ნომრების გარეშე — დამკვრელი მას ბოლომდე მიჰყვება */}
+          <Pagination
+            numbers={false}
+            page={pages?.[pages.length - 1]?.meta.current_page ?? 1}
+            lastPage={pages?.[pages.length - 1]?.meta.last_page ?? 1}
             total={total}
-            loading={query.isFetchingNextPage}
+            shown={items.length}
+            onPage={() => {}}
             onMore={() => void query.fetchNextPage()}
+            moreLoading={query.isFetchingNextPage}
           />
         </>
       )}

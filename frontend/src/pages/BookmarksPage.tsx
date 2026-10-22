@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { usePagedList } from '@/lib/paged'
+import { usePageSize } from '@/lib/pageSize'
 import { useDrillParams } from '@/lib/statsLinks'
 import { plainText } from '@/lib/richText'
 import { RICH_TEXT_MAX } from '@/lib/richText'
@@ -62,6 +63,7 @@ import { PendingWebMedia } from '@/components/PendingWebMedia'
 import { RecordActionBar } from '@/components/RecordActionBar'
 import { RecordList, RecordView } from '@/components/RecordView'
 import { ViewToggle } from '@/components/ui/view-toggle'
+import { PageSizePick } from '@/components/ui/page-size-pick'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { PosterUploader } from '@/components/PosterUploader'
 import { BookmarkCategoryDialog } from '@/components/BookmarkCategoryDialog'
@@ -124,6 +126,7 @@ export function BookmarksPage() {
   const [params, setParams] = useSearchParams()
   // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი სტრიქონები
   const [layout, setLayout] = useRecordLayout('bookmark', 'rows')
+  const [pageSize, setPageSize, columns] = usePageSize('bookmark', layout)
 
   const search = params.toString()
   const view = params.get('view') ?? 'all'
@@ -172,7 +175,8 @@ export function BookmarksPage() {
   // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['bookmarks', filters],
-    fetchPage: (page) => fetchBookmarks({ ...filters, page, per_page: LIST_PAGE_SIZE }),
+    fetchPage: (page, per_page) => fetchBookmarks({ ...filters, page, per_page }),
+    pageSize,
   })
   const categoriesQ = useQuery({ queryKey: ['bookmark-categories'], queryFn: fetchBookmarkCategories })
   const bookmarks = query.items
@@ -323,6 +327,8 @@ export function BookmarksPage() {
           <>
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
+            {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
+            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} total={total} />
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">

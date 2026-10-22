@@ -5,7 +5,8 @@ import { useDrillParams } from '@/lib/statsLinks'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { usePagedList } from '@/lib/paged'
+import { usePageSize } from '@/lib/pageSize'
 import { RICH_TEXT_MAX } from '@/lib/richText'
 import { Pagination } from '@/components/ui/pagination'
 import { RichText } from '@/components/ui/rich-text'
@@ -89,6 +90,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { RecordList, RecordView } from '@/components/RecordView'
 import { ViewToggle } from '@/components/ui/view-toggle'
+import { PageSizePick } from '@/components/ui/page-size-pick'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -144,6 +146,7 @@ export function VideosPage() {
   const [editing, setEditing] = useState<Video | 'new' | null>(null)
   // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ბარათები
   const [layout, setLayout] = useRecordLayout('video', 'cards')
+  const [pageSize, setPageSize, columns] = usePageSize('video', layout)
   const fmt = useDateFormat()
   // ⚠️ სახელი „detail"-ია და არა „playing": **დაკვრა
   // დამკვრელშია** (გვერდითა პანელი ან ქვედა ზოლი), მოდალი კი
@@ -182,7 +185,8 @@ export function VideosPage() {
   // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['videos', filters],
-    fetchPage: (page) => fetchVideos({ ...filters, page, per_page: LIST_PAGE_SIZE }),
+    fetchPage: (page, per_page) => fetchVideos({ ...filters, page, per_page }),
+    pageSize,
   })
   const typesQ = useQuery({ queryKey: ['video-types'], queryFn: fetchVideoTypes })
   const videos = query.items
@@ -472,6 +476,8 @@ export function VideosPage() {
             )}
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
+            {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
+            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} total={total} />
             {/* ძებნა — განმარტება tooltip-ია და არა `title` */}
             <Tooltip>
               <TooltipTrigger asChild>

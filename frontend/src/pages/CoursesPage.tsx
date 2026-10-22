@@ -26,7 +26,8 @@ import { useDrillParams } from '@/lib/statsLinks'
 import { RICH_TEXT_MAX } from '@/lib/richText'
 import { useModuleFields } from '@/lib/fields'
 import { useFilterDraft } from '@/lib/filters'
-import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { usePagedList } from '@/lib/paged'
+import { usePageSize } from '@/lib/pageSize'
 import { dedupeTags } from '@/lib/tags'
 import { errorMessage, fieldErrors } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
@@ -62,6 +63,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { RecordList, RecordView } from '@/components/RecordView'
 import { ViewToggle } from '@/components/ui/view-toggle'
+import { PageSizePick } from '@/components/ui/page-size-pick'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Pagination } from '@/components/ui/pagination'
@@ -99,6 +101,7 @@ export function CoursesPage() {
   const [params] = useSearchParams()
   // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
   const [layout, setLayout] = useRecordLayout('course', 'rows')
+  const [pageSize, setPageSize, columns] = usePageSize('course', layout)
 
   const view = params.get('view') ?? 'all'
   const search = params.toString()
@@ -143,7 +146,8 @@ export function CoursesPage() {
   // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['courses', filters],
-    fetchPage: (page) => fetchCourses({ ...filters, page, per_page: LIST_PAGE_SIZE }),
+    fetchPage: (page, per_page) => fetchCourses({ ...filters, page, per_page }),
+    pageSize,
   })
   const categoriesQ = useQuery({ queryKey: ['course-categories'], queryFn: fetchCourseCategories })
 
@@ -223,6 +227,8 @@ export function CoursesPage() {
           <>
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
+            {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
+            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} total={total} />
             <div className="relative min-w-0 flex-1 sm:flex-none">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input

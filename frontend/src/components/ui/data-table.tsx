@@ -4,7 +4,7 @@ import { ArrowUpDown, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import { useClientPages } from '@/lib/paged'
-import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
+import { PageSizePick } from '@/components/ui/page-size-pick'
 import { cn } from '@/lib/utils'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 
@@ -30,8 +30,6 @@ export interface DataColumn<T> {
   value?: (row: T) => string | number
   render: (row: T) => ReactNode
 }
-
-const PAGE_SIZES = [10, 25, 50, 100] as const
 
 export function DataTable<T>({
   rows,
@@ -131,24 +129,17 @@ export function DataTable<T>({
           </div>
         )}
 
-        <Select
-          value={String(pageSize)}
-          onValueChange={(v) => {
-            setPageSize(Number(v))
+        {/* „გვერდზე რამდენი" — სიების საერთო ამრჩევი (სტრიქონების სერია + „ყველა" + „სხვა") */}
+        <PageSizePick
+          size="sm"
+          columns={1}
+          value={pageSize}
+          total={filtered.length}
+          onChange={(next) => {
+            setPageSize(next)
             pages.reset()
           }}
-        >
-          <SelectTrigger className="h-9 w-auto min-w-[6.5rem]">
-            <SelectFitValue labels={PAGE_SIZES.map((n) => t('table.perPage', { count: n }))} />
-          </SelectTrigger>
-          <SelectContent>
-            {PAGE_SIZES.map((n) => (
-              <SelectItem key={n} value={String(n)}>
-                {t('table.perPage', { count: n })}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
 
         {toolbar}
 

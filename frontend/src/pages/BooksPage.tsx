@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { usePagedList } from '@/lib/paged'
+import { usePageSize } from '@/lib/pageSize'
 import { useDrillParams } from '@/lib/statsLinks'
 import { Pagination } from '@/components/ui/pagination'
 import {
@@ -51,6 +52,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { RecordList, RecordView } from '@/components/RecordView'
 import { ViewToggle } from '@/components/ui/view-toggle'
+import { PageSizePick } from '@/components/ui/page-size-pick'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -86,6 +88,7 @@ export function BooksPage() {
   const [params, setParams] = useSearchParams()
   // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
   const [layout, setLayout] = useRecordLayout('book', 'rows')
+  const [pageSize, setPageSize, columns] = usePageSize('book', layout)
   const search = params.toString()
   const view = params.get('view') ?? 'all'
 
@@ -129,7 +132,8 @@ export function BooksPage() {
   // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['books', filters],
-    fetchPage: (page) => fetchBooks({ ...filters, page, per_page: LIST_PAGE_SIZE }),
+    fetchPage: (page, per_page) => fetchBooks({ ...filters, page, per_page }),
+    pageSize,
   })
   const genresQ = useQuery({ queryKey: ['book-genres'], queryFn: fetchBookGenres })
   const books = query.items
@@ -234,6 +238,8 @@ export function BooksPage() {
           <>
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
+            {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
+            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} total={total} />
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">

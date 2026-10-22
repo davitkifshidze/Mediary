@@ -46,7 +46,8 @@ import { errorMessage, fieldErrors } from '@/lib/errors'
 import { useModuleFields } from '@/lib/fields'
 import { useFilterDraft } from '@/lib/filters'
 import { useModules } from '@/lib/modules'
-import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { usePagedList } from '@/lib/paged'
+import { usePageSize } from '@/lib/pageSize'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { useContentLang } from '@/lib/settings'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
@@ -79,6 +80,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { RecordList, RecordView } from '@/components/RecordView'
 import { ViewToggle } from '@/components/ui/view-toggle'
+import { PageSizePick } from '@/components/ui/page-size-pick'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { QuickFill } from '@/components/ui/quick-fill'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -164,6 +166,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
   const [params] = useSearchParams()
   // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
   const [layout, setLayout] = useRecordLayout(module.key, 'rows')
+  const [pageSize, setPageSize, columns] = usePageSize(module.key, layout)
 
   const search = params.toString()
   const view = params.get('view') ?? 'all'
@@ -207,7 +210,8 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
   // გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
   const query = usePagedList({
     queryKey: ['custom-records', module.key, filters],
-    fetchPage: (page) => fetchCustomRecords(module.key, { ...filters, page, per_page: LIST_PAGE_SIZE }),
+    fetchPage: (page, per_page) => fetchCustomRecords(module.key, { ...filters, page, per_page }),
+    pageSize,
   })
   const categoriesQ = useQuery({
     queryKey: customCategoriesKey(module.key),
@@ -352,6 +356,8 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
           <>
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
+            {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
+            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} total={total} />
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input

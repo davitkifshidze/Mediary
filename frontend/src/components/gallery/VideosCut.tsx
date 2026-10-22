@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, ExternalLink, Images, Play, Search, User, Video } from 'lucide-react'
 import {
   deleteGalleryVideo,
@@ -13,6 +13,7 @@ import {
 import type { VideoPlatform } from '@/api/videos'
 import { useDateFormat } from '@/lib/dates'
 import { isAllowedEmbed } from '@/lib/embed'
+import { usePages } from '@/lib/paged'
 import { errorMessage } from '@/lib/errors'
 import { tintStyle } from '@/lib/gameMeta'
 import { useModules } from '@/lib/modules'
@@ -55,6 +56,9 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 
 const SORTS: GalleryVideoSort[] = ['new', 'old', 'title']
 
+/** გვერდზე — ბადის 4 სვეტის (და 3-ისა და 2-ის) ჯერადი */
+const VIDEO_PAGE_SIZE = 24
+
 export function VideosCut() {
   const { t } = useTranslation()
   const qc = useQueryClient()
@@ -65,7 +69,6 @@ export function VideosCut() {
   const { all: modules } = useModules()
   const player = usePlayer()
 
-  const [page, setPage] = useState(1)
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
   const [owner, setOwner] = useState<'all' | GalleryVideoOwnerType>('all')
@@ -76,21 +79,21 @@ export function VideosCut() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setTerm(q.trim())
-      setPage(1)
     }, 350)
     return () => clearTimeout(timer)
   }, [q])
 
-  const query = useQuery({
-    queryKey: ['gallery-videos', { page, term, owner, sort }],
-    queryFn: () =>
+  /* 24 = 4 სვეტის ჯერადი (6 რიგი); ნომრები + „მეტის ჩვენება" — ფილტრის შეცვლა პირველ გვერდზე აბრუნებს */
+  const query = usePages({
+    queryKey: ['gallery-videos', { term, owner, sort }],
+    fetchPage: (page) =>
       fetchGalleryVideos({
         page,
-        per_page: 24,
+        per_page: VIDEO_PAGE_SIZE,
         q: term || undefined,
         owner_type: owner === 'all' ? undefined : owner,
         sort,
-      }),
+      }).then((r) => ({ items: r.data, total: r.meta.total, lastPage: r.meta.last_page })),
   })
 
   const remove = useMutation({
@@ -103,8 +106,7 @@ export function VideosCut() {
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  const items = useMemo(() => query.data?.data ?? [], [query.data])
-  const meta = query.data?.meta
+  const items = query.items
 
   const toItem = (video: GalleryVideoItem): PlayerItem => ({
     kind: 'link',
@@ -163,7 +165,6 @@ export function VideosCut() {
         value={owner}
         onChange={(key) => {
           setOwner(key as 'all' | GalleryVideoOwnerType)
-          setPage(1)
         }}
       />
       <div className="flex flex-wrap items-center gap-2">
@@ -178,7 +179,6 @@ export function VideosCut() {
               value={sort}
               onValueChange={(next) => {
                 setSort(next as GalleryVideoSort)
-                setPage(1)
               }}
             >
               <SelectTrigger className="h-9 w-auto min-w-32 text-sm">
@@ -360,10 +360,7 @@ export function VideosCut() {
         grid(items)
       )}
 
-      {meta && meta.last_page > 1 && (
-        // ნომრები; „მეტის ნახვა" ფოტოს ბადეში რაოდენობის არჩევაა
-        <Pagination page={meta.page} lastPage={meta.last_page} total={meta.total} onPage={setPage} />
-      )}
+      {!query.isLoading && <Pagination {...query.pagination} />}
 
     </div>
   )

@@ -26,7 +26,7 @@ import { LOCKED_PHOTO_PLACEHOLDER } from '@/lib/lockedPhoto'
 import { photoActions, type PhotoAction } from '@/lib/photoActions'
 import { formatDuration } from '@/lib/videoDuration'
 import { EmptyState } from '@/components/ui/empty-state'
-import { NumberPick } from '@/components/ui/number-pick'
+import { PageSizePick } from '@/components/ui/page-size-pick'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
 import {
   ContextMenu,
@@ -41,6 +41,7 @@ import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/ui/pagination'
 import { useClientPages } from '@/lib/paged'
+import { PAGE_ALL, PHOTO_COLUMNS, PHOTO_PER_PAGE_MAX, usePhotoPageSize } from '@/lib/pageSize'
 import 'yet-another-react-lightbox/styles.css'
 import 'yet-another-react-lightbox/plugins/counter.css'
 import 'yet-another-react-lightbox/plugins/thumbnails.css'
@@ -168,27 +169,11 @@ const LIGHTBOX_NATIVE_FROM = 1200
 
 const PLUGINS = [Slideshow, Zoom, Thumbnails, Counter, Fullscreen, Video]
 
-/**
- * „რამდენი ფოტო გამოჩნდეს" — **ერთი ნაკრები ყველგან, სადაც ფოტო ჩანს**
- * (user-ის მოთხოვნა). `0` = „ყველა".
- *
- * ⚠️ სწორედ იმიტომაა `PhotoGrid`-ში და არა ცალკე კომპონენტად ყოველ გვერდზე,
- * რომ გალერეამ, ჩანაწერმა, მსახიობმა და პროფილის ფაილებმა ერთნაირად
- * მოიქცნენ — ოთხი ასლი ოთხნაირად დაითვლიდა.
- */
-const PHOTO_PAGE_SIZES = [10, 20, 30, 40, 50] as const
-
-export const PHOTO_PAGE_ALL = 0
-
-/** ნაგულისხმევი — 20 (ადრე ბადეზე ან ყველაფერი იყო, ან ჩაჭედილი 8) */
-export const PHOTO_PAGE_DEFAULT = 20
-
-/**
- * ⚠️ **ჭერი სერვერისაა და არა ბადისა** — მართულ რეჟიმში ეს რიცხვი
- * `per_page`-ად მიდის, რომელსაც `GalleryController::MAX_PER_PAGE` 1000-ზე
- * ჩერდება; ხელით ჩაწერილი 5000 იქ 422-ს დააბრუნებდა.
- */
-const PHOTO_PAGE_MAX = 1000
+/* „რამდენი ფოტო გამოჩნდეს" — **ერთი ამრჩევი ყველგან, სადაც ფოტო ჩანს** (`PageSizePick`):
+   4 სვეტის ჯერადები (12 · 16 · 20 · 24 · 32 · 48 · 80, ნაგულისხმევი 16) + „ყველა" + „სხვა";
+   არჩევანი ბრაუზერშია (`usePhotoPageSize`). ⚠️ ჭერი სერვერისაა და არა ბადისა — მართულ
+   რეჟიმში რიცხვი `per_page`-ად მიდის, რომელსაც `GalleryController::MAX_PER_PAGE` 1000-ზე
+   ჩერდება (`PHOTO_PER_PAGE_MAX`). ადრე ზომები 10-ის ჯერადი იყო — 10 ფოტო = 4 + 4 + 2. */
 
 /**
  * გახსნილი სლაიდის რამდენ მეზობელს წამოვიღებთ წინასწარ.
@@ -201,53 +186,6 @@ const PRELOAD_AROUND = 2
 
 /** ჩამოტვირთვისთვის ხელით შექმნილი object URL-ის სიცოცხლე */
 const REVOKE_AFTER_MS = 10_000
-
-/**
- * „რამდენი გამოჩნდეს" — **სელექტი მზა რიცხვებით + „სხვა"** (შენი მითითება,
- * 2026-09-13). ადრე ექვსი ჩიპის რიგი იყო, ე.ი. არჩევანი ფიქსირებულ ხუთ
- * რიცხვს ებმებოდა და ხელსაწყოთა ზოლის ნახევარს ჭამდა.
- *
- * ⚠️ **ეს `NumberPick`-ია და არა საკუთარი სელექტი** — იმავე კონტროლს
- * იყენებს გალერეის ჩამოტვირთვის დიალოგი; ორი ასლი „სხვა"-ს ორნაირად
- * მოაქცევდა.
- *
- * ⚠️ **ნული აქ „ყველა"-ა და არა „არცერთი"** (`noneLabel`), და სიის
- * **ბოლოშია** (`noneLast`) — „10 · 20 · 30 · 40 · 50 · ყველა · სხვა"
- * ზუსტად ისე იკითხება, როგორც ითხოვე.
- */
-export function PhotoPageSizePick({
-  value,
-  onChange,
-  total,
-  className,
-}: {
-  value: number
-  onChange: (size: number) => void
-  /** სულ რამდენი ფოტოა — პატარა სიაზე არჩევანს აზრი არ აქვს */
-  total: number
-  className?: string
-}) {
-  const { t } = useTranslation()
-
-  if (total <= PHOTO_PAGE_SIZES[0]) return null
-
-  return (
-    <span className={cn('flex items-center gap-2', className)}>
-      <span className="text-xs text-muted-foreground">{t('photos.show')}</span>
-      <NumberPick
-        value={value}
-        onChange={onChange}
-        options={[...PHOTO_PAGE_SIZES]}
-        allowNone
-        noneLabel={t('photos.showAll')}
-        noneLast
-        size="sm"
-        min={1}
-        max={PHOTO_PAGE_MAX}
-      />
-    </span>
-  )
-}
 
 export function PhotoGrid({
   items,
@@ -295,7 +233,7 @@ export function PhotoGrid({
    * სხვის გვერდს ემსახურება, სადაც წაშლის ღილაკი არასდროს უნდა გაჩნდეს.
    *
    * ⚠️ **გვერდებს აქ გამომძახებელი ჭრის** („მეტის ჩვენება" სერვერიდან), ამიტომ
-   * ის `pageSize={PHOTO_PAGE_ALL}`-ს გადასცემს — „რამდენი გამოჩნდეს" არჩევანი
+   * ის `pageSize={PAGE_ALL}`-ს გადასცემს — „რამდენი გამოჩნდეს" არჩევანი
    * ხომ ზოლთან ერთად ქრება.
    */
   readOnly?: boolean
@@ -370,8 +308,9 @@ export function PhotoGrid({
   const resolved = useRef<Record<number, string>>({})
   /** გადახატვის ბიძგი მხოლოდ მაშინ, როცა გახსნილ ხედს ახალი მისამართი სჭირდება */
   const [slideVersion, setSlideVersion] = useState(0)
-  /** არამართული რეჟიმის საკუთარი მდგომარეობა */
-  const [ownSize, setOwnSize] = useState(pageSize ?? PHOTO_PAGE_DEFAULT)
+  /* არამართული რეჟიმი: ბრაუზერში შენახული ზომა; ფიქსირებული `pageSize` (მაგ. „ყველა") — საწყისი */
+  const [storedSize, setStoredSize] = usePhotoPageSize()
+  const [ownSize, setOwnSize] = useState(pageSize)
 
   /* ⚠️ კითხვის რეჟიმში ჩამწერი მოქმედებები აქვე ქრება — ზოლიც და უჯრაც ამ
      სამს კითხულობს და არა პროპებს (იხ. `readOnly`) */
@@ -381,11 +320,11 @@ export function PhotoGrid({
   const favorite = readOnly ? undefined : onFavorite
 
   const controlled = !!onPageSizeChange
-  const size = controlled ? (pageSize ?? PHOTO_PAGE_DEFAULT) : ownSize
+  const size = controlled ? (pageSize ?? storedSize) : (ownSize ?? storedSize)
   /* ნომრები + „მეტის ჩვენება" (`useClientPages`); მართულ რეჟიმში სერვერი ჭრის.
      ⚠️ სიის შემცირებისას (ფილტრი, წაშლა) დიაპაზონი ბოლო არსებულ გვერდზე ჩამოდის — „მე-4
      გვერდი" ცარიელი აღარ რჩება */
-  const pages = useClientPages(items, controlled ? PHOTO_PAGE_ALL : size)
+  const pages = useClientPages(items, controlled ? PAGE_ALL : size)
 
   // ბადის შეცვლაზე მონიშვნა ძველ id-ებზე რჩებოდა და „წაშალე მონიშნულები"
   // უკვე არარსებულს შლიდა
@@ -632,14 +571,18 @@ export function PhotoGrid({
           {extraTools}
 
           {/* „რამდენი გამოჩნდეს" — ყველგან, სადაც ფოტო ჩანს */}
-          <PhotoPageSizePick
+          <PageSizePick
             className="ml-auto"
+            size="sm"
+            columns={PHOTO_COLUMNS}
+            max={PHOTO_PER_PAGE_MAX}
             value={size}
             total={total ?? items.length}
             onChange={(next) => {
               pages.reset()
               if (onPageSizeChange) onPageSizeChange(next)
-              else setOwnSize(next)
+              else if (ownSize !== undefined) setOwnSize(next)
+              else setStoredSize(next)
             }}
           />
         </div>

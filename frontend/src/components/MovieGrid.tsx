@@ -21,7 +21,9 @@ import type { RecordLayout } from '@/lib/recordLayout'
 /** ბარათის ზომა = სვეტების რაოდენობა; `medium` ისტორიული ნაგულისხმევია */
 /* ⚠️ **კონტეინერის** ზღვრები და არა ეკრანისა: `<main>` `@container`-ია
    და დამკვრელის პანელით მიწოლილ გვერდზე სვეტები თავისით იკლებს. `@2xl`=42rem ≈ `sm`,
-   `@3xl`=48rem ≈ `md`, `@5xl`=64rem ≈ `lg`, `@7xl`=80rem = `xl` (1280px). */
+   `@3xl`=48rem ≈ `md`, `@5xl`=64rem ≈ `lg`, `@7xl`=80rem = `xl` (1280px).
+   ⚠️ ზედა ზღვარი (10 · 6 · 4) `lib/pageSize.ts`-ის `POSTER_COLUMNS`-შიცაა — „გვერდზე
+   რამდენის" ვარიანტები მისი ჯერადია; ერთად უნდა შეიცვალოს. */
 const COLUMNS: Record<CardSize, string> = {
   compact: 'grid-cols-3 @2xl:grid-cols-4 @3xl:grid-cols-6 @5xl:grid-cols-8 @7xl:grid-cols-10',
   medium: 'grid-cols-2 @2xl:grid-cols-3 @3xl:grid-cols-4 @5xl:grid-cols-5 @7xl:grid-cols-6',

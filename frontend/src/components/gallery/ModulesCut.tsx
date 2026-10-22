@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -9,11 +8,13 @@ import { formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { QueryErrorState } from '@/components/ui/query-error-state'
-import { PhotoGrid, PHOTO_PAGE_DEFAULT } from '@/components/ui/photo-grid'
+import { PhotoGrid } from '@/components/ui/photo-grid'
 import { PhotoStack } from '@/components/ui/photo-stack'
 import { contextMenuItems, MENU_ICONS } from '@/components/ui/record-menu'
 import { GalleryStackSkeleton, GallerySkeletonGrid } from '@/components/gallery/GalleryPhotoGrid'
 import { Pagination } from '@/components/ui/pagination'
+import { usePages } from '@/lib/paged'
+import { PHOTO_PER_PAGE_MAX, usePhotoPageSize } from '@/lib/pageSize'
 
 /* ============================================================
    **სხვა მოდულების ფოტოები**.
@@ -117,16 +118,24 @@ function ModulePhotos({
   onBack: () => void
 }) {
   const { t } = useTranslation()
-  const [page, setPage] = useState(1)
-  const [perPage, setPerPage] = useState(PHOTO_PAGE_DEFAULT)
+  const [pageSize, setPageSize] = usePhotoPageSize()
 
-  const query = useQuery({
-    queryKey: ['gallery-module-photos', group.module, page, perPage],
-    queryFn: () => fetchModulePhotos(group.module!, { page, per_page: perPage || 100 }),
+  /* ნომრები + „მეტის ჩვენება" — შემდეგი გვერდი ქვემოთ ემატება (`usePages`) */
+  const query = usePages({
+    queryKey: ['gallery-module-photos', group.module],
+    fetchPage: (page, per_page) =>
+      fetchModulePhotos(group.module!, { page, per_page }).then((r) => ({
+        items: r.data,
+        total: r.meta.total,
+        lastPage: r.meta.last_page,
+        truncated: r.meta.truncated,
+      })),
+    pageSize,
+    maxPerPage: PHOTO_PER_PAGE_MAX,
   })
 
-  const rows = query.data?.data ?? []
-  const meta = query.data?.meta
+  const rows = query.items
+  const truncated = query.first?.truncated
 
   return (
     <section>
@@ -142,9 +151,9 @@ function ModulePhotos({
             <span className="text-muted-foreground">·</span>
             <span className="truncate">{title}</span>
             <span className="text-muted-foreground">·</span>
-            <span className="text-sm font-normal text-muted-foreground">{t('gallery.photos', { count: meta?.total ?? 0 })}</span>
+            <span className="text-sm font-normal text-muted-foreground">{t('gallery.photos', { count: query.total })}</span>
           </h2>
-          {meta?.truncated && <p className="truncate text-xs text-muted-foreground">{t('gallery.moduleTruncated')}</p>}
+          {truncated && <p className="truncate text-xs text-muted-foreground">{t('gallery.moduleTruncated')}</p>}
         </div>
       </div>
 
@@ -166,19 +175,13 @@ function ModulePhotos({
             portrait: row.kind === 'cover',
             size: row.size,
           }))}
-          pageSize={perPage}
-          onPageSizeChange={(size) => {
-            setPerPage(size)
-            setPage(1)
-          }}
-          total={meta?.total}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          total={query.total}
         />
       )}
 
-      {meta && meta.last_page > 1 && (
-        // ნომრები; „მეტის ნახვა" ფოტოს ბადეში რაოდენობის არჩევაა
-        <Pagination page={meta.page} lastPage={meta.last_page} total={meta.total} onPage={setPage} />
-      )}
+      {!query.isLoading && !query.isError && <Pagination {...query.pagination} />}
     </section>
   )
 }

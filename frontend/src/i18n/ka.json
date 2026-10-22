@@ -2799,8 +2799,6 @@
     "deleteAll": "ყველას წაშლა ({{count}})",
     "deleteSelected": "მონიშნულების წაშლა ({{count}})",
     "empty": "ფოტო ჯერ არ არის.",
-    "show": "აჩვენე",
-    "showAll": "ყველა",
     "info": "ფოტოს შესახებ",
     "infoName": "სახელი",
     "infoFrom": "საიდან",
@@ -3019,7 +3017,6 @@
   },
   "table": {
     "search": "ძებნა…",
-    "perPage": "{{count}} გვერდზე",
     "rowCount": "ნაჩვენებია {{shown}} / {{total}}",
     "empty": "არაფერი მოიძებნა."
   },
@@ -3213,6 +3210,8 @@
   },
   "list": {
     "showMore": "მეტის ჩვენება",
+    "perPage": "გვერდზე",
+    "all": "ყველა",
     "shown": "ნაჩვენებია {{shown}} / {{total}}-დან"
   },
   "cast": {
