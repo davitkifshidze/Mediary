@@ -1,10 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ImagePlus, PenLine } from 'lucide-react'
+import { ImagePlus, Lock, PenLine } from 'lucide-react'
 import {
   deletePersonalMedia,
   fetchPersonalMedia,
+  lockPersonalMedia,
   PERSONAL_KEY,
   togglePersonalFavorite,
   updatePersonalMedia,
@@ -12,7 +13,7 @@ import {
   type PersonalMediaFilters,
 } from '@/api/personal'
 import { useDateFormat } from '@/lib/dates'
-import { errorMessage } from '@/lib/errors'
+import { errorMessage, isApiCode } from '@/lib/errors'
 import { usePages } from '@/lib/paged'
 import { invalidatePersonal, personalPhotoItem } from '@/lib/personal'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,7 @@ import { PhotoGrid } from '@/components/ui/photo-grid'
 import { usePhotoPageSize } from '@/lib/pageSize'
 import { Pagination } from '@/components/ui/pagination'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
+import { LockedPhotosAlbumDialog } from '@/components/gallery/LockedPhotosAlbumDialog'
 import { PersonalMoveDialog } from '@/components/personal/PersonalMoveDialog'
 
 /* ============================================================
@@ -36,6 +38,11 @@ import { PersonalMoveDialog } from '@/components/personal/PersonalMoveDialog'
    გადატანა პიროვნებაში/ალბომში, „მთავარად დაყენება" პიროვნებაზე/ალბომზე,
    წარწერა. მესამე ბადის დაწერა ზუსტად ის ასლი იქნებოდა, რომელიც სხვაგვარად
    მოიქცეოდა.
+
+   ⚠️ **„ჩაკეტვა" — გალერეის წესით** (`lockPersonalMedia`): ფოტო/ვიდეო სისტემურ
+   „ჩაკეტილ ფოტოებში" გადადის და ბადიდან ქრება; პირველად სერვერი 409-ით
+   ითხოვს პაროლს და იგივე ფანჯარა (`LockedPhotosAlbumDialog`) იმავე ფაილებს
+   ხელახლა აგზავნის. მონიშნულზე — ყველა მონიშნული.
 
    ⚠️ **„წარწერა" ფილის ღილაკიცაა** (`quick` — „რჩეული · წარწერა · წაშლა" + ⋯)
    და გახსნილ ფოტოზე ლაითბოქსის ზოლშიც — მენიუში დამალული აღარ არის.
@@ -69,6 +76,8 @@ export function PersonalMediaGrid({
 
   const [moving, setMoving] = useState<number[] | null>(null)
   const [captioning, setCaptioning] = useState<PersonalMedia | null>(null)
+  /** რომლის ჩაკეტვას ელოდება „ჩაკეტილი ფოტოების" პაროლი (პირველი ჩაკეტვა) */
+  const [lockingIds, setLockingIds] = useState<number[] | null>(null)
 
   // ⚠️ ჩადგმული სიაა (ჩანართი, ალბომი) — გვერდი მისამართს არ ეხება; ზომა ფოტოს ბადის არჩევანია
   const [pageSize, setPageSize] = usePhotoPageSize()
@@ -85,6 +94,22 @@ export function PersonalMediaGrid({
     mutationFn: (id: number) => togglePersonalFavorite(id),
     onSuccess: () => invalidatePersonal(qc),
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  const lock = useMutation({
+    mutationFn: ({ ids, password }: { ids: number[]; password?: string }) => lockPersonalMedia(ids, password),
+    onSuccess: (result) => {
+      invalidatePersonal(qc)
+      setLockingIds(null)
+      toast({ title: t('lock.photosDone', { count: result.locked }), variant: 'success' })
+    },
+    onError: (e, vars) => {
+      if (isApiCode(e, 'locked_album_password_required')) {
+        setLockingIds(vars.ids)
+        return
+      }
+      toast({ title: errorMessage(e), variant: 'error' })
+    },
   })
 
   const remove = async (ids: number[]) => {
@@ -121,8 +146,8 @@ export function PersonalMediaGrid({
         onFavorite={(id) => favorite.mutate(id)}
         onPrimary={primary ? (id) => primary.set(id) : undefined}
         primaryId={primary?.id ?? null}
-        extraActions={(item, targets) =>
-          targets.length === 1
+        extraActions={(item, targets) => [
+          ...(targets.length === 1
             ? [
                 {
                   key: 'caption',
@@ -132,8 +157,14 @@ export function PersonalMediaGrid({
                   quick: true,
                 },
               ]
-            : []
-        }
+            : []),
+          {
+            key: 'lock',
+            label: targets.length > 1 ? t('lock.photos', { count: targets.length }) : t('lock.photo'),
+            icon: Lock,
+            run: () => lock.mutate({ ids: targets }),
+          },
+        ]}
         lightboxExtra={(item, close) => (
           <button
             type="button"
@@ -159,6 +190,14 @@ export function PersonalMediaGrid({
 
       {moving && <PersonalMoveDialog ids={moving} onClose={() => setMoving(null)} />}
       {captioning && <CaptionDialog media={captioning} onClose={() => setCaptioning(null)} />}
+      {lockingIds && (
+        <LockedPhotosAlbumDialog
+          count={lockingIds.length}
+          busy={lock.isPending}
+          onSubmit={(password) => lock.mutate({ ids: lockingIds, password })}
+          onClose={() => setLockingIds(null)}
+        />
+      )}
     </>
   )
 }

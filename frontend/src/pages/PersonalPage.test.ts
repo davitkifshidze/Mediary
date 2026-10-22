@@ -3,6 +3,7 @@ import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { AxiosError } from 'axios'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { FeedbackProvider } from '@/components/ui/feedback'
 import type { Person, PersonalMedia } from '@/api/personal'
@@ -23,6 +24,9 @@ import i18n from '@/i18n'
    ტექსტით; პიროვნების გვერდი — „ყველა" ჩანართი და „ალბომით" დაჯგუფება; ალბომის
    გვერდი — ყველა · ფოტოები · ვიდეოები; ბადის უჯრა — ესკიზი ბადეში, სრული
    ფოტო ლაითბოქსში, ვიდეო პირდაპირი მისამართით.
+
+   ბარათები: სამი `h-9` ღილაკი + ⋯, ჩაკეტვა/ისევ ჩაკეტვა/პაროლი მენიუდან;
+   ფოტოს ჩაკეტვა — პირველად „ჩაკეტილი ფოტოების" პაროლი, მერე იგივე ფოტოები.
 
    ჩაკეტილი პიროვნება ბოქლომიანი ბარათია: დაჭერა პაროლს ითხოვს და არა
    გვერდს ხსნის, გვერდი კი მხოლოდ ბოქლომს ხატავს (ბადე საერთოდ არ ითხოვება).
@@ -101,6 +105,7 @@ const mocks = vi.hoisted(() => ({
   fetchPersonalAlbums: vi.fn(),
   fetchPerson: vi.fn(),
   fetchPersonalAlbum: vi.fn(),
+  lockPersonalMedia: vi.fn(),
   unlockRecord: vi.fn(),
   uploadPersonalMedia: vi.fn(),
   fetchUploadLimits: vi.fn(),
@@ -115,6 +120,7 @@ vi.mock('@/api/personal', async (original) => ({
   fetchPersonalAlbums: mocks.fetchPersonalAlbums,
   fetchPerson: mocks.fetchPerson,
   fetchPersonalAlbum: mocks.fetchPersonalAlbum,
+  lockPersonalMedia: mocks.lockPersonalMedia,
   uploadPersonalMedia: mocks.uploadPersonalMedia,
 }))
 
@@ -466,6 +472,93 @@ describe('PersonalPersonPage', () => {
     const groups = container!.querySelector('[data-testid="personal-groups"]')!
     expect(groups.textContent).toContain('ზღვა')
     expect(groups.textContent).toContain(i18n.t('personal.groups.noAlbum'))
+  })
+})
+
+describe('card actions and locks', () => {
+  /** `⋯` — პუნქტები ბარათის გარეთ, ღილაკებად იხატება */
+  async function openMenu(card: HTMLElement) {
+    await act(async () => card.querySelector<HTMLButtonElement>(`[aria-label="${i18n.t('actions.more')}"]`)!.click())
+    await flush()
+    return [...document.body.querySelectorAll<HTMLButtonElement>('button')].filter((b) => !container!.contains(b))
+  }
+  const cardOf = (name: string) => [...container!.querySelectorAll<HTMLElement>('li')].find((li) => li.textContent?.includes(name))!
+
+  it('draws three h-9 buttons and puts "lock" in the ⋯ menu of a person card', async () => {
+    defaults()
+    const { PersonalPage } = await import('@/pages/PersonalPage')
+    await render(h(PersonalPage, { cut: 'people' }))
+
+    const card = cardOf('Person 1')
+    const row = [...card.querySelectorAll<HTMLButtonElement>('button')].slice(-4)
+    expect(row.map((b) => b.textContent?.trim())).toEqual([i18n.t('actions.open'), i18n.t('actions.edit'), i18n.t('confirm.delete'), ''])
+    // ⚠️ სიმაღლეს `PhotoStack`-ის ზოლი წყვეტს (`[&>*]:h-9`) — `h-7` გადაფარვა აღარ არის
+    row.slice(0, 3).forEach((b) => expect(b.className).toContain('h-9'))
+    expect(row[0].parentElement?.className).toContain('[&>*]:h-9')
+    expect(card.innerHTML).not.toContain('h-7')
+
+    const items = await openMenu(card)
+    const lock = items.find((b) => b.textContent?.trim() === i18n.t('lock.lock'))!
+    expect(lock).toBeTruthy()
+    await act(async () => lock.click())
+    await flush()
+    expect(document.getElementById('record-lock-form')).toBeTruthy()
+  })
+
+  it('offers "lock again" and "password" on a locked card, and only "password" besides "unlock" on a hidden one', async () => {
+    defaults()
+    mocks.fetchPeople.mockResolvedValue([
+      person(1, { name: 'ღია', locked: true, unlocked: true }),
+      person(2, { name: 'დამალული', locked: true, unlocked: false }),
+    ])
+    const { PersonalPage } = await import('@/pages/PersonalPage')
+    await render(h(PersonalPage, { cut: 'people' }))
+
+    const open = (await openMenu(cardOf('ღია'))).map((b) => b.textContent?.trim())
+    expect(open).toContain(i18n.t('lock.relock'))
+    expect(open).toContain(i18n.t('lock.password'))
+    await act(async () => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+    await flush()
+
+    const hiddenCard = cardOf('დამალული')
+    expect([...hiddenCard.querySelectorAll('button')].slice(-2).map((b) => b.textContent?.trim())).toEqual([i18n.t('lock.unlock'), ''])
+    const hidden = (await openMenu(hiddenCard)).map((b) => b.textContent?.trim())
+    expect(hidden).toContain(i18n.t('lock.password'))
+    expect(hidden).not.toContain(i18n.t('lock.relock'))
+    expect(hidden).not.toContain(i18n.t('actions.edit'))
+  })
+
+  it('locks a photo into "Locked photos", asking for that album\'s password the first time', async () => {
+    defaults()
+    mocks.lockPersonalMedia
+      .mockRejectedValueOnce(
+        new AxiosError('conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
+          status: 409,
+          statusText: 'Conflict',
+          headers: {},
+          config: {} as never,
+          data: { message: 'locked_album_password_required' },
+        }),
+      )
+      .mockResolvedValueOnce({ album_id: 9, created: true, locked: 1 })
+    const { PersonalMediaGrid } = await import('@/components/personal/PersonalMediaGrid')
+    await render(h(PersonalMediaGrid, { filters: {} }))
+
+    const tile = container!.querySelector<HTMLElement>('ul > li')!
+    const lock = (await openMenu(tile)).find((b) => b.textContent?.trim() === i18n.t('lock.photo'))!
+    await act(async () => lock.click())
+    await flush()
+
+    expect(mocks.lockPersonalMedia).toHaveBeenCalledWith([1], undefined)
+    expect(document.getElementById('locked-photos-form')).toBeTruthy()
+
+    await act(async () => typeInto(document.getElementById('locked-photos-password') as HTMLInputElement, 'secret1'))
+    await act(async () => typeInto(document.getElementById('locked-photos-repeat') as HTMLInputElement, 'secret1'))
+    await act(async () => (document.getElementById('locked-photos-form') as HTMLFormElement).requestSubmit())
+    await flush()
+
+    expect(mocks.lockPersonalMedia).toHaveBeenLastCalledWith([1], 'secret1')
+    expect(document.getElementById('locked-photos-form')).toBeNull()
   })
 })
 

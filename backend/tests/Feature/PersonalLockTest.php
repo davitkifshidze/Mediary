@@ -437,6 +437,76 @@ class PersonalLockTest extends TestCase
         $this->get("/api/public/profiles/nino/personal-media/{$hidden->id}/file")->assertNotFound();
     }
 
+    /* ---------- ცალკეული ფოტოს/ვიდეოს ჩაკეტვა ---------- */
+
+    public function test_locking_a_photo_moves_it_into_the_locked_photos_album_and_hides_it_everywhere(): void
+    {
+        $this->publicProfile();
+        $person = $this->person('დათო');
+        $trip = $this->album('მოგზაურობა', null, ['visibility' => 'public']);
+        $photo = $this->media(['person_id' => $person->id, 'album_id' => $trip->id]);
+        $video = $this->media(['person_id' => $person->id, 'kind' => 'video', 'thumb_path' => null]);
+        $kept = $this->media(['person_id' => $person->id]);
+
+        // პირველად ალბომი არ არსებობს — პაროლი სჭირდება
+        $this->postJson('/api/personal/media/lock', ['ids' => [$photo->id, $video->id]])
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'locked_album_password_required');
+
+        $this->postJson('/api/personal/media/lock', ['ids' => [$photo->id, $video->id], 'password' => 'secret1'])
+            ->assertOk()
+            ->assertJsonPath('created', true)
+            ->assertJsonPath('locked', 2);
+
+        $album = PersonalAlbum::query()->where('name', 'ჩაკეტილი ფოტოები')->firstOrFail();
+        $this->assertNull($album->person_id, 'ალბომი უპიროვნოა');
+        $this->assertSame($album->id, $photo->fresh()->album_id, 'ფოტო თავისი ალბომიდან გამოდის');
+        $this->assertSame($person->id, $photo->fresh()->person_id, 'პიროვნება რჩება');
+
+        // ქრება ყველგან: სიიდან, პიროვნებიდან, ძველი ალბომიდან, ჯამებიდან, ჯგუფებიდან, საჯაროდან
+        $this->assertSame([$kept->id], $this->listedMedia());
+        $this->assertSame([$kept->id], $this->listedMedia("?person_id={$person->id}"));
+        $this->assertSame([], $this->listedMedia("?album_id={$trip->id}"));
+        $this->getJson('/api/personal/summary')->assertJsonPath('photos', 1)->assertJsonPath('videos', 0);
+        $groups = collect($this->getJson("/api/personal/media/groups?by=album&person_id={$person->id}")->json('data'))->pluck('key')->all();
+        $this->assertSame(['album:none'], $groups, 'ჩაკეტილი ალბომი პიროვნების ჯგუფებშიც არ ჩანს');
+        $this->get("/api/public/profiles/nino/personal-media/{$photo->id}/file")->assertNotFound();
+
+        // ალბომი ალბომების ჭრილში ბოქლომიანი ბარათია
+        $card = collect($this->getJson('/api/personal/albums')->json('data'))->firstWhere('id', $album->id);
+        $this->assertTrue($card['locked']);
+        $this->assertFalse($card['unlocked']);
+        $this->assertSame(1, $card['photos']);
+        $this->assertSame(1, $card['videos']);
+
+        // მეორე ჩაკეტვა იმავე ალბომში მიდის, პაროლის გარეშე
+        $this->postJson('/api/personal/media/lock', ['ids' => [$kept->id]])->assertOk()->assertJsonPath('created', false);
+        $this->assertSame(1, PersonalAlbum::query()->where('name', 'ჩაკეტილი ფოტოები')->count());
+        $this->assertSame([], $this->listedMedia());
+
+        // გახსნის შემდეგ ჩანს — „ჩაკეტილ ფოტოებში" და თავის პიროვნებაში
+        $this->spa()->postJson("/api/personal/albums/{$album->id}/unlock", ['password' => 'secret1'])->assertOk();
+        $this->assertEqualsCanonicalizing([$photo->id, $video->id, $kept->id], $this->listedMedia("?album_id={$album->id}"));
+        $this->assertCount(3, $this->listedMedia("?person_id={$person->id}"));
+    }
+
+    public function test_a_trashed_locked_photos_album_asks_for_a_new_password_and_others_photos_are_not_found(): void
+    {
+        $first = $this->media();
+        $this->postJson('/api/personal/media/lock', ['ids' => [$first->id], 'password' => 'secret1'])->assertOk();
+        $album = PersonalAlbum::query()->where('name', 'ჩაკეტილი ფოტოები')->firstOrFail();
+        $album->moveToTrash();
+
+        $second = $this->media();
+        $this->postJson('/api/personal/media/lock', ['ids' => [$second->id]])->assertStatus(409);
+
+        $other = User::create(['name' => 'gio', 'username' => 'gio', 'email' => 'gio@example.com', 'password' => 'password']);
+        $foreign = PersonalMedia::withoutGlobalScopes()->create([
+            'user_id' => $other->id, 'kind' => 'photo', 'path' => 'personal/photos/x.jpg', 'original_name' => 'x.jpg', 'mime' => 'image/jpeg', 'size' => 1,
+        ]);
+        $this->postJson('/api/personal/media/lock', ['ids' => [$foreign->id], 'password' => 'secret1'])->assertNotFound();
+    }
+
     /** ⚠️ ჩაკეტილი ალბომი საჯარო არასდროსაა — მფლობელის სესიაში გახსნილიც */
     public function test_a_locked_album_is_never_public_even_when_its_owner_opened_it(): void
     {

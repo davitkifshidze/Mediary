@@ -246,6 +246,19 @@ export async function fetchPersonalMedia(filters: PersonalMediaFilters = {}): Pr
   return readPage<PersonalMedia>(data)
 }
 
+/**
+ * **ფოტოს/ვიდეოს ჩაკეტვა**: სისტემურ ჩაკეტილ ალბომში („ჩაკეტილი ფოტოები")
+ * გადატანა — გალერეის წესით. ⚠️ პირველად ალბომი არ არსებობს — 409
+ * `locked_album_password_required`, მაშინ იგივე იგზავნება `password`-ით.
+ */
+export async function lockPersonalMedia(
+  ids: number[],
+  password?: string,
+): Promise<{ album_id: number; created: boolean; locked: number }> {
+  const { data } = await api.post('/personal/media/lock', { ids, ...(password ? { password } : {}) })
+  return data
+}
+
 /** `person_id` — პიროვნების გვერდის „ალბომით" ხედი (მხოლოდ მისი ფოტო/ვიდეო) */
 export async function fetchPersonalGroups(
   by: PersonalGrouping,

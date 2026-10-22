@@ -12,6 +12,7 @@ use App\Services\Personal\PersonalGallery;
 use App\Services\Storage\StorageMeter;
 use App\Support\AppTime;
 use App\Support\Like;
+use App\Support\LockedPersonalMedia;
 use App\Support\RecordLocks;
 use App\Support\SafeMime;
 use App\Support\StorageFolder;
@@ -188,6 +189,44 @@ class PersonalMediaController extends Controller
         $media = PersonalMedia::query()->whereIn('id', array_map('intval', $data['ids']))->get();
 
         return response()->json(['moved' => $this->gallery->move($media, $changes)]);
+    }
+
+    /**
+     * **ფოტოს/ვიდეოს ჩაკეტვა** — `POST /personal/media/lock`.
+     *
+     * ფოტოს თავისი ლოკი არ აქვს: ის სისტემურ ჩაკეტილ ალბომში („ჩაკეტილი ფოტოები",
+     * `LockedPersonalMedia`) გადადის — იმავე გზით, რითაც ხელით გადატანა
+     * (`PersonalGallery::move()`); პიროვნება რჩება, ალბომი უპიროვნოა. ⚠️ ალბომი
+     * პირველად აქ იქმნება და პაროლს ითხოვს — მის გარეშე 409
+     * `locked_album_password_required` (SPA ფანჯარას აჩვენებს და იმავეს
+     * გაიმეორებს). ⚠️ ახალი ალბომი ამ სესიაში **არ** იხსნება — „ჩაკეტე"
+     * ფოტოს მაშინვე მალავს. ⚠️ ბოლო სეგმენტი `lock` `UPDATE_ENDPOINTS`-შია.
+     */
+    public function lock(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:1000'],
+            'ids.*' => ['integer'],
+            'password' => ['nullable', 'string', 'min:4', 'max:100'],
+        ]);
+
+        // ⚠️ სქოუპებით — მხოლოდ ჩემი, ხილული ფოტოები (სხვისი უბრალოდ ვერ მოიძებნება)
+        $media = PersonalMedia::query()->whereIn('id', array_map('intval', $data['ids']))->get();
+        abort_if($media->isEmpty(), 404, 'not_found');
+
+        $user = $request->user();
+        $album = LockedPersonalMedia::album($user);
+        $created = false;
+
+        if ($album === null) {
+            abort_if(($data['password'] ?? null) === null, 409, 'locked_album_password_required');
+            $album = LockedPersonalMedia::create($user, $data['password']);
+            $created = true;
+        }
+
+        $this->gallery->move($media, ['album_id' => $album->id]);
+
+        return response()->json(['album_id' => $album->id, 'created' => $created, 'locked' => $media->count()]);
     }
 
     /**

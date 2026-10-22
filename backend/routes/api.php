@@ -995,6 +995,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/personal/media/groups', [PersonalGalleryController::class, 'groups']);
         Route::post('/personal/media', [PersonalMediaController::class, 'store']);
         Route::post('/personal/media/move', [PersonalMediaController::class, 'move']);
+        /* ფოტოს/ვიდეოს ჩაკეტვა: სისტემურ „ჩაკეტილ ფოტოებში" გადატანა (პირველად —
+           პაროლით, `LockedPersonalMedia`). ⚠️ `lock` `UPDATE_ENDPOINTS`-შია. */
+        Route::post('/personal/media/lock', [PersonalMediaController::class, 'lock']);
         Route::post('/personal/media/reorder', [PersonalMediaController::class, 'reorder']);
         Route::delete('/personal/media', [PersonalMediaController::class, 'destroyMany']);
         Route::match(['put', 'patch'], '/personal/media/{personalMedia}', [PersonalMediaController::class, 'update'])->whereNumber('personalMedia');
