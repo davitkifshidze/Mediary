@@ -2988,7 +2988,8 @@
       "duty": "Duty shift",
       "duty_workplace": "Duty workplace",
       "duty_type": "Duty shift type",
-      "duty_rate": "Duty rate"
+      "duty_rate": "Duty rate",
+      "duty_pattern": "Duty rhythm"
     },
     "subtitleWarn": "The log is kept forever — cleanup is manual only.",
     "views": {
@@ -3927,7 +3928,8 @@
       "personal_album": "Personal gallery albums",
       "duty_workplace": "Duty workplaces",
       "duty_type": "Duty shift types",
-      "cast_member": "Hand-made actors"
+      "cast_member": "Hand-made actors",
+      "duty_pattern": "Duty rhythms"
     },
     "when": {
       "media_watch": "Watched: {{date}}",
@@ -4792,7 +4794,10 @@
       "custom": "Other",
       "payHint": "Filled in from the workplace rate ({{hours}} h) — you can change it.",
       "noRate": "This workplace has no rate for this type — enter the pay by hand or add a rate in “Settings”.",
-      "deleteTitle": "Delete shift"
+      "deleteTitle": "Delete shift",
+      "moveDay": "Move to another day",
+      "moved": "Shift moved: {{date}}",
+      "newDay": "New day"
     },
     "batch": {
       "title": "Shifts on the selected days ({{count}})",
@@ -4911,6 +4916,24 @@
       "restored": "Shift restored",
       "cancelledHint": "A cancelled day stays, in red: pay is 0 and it counts nowhere — not in totals, the counter or reminders.",
       "partialHint": "Enter the hours worked and the pay — empty pay is 0, nothing is filled from the rate."
+    },
+    "pattern": {
+      "title": "Rhythm",
+      "titleFor": "Rhythm — {{name}}",
+      "hint": "Write down once how often you are on duty (e.g. every 4 days), and “Continue the rhythm” in the period bar adds real shifts. A day that already has a shift at this workplace is skipped — your swaps, additions and cancellations are kept.",
+      "interval": "Every how many days",
+      "anchor": "First day",
+      "active": "Active — “Continue” uses it",
+      "preview": "Next: {{dates}}",
+      "summary": "every {{count}} days",
+      "saved": "Rhythm saved",
+      "removed": "Rhythm moved to the trash — its shifts stay",
+      "continue": "Continue the rhythm",
+      "continued": "Added from the rhythm: {{created}} · skipped: {{skipped}}",
+      "fromSelection": "Rhythm from selection",
+      "uneven": "The selected shifts are not evenly spaced — no rhythm could be made.",
+      "needTwo": "Select at least two shifts of one workplace for a rhythm.",
+      "fromPattern": "From the rhythm"
     }
   },
   "actors": {

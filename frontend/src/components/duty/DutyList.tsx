@@ -31,7 +31,7 @@ export function DutyList({
 }) {
   const { t, i18n } = useTranslation()
   const { date } = useDateFormat()
-  const { actionsFor, favorite } = useDutyShiftActions(onEdit)
+  const { actionsFor, favorite, moveDialog } = useDutyShiftActions(onEdit)
   const lang = i18n.language
   const currency = settings?.currency ?? '₾'
   const weekday = new Intl.DateTimeFormat(lang, { weekday: 'short' })
@@ -93,6 +93,7 @@ export function DutyList({
         </li>
         </RecordContextMenu>
       ))}
+      {moveDialog}
     </ul>
   )
 }

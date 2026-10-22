@@ -33,6 +33,7 @@ use App\Models\CustomRecord;
 use App\Models\CustomRecordFile;
 use App\Models\CustomRecordNote;
 use App\Models\DatabaseBackup;
+use App\Models\DutyPattern;
 use App\Models\DutyRate;
 use App\Models\DutyShift;
 use App\Models\DutyShiftType;
@@ -191,6 +192,7 @@ class AuditRegistry
         DutyWorkplace::class => 'duty',
         DutyShiftType::class => 'duty',
         DutyRate::class => 'duty',
+        DutyPattern::class => 'duty',
 
         /* ---- ინტერფეისიდან შექმნილი მოდულები.
            ⚠️ **მოდული რიგშია** (`module` — პირადი მოდულის გასაღები), ე.ი. აქ

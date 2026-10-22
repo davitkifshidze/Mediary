@@ -51,6 +51,7 @@ class DutyShift extends Model
     protected $casts = [
         'workplace_id' => 'integer',
         'type_id' => 'integer',
+        'pattern_id' => 'integer',
         'date' => 'date',
         'hours' => 'decimal:1',
         'pay' => 'decimal:2',
@@ -89,6 +90,12 @@ class DutyShift extends Model
     public function type(): BelongsTo
     {
         return $this->belongsTo(DutyShiftType::class, 'type_id');
+    }
+
+    /** რომელმა რიტმმა დაბადა (`DutyPattern::continue`) — ჩიპის „გამეორების" ნიშანი */
+    public function pattern(): BelongsTo
+    {
+        return $this->belongsTo(DutyPattern::class, 'pattern_id');
     }
 
     /**

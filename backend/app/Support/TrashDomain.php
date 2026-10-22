@@ -22,6 +22,7 @@ use App\Models\CustomRecord;
 use App\Models\CustomRecordFile;
 use App\Models\CustomRecordNote;
 use App\Models\DatabaseBackup;
+use App\Models\DutyPattern;
 use App\Models\DutyShift;
 use App\Models\DutyShiftType;
 use App\Models\DutyWorkplace;
@@ -170,6 +171,8 @@ final class TrashDomain
            აღდგენა გადატანილი მორიგეობების დაბრუნებას გთავაზობს */
         'duty_workplace' => ['model' => DutyWorkplace::class, 'module' => 'duty', 'parent' => null, 'size' => false],
         'duty_type' => ['model' => DutyShiftType::class, 'module' => 'duty', 'parent' => null, 'size' => false],
+        // რიტმი ურნაში — მისი მორიგეობები რჩება (`pattern_id`-ით), აღდგენა მას უბრუნებს გაგრძელებას
+        'duty_pattern' => ['model' => DutyPattern::class, 'module' => 'duty', 'parent' => null, 'size' => false],
         /* პირადი მოდულის კლასიფიკატორი; მოდული რიგშია (`module`),
            ერთი სახე ყველა პირად მოდულზე (სტატუსის იგივე ფორმა). */
         'custom_category' => ['model' => CustomCategory::class, 'module' => null, 'module_column' => 'module', 'parent' => null, 'size' => false],

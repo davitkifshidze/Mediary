@@ -73,6 +73,8 @@ export interface DutyShift {
   is_favorite: boolean
   workplace_id: number | null
   type_id: number | null
+  /** რიტმიდან დაბადებული (`null` — ხელით დადგმული) */
+  pattern_id: number | null
   workplace: { id: number; name: string; short: string | null; color: string | null } | null
   type: { id: number; name_ka: string; name_en: string; hours: number; icon: string | null } | null
   created_at: string | null
@@ -307,6 +309,65 @@ export async function createDutyShift(input: DutyShiftInput): Promise<DutyShift>
 export async function updateDutyShift(id: number, input: DutyShiftInput): Promise<DutyShift> {
   const { data } = await api.patch(`/duty/shifts/${id}`, input)
   return data.data
+}
+
+/* ---------- რიტმი ---------- */
+
+/**
+ * **რიტმი** — „ყოველ N დღეში" `anchor_date`-დან. თვითონ კალენდარზე არაფერს
+ * ხატავს: „გაგრძელება" მისგან ნამდვილ მორიგეობებს ქმნის `generated_until`-დან.
+ */
+export interface DutyPattern {
+  id: number
+  workplace_id: number
+  type_id: number | null
+  hours: number
+  interval_days: number
+  anchor_date: string
+  start_time: string | null
+  is_active: boolean
+  /** რომელ დღემდეა უკვე გაგრძელებული (ჩათვლით) */
+  generated_until: string | null
+}
+
+export interface DutyPatternInput {
+  workplace_id?: number
+  type_id?: number | null
+  hours?: number | null
+  interval_days?: number
+  anchor_date?: string
+  start_time?: string | null
+  is_active?: boolean
+  /** უკვე დასმული მორიგეობები, რომლებიც რიტმს მიეკუთვნება („რიტმი მონიშნულიდან“) */
+  adopt_ids?: number[]
+}
+
+export async function fetchDutyPatterns(): Promise<DutyPattern[]> {
+  const { data } = await api.get('/duty/patterns')
+  return data.data
+}
+
+export async function createDutyPattern(input: DutyPatternInput): Promise<DutyPattern> {
+  const { data } = await api.post('/duty/patterns', input)
+  return data.data
+}
+
+export async function updateDutyPattern(id: number, input: DutyPatternInput): Promise<DutyPattern> {
+  const { data } = await api.patch(`/duty/patterns/${id}`, input)
+  return data.data
+}
+
+export async function deleteDutyPattern(id: number): Promise<void> {
+  await api.delete(`/duty/patterns/${id}`)
+}
+
+/** **გაგრძელება** `until`-მდე — „N დაემატა · M გამოტოვდა“ (დაკავებული დღე) */
+export async function continueDutyPattern(
+  id: number,
+  until: string,
+): Promise<{ created: number; skipped: number; generated_until: string | null }> {
+  const { data } = await api.post(`/duty/patterns/${id}/continue`, { until })
+  return data
 }
 
 export async function deleteDutyShift(id: number): Promise<void> {

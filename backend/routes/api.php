@@ -49,6 +49,7 @@ use App\Http\Controllers\Api\DatabaseExportController;
 use App\Http\Controllers\Api\DatabaseImportController;
 use App\Http\Controllers\Api\DiscoverController;
 use App\Http\Controllers\Api\DutyController;
+use App\Http\Controllers\Api\DutyPatternController;
 use App\Http\Controllers\Api\DutyShiftController;
 use App\Http\Controllers\Api\DutyShiftTypeController;
 use App\Http\Controllers\Api\DutyWorkplaceController;
@@ -1030,6 +1031,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/duty/workplaces/reorder', [DutyWorkplaceController::class, 'reorder']);
         Route::match(['put', 'patch'], '/duty/workplaces/{dutyWorkplace}', [DutyWorkplaceController::class, 'update'])->whereNumber('dutyWorkplace');
         Route::delete('/duty/workplaces/{dutyWorkplace}', [DutyWorkplaceController::class, 'destroy'])->whereNumber('dutyWorkplace');
+
+        /* რიტმი („ყოველ მე-4 დღეს"): `continue` რიტმიდან ნამდვილ მორიგეობებს
+           ქმნის — POST, ბოლო სეგმენტი `UPDATE_ENDPOINTS`-ში არ არის → `create`. */
+        Route::get('/duty/patterns', [DutyPatternController::class, 'index']);
+        Route::post('/duty/patterns', [DutyPatternController::class, 'store']);
+        Route::match(['put', 'patch'], '/duty/patterns/{dutyPattern}', [DutyPatternController::class, 'update'])->whereNumber('dutyPattern');
+        Route::delete('/duty/patterns/{dutyPattern}', [DutyPatternController::class, 'destroy'])->whereNumber('dutyPattern');
+        Route::post('/duty/patterns/{dutyPattern}/continue', [DutyPatternController::class, 'continue'])->whereNumber('dutyPattern');
 
         Route::get('/duty/types', [DutyShiftTypeController::class, 'index']);
         Route::post('/duty/types', [DutyShiftTypeController::class, 'store']);

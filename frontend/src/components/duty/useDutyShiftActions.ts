@@ -1,16 +1,21 @@
+import { createElement, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Ban, CalendarCheck } from 'lucide-react'
+import { Ban, CalendarCheck, CalendarDays } from 'lucide-react'
 import { deleteDutyShift, toggleDutyFavorite, updateDutyShift, type DutyShift, type DutyShiftStatus } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { invalidateDuty } from '@/lib/duty'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
+import { DutyMoveDialog } from '@/components/duty/DutyMoveDialog'
 
 /* ============================================================
    **მორიგეობის მარჯვენა ღილაკის მენიუ** — რჩეული · გაუქმება (ან გაუქმების
-   მოხსნა) · — · რედაქტირება · წაშლა.
+   მოხსნა) · სხვა დღეზე გადატანა · — · რედაქტირება · წაშლა.
+
+   ⚠️ გადატანის ფანჯარა (`moveDialog`) ჰუკთან ერთად ბრუნდება — გამომძახებელი
+   მას თავის ხეში ხატავს (სია და კალენდარი).
 
    ⚠️ **გაუქმება წაშლა არ არის**: დღე რჩება წითლად და თანხა 0-ია (სერვერი
    ტარიფს აღარ კითხულობს); მოხსნაზე თანხა ისევ ტარიფიდან ითვლება.
@@ -26,6 +31,7 @@ export function useDutyShiftActions(onEdit: (shift: DutyShift) => void) {
   const { toast } = useToast()
   const confirm = useConfirm()
   const { date } = useDateFormat()
+  const [moving, setMoving] = useState<DutyShift | null>(null)
 
   const favorite = useMutation({
     mutationFn: toggleDutyFavorite,
@@ -56,6 +62,7 @@ export function useDutyShiftActions(onEdit: (shift: DutyShift) => void) {
     shift.status === 'cancelled'
       ? { key: 'uncancel', label: t('duty.status.uncancel'), icon: CalendarCheck, run: () => setStatus.mutate({ id: shift.id, status: 'scheduled' }) }
       : { key: 'cancel', label: t('duty.status.cancel'), icon: Ban, run: () => setStatus.mutate({ id: shift.id, status: 'cancelled' }) },
+    { key: 'move', label: t('duty.shift.moveDay'), icon: CalendarDays, run: () => setMoving(shift) },
     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => onEdit(shift) },
     {
       key: 'delete',
@@ -75,5 +82,7 @@ export function useDutyShiftActions(onEdit: (shift: DutyShift) => void) {
     },
   ]
 
-  return { actionsFor, favorite }
+  const moveDialog = moving ? createElement(DutyMoveDialog, { shift: moving, onClose: () => setMoving(null) }) : null
+
+  return { actionsFor, favorite, moveDialog }
 }

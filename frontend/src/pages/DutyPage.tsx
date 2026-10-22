@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
-import { BarChart3, Calculator, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, List, Loader2, Pencil, Plus, Settings, TriangleAlert, X } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { BarChart3, Calculator, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, List, Loader2, Pencil, Plus, Repeat, Settings, TriangleAlert, X } from 'lucide-react'
 import {
+  continueDutyPattern,
   DUTY_KEY,
+  fetchDutyPatterns,
   fetchDutyPeriod,
   fetchDutySettings,
   fetchDutyShift,
@@ -12,8 +14,11 @@ import {
   fetchDutyTypes,
   fetchDutyWorkplaces,
   type DutyShift,
+  type DutyWorkplace,
 } from '@/api/duty'
-import { formatHours, formatMoney, payMode, periodLabel, todayIso } from '@/lib/duty'
+import { errorMessage } from '@/lib/errors'
+import { formatHours, formatMoney, invalidateDuty, patternFromShifts, payMode, periodLabel, todayIso } from '@/lib/duty'
+import { useToast } from '@/components/ui/feedback'
 import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { PageContainer } from '@/components/ui/page'
@@ -24,6 +29,7 @@ import { DutyCalculator } from '@/components/duty/DutyCalculator'
 import { DutyCalendar } from '@/components/duty/DutyCalendar'
 import { DutyDayDialog } from '@/components/duty/DutyDayDialog'
 import { DutyList } from '@/components/duty/DutyList'
+import { DutyPatternDialog } from '@/components/duty/DutyPatternDialog'
 import { useDutyShiftActions } from '@/components/duty/useDutyShiftActions'
 import { DutySettingsDialog } from '@/components/duty/DutySettingsDialog'
 import { DutyShiftDialog } from '@/components/duty/DutyShiftDialog'
@@ -96,7 +102,14 @@ export function DutyPage() {
   const [bulking, setBulking] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   // კალენდრის ჩიპის მენიუ (სიის სტრიქონი თავის თავს თვითონ აწყობს)
-  const { actionsFor } = useDutyShiftActions((shift) => setEditing({ shift }))
+  const { actionsFor, moveDialog } = useDutyShiftActions((shift) => setEditing({ shift }))
+  const qc = useQueryClient()
+  const { toast } = useToast()
+
+  /* ---------- რიტმი ---------- */
+  const patternsQ = useQuery({ queryKey: [DUTY_KEY, 'patterns'], queryFn: fetchDutyPatterns })
+  // „რიტმი მონიშნულიდან“ — ფანჯარა წინასწარ შევსებული
+  const [rhythm, setRhythm] = useState<{ workplace: DutyWorkplace; preset: ReturnType<typeof patternFromShifts> } | null>(null)
 
   // ძებნის შედეგიდან — `?shift=12`: მისი პერიოდი და რედაქტირება
   const linkedQ = useQuery({
@@ -119,6 +132,51 @@ export function DutyPage() {
   }, [linkedQ.data])
 
   const selectedShifts = useMemo(() => shifts.filter((s) => selected.has(s.date)), [shifts, selected])
+
+  /* ⚠️ **გაგრძელება მხოლოდ იმ რიტმს სჭირდება, რომელიც ამ პერიოდის ბოლომდე ჯერ
+     არ გაგრძელებულა** (აქტიური, სამსახური არ არის ურნაში, პირველი დღე ≤ ბოლო) */
+  const pending = useMemo(
+    () =>
+      period
+        ? (patternsQ.data ?? []).filter(
+            (p) =>
+              p.is_active &&
+              p.anchor_date <= period.to &&
+              (p.generated_until == null || p.generated_until < period.to) &&
+              workplaces.some((w) => w.id === p.workplace_id),
+          )
+        : [],
+    [patternsQ.data, period, workplaces],
+  )
+
+  const continueAll = useMutation({
+    mutationFn: async () => {
+      let created = 0
+      let skipped = 0
+      // თითო რიტმი თავის ტრანზაქციაში — რიგრიგობით
+      for (const pattern of pending) {
+        const result = await continueDutyPattern(pattern.id, period!.to)
+        created += result.created
+        skipped += result.skipped
+      }
+      return { created, skipped }
+    },
+    onSuccess: (result) => {
+      invalidateDuty(qc)
+      toast({ title: t('duty.pattern.continued', result), variant: 'success' })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  const fromSelection = () => {
+    const preset = patternFromShifts(selectedShifts)
+    if (preset === 'uneven' || preset === null) {
+      toast({ title: t(preset === 'uneven' ? 'duty.pattern.uneven' : 'duty.pattern.needTwo'), variant: 'error' })
+      return
+    }
+    const workplace = workplaces.find((w) => w.id === preset.workplace_id)
+    if (workplace) setRhythm({ workplace, preset })
+  }
 
   const totals = useMemo(
     () =>
@@ -205,6 +263,13 @@ export function DutyPage() {
             {t('duty.period.today')}
           </Button>
         )}
+        {/* რიტმი ამ პერიოდში ჯერ არ გაგრძელებულა — ერთი დაჭერით ნამდვილი მორიგეობები */}
+        {pending.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => continueAll.mutate()} disabled={continueAll.isPending} data-testid="duty-pattern-continue">
+            {continueAll.isPending ? <Loader2 className="size-4 animate-spin" /> : <Repeat className="size-4" />}
+            {t('duty.pattern.continue')}
+          </Button>
+        )}
 
         {!!shifts.length && (
           <p className="ml-auto text-sm text-muted-foreground" data-testid="duty-period-totals">
@@ -262,6 +327,10 @@ export function DutyPage() {
             <Button size="sm" variant="edit" disabled={!selectedShifts.length} onClick={() => setBulking(true)}>
               <Pencil className="size-4" />
               {t('duty.select.change')}
+            </Button>
+            <Button size="sm" variant="outline" disabled={selectedShifts.length < 2} onClick={fromSelection}>
+              <Repeat className="size-4" />
+              {t('duty.pattern.fromSelection')}
             </Button>
             <Button size="sm" variant="ghost" disabled={!selected.size} onClick={() => setSelected(new Set())}>
               <X className="size-4" />
@@ -339,6 +408,26 @@ export function DutyPage() {
           types={types}
           onClose={() => setBulking(false)}
           onDone={() => setSelected(new Set())}
+        />
+      )}
+      {moveDialog}
+      {rhythm && rhythm.preset && rhythm.preset !== 'uneven' && (
+        <DutyPatternDialog
+          workplace={rhythm.workplace}
+          pattern={(patternsQ.data ?? []).find((p) => p.workplace_id === rhythm.workplace.id) ?? null}
+          types={types}
+          preset={{
+            interval_days: rhythm.preset.interval_days,
+            anchor_date: rhythm.preset.anchor_date,
+            type_id: rhythm.preset.type_id,
+            hours: rhythm.preset.hours,
+            start_time: rhythm.preset.start_time,
+            adopt_ids: rhythm.preset.ids,
+          }}
+          onClose={() => {
+            setRhythm(null)
+            setSelected(new Set())
+          }}
         />
       )}
       {settingsOpen && settings && (

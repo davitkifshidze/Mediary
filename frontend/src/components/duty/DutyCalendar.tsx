@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Ban } from 'lucide-react'
+import { Ban, Repeat } from 'lucide-react'
 import type { DutyShift } from '@/api/duty'
 import { chipLabel, eachDay, hoursLabel, parseDay, shiftRange, todayIso, weekdayIndex, workplaceColor } from '@/lib/duty'
 import { cn } from '@/lib/utils'
@@ -200,6 +200,10 @@ export function DutyCalendar({
                   data-status={shift.status}
                 >
                   {shift.status === 'cancelled' && <Ban className="mr-0.5 inline size-3 align-[-2px]" aria-label={t('duty.status.cancelled')} />}
+                  {/* რიტმიდან დაბადებული — პატარა „გამეორების" ნიშანი */}
+                  {shift.pattern_id != null && (
+                    <Repeat className="mr-0.5 inline size-3 align-[-2px] opacity-70" aria-label={t('duty.pattern.fromPattern')} data-testid="duty-chip-pattern" />
+                  )}
                   {chipLabel(shift)}
                 </span>
                 </RecordContextMenu>

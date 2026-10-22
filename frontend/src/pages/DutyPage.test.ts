@@ -49,6 +49,7 @@ const shift: DutyShift = {
   is_favorite: false,
   workplace_id: 1,
   type_id: 3,
+  pattern_id: null,
   workplace: { id: 1, name: 'კლინიკა', short: 'A', color: '#2a78d6' },
   type: { id: 3, name_ka: '24 სთ', name_en: '24 h', hours: 24, icon: 'Moon' },
   created_at: null,
@@ -75,6 +76,8 @@ const mocks = vi.hoisted(() => ({
   batchDutyShifts: vi.fn(),
   deleteDutyShift: vi.fn(),
   updateDutyShift: vi.fn(),
+  fetchDutyPatterns: vi.fn(),
+  continueDutyPattern: vi.fn(),
 }))
 
 vi.mock('@/api/duty', async (original) => ({
@@ -127,6 +130,8 @@ function defaults() {
   mocks.batchDutyShifts.mockResolvedValue([])
   mocks.deleteDutyShift.mockResolvedValue(undefined)
   mocks.updateDutyShift.mockResolvedValue(shift)
+  mocks.fetchDutyPatterns.mockResolvedValue([])
+  mocks.continueDutyPattern.mockResolvedValue({ created: 8, skipped: 1, generated_until: '2026-10-31' })
 }
 
 async function render(path = '/duty') {
@@ -254,6 +259,49 @@ describe('DutyPage', () => {
     await act(async () => cancel.click())
     await flush()
     expect(mocks.updateDutyShift).toHaveBeenCalledWith(7, { status: 'cancelled' })
+  })
+
+  it('continues a rhythm that has not reached the period end yet and marks its chips', async () => {
+    defaults()
+    mocks.fetchDutyPatterns.mockResolvedValue([
+      { id: 4, workplace_id: 1, type_id: 3, hours: 24, interval_days: 4, anchor_date: '2026-10-01', start_time: '09:00', is_active: true, generated_until: '2026-09-30' },
+    ])
+    mocks.fetchDutyShifts.mockResolvedValue({ items: [{ ...shift, pattern_id: 4 }], range: { from: '2026-10-01', to: '2026-10-31' } })
+    await render()
+
+    expect(container!.querySelector('[data-testid="duty-chip-pattern"]')).not.toBeNull()
+
+    const go = container!.querySelector<HTMLButtonElement>('[data-testid="duty-pattern-continue"]')!
+    expect(go.textContent).toContain(i18n.t('duty.pattern.continue'))
+    await act(async () => go.click())
+    await flush()
+    expect(mocks.continueDutyPattern).toHaveBeenCalledWith(4, '2026-10-31')
+  })
+
+  it('hides "continue" when the rhythm already reaches the period end', async () => {
+    defaults()
+    mocks.fetchDutyPatterns.mockResolvedValue([
+      { id: 4, workplace_id: 1, type_id: 3, hours: 24, interval_days: 4, anchor_date: '2026-10-01', start_time: null, is_active: true, generated_until: '2026-10-31' },
+    ])
+    await render()
+
+    expect(container!.querySelector('[data-testid="duty-pattern-continue"]')).toBeNull()
+  })
+
+  it('moves a shift to another day from the menu', async () => {
+    defaults()
+    await render('/duty?view=list')
+
+    const row = container!.querySelector('[data-testid="duty-list"] li')!
+    await act(async () => {
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
+    })
+    await flush()
+
+    const move = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((m) => m.textContent?.trim() === i18n.t('duty.shift.moveDay'))!
+    await act(async () => move.click())
+    await flush()
+    expect(document.getElementById('duty-move-form')).toBeTruthy()
   })
 
   it('opens the row context menu in the list view and moves the shift to the trash after confirming', async () => {

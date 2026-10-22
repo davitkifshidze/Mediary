@@ -38,6 +38,7 @@ function shift(id: number, date: string, over: Partial<DutyShift> = {}): DutyShi
     is_favorite: false,
     workplace_id: 1,
     type_id: 3,
+    pattern_id: null,
     workplace: { id: 1, name: 'კლინიკა', short: 'A', color: '#16a34a' },
     type: { id: 3, name_ka: '24 სთ', name_en: '24 h', hours: 24, icon: 'Moon' },
     created_at: null,

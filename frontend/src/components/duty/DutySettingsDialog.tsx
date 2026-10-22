@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, SquarePen, Tags, Trash2 } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Plus, Repeat, SquarePen, Tags, Trash2 } from 'lucide-react'
 import {
+  DUTY_KEY,
+  fetchDutyPatterns,
   reorderDutyWorkplaces,
   updateDutySettings,
   type DutySettingsData,
@@ -27,6 +29,7 @@ import { Switch } from '@/components/ui/switch'
 import { TimePicker } from '@/components/ui/time-picker'
 import { DutyWorkplaceDeleteDialog } from '@/components/duty/DutyWorkplaceDeleteDialog'
 import { DutyWorkplaceDialog } from '@/components/duty/DutyWorkplaceDialog'
+import { DutyPatternDialog } from '@/components/duty/DutyPatternDialog'
 
 /* ============================================================
    **მორიგეობის პარამეტრები.**
@@ -70,6 +73,10 @@ export function DutySettingsDialog({
   const [remindTelegram, setRemindTelegram] = useState(settings.remind_telegram)
   const [editing, setEditing] = useState<{ workplace: DutyWorkplace | null } | null>(null)
   const [deleting, setDeleting] = useState<DutyWorkplace | null>(null)
+  const [rhythm, setRhythm] = useState<DutyWorkplace | null>(null)
+  // სამსახურის რიტმი — ერთი სამსახურზე (ფანჯარა პირველს ხსნის)
+  const patterns = useQuery({ queryKey: [DUTY_KEY, 'patterns'], queryFn: fetchDutyPatterns }).data ?? []
+  const patternOf = (w: DutyWorkplace) => patterns.find((p) => p.workplace_id === w.id) ?? null
 
   const save = useMutation({
     mutationFn: () =>
@@ -214,12 +221,17 @@ export function DutySettingsDialog({
                       w.hourly_rate != null ? t('duty.workplace.perHour', { pay: formatMoney(w.hourly_rate, settings.currency, lang) }) : null,
                       w.default_type_id != null ? typeName(types.find((x) => x.id === w.default_type_id), lang) || null : null,
                       w.default_start_time,
+                      patternOf(w) ? t('duty.pattern.summary', { count: patternOf(w)!.interval_days }) : null,
                       t('duty.workplace.shifts', { count: w.shifts_count }),
                     ]
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
                 </div>
+                <Button variant="outline" size="sm" onClick={() => setRhythm(w)}>
+                  <Repeat className="size-3.5" />
+                  {t('duty.pattern.title')}
+                </Button>
                 <Button variant="edit" size="sm" onClick={() => setEditing({ workplace: w })}>
                   <SquarePen className="size-3.5" />
                   {t('actions.edit')}
@@ -252,6 +264,7 @@ export function DutySettingsDialog({
           onClose={() => setEditing(null)}
         />
       )}
+      {rhythm && <DutyPatternDialog workplace={rhythm} pattern={patternOf(rhythm)} types={types} onClose={() => setRhythm(null)} />}
       {deleting && (
         <DutyWorkplaceDeleteDialog
           workplace={deleting}

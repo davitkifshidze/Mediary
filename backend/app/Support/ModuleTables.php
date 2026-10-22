@@ -41,7 +41,7 @@ final class ModuleTables
         'place' => ['places', 'place_categories', 'place_field_values', 'place_files', 'place_routes'],
         'gallery' => ['gallery_albums', 'gallery_videos'],
         'personal' => ['persons', 'personal_albums', 'personal_media', 'personal_field_values'],
-        'duty' => ['duty_shifts', 'duty_shift_types', 'duty_workplaces', 'duty_rates', 'duty_field_values'],
+        'duty' => ['duty_shifts', 'duty_shift_types', 'duty_workplaces', 'duty_rates', 'duty_patterns', 'duty_field_values'],
         // პირადი მოდულები (`c{owner}-{slug}`) — ერთი ცხრილების ნაკრები ყველასთვის
         'custom' => ['custom_records', 'custom_categories', 'custom_record_field_values', 'custom_record_files', 'custom_record_notes'],
     ];

@@ -175,6 +175,69 @@ export function hoursLabel(shift: Pick<DutyShift, 'hours' | 'status' | 'type'>):
     : formatHours(shift.hours)
 }
 
+/* ---------- რიტმი ---------- */
+
+/** დღეებს შორის მანძილი (`b - a`) */
+function daysBetween(a: string, b: string): number {
+  return Math.round((parseDay(b).getTime() - parseDay(a).getTime()) / 86_400_000)
+}
+
+/**
+ * რიტმის შემდეგი დღეები — `anchor`-იდან ყოველ `interval` დღეში, `from`-ზე ან მის
+ * შემდეგ (სერვერის `DutyPattern::datesBetween()`-ის ასლი, ფანჯრის წინასწარ საჩვენებლად).
+ */
+export function patternDates(anchor: string, interval: number, from: string, count: number): string[] {
+  const step = Math.max(1, Math.round(interval))
+  const offset = daysBetween(anchor, from)
+  let day = offset <= 0 ? anchor : addDays(anchor, Math.ceil(offset / step) * step)
+  const out: string[] = []
+
+  while (out.length < count) {
+    out.push(day)
+    day = addDays(day, step)
+  }
+
+  return out
+}
+
+/**
+ * **„რიტმი მონიშნულიდან“** — მონიშნული დღეების ერთი სამსახურის მორიგეობებიდან
+ * (ყველაზე ხშირი სამსახური): ინტერვალი = მათ შორის მანძილი (თანაბარი უნდა იყოს),
+ * პირველი დღე = პირველი, ტიპი — ყველაზე ხშირი, დაწყება — პირველისა. `uneven` —
+ * მანძილი არათანაბარია; `null` — ორზე ნაკლები მორიგეობაა.
+ */
+export function patternFromShifts(shifts: DutyShift[]):
+  | { workplace_id: number; interval_days: number; anchor_date: string; type_id: number | null; hours: number; start_time: string | null; ids: number[] }
+  | 'uneven'
+  | null {
+  const counts = new Map<number, DutyShift[]>()
+  for (const shift of shifts) {
+    if (shift.workplace_id == null) continue
+    counts.set(shift.workplace_id, [...(counts.get(shift.workplace_id) ?? []), shift])
+  }
+
+  const group = [...counts.values()].sort((a, b) => b.length - a.length)[0]
+  if (!group || group.length < 2) return null
+
+  const sorted = [...group].sort((a, b) => a.date.localeCompare(b.date))
+  const gaps = sorted.slice(1).map((shift, i) => daysBetween(sorted[i].date, shift.date))
+  if (gaps.some((gap) => gap <= 0 || gap !== gaps[0])) return 'uneven'
+
+  const types = new Map<number | null, number>()
+  for (const shift of sorted) types.set(shift.type_id, (types.get(shift.type_id) ?? 0) + 1)
+  const typeId = [...types.entries()].sort((a, b) => b[1] - a[1])[0][0]
+
+  return {
+    workplace_id: sorted[0].workplace_id!,
+    interval_days: gaps[0],
+    anchor_date: sorted[0].date,
+    type_id: typeId,
+    hours: sorted.find((s) => s.type_id === typeId)?.hours ?? sorted[0].hours,
+    start_time: sorted[0].start_time,
+    ids: sorted.map((s) => s.id),
+  }
+}
+
 /** კალენდრის ჩიპი — „A · 24“, ნაწილობრივზე „A · 10 / 24“ (სამსახურის გარეშე — მხოლოდ საათები) */
 export function chipLabel(shift: Pick<DutyShift, 'hours' | 'workplace' | 'status' | 'type'>): string {
   const short = shift.workplace?.short || shift.workplace?.name?.slice(0, 1)

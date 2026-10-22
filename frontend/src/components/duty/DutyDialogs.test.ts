@@ -4,8 +4,8 @@ import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { FeedbackProvider } from '@/components/ui/feedback'
-import type { DutySettingsData, DutyShiftType, DutyWorkplace } from '@/api/duty'
-import { payMode, shiftEnd, timeRange } from '@/lib/duty'
+import type { DutySettingsData, DutyShift, DutyShiftType, DutyWorkplace } from '@/api/duty'
+import { patternDates, patternFromShifts, payMode, shiftEnd, timeRange } from '@/lib/duty'
 import i18n from '@/i18n'
 
 /* ============================================================
@@ -16,12 +16,15 @@ import i18n from '@/i18n'
    საათობრივს უჩუმრად არ აჯობოს; სამსახურის არჩევისას მორიგეობის ფორმა მის
    ტიპსა და დაწყებას ავსებს და დასრულებას აჩვენებს („09:00 → 09:00 (+1)“);
    დასრულება წუთების არითმეტიკითაა (შუაღამის გადაკვეთით); გაუქმებულზე თანხა 0-ზე
-   იკეტება, ნაწილობრივზე ხელით იწერება (ცარიელი — 0).
+   იკეტება, ნაწილობრივზე ხელით იწერება (ცარიელი — 0); რიტმი — შემდეგი დღეები
+   თვის საზღვრის გადაკვეთით, „მონიშნულიდან“ თანაბარი ინტერვალით, ფანჯარა
+   სამსახურის ნაგულისხმევებით და მონიშნულების მიკუთვნებით (`adopt_ids`).
    ============================================================ */
 
 const mocks = vi.hoisted(() => ({
   updateDutyWorkplace: vi.fn(async () => ({})),
   createDutyShift: vi.fn(async () => ({})),
+  createDutyPattern: vi.fn(async () => ({})),
 }))
 
 vi.mock('@/api/duty', async (original) => ({
@@ -42,6 +45,7 @@ if (!('ResizeObserver' in globalThis)) {
 beforeAll(async () => {
   await import('@/components/duty/DutyWorkplaceDialog')
   await import('@/components/duty/DutyShiftDialog')
+  await import('@/components/duty/DutyPatternDialog')
 }, 60_000)
 vi.setConfig({ testTimeout: 15_000 })
 
@@ -115,6 +119,60 @@ describe('duty helpers — end and pay mode', () => {
     expect(payMode(workplace({ rates: [{ type_id: 3, pay: 250 }] }))).toBe('shift')
     expect(payMode(workplace({ hourly_rate: 15 }))).toBe('hour')
     expect(payMode(workplace({}))).toBeNull()
+  })
+})
+
+describe('duty helpers — rhythm', () => {
+  const s = (id: number, date: string, over: Partial<DutyShift> = {}) =>
+    ({ id, date, workplace_id: 1, type_id: 3, hours: 24, start_time: '09:00', ...over }) as DutyShift
+
+  it('walks every N days from the first day, across the month', () => {
+    expect(patternDates('2026-10-01', 4, '2026-10-27', 3)).toEqual(['2026-10-29', '2026-11-02', '2026-11-06'])
+    expect(patternDates('2026-10-10', 4, '2026-10-01', 2)).toEqual(['2026-10-10', '2026-10-14'])
+  })
+
+  it('reads a rhythm from evenly spaced shifts of one workplace', () => {
+    expect(patternFromShifts([s(1, '2026-10-01'), s(2, '2026-10-05'), s(3, '2026-10-09'), s(4, '2026-10-03', { workplace_id: 2 })])).toEqual({
+      workplace_id: 1,
+      interval_days: 4,
+      anchor_date: '2026-10-01',
+      type_id: 3,
+      hours: 24,
+      start_time: '09:00',
+      ids: [1, 2, 3],
+    })
+    expect(patternFromShifts([s(1, '2026-10-01'), s(2, '2026-10-05'), s(3, '2026-10-10')])).toBe('uneven')
+    expect(patternFromShifts([s(1, '2026-10-01')])).toBeNull()
+  })
+})
+
+describe('DutyPatternDialog', () => {
+  it('starts from the workplace defaults, shows the next days and adopts the selected shifts', async () => {
+    const { DutyPatternDialog } = await import('@/components/duty/DutyPatternDialog')
+    await mount(
+      h(DutyPatternDialog, {
+        workplace: workplace({ default_type_id: 3, default_start_time: '09:00' }),
+        pattern: null,
+        types,
+        preset: { interval_days: 4, anchor_date: '2099-01-01', adopt_ids: [5, 6] },
+        onClose: () => {},
+      }),
+    )
+
+    expect(document.querySelector('[data-testid="duty-pattern-preview"]')?.textContent).toContain('2099')
+
+    await act(async () => (document.getElementById('duty-pattern-form') as HTMLFormElement).requestSubmit())
+    await flush()
+    expect(mocks.createDutyPattern).toHaveBeenCalledWith({
+      workplace_id: 1,
+      type_id: 3,
+      hours: 24,
+      interval_days: 4,
+      anchor_date: '2099-01-01',
+      start_time: '09:00',
+      is_active: true,
+      adopt_ids: [5, 6],
+    })
   })
 })
 

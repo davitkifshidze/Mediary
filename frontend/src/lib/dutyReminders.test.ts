@@ -47,6 +47,7 @@ const shift = (id: number, workplace: string): DutyShift => ({
   is_favorite: false,
   workplace_id: id,
   type_id: null,
+  pattern_id: null,
   workplace: { id, name: workplace, short: null, color: null },
   type: null,
   created_at: null,

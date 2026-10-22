@@ -38,6 +38,8 @@ class DutyShiftResource extends JsonResource
             'is_favorite' => (bool) $this->is_favorite,
             'workplace_id' => $this->workplace_id,
             'type_id' => $this->type_id,
+            // რიტმიდან დაბადებული (`null` — ხელით დადგმული)
+            'pattern_id' => $this->pattern_id,
             'workplace' => $workplace ? [
                 'id' => $workplace->id,
                 'name' => $workplace->name,
