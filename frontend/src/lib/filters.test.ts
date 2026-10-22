@@ -31,7 +31,7 @@ describe('filterKey', () => {
 describe('filterCount', () => {
   it('სიას სიგრძით, დანარჩენს ერთით ითვლის', () => {
     expect(filterCount({ genres: ['a', 'b'], tags: [] })).toBe(2)
-    expect(filterCount({ categories: [], tags: ['x'], overdue: true })).toBe(2)
+    expect(filterCount({ categories: [], tags: ['x'], favorite: true })).toBe(2)
   })
 
   it('ცარიელი სტრიქონი ფილტრი არაა', () => {

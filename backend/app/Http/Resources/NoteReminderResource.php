@@ -37,7 +37,8 @@ class NoteReminderResource extends JsonResource
             'weekdays' => array_values($this->weekdays ?? []),
             'days_of_month' => array_values($this->days_of_month ?? []),
             'month' => $this->month,
-            'repeat_count' => $this->repeat_count,
+            // სულ რამდენჯერ (გასროლილი + დარჩენილი ფანჯრის ბოლომდე); `null` — უსასრულოდ
+            'planned_count' => $this->plannedCount(),
             // მოქმედების ფანჯარა — აბსოლუტური მომენტები
             'starts_at' => $this->starts_at?->toIso8601String(),
             'ends_at' => $this->ends_at?->toIso8601String(),

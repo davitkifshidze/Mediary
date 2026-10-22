@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NoteReminder, NoteReminderInput } from '@/api/notes'
 
 /* ============================================================
@@ -6,17 +7,18 @@ import type { NoteReminder, NoteReminderInput } from '@/api/notes'
    ⚠️ **`next_at` აქ არ ითვლება და არასდროს უნდა ითვლებოდეს.** ის backend-ის
    `NoteReminder::computeNextAt()`-ის ერთადერთი პასუხია (მზიდი წესი:
    „ერთი ფორმულა, თორემ ორმაგი გასროლა"). აქ მხოლოდ **მზა მნიშვნელობას
-   ვკითხულობთ** — ე.ი. ფრონტზე „შემდეგი გასროლების წინასწარი ჩვენება"
-   განზრახ არ კეთდება: ის მეორე ფორმულა იქნებოდა და პირველივე დღეს
-   გაშორდებოდა (ზონები, ფანჯარა, `repeat_count`, თვის ბოლო დღე).
+   ვკითხულობთ** — ე.ი. ფრონტზე გასროლები არ ითვლება: ის მეორე ფორმულა
+   იქნებოდა და პირველივე დღეს გაშორდებოდა (ზონები, ფანჯარა, თვის ბოლო დღე).
+   „სულ რამდენჯერ" (`planned_count`) და შენახვამდე გათვლაც
+   (`previewNoteReminder`) სერვერისაა.
    ============================================================ */
 
 /**
  * სამი მდგომარეობა, სამი სხვადასხვა ფაქტი — და ვიზუალიც სამია:
  * · `active` — ჩართულია და შემდეგი გასროლა ცნობილია;
  * · `paused` — მომხმარებელმა გამორთო (გადამრთველი), ე.ი. **დროებითია**;
- * · `done` — ჩართულია, მაგრამ აღარ გაისვრის (ფანჯარა დასრულდა,
- *   `repeat_count` ამოიწურა, ან `once` უკვე გაისროლა).
+ * · `done` — ჩართულია, მაგრამ აღარ გაისვრის (ფანჯარა დასრულდა, ან
+ *   `once` უკვე გაისროლა).
  *
  * ⚠️ `paused`-სა და `done`-ს ერთ „არააქტიურად" გაერთიანება ზუსტად ის იყო,
  * რაც ეკრანს უაზროდ ხდიდა: პირველი ერთი დაჭერით ბრუნდება, მეორეს კი
@@ -75,10 +77,18 @@ export function reminderInput(reminder: NoteReminder): NoteReminderInput {
     weekdays: reminder.weekdays,
     days_of_month: reminder.days_of_month,
     month: reminder.month,
-    repeat_count: reminder.repeat_count,
     starts_at: reminder.starts_at,
     ends_at: reminder.ends_at,
     timezone: reminder.timezone,
     channels: reminder.channels,
   }
+}
+
+/** „სულ რამდენჯერ"-ის ჭერი — backend-ის `NoteReminder::PLAN_CAP` */
+const REMINDER_PLAN_CAP = 1000
+
+/** „სულ N-ჯერ" — `null` უსასრულოა, ჭერზე „1000+" */
+export function plannedText(count: number | null, t: TFunction): string {
+  if (count === null) return t('notes.reminderForever')
+  return t('notes.reminderPlanned', { n: count >= REMINDER_PLAN_CAP ? `${REMINDER_PLAN_CAP}+` : String(count) })
 }

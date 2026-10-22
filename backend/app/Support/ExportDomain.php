@@ -175,7 +175,7 @@ final class ExportDomain
             'with' => ['status', 'category', 'files'],
             'fields' => [
                 'id', 'title', 'category', 'status', 'status_name', 'finished_at', 'tags', 'description',
-                'links', 'due_at', 'is_favorite', 'visibility', 'created_at',
+                'links', 'is_favorite', 'visibility', 'created_at',
                 'custom_fields', 'files',
             ],
         ],

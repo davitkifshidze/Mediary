@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   fetchNoteReminders: vi.fn(),
   createNoteReminder: vi.fn(),
   updateNoteReminder: vi.fn(),
+  previewNoteReminder: vi.fn(),
 }))
 
 vi.mock('@/api/notes', async (original) => ({
@@ -44,7 +45,7 @@ const reminder = {
   weekdays: [] as number[],
   days_of_month: [] as number[],
   month: null,
-  repeat_count: null,
+  planned_count: null,
   starts_at: null,
   ends_at: null,
   timezone: 'Asia/Tbilisi',
@@ -57,11 +58,12 @@ const reminder = {
   sent_count: 0,
 }
 
-const { fetchNoteReminders, createNoteReminder, updateNoteReminder } = mocks
+const { fetchNoteReminders, createNoteReminder, updateNoteReminder, previewNoteReminder } = mocks
 
 fetchNoteReminders.mockResolvedValue([reminder])
 createNoteReminder.mockResolvedValue(reminder)
 updateNoteReminder.mockResolvedValue(reminder)
+previewNoteReminder.mockResolvedValue({ planned_count: 5, next_at: null })
 
 // React 19-ის `act()` ამ დროშას ითხოვს, თორემ ეფექტებს არ ატარებს
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -226,6 +228,55 @@ describe('NoteReminders', () => {
     expect(row.textContent).toContain(i18n.t('notes.channelsLink'))
     expect(row.querySelector('a')?.getAttribute('href')).toBe('/credentials')
     expect(node.querySelector('input[type="password"]')).toBeNull()
+  })
+
+  /* „სულ რამდენჯერ" ითვლება და არა იწერება: ბარათზე სერვერის `planned_count`,
+     რედაქტორში — შეუნახავი ფორმის გათვლა (`GET /note-reminders/preview`) */
+  it('ბარათი სულ რამდენჯერსა და გაგზავნილს აჩვენებს, უსასრულოზე — არაფერს', async () => {
+    fetchNoteReminders.mockResolvedValueOnce([{ ...reminder, planned_count: 5, sent_count: 2 }])
+    const node = await mount(5)
+
+    expect(node.textContent).toContain('სულ 5-ჯერ · გაიგზავნა 2-ჯერ')
+
+    act(() => root?.unmount())
+    container?.remove()
+    const infinite = await mount(5)
+    expect(infinite.textContent).not.toContain('სულ ')
+  })
+
+  it('რედაქტორი „სულ N-ჯერ"-ს შენახვამდე სერვერის გათვლით აჩვენებს', async () => {
+    const node = await mount(5)
+
+    await act(async () => button(node, '09:00')!.click())
+    await flush()
+
+    expect(previewNoteReminder).toHaveBeenCalled()
+    // იგივე ველები, რასაც შენახვა აგზავნის — ჯერადობის ველი აღარ არსებობს
+    expect(previewNoteReminder.mock.calls[0][0]).toMatchObject({ mode: 'daily', times_of_day: ['09:00'] })
+    expect(previewNoteReminder.mock.calls[0][0]).not.toHaveProperty('repeat_count')
+    expect(node.querySelector('[data-testid="reminder-planned"]')?.textContent).toContain('სულ 5-ჯერ')
+    expect(node.querySelector('#rem-repeat')).toBeNull()
+  })
+
+  /* ⚠️ თვის ბოლო: 31 იანვარს +1 თვე თებერვლის ბოლოა (28) და არა 3 მარტი —
+     `Date`-ის გადავსება სწორედ ამას გააკეთებდა; დრო — დღის ბოლო, 23:59 */
+  it('„+N თვე" ფანჯრის ბოლოს დაწყებიდან, დღის ბოლოთი და თვის ბოლოზე დაჭერით სვამს', async () => {
+    const starts = new Date(2027, 0, 31, 9, 0)
+    fetchNoteReminders.mockResolvedValueOnce([{ ...reminder, starts_at: starts.toISOString() }])
+    const node = await mount(5)
+
+    await act(async () => button(node, '09:00')!.click())
+    await flush()
+
+    expect(button(node, '+2 თვე'), 'სამი მზა ვარიანტი').toBeTruthy()
+    expect(button(node, '+3 თვე')).toBeTruthy()
+    await act(async () => button(node, '+1 თვე')!.click())
+    await flush()
+    await act(async () => button(node, 'შენახვა')!.click())
+    await flush()
+
+    const ends = new Date(updateNoteReminder.mock.calls[0][1].ends_at)
+    expect([ends.getFullYear(), ends.getMonth(), ends.getDate(), ends.getHours(), ends.getMinutes()]).toEqual([2027, 1, 28, 23, 59])
   })
 
   it('ჯერ შეუნახავ ჩანაწერზე მინიშნებაა და რექვესთი არ მიდის', async () => {

@@ -42,16 +42,6 @@ class NoteEntryController extends Controller
             $query->whereJsonContains('tags', $tag);
         }
 
-        // „რა მელოდება" — ვადიანი ჩანაწერები
-        if ($request->boolean('due')) {
-            $query->whereNotNull('due_at');
-        }
-        if ($request->boolean('overdue')) {
-            /* ⚠️ „ვადაგადაცილებული" **როლით** იჭრება და არა `open` სახელით:
-               სტატუსი გადაერქმევა, მნიშვნელობა კი `role`-შია. */
-            $query->whereNotNull('due_at')->where('due_at', '<', now())->statusRole('todo');
-        }
-
         if ($q = $request->string('q')->toString()) {
             $query->where(fn ($inner) => $inner
                 ->where('title', 'like', Like::contains($q))
@@ -62,8 +52,6 @@ class NoteEntryController extends Controller
 
         match ($request->string('sort')->toString()) {
             'title' => $query->orderBy('title'),
-            // ⚠️ ვადის გარეშე ჩანაწერები **ბოლოში** — თორემ NULL-ები წინ ამოვიდოდა
-            'due' => $query->orderByRaw('due_at is null')->orderBy('due_at'),
             'updated' => $query->orderByDesc('updated_at'),
             'oldest' => $query->orderBy('id'),
             default => $query->orderByDesc('id'),
@@ -158,7 +146,6 @@ class NoteEntryController extends Controller
             'links.*.label' => ['nullable', 'string', 'max:60'],
             'links.*.url' => ['required_with:links', 'string', 'max:1000', 'url'],
 
-            'due_at' => ['nullable', 'date'],
             'status' => [...$must, 'string', Status::rule('note')],
             'is_favorite' => ['nullable', 'boolean'],
             // ⚠️ `public` აქაც დაშვებულია სქემის დონეზე, მაგრამ ეს მოდული
@@ -169,7 +156,7 @@ class NoteEntryController extends Controller
 
     private function apply(NoteEntry $entry, Request $request, array $data): void
     {
-        foreach (['title', 'description', 'due_at'] as $field) {
+        foreach (['title', 'description'] as $field) {
             if (array_key_exists($field, $data)) {
                 $entry->{$field} = $data[$field] ?: null;
             }

@@ -25,7 +25,6 @@ class NoteEntryResource extends JsonResource
             'tags' => $this->tags ?? [],
             'links' => $this->links ?? [],
 
-            'due_at' => $this->due_at?->toIso8601String(),
             /* სტატუსი per-user ლექსიკონის რიგია, ე.ი. **ობიექტი** და არა
                სტრიქონი: მხოლოდ გასაღები უცხო პროფილზე წასაკითხი არ იქნებოდა
                (სახელი მფლობელის ლექსიკონშია), ორივეს ცალკე ველად დაბრუნება კი

@@ -167,15 +167,10 @@ class ReminderDispatcher
         return true;
     }
 
-    /** შეტყობინების ტექსტი — აღწერა + ვადა, თუ არის */
+    /** შეტყობინების ტექსტი — ჩანაწერის აღწერა, თუ არის */
     private function body($entry): ?string
     {
-        $parts = array_filter([
-            $entry->description ? mb_substr((string) $entry->description, 0, 500) : null,
-            $entry->due_at ? '⏰ '.$entry->due_at->format('Y-m-d H:i') : null,
-        ]);
-
-        return $parts ? implode("\n", $parts) : null;
+        return $entry->description ? mb_substr((string) $entry->description, 0, 500) : null;
     }
 
     private function sendTelegram(array $settings, string $title, ?string $body): ?string

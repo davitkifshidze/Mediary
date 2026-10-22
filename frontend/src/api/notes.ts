@@ -32,7 +32,6 @@ export interface NoteEntry {
   tags: string[]
   links: NoteLink[]
   /** „როდისთვის მჭირდება" — deadline */
-  due_at: string | null
   status: Status | null
   is_favorite: boolean
   /** ⚠️ პირადი დოკუმენტების მოდული: default ყოველთვის `private` */
@@ -53,7 +52,6 @@ export interface NoteFilters extends ListParams {
   /** ტეგები — მძიმით გამოყოფილი სია */
   tag?: string
   /** მხოლოდ ვადაგადაცილებული, ღია ჩანაწერები */
-  overdue?: boolean
   sort?: string
 }
 
@@ -63,18 +61,16 @@ export interface NoteInput {
   category_id?: number | null
   tags?: string[]
   links?: NoteLink[]
-  due_at?: string | null
   status?: NoteStatus
   visibility?: 'private' | 'public'
 }
 
 export async function fetchNotes(filters: NoteFilters = {}): Promise<Page<NoteEntry>> {
-  const { favorite, overdue, all, ...rest } = filters
+  const { favorite, all, ...rest } = filters
   // boolean-ები 1/0-ად — Laravel-ის `boolean` წესი "true"-ს არ იღებს
   const params = {
     ...rest,
     ...(favorite ? { favorite: 1 } : {}),
-    ...(overdue ? { overdue: 1 } : {}),
     ...(all ? { all: 1 } : {}),
   }
   const { data } = await api.get('/notes', { params })
@@ -177,8 +173,11 @@ export interface NoteReminder {
   days_of_month: number[]
   /** `yearly` — 1–12 */
   month: number | null
-  /** ჯერადობა: სულ რამდენჯერ გაისროლოს; `null` = უსასრულოდ */
-  repeat_count: number | null
+  /**
+   * სულ რამდენჯერ (გასროლილი + დარჩენილი ფანჯრის ბოლომდე) — **backend ითვლის**
+   * (`NoteReminder::plannedCount()`); `null` — ბოლო არ აქვს (უსასრულოდ)
+   */
+  planned_count: number | null
   /** მოქმედების ფანჯარა — აბსოლუტური მომენტები, ISO */
   starts_at: string | null
   ends_at: string | null
@@ -201,12 +200,22 @@ export interface NoteReminderInput {
   weekdays?: number[] | null
   days_of_month?: number[] | null
   month?: number | null
-  repeat_count?: number | null
   starts_at?: string | null
   ends_at?: string | null
   timezone?: string
   channels?: ReminderChannel[]
   is_active?: boolean
+}
+
+/** რედაქტორის „სულ N-ჯერ" და პირველი გასროლა — შენახვამდე, იგივე გამოთვლით */
+export interface NoteReminderPreview {
+  planned_count: number | null
+  next_at: string | null
+}
+
+export async function previewNoteReminder(input: NoteReminderInput): Promise<NoteReminderPreview> {
+  const { data } = await api.get('/note-reminders/preview', { params: input })
+  return data
 }
 
 export async function fetchNoteReminders(noteId: number): Promise<NoteReminder[]> {

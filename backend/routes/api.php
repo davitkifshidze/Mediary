@@ -736,6 +736,8 @@ Route::middleware('auth:sanctum')->group(function () {
            ⚠️ `due`-ს **შემდეგ** წერია, თორემ „due" `{noteReminder}`-ად წაიკითხებოდა
            (იგივე წესი, რაც `/gallery/{type}/{id}`-ს აქვს). */
         Route::get('/note-reminders', [NoteReminderController::class, 'all']);
+        // „სულ N-ჯერ" რედაქტორში — შენახვამდე
+        Route::get('/note-reminders/preview', [NoteReminderController::class, 'preview']);
         Route::match(['put', 'patch'], '/note-reminders/{noteReminder}', [NoteReminderController::class, 'update']);
         Route::delete('/note-reminders/{noteReminder}', [NoteReminderController::class, 'destroy']);
         // „ვნახე" — PATCH განზრახ: POST-ს `permission:` middleware `create`-ად წაიკითხავდა

@@ -22,7 +22,7 @@ function make(over: Partial<NoteReminder>): NoteReminder {
     weekdays: [],
     days_of_month: [],
     month: null,
-    repeat_count: null,
+    planned_count: null,
     starts_at: null,
     ends_at: null,
     timezone: 'Asia/Tbilisi',
@@ -45,7 +45,7 @@ describe('reminderState', () => {
     expect(reminderState(make({ is_active: false, next_at: null }))).toBe('paused')
   })
 
-  /** ⚠️ ფანჯარა დასრულდა / `repeat_count` ამოიწურა / `once` გაისროლა */
+  /** ⚠️ ფანჯარა დასრულდა / `once` გაისროლა */
   it('ჩართული, მაგრამ შემდეგი არ აქვს = დასრულებული', () => {
     expect(reminderState(make({ next_at: null }))).toBe('done')
   })

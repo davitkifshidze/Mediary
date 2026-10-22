@@ -328,13 +328,16 @@ export function DatePicker({
   value,
   onChange,
   withTime,
+  defaultTime,
   placeholder,
 }: {
   id?: string
   value: string | null
   onChange: (value: string | null) => void
-  /** დროის ველიც გამოჩნდეს (ჩანაწერის „როდისთვის", შეხსენება) */
+  /** დროის ველიც გამოჩნდეს (შეხსენება, მორიგეობა) */
   withTime?: boolean
+  /** დღის არჩევისას ცარიელი დროის ნაცვლად — მაგ. ფანჯრის ბოლო `23:59`; ნაგულისხმევად ახლა */
+  defaultTime?: string
   placeholder?: string
 }) {
   const { t } = useTranslation()
@@ -348,8 +351,8 @@ export function DatePicker({
     if (!date) return onChange(null)
     const day = toISODate(date)
     // ⚠️ დროის გარეშე შენახვა 00:00-ს ნიშნავს; ველი ცარიელი რომ იყოს,
-    // backend-ის `date_format` ვალიდაცია ჩავარდებოდა — ცარიელ დროს მიმდინარე ავსებს
-    onChange(withTime ? `${day}T${nextTime || nowClock()}` : day)
+    // backend-ის `date_format` ვალიდაცია ჩავარდებოდა — ცარიელ დროს `defaultTime` ან მიმდინარე ავსებს
+    onChange(withTime ? `${day}T${nextTime || defaultTime || nowClock()}` : day)
   }
 
   return (
@@ -365,7 +368,7 @@ export function DatePicker({
           {withTime && (
             <div className="mt-2 flex items-center gap-2 border-t border-border pt-2">
               <span className="text-xs text-muted-foreground">{t('dates.time')}</span>
-              <TimePicker value={time} onChange={(v) => emit(selected ?? new Date(), v ?? nowClock())} />
+              <TimePicker value={time} onChange={(v) => emit(selected ?? new Date(), v ?? defaultTime ?? nowClock())} />
             </div>
           )}
           <div className="mt-2 flex border-t border-border pt-2">
@@ -375,12 +378,13 @@ export function DatePicker({
               size="sm"
               data-testid="date-today"
               onClick={() => {
-                onChange(withTime ? nowLocal() : todayLocal())
+                // `defaultTime`-იან ველზე (ფანჯრის ბოლო) „დღეს" მისი დროით და არა „ახლა"
+                onChange(withTime ? (defaultTime ? `${todayLocal()}T${defaultTime}` : nowLocal()) : todayLocal())
                 close()
               }}
             >
-              {withTime ? <Clock className="size-3.5" /> : <CalendarCheck className="size-3.5" />}
-              {t(withTime ? 'dates.now' : 'dates.today')}
+              {withTime && !defaultTime ? <Clock className="size-3.5" /> : <CalendarCheck className="size-3.5" />}
+              {t(withTime && !defaultTime ? 'dates.now' : 'dates.today')}
             </Button>
           </div>
         </>

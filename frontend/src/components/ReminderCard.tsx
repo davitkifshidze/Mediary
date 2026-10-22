@@ -23,7 +23,7 @@ import { Switch } from '@/components/ui/switch'
 import { useDateFormat } from '@/lib/dates'
 import { cutStyle } from '@/lib/cutStyle'
 import { modAccent } from '@/lib/modules'
-import { reminderState, type ReminderState } from '@/lib/reminders'
+import { plannedText, reminderState, type ReminderState } from '@/lib/reminders'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -74,15 +74,16 @@ function reminderLabel(reminder: NoteReminder, t: TFunction, dateTime: (v: strin
   }
 }
 
-/** ჯერადობის მინაწერი — ცარიელი, თუ უსასრულოა */
-function repeatLabel(reminder: NoteReminder, t: TFunction): string | null {
-  if (!reminder.repeat_count) {
+/**
+ * „სულ N-ჯერ · გაისროლა M-ჯერ" — რიცხვი სერვერისაა (`planned_count`, განრიგიდან
+ * და ფანჯრიდან); ცარიელი, თუ ბოლო არ აქვს (უსასრულოა)
+ */
+function plannedLabel(reminder: NoteReminder, t: TFunction): string | null {
+  if (reminder.planned_count === null) {
     return null
   }
 
-  return `${t('notes.reminderTimes', { count: reminder.repeat_count })} · ${t('notes.reminderRepeatLeft', {
-    count: Math.max(reminder.repeat_count - reminder.sent_count, 0),
-  })}`
+  return `${plannedText(reminder.planned_count, t)} · ${t('notes.reminderSent', { n: String(reminder.sent_count) })}`
 }
 
 /** მოქმედების ფანჯრის მინაწერი — ცარიელი, თუ საზღვარი არ აქვს */
@@ -176,7 +177,7 @@ export function ReminderCard({
   const tone = STATE_TONE[state]
   const accent = modAccent(cutStyle(state).color) ?? undefined
   const Icon = MODE_ICON[reminder.mode]
-  const repeat = repeatLabel(reminder, t)
+  const planned = plannedLabel(reminder, t)
   const period = windowLabel(reminder, t, dateTime)
 
   return (
@@ -235,7 +236,7 @@ export function ReminderCard({
                 </Meta>
               )
             })}
-            {repeat && <Meta icon={<Repeat className="size-3 shrink-0" />}>{repeat}</Meta>}
+            {planned && <Meta icon={<Repeat className="size-3 shrink-0" />}>{planned}</Meta>}
             {period && <Meta icon={<CalendarRange className="size-3 shrink-0" />}>{period}</Meta>}
           </span>
         </button>

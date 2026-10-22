@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, ArrowLeft, BellPlus, Plus, Send, X } from 'lucide-react'
 import {
   REMINDER_CHANNELS,
@@ -9,6 +9,7 @@ import {
   createNoteReminder,
   deleteNoteReminder,
   fetchNoteReminders,
+  previewNoteReminder,
   updateNoteReminder,
   type NoteReminder,
   type NoteReminderInput,
@@ -30,7 +31,7 @@ import { StepSection } from '@/components/ui/step-section'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { ReminderCard } from '@/components/ReminderCard'
 import { EmptyState } from '@/components/ui/empty-state'
-import { activeCount, reminderInput, sortReminders } from '@/lib/reminders'
+import { activeCount, plannedText, reminderInput, sortReminders } from '@/lib/reminders'
 import { cn, fromDateTimeLocal, toDateTimeLocal } from '@/lib/utils'
 import { nowLocal } from '@/lib/dates'
 
@@ -57,6 +58,24 @@ const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
 /** მალსახმობები — ⚠️ ინტერვალი მაინც **ველია**, ეს მხოლოდ ჩქარი გზაა */
 const INTERVAL_PRESETS = [10, 15, 20, 60, 1440]
+
+/** ფანჯრის დასასრულის ნაგულისხმევი დრო — დღის ბოლო */
+const DAY_END = '23:59'
+
+/** დასასრულის მზა ვარიანტები — თვეები */
+const END_PRESETS = [1, 2, 3]
+
+/**
+ * `from`-იდან (ან დღეიდან) `months` თვის შემდეგ, დღის ბოლოს — `YYYY-MM-DDTHH:mm`.
+ * ⚠️ 31 იანვარს +1 თვე თებერვლის ბოლოა და არა 3 მარტი (`Date`-ის გადავსება).
+ */
+function monthsLater(from: string, months: number): string {
+  const base = from ? new Date(from) : new Date()
+  const year = base.getFullYear()
+  const month = base.getMonth() + months
+  const last = new Date(year, month + 1, 0).getDate()
+  return nowLocal(new Date(year, month, Math.min(base.getDate(), last), 23, 59))
+}
 
 const MONTH_DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
 
@@ -86,7 +105,6 @@ interface ReminderDraft {
   /** ⚠️ თვეში რამდენიმე რიცხვი */
   days: number[]
   month: string
-  repeat: string
   startsAt: string
   endsAt: string
   channels: ReminderChannel[]
@@ -105,7 +123,6 @@ const newDraft = (): ReminderDraft => ({
   weekdays: [1],
   days: [1],
   month: '1',
-  repeat: '',
   startsAt: nowLocal(),
   endsAt: '',
   channels: ['browser'],
@@ -121,7 +138,6 @@ function draftOf(reminder: NoteReminder): ReminderDraft {
     weekdays: reminder.weekdays.length ? reminder.weekdays : [1],
     days: reminder.days_of_month.length ? reminder.days_of_month : [1],
     month: String(reminder.month ?? 1),
-    repeat: reminder.repeat_count ? String(reminder.repeat_count) : '',
     startsAt: toDateTimeLocal(reminder.starts_at),
     endsAt: toDateTimeLocal(reminder.ends_at),
     channels: reminder.channels.length ? reminder.channels : ['browser'],
@@ -142,8 +158,6 @@ function draftInput(draft: ReminderDraft, zone: string): NoteReminderInput {
     weekdays: draft.mode === 'weekly' ? draft.weekdays : null,
     days_of_month: usesDays ? draft.days : null,
     month: draft.mode === 'yearly' ? Number(draft.month) : null,
-    // ჯერადობა `once`-ს არ ეხება: ის ისედაც ერთხელ ისვრის
-    repeat_count: draft.mode !== 'once' && Number(draft.repeat) >= 1 ? Number(draft.repeat) : null,
     // ⚠️ ფანჯარა **ყველა რეჟიმს ეხება**, `once`-საც — ეს საზღვარია და არა რეჟიმი
     starts_at: fromDateTimeLocal(draft.startsAt),
     ends_at: fromDateTimeLocal(draft.endsAt),
@@ -366,8 +380,24 @@ function ReminderEditor({
 
   const usesClock = CLOCK_MODES.includes(draft.mode)
   const usesDays = DAY_MODES.includes(draft.mode)
-  const usesRepeat = draft.mode !== 'once'
   const broken = windowBroken(draft)
+  const ready = draftReady(draft)
+
+  /* „სულ N-ჯერ" — სერვერის გათვლა (`GET /note-reminders/preview`); აკრეფისას
+     300 ms ჩამორჩენით, რომ ყოველ ციფრზე მოთხოვნა არ წავიდეს */
+  const inputKey = useMemo(() => JSON.stringify(draftInput(draft, zone)), [draft, zone])
+  const [previewKey, setPreviewKey] = useState(inputKey)
+  useEffect(() => {
+    const timer = setTimeout(() => setPreviewKey(inputKey), 300)
+    return () => clearTimeout(timer)
+  }, [inputKey])
+  const preview = useQuery({
+    queryKey: ['note-reminder-preview', previewKey],
+    queryFn: () => previewNoteReminder(JSON.parse(previewKey) as NoteReminderInput),
+    enabled: ready,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+  })
 
   /**
    * **დრო ბორბლის დადასტურებისთანავე ემატება** — ცალკე ღილაკის
@@ -567,7 +597,7 @@ function ReminderEditor({
         title={t('notes.reminderStepWindow')}
         hint={t('notes.reminderStepWindowHint')}
       >
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label htmlFor="rem-starts">{t('notes.reminderWindowStart')}</Label>
             <DatePicker
@@ -580,34 +610,40 @@ function ReminderEditor({
 
           <div>
             <Label htmlFor="rem-ends">{t('notes.reminderWindowEnd')}</Label>
+            {/* ⚠️ დღის ბოლომდე (23:59) და არა 09:00-მდე — „2 თვე დღეიდან" ბოლო დღესაც მოიცავს */}
             <DatePicker
               id="rem-ends"
               withTime
+              defaultTime={DAY_END}
               value={draft.endsAt || null}
               onChange={(v) => patch({ endsAt: v ?? '' })}
             />
+            {/* „+1 · +2 · +3 თვე" — დაწყებიდან (ან დღეიდან), დღის ბოლოთი */}
+            <ChipRow className="mt-2">
+              {END_PRESETS.map((months) => {
+                const end = monthsLater(draft.startsAt, months)
+                return (
+                  <Chip key={months} active={draft.endsAt === end} onClick={() => patch({ endsAt: end })}>
+                    {t('notes.reminderPlusMonths', { n: String(months) })}
+                  </Chip>
+                )
+              })}
+            </ChipRow>
           </div>
 
-          {usesRepeat && (
-            <div>
-              <Label htmlFor="rem-repeat">{t('notes.reminderRepeat')}</Label>
-              <Input
-                id="rem-repeat"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={1000}
-                placeholder={t('notes.reminderRepeatNone')}
-                value={draft.repeat}
-                onChange={(e) => patch({ repeat: e.target.value })}
-              />
-            </div>
-          )}
         </div>
 
         <p className={cn('mt-2 text-xs', broken ? 'text-destructive' : 'text-muted-foreground')}>
           {broken ? t('notes.reminderWindowInvalid') : t('notes.reminderWindowHint')}
         </p>
+
+        {/* „სულ N-ჯერ" — ითვლება და არა იწერება: განრიგიდან და ფანჯრიდან, სერვერზე */}
+        {ready && (
+          <p className="mt-3 flex items-center gap-1.5 text-sm font-medium" data-testid="reminder-planned">
+            {preview.data ? plannedText(preview.data.planned_count, t) : '…'}
+            <InfoHint info={t('notes.reminderPlannedHint')} />
+          </p>
+        )}
       </StepSection>
 
       <StepSection

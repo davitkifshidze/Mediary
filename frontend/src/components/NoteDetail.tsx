@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, ExternalLink } from 'lucide-react'
+import { CalendarPlus, ExternalLink } from 'lucide-react'
 import { toggleNoteFavorite, type NoteEntry } from '@/api/notes'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { Markdown } from '@/components/ui/markdown'
@@ -64,6 +64,13 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
       <div className="mt-4 space-y-6">
         {/* ჰეროში ორივე ღილაკი: შემხსენებელი (ქარვისფერი) და რჩეული, ერთი სიმაღლის */}
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {/* „დამატებულია" — ჩანაწერის თარიღი (`created_at`); ფორმაში არაფერია */}
+          {note.created_at && (
+            <span className="mr-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground" data-testid="note-created">
+              <CalendarPlus className="size-4" />
+              {t('notes.createdOn', { date: dateTime(note.created_at) })}
+            </span>
+          )}
           <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(true)} />
           <FavoriteButton active={note.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
         </div>
@@ -73,13 +80,6 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
 
         {/* ---------- ფოტოები — ზემოთ ---------- */}
         <NoteUploads noteId={note.id} kinds={['image']} />
-
-        {note.due_at && (
-          <p className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm">
-            <CalendarClock className="size-4 text-muted-foreground" />
-            {dateTime(note.due_at)}
-          </p>
-        )}
 
         {note.description && (
           <Markdown text={note.description} className="text-sm text-muted-foreground" />

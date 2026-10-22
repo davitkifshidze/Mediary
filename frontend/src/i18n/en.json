@@ -1395,7 +1395,6 @@
         "rating": "My rating"
       },
       "note": {
-        "due_at": "Needed by",
         "tags": "Tags",
         "title": "Name",
         "category": "Category",
@@ -1516,7 +1515,6 @@
         "rating": "BGG's own score is stored separately and isn't touched."
       },
       "note": {
-        "due_at": "The deadline notes are sorted by.",
         "tags": "Your own labels, used for filtering."
       },
       "bookmark": {
@@ -2454,8 +2452,6 @@
     "links": "Links",
     "addLink": "Add link",
     "open": "Open",
-    "dueFilter": "By deadline",
-    "overdueOnly": "Overdue only",
     "saved": "Saved",
     "deleteTitle": "Delete this note?",
     "deleteHint": "“{{name}}” will be deleted along with its files and reminders.",
@@ -2507,7 +2503,6 @@
       "newest": "Newest",
       "oldest": "Oldest",
       "title": "By name",
-      "due": "By deadline",
       "updated": "Last updated"
     },
     "edit": "Edit note",
@@ -2519,10 +2514,6 @@
     "reminderWeekdaysHint": "Pick several if you like — the nearest selected day fires.",
     "reminderDayOfMonthHint": "31 falls back to the last day in shorter months (28/29/30).",
     "reminderMonth": "Month",
-    "reminderRepeat": "Repeat count",
-    "reminderRepeatNone": "Forever",
-    "reminderRepeatLeft": "{{count}} left",
-    "reminderTimes": "{{count}}×",
     "reminderWeekdaysRequired": "Pick at least one day.",
     "monthlyOn": "Monthly on day {{days}}",
     "yearlyOn": "Yearly on {{month}} {{days}}",
@@ -2547,7 +2538,7 @@
     "reminderStepWhen": "When it fires",
     "reminderStepWhenHint": "Pick the mode first, then the days and times. Several times a day are allowed.",
     "reminderStepWindow": "For how long",
-    "reminderStepWindowHint": "Between which dates it stays alive, and how many times it fires in total.",
+    "reminderStepWindowHint": "Between which dates it stays alive — the number of times it fires follows from this.",
     "reminderStepChannelsHint": "Where the notification arrives. The browser channel needs the app open; Telegram does not.",
     "reminderTimesLabel": "Times of day",
     "reminderTimesHint": "Several are allowed — it fires at every selected time.",
@@ -2581,7 +2572,13 @@
     "reminderTimeDuplicate": "{{time}} is already selected — not added again.",
     "uploadsPending": "Files are attached to the note when you save.",
     "uploadsFailed": "Could not upload: {{names}}. The note is saved — “Save” will try them again.",
-    "uploadingProgress": "Uploading {{done}} / {{total}}…"
+    "uploadingProgress": "Uploading {{done}} / {{total}}…",
+    "createdOn": "Added {{date}}",
+    "reminderPlanned": "{{n}} times in total",
+    "reminderSent": "sent {{n}} times",
+    "reminderForever": "Forever — no end set",
+    "reminderPlannedHint": "The number is worked out from the schedule and the window: how many times its time comes round between the start and the end. Without an end it goes on forever.",
+    "reminderPlusMonths": "+{{n}} mo"
   },
   "chat": {
     "title": "Chat",

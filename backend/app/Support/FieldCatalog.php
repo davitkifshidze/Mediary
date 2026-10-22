@@ -185,7 +185,6 @@ final class FieldCatalog
             ['key' => 'title', 'type' => 'text', 'locked' => true, 'sort_order' => 10],
             ['key' => 'category', 'type' => 'select', 'sort_order' => 20],
             ['key' => 'status', 'type' => 'select', 'sort_order' => 30],
-            ['key' => 'due_at', 'type' => 'date', 'sort_order' => 40],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 50],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 60],
             ['key' => 'links', 'type' => 'list', 'sort_order' => 70],

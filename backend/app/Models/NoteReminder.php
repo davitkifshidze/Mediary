@@ -41,9 +41,10 @@ use Illuminate\Support\Carbon;
  * მარტის 3-ზე გადადის. „ყოველთვიურად 31-ში" ნიშნავს თვის ბოლოს — Carbon-ის
  * ნაგულისხმევი გადავსება (`Feb 31 → Mar 3`) აქ ჩუმად არასწორ თვეს აირჩევდა.
  *
- * ⚠️ **ჯერადობა (`repeat_count`) მხოლოდ `exhaustedAfter()`-შია**
- * გათვალისწინებული — ე.ი. „ბოლო გასროლა" ერთ ადგილას წყდება. `null` =
- * უსასრულოდ.
+ * ⚠️ **„რამდენჯერ" ითვლება და არ იწერება** (`plannedCount()`): განრიგი და
+ * ფანჯრის ბოლო მას ცალსახად წყვეტს, ხელით ჩაწერილი რიცხვი კი მათ ეწინააღმდეგებოდა.
+ * დათვლა `computeNextAt()`-ის იმავე ჯაჭვით მიდის, რითაც დისპეტჩერი ისვრის —
+ * ბრაუზერში მეორე ფორმულა (კვირა/თვე/წელი, სარტყელი, თვის ბოლო) არ არსებობს.
  *
  * ⚠️ **ყველა სია ერთი წესით ნორმალიზდება** (`clocks()`, `selectedWeekdays()`,
  * `selectedDays()`): დუბლიკატის, დიაპაზონს გარეთ მნიშვნელობისა და რიგის
@@ -167,7 +168,6 @@ class NoteReminder extends Model
         'times_of_day' => 'array',
         'days_of_month' => 'array',
         'month' => 'integer',
-        'repeat_count' => 'integer',
         'sent_count' => 'integer',
         'is_active' => 'boolean',
         'channels' => 'array',
@@ -195,6 +195,40 @@ class NoteReminder extends Model
     }
 
     /* ---------- დროის გამოთვლა ---------- */
+
+    /** „სულ რამდენჯერ" — ზემოთ რიცხვი აღარ ითვლება და „1000+" იწერება */
+    public const PLAN_CAP = 1000;
+
+    /**
+     * **სულ რამდენჯერ გაისვრის** — უკვე გასროლილი + დარჩენილი `$from`-იდან
+     * (ნაგულისხმევად ახლა) ფანჯრის ბოლომდე. `null` — ბოლო არ აქვს (უსასრულოდ);
+     * ჭერზე — `PLAN_CAP`.
+     *
+     * ⚠️ დარჩენილს `computeNextAt()`-ის ჯაჭვი ითვლის — ზუსტად ისე, როგორც
+     * დისპეტჩერი გასროლის შემდეგ შემდეგ მომენტს (`nextStateAfterSending()`),
+     * ე.ი. რიცხვი და ნამდვილი გაგზავნები ვერ დაშორდება. შეჩერებულზე —
+     * „თუ ახლა ჩავრთავ".
+     */
+    public function plannedCount(?CarbonInterface $from = null): ?int
+    {
+        $count = (int) $this->sent_count;
+
+        if ($this->mode === self::MODE_ONCE) {
+            return $count > 0 ? $count : ($this->computeNextAt($from) ? 1 : 0);
+        }
+
+        if (! $this->ends_at) {
+            return null;
+        }
+
+        $next = $this->computeNextAt($from);
+        while ($next !== null && $count < self::PLAN_CAP) {
+            $count++;
+            $next = $this->computeNextAt($next);
+        }
+
+        return min($count, self::PLAN_CAP);
+    }
 
     /**
      * მომდევნო გასროლის მომენტი UTC-ში, ან `null` — თუ აღარ ისროლებს.
@@ -244,17 +278,18 @@ class NoteReminder extends Model
      * წერს (`where next_at = ძველი`), რომ ორმა პარალელურმა გამომძახებელმა
      * ერთი და იგივე შეხსენება ორჯერ ვერ დაიჭიროს.
      *
-     * ⚠️ **„აღარ ისვრის" = „აღარაა აქტიური"** — ერთი წესი სამივე მიზეზზე:
-     * ერთჯერადი, ამოწურული ჯერადობა და **დამთავრებული ფანჯარა**. სამივე
-     * ცალკე რომ შემოწმებულიყო, ერთი მათგანი დაავიწყდებოდა და სიაში
-     * სამუდამოდ „აქტიური" შეხსენება იდგებოდა, რომელიც არასდროს გაისვრის.
+     * ⚠️ **„აღარ ისვრის" = „აღარაა აქტიური"** — ერთი წესი ორივე მიზეზზე:
+     * ერთჯერადი და **დამთავრებული ფანჯარა**. ცალ-ცალკე რომ შემოწმებულიყო,
+     * ერთი მათგანი დაავიწყდებოდა და სიაში სამუდამოდ „აქტიური" შეხსენება
+     * იდგებოდა, რომელიც არასდროს გაისვრის.
      *
      * @return array{next_at: Carbon|null, is_active: bool, last_sent_at: Carbon, sent_count: int}
      */
     public function nextStateAfterSending(CarbonInterface $sentAt): array
     {
         $sentCount = (int) $this->sent_count + 1;
-        $next = $this->exhaustedAfter($sentCount) ? null : $this->computeNextAt($sentAt);
+        // ერთჯერადი ერთხელ ისვრის; პერიოდულს ფანჯრის ბოლო აჩერებს (`computeNextAt()`)
+        $next = $this->mode === self::MODE_ONCE ? null : $this->computeNextAt($sentAt);
 
         return [
             'next_at' => $next,
@@ -262,19 +297,6 @@ class NoteReminder extends Model
             'last_sent_at' => AppTime::at($sentAt),
             'sent_count' => $sentCount,
         ];
-    }
-
-    /**
-     * ეს იყო ბოლო გასროლა?
-     *
-     * ⚠️ **ჯერადობა ერთ ადგილას წყდება** — `once` ყოველთვის ერთჯერადია,
-     * `repeat_count` კი ნებისმიერ პერიოდულს აჩერებს. `null` და `0` = უსასრულოდ,
-     * ე.ი. ძველი (ჯერადობამდელი) შეხსენებების ქცევა უცვლელია.
-     */
-    private function exhaustedAfter(int $sentCount): bool
-    {
-        return $this->mode === self::MODE_ONCE
-            || ($this->repeat_count > 0 && $sentCount >= $this->repeat_count);
     }
 
     /** მომენტი ფანჯარაშია? (ორივე ბოლო არასავალდებულოა) */

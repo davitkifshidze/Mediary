@@ -24,7 +24,6 @@ import { TagSelect } from '@/components/TagSelect'
 import { Button } from '@/components/ui/button'
 import { RichText } from '@/components/ui/rich-text'
 import { Input } from '@/components/ui/input'
-import { DatePicker } from '@/components/ui/date-picker'
 import { joinHints } from '@/components/ui/field-label'
 import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
@@ -36,7 +35,6 @@ import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { usePendingUploads } from '@/lib/pendingUploads'
 import { useCustomFieldDraft } from '@/lib/customFieldDraft'
-import { fromDateTimeLocal, toDateTimeLocal } from '@/lib/utils'
 import { LinkField } from '@/components/ui/link-field'
 
 /* ============================================================
@@ -85,7 +83,6 @@ export function NoteForm({
     tags: note?.tags ?? [],
     // გასაღები; ცარიელი = ნაგულისხმევი (backend დაადებს)
     status: note?.status?.key ?? '',
-    dueAt: toDateTimeLocal(note?.due_at),
   })
   /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი:
      ინდექსზე შუა სტრიქონის წაშლა ფოკუსსა და კარეტს მეზობელ ბმულზე გადაიტანდა.
@@ -193,8 +190,6 @@ export function NoteForm({
       category_id: form.categoryId ? Number(form.categoryId) : null,
       tags: form.tags,
       links: unkeyRows(links.filter((l) => l.url.trim())),
-      // ⚠️ ლოკალური input → UTC (`fromDateTimeLocal` ერთადერთი გზაა)
-      due_at: fromDateTimeLocal(form.dueAt),
       status: form.status || undefined,
     })
   }
@@ -264,7 +259,7 @@ export function NoteForm({
 
         <FormSection title={t('form.sections.classification')}>
           {/* „რას ეხება" — კატეგორია, გვერდით „ახალი" */}
-          <FormField size="third" {...fields.field('category')} htmlFor="note-category" error={errors.category_id}>
+          <FormField size="half" {...fields.field('category')} htmlFor="note-category" error={errors.category_id}>
             <div className="flex gap-1">
               <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
                 <SelectTrigger id="note-category" className={errors.category_id ? 'border-destructive' : undefined}>
@@ -292,7 +287,7 @@ export function NoteForm({
             </div>
           </FormField>
 
-          <FormField size="third" {...fields.field('status')} htmlFor="note-status" error={errors.status}>
+          <FormField size="half" {...fields.field('status')} htmlFor="note-status" error={errors.status}>
             <Select
               value={form.status}
               onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}
@@ -309,17 +304,6 @@ export function NoteForm({
                 ))}
               </SelectContent>
             </Select>
-          </FormField>
-
-          {/* „როდისთვის მჭირდება" — ნორმალური პიქერი, ფორმატი
-              იგივეა, რაც `datetime-local`-ს ჰქონდა, ე.ი. `fromDateTimeLocal` უცვლელია */}
-          <FormField size="third" {...fields.field('due_at')} htmlFor="note-due">
-            <DatePicker
-              id="note-due"
-              withTime
-              value={form.dueAt || null}
-              onChange={(v) => setForm((f) => ({ ...f, dueAt: v ?? '' }))}
-            />
           </FormField>
 
           <FormField

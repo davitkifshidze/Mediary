@@ -66,6 +66,22 @@ class NoteReminderController extends Controller
         return (new NoteReminderResource($reminder))->response()->setStatusCode(201);
     }
 
+    /**
+     * **წინასწარი გათვლა შენახვის გარეშე** — რედაქტორი აჩვენებს „სულ N-ჯერ"
+     * და პირველ გასროლას, სანამ შეინახავ. იგივე ვალიდაცია და იგივე სვეტები,
+     * რაც შენახვისას, შეუნახავ მოდელზე — რიცხვი შენახულისას ემთხვევა.
+     * ⚠️ GET და არა POST: გვერდითი ეფექტი არ აქვს, `permission:` კი მას „ნახვად" კითხულობს.
+     */
+    public function preview(Request $request)
+    {
+        $reminder = new NoteReminder($this->attributes($this->validated($request)));
+
+        return response()->json([
+            'planned_count' => $reminder->plannedCount(),
+            'next_at' => $reminder->computeNextAt()?->toIso8601String(),
+        ]);
+    }
+
     public function update(Request $request, NoteReminder $noteReminder)
     {
         $data = $this->validated($request);
@@ -192,8 +208,6 @@ class NoteReminderController extends Controller
             ],
             'days_of_month.*' => ['integer', 'min:1', 'max:31'],
             'month' => ['nullable', 'required_if:mode,yearly', 'integer', 'min:1', 'max:12'],
-            // ჯერადობა: სულ რამდენჯერ გაისროლოს; ცარიელი = უსასრულოდ
-            'repeat_count' => ['nullable', 'integer', 'min:1', 'max:1000'],
             // ⚠️ **მოქმედების ფანჯარა** — „ამ დიაპაზონში", „ამ პერიოდით".
             // ორივე აბსოლუტური მომენტია; `after:starts_at` მხოლოდ მაშინ ირთვება,
             // როცა დასაწყისი მართლა გამოგზავნილია — თორემ ცარიელ `starts_at`-ს
@@ -222,7 +236,6 @@ class NoteReminderController extends Controller
             'weekdays' => $this->sortedList($data['weekdays'] ?? [], fn ($v) => (int) $v),
             'days_of_month' => $this->sortedList($data['days_of_month'] ?? [], fn ($v) => (int) $v),
             'month' => $data['month'] ?? null,
-            'repeat_count' => $data['repeat_count'] ?? null,
             'starts_at' => $data['starts_at'] ?? null,
             'ends_at' => $data['ends_at'] ?? null,
             'timezone' => $data['timezone'] ?? 'UTC',

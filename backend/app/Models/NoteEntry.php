@@ -51,7 +51,6 @@ class NoteEntry extends Model
     protected $casts = [
         'tags' => 'array',
         'links' => 'array',
-        'due_at' => 'datetime',
         'is_favorite' => 'boolean',
         'sort_order' => 'integer',
         'finished_at' => 'date',

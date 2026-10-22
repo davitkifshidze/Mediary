@@ -105,6 +105,21 @@ describe('DatePicker', () => {
     expect(onChange).toHaveBeenCalledWith('2026-10-15T23:47')
   })
 
+  /* ფანჯრის ბოლო: დღე დღის ბოლომდე მოქმედებს, „ახლა" კი აქ უაზროა — „დღეს" */
+  it('a field with a default time fills it on a picked day and offers "today" at that time', async () => {
+    const { DatePicker } = await import('@/components/ui/date-picker')
+    const onChange = vi.fn()
+    await mount(h(DatePicker, { id: 'when', value: null, onChange, withTime: true, defaultTime: '23:59' }))
+
+    const day = [...document.querySelectorAll<HTMLButtonElement>('.rdp-day_button')].find((b) => b.textContent === '15')!
+    await act(async () => day.click())
+    expect(onChange).toHaveBeenLastCalledWith('2026-10-15T23:59')
+
+    expect(todayButton().textContent).toBe(i18n.t('dates.today'))
+    await act(async () => todayButton().click())
+    expect(onChange).toHaveBeenLastCalledWith('2026-10-22T23:59')
+  })
+
   it('marks today in the calendar', async () => {
     const { DatePicker } = await import('@/components/ui/date-picker')
     await mount(h(DatePicker, { id: 'when', value: null, onChange: vi.fn() }))

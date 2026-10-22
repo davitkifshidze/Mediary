@@ -8,7 +8,7 @@ import { useDrillParams } from '@/lib/statsLinks'
 import { Pagination } from '@/components/ui/pagination'
 import {
   BellRing,
-  CalendarClock,
+  CalendarPlus,
   ExternalLink,
   FileText,
   Loader2,
@@ -69,13 +69,13 @@ import { StatusBadge } from '@/components/StatusBadge'
    სექციაა** (`?view=`), პანელი კი კატეგორიასა და ტეგებს ფილტრავს.
    ============================================================ */
 
-const SORTS = ['newest', 'oldest', 'title', 'due', 'updated'] as const
+const SORTS = ['newest', 'oldest', 'title', 'updated'] as const
 
 /* ⚠️ სტატუსების სია აღარ წერია კოდში — ის per-user ლექსიკონია.
    ფერი `statusTone()`-იდან მოდის, ე.ი. ხელით დამატებულიც ფერადია. */
 
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
-const EMPTY_FILTERS = { categories: [] as string[], tags: [] as string[], overdue: false }
+const EMPTY_FILTERS = { categories: [] as string[], tags: [] as string[] }
 type PanelFilters = typeof EMPTY_FILTERS
 
 export function NotesPage() {
@@ -104,7 +104,6 @@ export function NotesPage() {
     () => new URLSearchParams(search).get('tag')?.split(',').filter(Boolean) ?? [],
     [search],
   )
-  const overdue = new URLSearchParams(search).get('overdue') === '1'
 
   const [panelOpen, setPanelOpen] = useState(false)
   const [q, setQ] = useState('')
@@ -127,7 +126,6 @@ export function NotesPage() {
     q: term || undefined,
     category_id: categories.length ? categories.join(',') : undefined,
     tag: tags.length ? tags.join(',') : undefined,
-    overdue: overdue || undefined,
     favorite: view === 'favorite' ? true : undefined,
     // „რჩეული" და „ყველა" სტატუსს არ ნიშნავს — დანარჩენი სექცია სტატუსია
     // „ყველა"/„რჩეული" სტატუსები არაა; დანარჩენი ლექსიკონის გასაღებია
@@ -203,7 +201,6 @@ export function NotesPage() {
     if (view !== 'all') p.set('view', view)
     if (next.categories.length) p.set('category', next.categories.join(','))
     if (next.tags.length) p.set('tag', next.tags.join(','))
-    if (next.overdue) p.set('overdue', '1')
     setPanelOpen(false)
     navigate({ pathname: '/notes', search: p.toString() })
   }
@@ -213,7 +210,7 @@ export function NotesPage() {
      (მონახაზსაც და მისამართსაც) — ადრე მხოლოდ მისამართს წერდა და უკვე
      სუფთა მისამართზე დაჭერილი „გასუფთავება" ჩუმად არაფერს აკეთებდა. */
   const { draft, setDraft, dirty, apply, clear, activeCount } = useFilterDraft(
-    { categories, tags, overdue },
+    { categories, tags },
     EMPTY_FILTERS,
     writeFilters,
   )
@@ -234,10 +231,6 @@ export function NotesPage() {
         : onlyCategory
           ? dictionaryName(onlyCategory, lang)
           : t('notes.title')
-
-  const isOverdue = (note: NoteEntry) =>
-    // ⚠️ „ვადაგადაცილებული" **როლით** იზომება — სტატუსს სახელი გადაერქმევა
-    !!note.due_at && note.status?.role === 'todo' && new Date(note.due_at) < new Date()
 
   return (
     <PageContainer>
@@ -379,15 +372,11 @@ export function NotesPage() {
                           {dictionaryName(note.category, lang)}
                         </span>
                       )}
-                      {note.due_at && (
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1',
-                            isOverdue(note) && 'font-medium text-destructive',
-                          )}
-                        >
-                          <CalendarClock className="size-3" />
-                          {fmt.date(note.due_at)}
+                      {/* „დამატებულია" — ჩანაწერის თარიღი */}
+                      {note.created_at && (
+                        <span className="inline-flex items-center gap-1" title={t('notes.createdOn', { date: fmt.date(note.created_at) })}>
+                          <CalendarPlus className="size-3" />
+                          {fmt.date(note.created_at)}
                         </span>
                       )}
                       {(note.files_count ?? 0) > 0 && (
@@ -463,14 +452,6 @@ export function NotesPage() {
           onOpenChange={setPanelOpen}
         >
           {/* სტატუსი აქ განზრახ არ არის — ის საიდბარის სექციაა */}
-          <FilterGroup title={t('notes.dueFilter')} count={draft.overdue ? 1 : 0}>
-            <FilterOption
-              label={t('notes.overdueOnly')}
-              checked={draft.overdue}
-              onChange={(on) => setDraft((d) => ({ ...d, overdue: on }))}
-            />
-          </FilterGroup>
-
           <FilterGroup title={t('notes.category')} count={draft.categories.length}>
             <FilterOptionList>
               {allCategories.map((category) => (

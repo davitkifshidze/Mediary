@@ -102,7 +102,6 @@ class NoteModuleTest extends TestCase
                     ['label' => 'ჩანაწერი', 'url' => 'https://example.com/a'],
                     ['label' => null, 'url' => 'https://example.com/b'],
                 ],
-                'due_at' => '2026-12-01T09:00:00Z',
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.title', 'ავტოსატესტო')
@@ -611,47 +610,95 @@ class NoteModuleTest extends TestCase
     }
 
     /**
-     * **ჯერადობა**: მითითებული რაოდენობის შემდეგ პერიოდულიც ითიშება.
+     * **ფანჯრის ბოლო აჩერებს პერიოდულს**, „სულ რამდენჯერ" კი ითვლება —
+     * ხელით ჩასაწერი ჯერადობა აღარ არსებობს.
      *
-     * ⚠️ ეს ერთადერთ ადგილას წყდება (`NoteReminder::exhaustedAfter()`), თორემ
-     * „ბოლო გასროლა" ორ ფორმულას ექნებოდა.
+     * ⚠️ რიცხვი (`planned_count`) და ნამდვილი გასროლები ერთი ჯაჭვიდანაა
+     * (`computeNextAt()`), ე.ი. ერთმანეთს ემთხვევა.
      */
-    public function test_repeat_count_stops_a_recurring_reminder(): void
+    public function test_the_window_end_stops_a_recurring_reminder_and_its_count_is_computed(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
         $noteId = $this->makeNote();
 
-        $reminderId = $this->actingAs($this->user)
+        $response = $this->actingAs($this->user)
             ->postJson("/api/notes/{$noteId}/reminders", [
                 'mode' => 'interval',
                 'interval_minutes' => 10,
-                'repeat_count' => 2,
+                'ends_at' => '2026-09-04T12:20:00+00:00',
             ])
             ->assertStatus(201)
-            ->json('data.id');
+            // 12:10 და 12:20 — მეტი ფანჯარაში არ ეტევა
+            ->assertJsonPath('data.planned_count', 2)
+            ->assertJsonMissingPath('data.repeat_count');
+        $reminderId = $response->json('data.id');
 
         $dispatcher = app(ReminderDispatcher::class);
 
-        // პირველი გასროლა — ჯერ კიდევ აქტიურია
         Carbon::setTestNow(Carbon::parse('2026-09-04 12:10:00', 'UTC'));
         $this->assertSame(1, $dispatcher->run());
-
         $reminder = NoteReminder::withoutGlobalScope('owner')->find($reminderId);
         $this->assertTrue((bool) $reminder->is_active);
-        $this->assertSame(1, (int) $reminder->sent_count);
 
-        // მეორე — ჯერადობა ამოიწურა
+        // მეორე — ფანჯრის ბოლო: შემდეგი (12:30) მის გარეთაა
         Carbon::setTestNow(Carbon::parse('2026-09-04 12:20:00', 'UTC'));
         $this->assertSame(1, $dispatcher->run());
-
         $reminder = NoteReminder::withoutGlobalScope('owner')->find($reminderId);
         $this->assertFalse((bool) $reminder->is_active);
         $this->assertNull($reminder->next_at);
         $this->assertSame(2, (int) $reminder->sent_count);
+        // გასროლილი + დარჩენილი = იგივე რიცხვი
+        $this->assertSame(2, $reminder->plannedCount());
 
-        // მესამედ აღარაფერი ისროლებს
         Carbon::setTestNow(Carbon::parse('2026-09-04 12:30:00', 'UTC'));
         $this->assertSame(0, $dispatcher->run());
+
+        Carbon::setTestNow();
+    }
+
+    /**
+     * **წინასწარი გათვლა** — შენახვის გარეშე: „ყოველ დღე 09:00-სა და 21:00-ზე"
+     * სამი დღის ფანჯარაში; ბოლოს გარეშე — უსასრულოდ (`null`); ერთჯერადი — 1;
+     * ძალიან ხშირი — ჭერი.
+     */
+    public function test_preview_counts_the_fires_without_saving(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
+        $before = NoteReminder::withoutGlobalScope('owner')->count();
+
+        $this->actingAs($this->user)
+            ->getJson('/api/note-reminders/preview?'.http_build_query([
+                'mode' => 'daily',
+                'times_of_day' => ['09:00', '21:00'],
+                'ends_at' => '2026-09-06T23:59:00+00:00',
+                'timezone' => 'UTC',
+            ]))
+            ->assertOk()
+            // 04 21:00 · 05 09:00 · 05 21:00 · 06 09:00 · 06 21:00
+            ->assertJsonPath('planned_count', 5)
+            ->assertJsonPath('next_at', '2026-09-05T01:00:00+04:00'); // იგივე მომენტი, აპის სარტყელში
+
+        $this->actingAs($this->user)
+            ->getJson('/api/note-reminders/preview?'.http_build_query(['mode' => 'daily', 'times_of_day' => ['09:00']]))
+            ->assertOk()
+            ->assertJsonPath('planned_count', null);
+
+        $this->actingAs($this->user)
+            ->getJson('/api/note-reminders/preview?'.http_build_query(['mode' => 'once', 'remind_at' => '2026-09-05T10:00:00+00:00']))
+            ->assertOk()
+            ->assertJsonPath('planned_count', 1);
+
+        $this->actingAs($this->user)
+            ->getJson('/api/note-reminders/preview?'.http_build_query([
+                'mode' => 'interval',
+                'interval_minutes' => NoteReminder::MIN_INTERVAL_MINUTES,
+                'ends_at' => '2026-12-31T00:00:00+00:00',
+            ]))
+            ->assertOk()
+            ->assertJsonPath('planned_count', NoteReminder::PLAN_CAP);
+
+        // არაფერი შენახულა
+        $this->assertSame($before, NoteReminder::withoutGlobalScope('owner')->count());
 
         Carbon::setTestNow();
     }
