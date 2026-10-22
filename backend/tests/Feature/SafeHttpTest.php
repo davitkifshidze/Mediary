@@ -90,6 +90,44 @@ class SafeHttpTest extends TestCase
     }
 
     /**
+     * **რექვესთი მართლა მიბმულ IP-ზე მიდის** (DNS rebinding-ის დაცვა).
+     *
+     * ⚠️ `'stream' => true` Guzzle-ს ნაკადის დამმუშავებელზე გადაიყვანდა, ის კი
+     * `CURLOPT_RESOLVE`-ს ჩუმად უგულებელყოფს — ე.ი. ფილტრი ერთ მისამართს
+     * შეამოწმებდა, რექვესთი კი DNS-ის ახალ პასუხზე წავიდოდა. `.invalid` არასდროს
+     * იხსნება (RFC 6761), ე.ი. სოკეტამდე რექვესთი **მხოლოდ** მიბმით მიაღწევს.
+     * ქსელი არ გვჭირდება: სოკეტი უსმენს და არ პასუხობს — `accept()`-მდეც OS
+     * კავშირს რიგში იღებს და რექვესთი ბუფერში რჩება, პასუხის ლოდინი კი წამში წყდება.
+     */
+    public function test_the_request_goes_to_the_pinned_address(): void
+    {
+        config(['mediary.safe_http.allow_private' => true]);
+
+        $server = stream_socket_server('tcp://127.0.0.1:0');
+        $port = (int) substr((string) strrchr((string) stream_socket_get_name($server, false), ':'), 1);
+
+        $http = new class extends SafeHttp
+        {
+            protected function addresses(string $host): array
+            {
+                return $host === 'pinned.invalid' ? ['127.0.0.1'] : parent::addresses($host);
+            }
+        };
+
+        $this->assertNull($http->fetch("http://pinned.invalid:{$port}/probe", 1000, timeout: 1));
+
+        $client = @stream_socket_accept($server, 1);
+        $this->assertNotFalse($client, 'რექვესთი მიბმულ მისამართს არ მისწვდა');
+
+        $request = (string) fread($client, 4096);
+        fclose($client);
+        fclose($server);
+
+        $this->assertStringStartsWith('GET /probe HTTP/1.1', $request);
+        $this->assertStringContainsString("Host: pinned.invalid:{$port}", $request);
+    }
+
+    /**
      * **redirect-ის ყოველი ნახტომი მოწმდება.**
      *
      * ⚠️ ეს არის ის, რის გამოც `allow_redirects` გამორთულია და ციკლი ხელითაა:

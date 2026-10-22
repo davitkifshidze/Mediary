@@ -2,9 +2,12 @@
 
 namespace App\Support;
 
+use GuzzleHttp\Psr7\DroppingStream;
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
 use Throwable;
 
@@ -38,11 +41,14 @@ use Throwable;
  * შემოწმებასა და რექვესთს შორის DNS შეიძლება **სხვა** პასუხს დააბრუნებს
  * (DNS rebinding) — ე.ი. „შევამოწმე და მერე წავედი" თავისთავად ხვრელია.
  * TLS-ის სერტიფიკატი ჰოსტის სახელზე მაინც მოწმდება, ე.ი. მიბმა https-ს არ ტეხს.
+ * მიბმა cURL-ის პარამეტრია, ამიტომ `'stream' => true` აქ **აკრძალულია**:
+ * მასზე Guzzle ნაკადის დამმუშავებელს ირჩევს, რომელიც cURL-ის პარამეტრებს
+ * ჩუმად უგულებელყოფს — დაცვა მხოლოდ ქაღალდზე დარჩებოდა.
  *
- * ⚠️ **სხეული ნაკადით იკითხება** და არა ერთი `body()`-ით: ჭერზე კითხვა
- * უბრალოდ **ჩერდება**. `Content-Length` ცალკე მოწმდება (თუ სერვერმა
- * მოგვცა), მაგრამ მასზე დაყრდნობა არ შეიძლება — ის შეიძლება არ იყოს
- * ან მტყუანი იყოს.
+ * ⚠️ **სხეული ჭერამდე იკითხება** და არა ერთი `body()`-ით: ჭერიანი `sink`
+ * (`DroppingStream`) ჭერზე cURL-ის გადაცემას **წყვეტს**. `Content-Length`
+ * ცალკე მოწმდება (თუ სერვერმა მოგვცა), მაგრამ მასზე დაყრდნობა არ
+ * შეიძლება — ის შეიძლება არ იყოს ან მტყუანი იყოს.
  *
  * ⚠️ **ლოკალური ქსელი გამორთვადია და არა მუდმივად აკრძალული**
  * (`SAFE_HTTP_ALLOW_PRIVATE=true`): პირად ინსტალაციაზე `192.168.x.x`-ზე
@@ -67,6 +73,7 @@ class SafeHttp
     /**
      * ჩამოტვირთვა ჭერით. **ჩავარდნა ნორმალური შედეგია** — გამომძახებლები
      * ცარიელ პასუხს აბრუნებენ და არა 5xx-ს (`LinkMetadata`-ის არსებული წესი).
+     * `$timeout` თითო ნახტომის **მთელ** გადაცემას ზღუდავს (cURL), სხეულის ჩათვლით.
      *
      * @param  array<string, string>  $headers
      * @return array{body: string, mime: ?string, status: int, url: string, truncated: bool}|null
@@ -82,6 +89,13 @@ class SafeHttp
                 return null;
             }
 
+            /* ⚠️ **ჭერიანი `sink` და არა `'stream' => true`** (იხ. კლასის შენიშვნა).
+               ჭერზე `DroppingStream` cURL-ის მოწოდებულზე ნაკლებ ბაიტს იღებს, cURL
+               ამას ჩაწერის შეცდომად თვლის და გადაცემას იქვე წყვეტს: მეხსიერებაში
+               ჭერზე ერთი ბაიტით მეტი ხვდება, დანარჩენი კი ქსელიდანაც აღარ მოდის. */
+            $sink = new DroppingStream(Utils::streamFor(Utils::tryFopen('php://temp', 'r+')), $maxBytes + 1);
+            $head = null;
+
             try {
                 $res = Http::timeout($timeout)
                     ->withHeaders($headers)
@@ -90,14 +104,28 @@ class SafeHttp
                         'verify' => storage_path('cacert.pem'),
                         // ⚠️ ნახტომებს თვითონ ვყვებით — იხ. კლასის შენიშვნა
                         'allow_redirects' => false,
-                        // ⚠️ სხეული ნაკადად რჩება და მეხსიერებაში არ ჩამოიღვრება
-                        'stream' => true,
+                        'sink' => $sink,
+                        // თავები ცალკე ინახება: ჭერზე შეწყვეტილი გადაცემა გამონაკლისით მთავრდება
+                        'on_headers' => function (ResponseInterface $response) use (&$head, $maxBytes) {
+                            $head = $response;
+                            $status = $response->getStatusCode();
+
+                            // სერვერმა თუ ცხადად თქვა, რომ დიდია — არც დავიწყოთ
+                            if ($status >= 200 && $status < 300 && (int) $response->getHeaderLine('Content-Length') > $maxBytes) {
+                                throw new RuntimeException('declared body too large');
+                            }
+                        },
                         // ⚠️ DNS მიბმულია შემოწმებულ მისამართზე (rebinding)
                         'curl' => [CURLOPT_RESOLVE => [$target['resolve']]],
                     ])
                     ->get($target['url']);
             } catch (Throwable) {
-                return null;
+                // ჭერზე შეწყვეტა cURL-ისთვის შეცდომაა, ჩვენთვის კი „მოიჭრა" — სხეული `sink`-შია
+                if ($head === null || $sink->getSize() <= $maxBytes) {
+                    return null;
+                }
+
+                $res = new Response($head);
             }
 
             $status = $res->status();
@@ -119,6 +147,9 @@ class SafeHttp
                 return null;
             }
 
+            /* სხეული პასუხიდან იკითხება და არა პირდაპირ `$sink`-იდან: ნამდვილ
+               რექვესთზე ეს ერთი და იგივე ნაკადია, `Http::fake()` კი `sink`-ში არ
+               წერს (მხოლოდ ფაილსა და რესურსს იცნობს) და სხეულს პასუხშივე ტოვებს. */
             $body = self::readCapped($res, $maxBytes);
 
             if ($body === null) {
@@ -262,9 +293,12 @@ class SafeHttp
     /**
      * ჰოსტის მისამართები. IP-ლიტერალი თვითონვე პასუხია.
      *
+     * ⚠️ `protected` ტესტისთვისაა: ის აქ ჰოსტის სახელს ცვლის, რომ მიბმა
+     * ქსელისა და DNS-ის გარეშე შემოწმდეს.
+     *
      * @return list<string>
      */
-    private function addresses(string $host): array
+    protected function addresses(string $host): array
     {
         if (filter_var($host, FILTER_VALIDATE_IP)) {
             return [$host];
@@ -334,8 +368,9 @@ class SafeHttp
      * და ტესტებსაც ქსელზე დამოკიდებულს გახდიდა. საჭირო მხოლოდ **ეს**
      * ნაწილია, ამიტომ ის გასაზიარებელია და არა გადასაწერი.
      *
-     * ⚠️ რექვესთს `'stream' => true` უნდა ჰქონდეს, თორემ Guzzle სხეულს
-     * მეხსიერებაში ისედაც ჩამოიღვრის და ეს ფუნქცია მხოლოდ ჭრის.
+     * ⚠️ რექვესთს `'stream' => true` (`GeorgianShops`) ან ჭერიანი `sink`
+     * (`fetch()`) უნდა ჰქონდეს, თორემ Guzzle სხეულს მთლიანად ჩამოტვირთავს
+     * და ეს ფუნქცია მხოლოდ ჭრის.
      *
      * @param  Response  $res
      * @return array{body: string, truncated: bool}|null
