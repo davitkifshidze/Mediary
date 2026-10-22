@@ -115,6 +115,9 @@ type CalendarProps = ReturnType<typeof useCalendarProps>
  * (`rdp-month_caption`, მსხვილი წარწერა), ისრები (`rdp-nav` + ბიბლიოთეკის
  * `Chevron`, ფერადი) და დღის ღილაკის ზომა/ფერები (`fb-cal-cell`): ხედიდან
  * ხედზე გადასვლისას მხოლოდ შიგთავსი იცვლება.
+ * ⚠️ **მონიშნულია მხოლოდ არჩეული თარიღის თვე/წელი** (მუქი) — მიმდინარე
+ * თვისა და წლის ნიშანი შენი სიტყვით მოიხსნა („დღეს"/„ახლა" ღილაკი ისედაც
+ * არის), თორემ ორი სხვადასხვა ნიშანი ერთ ბადეში აბნევდა.
  * ⚠️ **თვის სახელი კალენდრის ლოკალიდანაა** (`DateLib`, იგივე, რაც დღეების
  * თავს წერს) და არა ბრაუზერის `Intl`-იდან — ბრაუზერს ქართულის მონაცემები
  * შეიძლება არ ჰქონდეს და თვეები ინგლისურად ჩამოვიდოდა, თავი კი ქართულად.
@@ -124,14 +127,12 @@ function useCalendarView(selected: Date | undefined, calendar: CalendarProps) {
   const [view, setView] = useState<CalendarView>('days')
   const [month, setMonth] = useState(() => startOfMonth(selected ?? new Date()))
   const year = month.getFullYear()
-  const today = new Date()
 
   const drill = useCallback((at: Date) => {
     setMonth(startOfMonth(at))
     setView('months')
   }, [])
 
-  const cell = (active: boolean, current: boolean) => cn('fb-cal-cell', current && !active && 'fb-cal-today')
 
   const frame = (testId: string, label: string, onLabel: (() => void) | null, step: number, prev: string, next: string, grid: ReactNode) => (
     <div className={cn('rdp-root', calendar.className)} data-testid={testId}>
@@ -183,7 +184,7 @@ function useCalendarView(selected: Date | undefined, calendar: CalendarProps) {
             key={m}
             type="button"
             aria-pressed={active}
-            className={cell(active, today.getFullYear() === year && today.getMonth() === m)}
+            className="fb-cal-cell"
             onClick={() => {
               setMonth(new Date(year, m, 1))
               setView('days')
@@ -208,7 +209,7 @@ function useCalendarView(selected: Date | undefined, calendar: CalendarProps) {
           key={y}
           type="button"
           aria-pressed={selected?.getFullYear() === y}
-          className={cn(cell(selected?.getFullYear() === y, today.getFullYear() === y), 'tabular-nums')}
+          className="fb-cal-cell tabular-nums"
           onClick={() => {
             setMonth(new Date(y, month.getMonth(), 1))
             setView('months')

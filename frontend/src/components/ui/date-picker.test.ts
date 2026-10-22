@@ -145,6 +145,18 @@ describe('DatePicker month and year views', () => {
     expect(document.querySelector('.rdp-selected')?.textContent).toBe('10')
   })
 
+  it('marks only the chosen month — not the current one', async () => {
+    const { DatePicker } = await import('@/components/ui/date-picker')
+    // დღეს 22 ოქტომბერია, ველში — 1 ნოემბერი
+    await mount(h(DatePicker, { id: 'when', value: '2026-11-01T09:00', withTime: true, onChange: vi.fn() }))
+
+    await act(async () => caption().click())
+    const cells = [...document.querySelectorAll<HTMLButtonElement>('[data-testid="calendar-months"] .fb-cal-cell')]
+    const pressed = cells.filter((c) => c.getAttribute('aria-pressed') === 'true').map((c) => c.textContent)
+    expect(pressed).toEqual([monthName(new Date(2026, 10, 1))])
+    expect(cells[9].className).toBe('fb-cal-cell')
+  })
+
   it('caption → months of the year → years → a year → its months → a month → its days', async () => {
     const { DatePicker } = await import('@/components/ui/date-picker')
     const onChange = vi.fn()
@@ -155,7 +167,9 @@ describe('DatePicker month and year views', () => {
     const months = document.querySelector('[data-testid="calendar-months"]')!
     expect(document.querySelector('[data-testid="calendar-year"]')?.textContent).toBe('2026')
     expect(months.querySelectorAll('.grid button')).toHaveLength(12)
-    expect(months.querySelector('.fb-cal-today')?.textContent).toBe(monthName(NOW))
+    // მიმდინარე თვე ცალკე არ ინიშნება — ცარიელ ველზე არცერთი თვე არაა მონიშნული
+    expect(months.querySelector('.fb-cal-today')).toBeNull()
+    expect(months.querySelector('[aria-pressed="true"]')).toBeNull()
     // დღეების ხედის ჩარჩო: იგივე ფესვი, მსხვილი თავი და ბიბლიოთეკის ისრები
     expect(months.className).toContain('rdp-root')
     expect(months.className).toContain('fb-rdp')
