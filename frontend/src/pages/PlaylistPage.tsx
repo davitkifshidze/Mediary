@@ -17,7 +17,6 @@ import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
 import { sortByIds } from '@/lib/reorder'
 import { songItem, usePlayer } from '@/lib/player'
-import { formatDuration } from '@/lib/videoDuration'
 import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
@@ -261,7 +260,6 @@ export function PlaylistPage() {
                 <span className="block truncate text-xs text-muted-foreground">
                   {song.artist ? `${song.artist} · ` : ''}
                   {song.platform}
-                  {song.duration ? ` · ${formatDuration(song.duration)}` : ''}
                 </span>
               </span>
 

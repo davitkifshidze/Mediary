@@ -476,7 +476,6 @@ final class PublicDomain
                    ⚠️ ბმულიდანაა აგებული, ამიტომ მასთან ერთად იმალება (`DERIVED`). */
                 'platform' => $record->platform,
                 'embed_url' => $record->embed_url,
-                'duration' => $record->duration,
             ],
             'playlist' => [
                 'title_en' => $record->name,

@@ -126,7 +126,7 @@ final class ExportDomain
             'model' => Song::class,
             'with' => ['genres'],
             'fields' => [
-                'id', 'title', 'artist', 'album', 'year', 'genres', 'tags', 'duration',
+                'id', 'title', 'artist', 'album', 'year', 'genres', 'tags',
                 'url', 'platform', 'external_id', 'embed_url', 'rating', 'is_favorite', 'play_count',
                 'played_at', 'thumbnail_path', 'thumbnail_url', 'visibility', 'created_at',
                 'custom_fields',

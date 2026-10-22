@@ -30,7 +30,6 @@ import { errorMessage, fieldErrors } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
-import { formatDuration, isDirectMediaUrl, probeMediaDuration } from '@/lib/videoDuration'
 import { songItem, usePlayer } from '@/lib/player'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { ModuleIcon } from '@/components/ModuleIcon'
@@ -49,7 +48,6 @@ import {
 import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { DurationInput } from '@/components/ui/duration-input'
 import { RatingSelect } from '@/components/ui/rating-select'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
@@ -410,7 +408,6 @@ export function SongsPage() {
                           {dictionaryName(genre, lang)}
                         </span>
                       ))}
-                      {song.duration ? <span>{formatDuration(song.duration)}</span> : null}
                       {song.play_count > 0 && (
                         <span className="inline-flex items-center gap-1">
                           <Headphones className="size-3" />
@@ -575,8 +572,6 @@ function SongForm({
   })
   // ჟანრები **მრავალია** — ჩიპებით ირჩევა, თამაშის ნიმუშით
   const [genreIds, setGenreIds] = useState<number[]>(song?.genre_ids ?? [])
-  // ხანგრძლივობა ავტომატურია — ხელით ველი არაა, მნიშვნელობა state-ში რჩება
-  const [duration, setDuration] = useState<number | null>(song?.duration ?? null)
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(storageUrl(song?.thumbnail))
   // ბმულის ფოტო პირდაპირ ჩარჩოშია და შენახვისას `thumbnail_url`-ად მიდის (ვიდეოს წესი)
@@ -585,7 +580,6 @@ function SongForm({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [meta, setMeta] = useState<VideoMetadata | null>(null)
   const [metaLoading, setMetaLoading] = useState(false)
-  const [probing, setProbing] = useState(false)
   const [newGenre, setNewGenre] = useState(false)
   const lastFetched = useRef<string>(song?.url ?? '')
   const qc = useQueryClient()
@@ -598,7 +592,7 @@ function SongForm({
   const playlistsQ = useQuery({ queryKey: ['playlists'], queryFn: fetchPlaylists })
 
   /**
-   * ბმულის ჩასმისთანავე ვცდილობთ სათაურის/ფოტოს/ხანგრძლივობის წამოღებას.
+   * ბმულის ჩასმისთანავე ვცდილობთ სათაურის/შემსრულებლის/ტეგების/ფოტოს წამოღებას.
    * ივსება **მხოლოდ ცარიელი ველები** — ხელით შეყვანილს არ ვაბათილებთ.
    */
   const loadMeta = async (url: string) => {
@@ -606,12 +600,9 @@ function SongForm({
     if (!clean || clean === lastFetched.current || !/^https?:\/\//i.test(clean)) return
     lastFetched.current = clean
     setMetaLoading(true)
-    let fetchedDuration: number | null = null
     try {
       const m = await fetchSongMetadata(clean, song?.id)
       setMeta(m)
-      fetchedDuration = m.duration
-      if (m.duration) setDuration((d) => d ?? m.duration)
       setForm((f) => ({
         ...f,
         title: f.title || (m.title ?? ''),
@@ -624,13 +615,6 @@ function SongForm({
       setMeta(null)
     } finally {
       setMetaLoading(false)
-    }
-
-    if (!fetchedDuration && isDirectMediaUrl(clean)) {
-      setProbing(true)
-      const seconds = await probeMediaDuration(clean)
-      setProbing(false)
-      if (seconds) setDuration((d) => d ?? seconds)
     }
   }
 
@@ -713,7 +697,6 @@ function SongForm({
       genre_ids: genreIds,
       // ქულა ისევ ფორმაზეა, ე.ი. `null` („გარეშე") მას ასუფთავებს
       rating: form.rating,
-      duration,
       tags,
       thumbnail,
       remove_thumbnail: removeThumb,
@@ -772,7 +755,6 @@ function SongForm({
                 <p className="capitalize">
                   {meta.platform}
                   {meta.author && ` · ${meta.author}`}
-                  {duration ? ` · ${formatDuration(duration)}` : ''}
                 </p>
                 {meta.platform === 'youtube' && !meta.youtube_key && !meta.ytdlp && (
                   <p className="mt-0.5">{t('videos.metaNeedsKey')}</p>
@@ -780,15 +762,9 @@ function SongForm({
               </div>
             </div>
           )}
-          {probing && (
-            <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" />
-              {t('videos.durationProbing')}
-            </p>
-          )}
         </QuickFill>
 
-        {/* ყდა ზემოთაა, ძირითად ველებთან ერთად; ექვსი ველი სამ ტოლ რიგად */}
+        {/* ყდა ზემოთაა, ძირითად ველებთან ერთად: ორი წყვილი და ქულა */}
         <FormSection
           title={t('form.sections.basic')}
           mediaVariant="wide"
@@ -867,11 +843,6 @@ function SongForm({
             />
           </FormField>
 
-          {/* ხანგრძლივობა ხელით (ბმულიდან probe მაინც მუშაობს); ბაზაში წამები */}
-          <FormField size="half" {...fields.field('duration')} htmlFor="s-duration">
-            {/* ჯამი კომპონენტის ნაწილია */}
-            <DurationInput id="s-duration" value={duration} onChange={setDuration} />
-          </FormField>
         </FormSection>
 
         <FormSection title={t('form.sections.classification')}>

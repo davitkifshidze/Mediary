@@ -193,7 +193,6 @@ class SongController extends Controller
                 'integer',
                 Rule::exists('song_genres', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
-            'duration' => ['nullable', 'integer', 'min:0', 'max:86400'],
             'tags' => ['nullable', 'array', 'max:20'],
             'tags.*' => ['string', 'max:40'],
             'rating' => Rating::rules(),
@@ -208,7 +207,7 @@ class SongController extends Controller
 
     private function apply(Song $song, Request $request, array $data): void
     {
-        foreach (['title', 'artist', 'album', 'year', 'duration', 'rating'] as $field) {
+        foreach (['title', 'artist', 'album', 'year', 'rating'] as $field) {
             if (array_key_exists($field, $data)) {
                 $song->{$field} = $data[$field] ?: null;
             }
@@ -287,7 +286,7 @@ class SongController extends Controller
         // პლატფორმის `hqdefault` ცარიელად ითვლება (საუკეთესო ესკიზი სხვაგანაა)
         $defaultThumb = ! $song->thumbnail_path
             && (! $song->thumbnail_url || $song->thumbnail_url === VideoUrl::parse($song->url)['thumbnail_url']);
-        $needs = ! $song->title || ! $song->duration || ! $song->tags || $defaultThumb;
+        $needs = ! $song->title || ! $song->tags || $defaultThumb;
         if (! $needs) {
             return;
         }
@@ -301,9 +300,6 @@ class SongController extends Controller
         // YouTube-ის „author" არხის სახელია — შემსრულებლის საუკეთესო მიახლოება
         if (! $song->artist && ($meta['author'] ?? null)) {
             $song->artist = $meta['author'];
-        }
-        if (! $song->duration && $meta['duration']) {
-            $song->duration = $meta['duration'];
         }
         if (! $song->tags && $meta['tags']) {
             $song->tags = Song::normalizeTags($meta['tags']);

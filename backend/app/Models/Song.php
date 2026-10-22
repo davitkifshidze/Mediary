@@ -47,7 +47,6 @@ class Song extends Model
 
     protected $casts = [
         'year' => 'integer',
-        'duration' => 'integer',
         'rating' => RatingCast::class,
         'tags' => 'array',
         'is_favorite' => 'boolean',

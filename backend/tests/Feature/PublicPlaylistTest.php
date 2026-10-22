@@ -67,7 +67,6 @@ class PublicPlaylistTest extends TestCase
             'title' => $title,
             'artist' => "{$title} artist",
             'year' => 2001,
-            'duration' => 215,
             'url' => "https://youtu.be/{$id}",
             'platform' => 'youtube',
             'external_id' => $id,
@@ -143,12 +142,11 @@ class PublicPlaylistTest extends TestCase
         $card = $this->getJson($this->url($playlist))->assertOk()->json('data.0');
 
         $this->assertEqualsCanonicalizing(
-            ['id', 'domain', 'title_en', 'subtitle', 'year', 'image', 'rating', 'url', 'platform', 'embed_url', 'duration'],
+            ['id', 'domain', 'title_en', 'subtitle', 'year', 'image', 'rating', 'url', 'platform', 'embed_url'],
             array_keys($card),
         );
         $this->assertSame('song', $card['domain']);
         $this->assertSame('https://www.youtube.com/embed/alpha', $card['embed_url']);
-        $this->assertSame(215, $card['duration']);
 
         $playlistCard = $this->getJson($this->url($playlist))->json('playlist');
         $this->assertEqualsCanonicalizing(['id', 'domain', 'title_en', 'songs_count'], array_keys($playlistCard));

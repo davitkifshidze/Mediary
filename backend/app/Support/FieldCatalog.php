@@ -108,7 +108,6 @@ final class FieldCatalog
             ['key' => 'artist', 'type' => 'text', 'sort_order' => 30],
             ['key' => 'album', 'type' => 'text', 'sort_order' => 40],
             ['key' => 'year', 'type' => 'number', 'sort_order' => 50],
-            ['key' => 'duration', 'type' => 'number', 'sort_order' => 60],
             ['key' => 'genres', 'type' => 'list', 'sort_order' => 70],
             // „ჩემი ქულა" 1–10 (`RatingSelect`)
             ['key' => 'rating', 'type' => 'number', 'sort_order' => 75],

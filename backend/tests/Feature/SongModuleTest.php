@@ -62,7 +62,6 @@ class SongModuleTest extends TestCase
                 'album' => 'ოქროს კოლექცია',
                 'year' => 1959,
                 'genre_ids' => [$genreId],
-                'duration' => 214,
                 'rating' => 9,
                 'tags' => ['ქართული', 'ქართული', ' რეტრო '],
                 'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
@@ -73,7 +72,7 @@ class SongModuleTest extends TestCase
             ->assertJsonPath('data.album', 'ოქროს კოლექცია')
             ->assertJsonPath('data.year', 1959)
             ->assertJsonPath('data.genre_ids', [$genreId])
-            ->assertJsonPath('data.duration', 214)
+            ->assertJsonMissingPath('data.duration')
             ->assertJsonPath('data.rating', 9)
             ->assertJsonPath('data.platform', 'youtube')
             ->assertJsonPath('data.embed_url', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')

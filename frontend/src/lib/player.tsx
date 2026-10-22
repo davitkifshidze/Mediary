@@ -309,7 +309,8 @@ export function songItem(song: Song): PlayerItem {
     embedUrl: song.embed_url,
     platform: song.platform,
     thumbnail: song.thumbnail,
-    duration: song.duration,
+    // სიმღერას ხანგრძლივობა აღარ აქვს — დამკვრელი მას მედიიდან კითხულობს
+    duration: null,
   }
 }
 

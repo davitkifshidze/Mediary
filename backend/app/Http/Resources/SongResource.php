@@ -23,7 +23,6 @@ class SongResource extends JsonResource
             // ⚠️ **მრავალჟანრიანია** — `genre_id` აღარ არსებობს
             'genres' => SongGenreResource::collection($this->whenLoaded('genres')),
             'genre_ids' => $this->whenLoaded('genres', fn () => $this->genres->pluck('id')),
-            'duration' => $this->duration,
             'url' => $this->url,
             'platform' => $this->platform,
             'external_id' => $this->external_id,

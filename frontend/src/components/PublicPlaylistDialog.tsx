@@ -8,7 +8,6 @@ import { storageUrl } from '@/lib/api'
 import { isAllowedEmbed, type EmbedEvent } from '@/lib/embed'
 import type { PlayerItem } from '@/lib/player'
 import { cn } from '@/lib/utils'
-import { formatDuration } from '@/lib/videoDuration'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -72,7 +71,7 @@ function toItem(card: PublicCard): PlayerItem {
     embedUrl: card.embed_url ?? null,
     platform,
     thumbnail: storageUrl(card.image),
-    duration: card.duration ?? null,
+    duration: null,
   }
 }
 
@@ -312,11 +311,6 @@ export function PlaylistPlayerDialog({
                       <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
                         {cards[i].in_library?.trashed ? <Trash2 className="size-3" /> : <Check className="size-3" />}
                         {t(cards[i].in_library?.trashed ? 'share.page.inTrash' : 'share.page.inLibrary')}
-                      </span>
-                    )}
-                    {formatDuration(item.duration) && (
-                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {formatDuration(item.duration)}
                       </span>
                     )}
                   </button>

@@ -119,7 +119,7 @@ final class ShareImporter
             'photo' => ['column' => 'thumbnail_path', 'source' => null, 'shared' => [], 'folder' => StorageFolder::VIDEO_THUMBNAILS],
         ],
         'song' => [
-            'copy' => ['title', 'artist', 'album', 'year', 'duration', 'thumbnail_url'],
+            'copy' => ['title', 'artist', 'album', 'year', 'thumbnail_url'],
             'url' => 'embed',
             'photo' => ['column' => 'thumbnail_path', 'source' => null, 'shared' => [], 'folder' => StorageFolder::SONG_THUMBNAILS],
         ],

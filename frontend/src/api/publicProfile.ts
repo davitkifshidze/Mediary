@@ -110,8 +110,6 @@ export interface PublicCard {
    */
   platform?: string | null
   embed_url?: string | null
-  /** წამებში */
-  duration?: number | null
   /** პირადი მოდულის ბარათი: რომელ მოდულს ეკუთვნის (დამთხვევაში სხვადასხვა მოდულიდან მოდის) */
   module?: string | null
   /** პირადი გალერეის ალბომი: ფოტო · ვიდეო და ყდის ფოტოს id (`publicPersonalUrl()`) */

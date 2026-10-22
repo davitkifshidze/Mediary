@@ -44,7 +44,6 @@ function song(id: number, title: string, extra: Partial<PublicCard> = {}): Publi
     url: `https://youtu.be/${key}`,
     platform: 'youtube',
     embed_url: `${YT}/embed/${key}`,
-    duration: 215,
     ...extra,
   }
 }
@@ -142,13 +141,13 @@ async function youtubeEnded() {
 }
 
 describe('PublicPlaylistDialog', () => {
-  it('სიმღერებს სერვერის რიგით ხატავს — სახელით, შემსრულებლით და ხანგრძლივობით', async () => {
+  it('სიმღერებს სერვერის რიგით ხატავს — სახელითა და შემსრულებლით (ხანგრძლივობა აღარ აქვს)', async () => {
     await mount()
 
     expect(mocks.fetchPublicPlaylist).toHaveBeenCalledWith('alice', 12, 1)
     expect(rowTitles()).toEqual(['Charlie', 'Offsite', 'Alpha'])
     expect(document.body.textContent).toContain('Charlie artist')
-    expect(document.body.textContent).toContain('3:35')
+    expect(document.body.textContent).not.toContain('3:35')
     // სანამ არაფერი ჩაირთო, სცენა არ ჩანს
     expect(stageSrc()).toBeNull()
   })

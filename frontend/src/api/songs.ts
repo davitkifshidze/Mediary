@@ -21,7 +21,6 @@ export interface Song {
   /** ⚠️ **მრავალჟანრიანია** — ერთი `genre_id` აღარ არსებობს */
   genres?: SongGenre[]
   genre_ids?: number[]
-  duration: number | null
   url: string
   platform: VideoPlatform
   external_id: string | null
@@ -67,7 +66,6 @@ export interface SongInput {
   album?: string | null
   year?: number | null
   genre_ids?: number[]
-  duration?: number | null
   tags?: string[]
   rating?: number | null
   visibility?: 'private' | 'public'
@@ -85,9 +83,9 @@ function toFormData(input: SongInput): FormData {
   fd.append('artist', input.artist ?? '')
   fd.append('album', input.album ?? '')
   /* `null` („გაასუფთავე“) ცარიელ სტრიქონად
-     იგზავნება, `undefined` („არ შეეხო“) — არა; ადრე გასუფთავებული წელი,
-     ხანგრძლივობა და ქულა შენახვის შემდეგ უკან ბრუნდებოდა. */
-  const number = (key: 'year' | 'duration' | 'rating') => {
+     იგზავნება, `undefined` („არ შეეხო“) — არა; ადრე გასუფთავებული წელი
+     და ქულა შენახვის შემდეგ უკან ბრუნდებოდა. */
+  const number = (key: 'year' | 'rating') => {
     const value = input[key]
     if (value !== undefined) fd.append(key, value == null ? '' : String(value))
   }
@@ -98,7 +96,6 @@ function toFormData(input: SongInput): FormData {
     if (input.genre_ids.length === 0) fd.append('genre_ids', '')
     input.genre_ids.forEach((id) => fd.append('genre_ids[]', String(id)))
   }
-  number('duration')
   number('rating')
   if (input.visibility) fd.append('visibility', input.visibility)
   ;(input.tags ?? []).forEach((tag) => fd.append('tags[]', tag))
