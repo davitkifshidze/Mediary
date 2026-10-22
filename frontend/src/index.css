@@ -975,7 +975,10 @@
   background-color: var(--primary);
   color: var(--primary-foreground);
 }
-.fb-rdp .rdp-day_button:hover:not([disabled]) {
+/* ⚠️ ჰოვერი **არჩეულს არ ეხება**: ეს წესი (0,4,0) არჩეულისას (0,3,0) სჯობდა —
+   დაჭერისას მაუსი დღეზე რჩებოდა და არჩეული წამით ღია ფონზე თეთრი წარწერით
+   ჩანდა, მაუსის გაწევამდე. ახლა არჩევისთანავე მუქია. */
+.fb-rdp .rdp-day:not(.rdp-selected) .rdp-day_button:hover:not([disabled]) {
   background-color: var(--muted);
 }
 /* დღევანდელი — რბილი აქცენტი (ჩარჩო და მუქი ციფრი), არჩეულისგან გარჩევადი;
