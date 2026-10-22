@@ -51,6 +51,9 @@ export interface Course {
   started_at: string | null
   finished_at: string | null
   files_count?: number
+  /** „საქაღალდე" ვიდეოებში: რამდენი ვიდეოა და რამდენი ჩამოტვირთული */
+  videos_count?: number
+  downloaded_count?: number
   visibility: 'private' | 'public'
   created_at: string | null
 }
@@ -185,6 +188,22 @@ export interface CoursePlaylistItem {
   /** backend-ის allowlist-ით ნაშენი (`youtube-nocookie.com`) */
   embed_url: string
   published_at: string | null
+  /** უკვე ვიდეოებშია? — ჩემი ვიდეო იმავე YouTube-ის id-ით და მისი ჩამოტვირთვის მდგომარეობა */
+  video: CoursePlaylistVideo | null
+}
+
+export interface CoursePlaylistVideo {
+  id: number
+  download_status: 'running' | 'ready' | 'failed' | null
+  download_stale: boolean
+}
+
+/** ფლეილისტი → ვიდეოები: ახლად შექმნილი, უკვე არსებული და ვერ ნაპოვნი (id-ები) */
+export interface PlaylistImportResult {
+  course_id: number
+  created: number[]
+  existing: number[]
+  failed: string[]
 }
 
 export interface CoursePlaylist {
@@ -215,6 +234,18 @@ export function isYoutubePlaylist(url: string | null | undefined): boolean {
   } catch {
     return false
   }
+}
+
+/**
+ * არჩეული ფლეილისტის ვიდეოები → ვიდეოების მოდული (კურსის „საქაღალდე");
+ * ტიპი და სტატუსი ყველა არჩეულზე ერთია.
+ */
+export async function addPlaylistVideos(
+  courseId: number,
+  input: { video_ids: string[]; type_id: number; status: string },
+): Promise<PlaylistImportResult> {
+  const { data } = await api.post(`/courses/${courseId}/playlist/videos`, input)
+  return data
 }
 
 /** `refresh` — 24-საათიან ქეშს გვერდს უვლის („განახლება") */

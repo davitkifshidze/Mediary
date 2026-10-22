@@ -1,19 +1,30 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, ListVideo, Loader2, Play, RefreshCw } from 'lucide-react'
-import { fetchCoursePlaylist, type Course, type CoursePlaylist, type CoursePlaylistItem } from '@/api/courses'
+import { Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ExternalLink, FolderOpen, FolderPlus, ListVideo, Loader2, Play, RefreshCw } from 'lucide-react'
+import {
+  addPlaylistVideos,
+  fetchCoursePlaylist,
+  type Course,
+  type CoursePlaylist,
+  type CoursePlaylistItem,
+} from '@/api/courses'
 import { errorMessage } from '@/lib/errors'
+import { useModules } from '@/lib/modules'
 import { LIST_PAGE_SIZE, useClientPages } from '@/lib/paged'
 import { usePlayer, type PlayerItem } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Pagination } from '@/components/ui/pagination'
 import { useToast } from '@/components/ui/feedback'
 import { DetailSection } from '@/components/DetailHero'
 import { PlayerSpot } from '@/components/PlayerSpot'
+import { PlaylistImportDialog, type PlaylistImportChoice } from '@/components/PlaylistImportDialog'
 
 /* ============================================================
    **კურსის ფანჯარა — „ვიდეოები (N)"**.
@@ -23,8 +34,11 @@ import { PlayerSpot } from '@/components/PlayerSpot'
    Data API შენი გასაღებით, მის გარეშე `yt-dlp`; ქეში 24 სთ, „განახლება" —
    ახლავე).
 
-   ⚠️ **ვიდეო ჩანაწერი არ არის** — არც მონიშვნა აქვს და არც პროგრესი:
-   „გაკვეთილები" დახურული გადაწყვეტილებაა (`CLAUDE.md`). ეს ჩვენებაა.
+   ⚠️ **ელემენტი თავისთავად ჩანაწერი არ არის** — პროგრესი არ აქვს
+   („გაკვეთილები" დახურული გადაწყვეტილებაა). ჩექბოქსით არჩეული კი ვიდეოების
+   მოდულში ემატება — კურსი იქ „საქაღალდეა" (`POST /courses/{id}/playlist/videos`,
+   ტიპი და სტატუსი ერთხელ — `PlaylistImportDialog`); უკვე დამატებულს ჩექბოქსის
+   ნაცვლად ბეჯი აქვს. „ყველას მონიშვნა" **ყველა** ელემენტს ეხება და არა გვერდს.
 
    ⚠️ **ვიდეო კურსის ფანჯარაში უკრავს** — ვიდეოების ფანჯრის წესით: სიის ზემოთ
    16:9 ადგილი (`PlayerSpot`), დაჭერა რიგს აქედან ბოლომდე უშვებს; „გატანა"
@@ -57,6 +71,12 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
   const qc = useQueryClient()
   const player = usePlayer()
   const [refreshing, setRefreshing] = useState(false)
+  // არჩევა მხოლოდ მაშინ, როცა ვიდეოების მოდული ჩართულია
+  const { has } = useModules()
+  const canImport = has('video')
+  /** არჩეული ელემენტები (YouTube-ის id) */
+  const [picked, setPicked] = useState<string[]>([])
+  const [importing, setImporting] = useState(false)
 
   const key = ['course-playlist', course.id, course.url]
   const q = useQuery({
@@ -80,8 +100,37 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
     }
   }
 
+  const add = useMutation({
+    mutationFn: (choice: PlaylistImportChoice) => addPlaylistVideos(course.id, { video_ids: picked, ...choice }),
+    onSuccess: (res) => {
+      toast({
+        title: t('courses.playlist.added', { created: res.created.length, existing: res.existing.length }),
+        variant: 'success',
+      })
+      setPicked([])
+      setImporting(false)
+      void qc.invalidateQueries({ queryKey: key })
+      void qc.invalidateQueries({ queryKey: ['videos'] })
+      void qc.invalidateQueries({ queryKey: ['courses'] })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
   // სერვერმა თქვა „ფლეილისტი არ არის" — სექცია არ იხატება
   if (q.isSuccess && !list) return null
+
+  /* არჩევადი = ჯერ ვიდეოებში არ არის; „ვიდეოებშია N · ლოკალური M" — სიიდან */
+  const selectable = items.filter((it) => !it.video)
+  const allPicked = selectable.length > 0 && selectable.every((it) => picked.includes(it.video_id))
+  const togglePick = (id: string) => setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
+  const pickedDuration = formatDuration(
+    items.filter((it) => picked.includes(it.video_id)).reduce((sum, it) => sum + (it.duration ?? 0), 0),
+  )
+  const pickedText = [t('courses.playlist.picked', { count: picked.length }), pickedDuration ? `~${pickedDuration}` : null]
+    .filter(Boolean)
+    .join(' · ')
+  const inVideos = items.filter((it) => it.video).length
+  const local = items.filter((it) => it.video?.download_status === 'ready').length
 
   /* ეს კურსი უკრავს? — `origin`-ით (იხ. ზემოთ) */
   const origin = `course-${course.id}`
@@ -102,7 +151,18 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
       title={t('courses.playlist.title', { count: list?.count ?? 0 })}
       hint={t('courses.playlist.hint')}
       action={
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {/* კურსის „საქაღალდე" ვიდეოებში */}
+          {canImport && (inVideos > 0 || (course.videos_count ?? 0) > 0) && (
+            <Link
+              to={`/videos?course=${course.id}`}
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+              data-testid="playlist-folder-link"
+            >
+              <FolderOpen className="size-4" />
+              {t('courses.playlist.inVideosCount', { count: Math.max(inVideos, course.videos_count ?? 0), local })}
+            </Link>
+          )}
           {total && (
             <span className="text-xs text-muted-foreground" data-testid="playlist-total">
               {t('courses.playlist.total', { duration: total })}
@@ -129,11 +189,52 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
             live={live}
             onPlay={() => playFrom(0)}
           />
+          {canImport && selectable.length > 0 && (
+            <div className="mb-2 flex flex-wrap items-center gap-3" data-testid="playlist-picker">
+              <label className="flex cursor-pointer items-center gap-2 px-2 text-sm">
+                <Checkbox
+                  checked={allPicked}
+                  onCheckedChange={() => setPicked(allPicked ? [] : selectable.map((it) => it.video_id))}
+                  data-testid="playlist-pick-all"
+                />
+                {t('courses.playlist.pickAll', { count: selectable.length })}
+              </label>
+              {picked.length > 0 && (
+                <span className="text-xs text-muted-foreground" data-testid="playlist-picked">
+                  {pickedText}
+                </span>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ml-auto"
+                disabled={picked.length === 0}
+                onClick={() => setImporting(true)}
+                data-testid="playlist-add"
+              >
+                <FolderPlus className="size-4" />
+                {t('courses.playlist.addToVideos')}
+              </Button>
+            </div>
+          )}
           <ol className="space-y-1" data-testid="playlist-items">
             {shown.map((item) => {
               const current = playing === item.url
               return (
                 <li key={item.position} className="flex items-center gap-1">
+                  {canImport && (
+                    <span className="grid w-7 shrink-0 place-items-center">
+                      {!item.video && (
+                        <Checkbox
+                          checked={picked.includes(item.video_id)}
+                          onCheckedChange={() => togglePick(item.video_id)}
+                          aria-label={t('courses.playlist.pick')}
+                          data-testid="playlist-pick"
+                        />
+                      )}
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => playFrom(item.position - 1)}
@@ -153,6 +254,12 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
                       )}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-sm">{item.title ?? '—'}</span>
+                    {/* უკვე ვიდეოებშია — ჩექბოქსის ნაცვლად */}
+                    {item.video && (
+                      <Badge className="shrink-0" data-testid="playlist-in-videos">
+                        {item.video.download_status === 'ready' ? t('courses.playlist.local') : t('courses.playlist.inVideos')}
+                      </Badge>
+                    )}
                     {item.duration != null && (
                       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{formatDuration(item.duration)}</span>
                     )}
@@ -173,6 +280,17 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
           </ol>
           <Pagination {...pagination} className="mt-3" />
         </>
+      )}
+
+      {importing && (
+        <PlaylistImportDialog
+          title={t('courses.playlist.addToVideos')}
+          summary={pickedText}
+          busy={add.isPending}
+          confirmLabel={t('courses.playlist.addToVideos')}
+          onClose={() => setImporting(false)}
+          onConfirm={(choice) => add.mutate(choice)}
+        />
       )}
     </DetailSection>
   )

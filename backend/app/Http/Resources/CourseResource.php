@@ -33,6 +33,9 @@ class CourseResource extends JsonResource
             'started_at' => $this->started_at?->toDateString(),
             'finished_at' => $this->finished_at?->toDateString(),
             'files_count' => $this->whenCounted('files'),
+            // „საქაღალდე" ვიდეოებში: რამდენი ვიდეოა და რამდენი ჩამოტვირთული (`Course::withVideoCounts()`)
+            'videos_count' => $this->whenCounted('videos'),
+            'downloaded_count' => $this->whenCounted('downloaded_count', fn () => (int) $this->downloaded_count),
             // საჯარო პროფილის წინაპირობა; default `private`
             'visibility' => $this->visibility,
             'created_at' => $this->created_at?->toIso8601String(),

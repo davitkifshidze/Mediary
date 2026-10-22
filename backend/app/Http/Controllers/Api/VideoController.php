@@ -95,7 +95,11 @@ class VideoController extends Controller
             // „ჩამოტვირთული" სექციის დახარისხება ზომით / ჩამოტვირთვის თარიღით
             'size' => $query->orderByDesc('download_size')->orderByDesc('id'),
             'downloaded' => $query->orderByDesc('downloaded_at')->orderByDesc('id'),
-            default => $query->orderByDesc('id'),
+            /* საქაღალდე ფლეილისტის რიგითაა (`sort_order` = პოზიცია); ხელით
+               მიბმული (პოზიციის გარეშე) — ბოლოს, ახლით */
+            default => $course
+                ? $query->orderByRaw('sort_order = 0')->orderBy('sort_order')->orderByDesc('id')
+                : $query->orderByDesc('id'),
         };
 
         // ძებნა ბოლოს: ყველა ველზე + „ახლო სიტყვებზე", relevance-ით დალაგებული.

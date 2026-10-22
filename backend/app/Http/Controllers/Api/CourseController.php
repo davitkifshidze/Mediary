@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CourseResource;
 use App\Models\Course;
+use App\Models\Video;
 use App\Services\Links\LinkResolver;
 use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
@@ -38,7 +39,7 @@ class CourseController extends Controller
 
     public function index(Request $request)
     {
-        $query = Course::query()->with('category')->withCount('files');
+        $query = Course::query()->with('category')->withCount(['files', ...Course::videoCounts()]);
         // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'course', $request);
 
@@ -82,7 +83,7 @@ class CourseController extends Controller
 
     public function show(Course $course)
     {
-        return new CourseResource($course->load('category')->loadCount('files'));
+        return new CourseResource($course->load('category')->loadCount(['files', ...Course::videoCounts()]));
     }
 
     /**
@@ -122,7 +123,34 @@ class CourseController extends Controller
 
         return $list === null
             ? response()->json(['message' => 'youtube_unavailable'], 503)
-            : response()->json(['playlist' => $list]);
+            : response()->json(['playlist' => [...$list, 'items' => $this->withVideos($list['items'])]]);
+    }
+
+    /**
+     * ელემენტი უკვე ვიდეოებშია? — ჩემი ვიდეო იმავე YouTube-ის id-ით და მისი
+     * ჩამოტვირთვის მდგომარეობა (არჩევისას ჩექბოქსის ნაცვლად ბეჯი).
+     * ⚠️ ქეშის **შემდეგ** ემატება: ქეში ყველასთვის საერთოა, ეს კი ჩემი ბიბლიოთეკაა.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function withVideos(array $items): array
+    {
+        $videos = Video::query()
+            ->where('platform', 'youtube')
+            ->whereIn('external_id', array_column($items, 'video_id'))
+            ->get(['id', 'external_id', 'download_status', 'download_started_at'])
+            ->keyBy('external_id');
+
+        return array_map(function (array $item) use ($videos) {
+            $video = $videos->get($item['video_id']);
+
+            return [...$item, 'video' => $video ? [
+                'id' => $video->id,
+                'download_status' => $video->download_status,
+                'download_stale' => $video->downloadStale(),
+            ] : null];
+        }, $items);
     }
 
     public function store(Request $request)

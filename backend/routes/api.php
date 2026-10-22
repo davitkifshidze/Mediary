@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\CourseCategoryController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseFileController;
+use App\Http\Controllers\Api\CoursePlaylistVideoController;
 use App\Http\Controllers\Api\CredentialController;
 use App\Http\Controllers\Api\CustomCategoryController;
 use App\Http\Controllers\Api\CustomFieldController;
@@ -894,6 +895,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/courses/{course}/status', [CourseController::class, 'setStatus']);
         // YouTube-ის ფლეილისტის ვიდეოები (ჩვენება; `?refresh=1` — ქეშის გარეშე)
         Route::get('/courses/{course}/playlist', [CourseController::class, 'playlist']);
+        /* არჩეული ფლეილისტის ვიდეოები → ვიდეოების მოდული (კურსის „საქაღალდე").
+           POST → `course.create`; ვიდეოს მოდული და `video.create` კონტროლერში მოწმდება */
+        Route::post('/courses/{course}/playlist/videos', [CoursePlaylistVideoController::class, 'store']);
 
         /* ფაილები — ეკრანის ასლი, კონსპექტი (სერტიფიკატი მოიხსნა) */
         Route::get('/courses/{course}/files', [CourseFileController::class, 'index']);

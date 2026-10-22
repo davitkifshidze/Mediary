@@ -4,8 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Course;
 use App\Models\CourseCategory;
+use App\Models\Module;
 use App\Models\User;
 use App\Models\UserCredential;
+use App\Models\Video;
+use App\Models\VideoType;
 use App\Services\Links\LinkResolver;
 use App\Services\Video\YtDlp;
 use App\Support\CredentialProviders;
@@ -227,5 +230,107 @@ class CoursePlaylistTest extends TestCase
         $created->assertJsonPath('data.title', 'Mine');
         $this->assertSame('Thirty lessons.', Course::findOrFail($created->json('data.id'))->description);
         $this->assertSame('https://i.ytimg.com/vi/aaaaaaaaaa1/hqdefault.jpg', Course::findOrFail($created->json('data.id'))->image_url);
+    }
+
+    /* ---------- ფლეილისტი → ვიდეოები („საქაღალდე") ---------- */
+
+    private function videoType(): int
+    {
+        return (int) ($this->getJson('/api/video-types')->json('data.0.id') ?? VideoType::where('user_id', $this->user->id)->value('id'));
+    }
+
+    /**
+     * არჩეული ელემენტები ვიდეოებად — ფლეილისტის მონაცემით (სათაური, ხანგრძლივობა,
+     * თარიღი, არხი, რიგი), კურსის საქაღალდეში; ბმულის დუბლი ახალს არ ქმნის და
+     * საქაღალდეში გადადის; ფლეილისტში არარსებული — `failed`.
+     */
+    public function test_picked_items_become_videos_in_the_course_folder(): void
+    {
+        $this->giveKey();
+        $course = $this->course('https://www.youtube.com/playlist?list='.self::LIST);
+        $type = $this->videoType();
+        $mine = Video::create([
+            'user_id' => $this->user->id, 'title' => 'Mine', 'url' => 'https://youtu.be/aaaaaaaaaa2',
+            'platform' => 'youtube', 'external_id' => 'aaaaaaaaaa2', 'type_id' => $type,
+        ]);
+
+        // ელემენტი უკვე ვიდეოებშია — სია ამას ამბობს
+        $items = $this->getJson("/api/courses/{$course->id}/playlist")->assertOk()->json('playlist.items');
+        $this->assertNull($items[0]['video']);
+        $this->assertSame($mine->id, $items[1]['video']['id']);
+
+        $res = $this->postJson("/api/courses/{$course->id}/playlist/videos", [
+            'video_ids' => ['aaaaaaaaaa1', 'aaaaaaaaaa2', 'zzzzzzzzzzz', 'aaaaaaaaaa1'],
+            'type_id' => $type,
+            'status' => 'to_watch',
+        ])->assertOk();
+
+        $this->assertCount(1, $res->json('created'));
+        $this->assertSame([$mine->id], $res->json('existing'));
+        $this->assertSame(['zzzzzzzzzzz'], $res->json('failed'));
+
+        $video = Video::find($res->json('created.0'));
+        $this->assertSame('One', $video->title);
+        $this->assertSame('https://www.youtube.com/watch?v=aaaaaaaaaa1', $video->url);
+        $this->assertSame('aaaaaaaaaa1', $video->external_id);
+        $this->assertSame(600, $video->duration);
+        $this->assertSame('2024-05-01', $video->published_at->toDateString());
+        $this->assertSame('Laracasts', $video->channel);
+        $this->assertSame('to_watch', $video->status_key);
+        $this->assertSame([$course->id, 1], [$video->course_id, $video->sort_order]);
+        $this->assertSame([$course->id, 2], [$mine->fresh()->course_id, $mine->fresh()->sort_order]);
+
+        // საქაღალდე ფლეილისტის რიგითაა; კურსი თავის რიცხვს ამბობს
+        $this->getJson("/api/videos?course={$course->id}")->assertOk()->assertJsonPath('data.*.title', ['One', 'Mine']);
+        $this->getJson("/api/courses/{$course->id}")->assertOk()->assertJsonPath('data.videos_count', 2)->assertJsonPath('data.downloaded_count', 0);
+
+        // მეორე დამატება ასლს აღარ ქმნის
+        $this->postJson("/api/courses/{$course->id}/playlist/videos", ['video_ids' => ['aaaaaaaaaa1'], 'type_id' => $type, 'status' => 'to_watch'])
+            ->assertOk()
+            ->assertJsonPath('created', [])
+            ->assertJsonPath('existing', [$video->id]);
+        $this->assertSame(2, Video::count());
+    }
+
+    /** სხვა კურსის ვიდეო არ „იპარება"; ტიპი და სტატუსი სავალდებულოა; ფლეილისტის გარეშე — 422 */
+    public function test_import_keeps_other_folders_and_validates(): void
+    {
+        $this->giveKey();
+        $course = $this->course('https://www.youtube.com/playlist?list='.self::LIST);
+        $other = $this->course('https://www.youtube.com/playlist?list=PLother000000');
+        $type = $this->videoType();
+        $theirs = Video::create([
+            'user_id' => $this->user->id, 'title' => 'Theirs', 'url' => 'https://youtu.be/aaaaaaaaaa3',
+            'platform' => 'youtube', 'external_id' => 'aaaaaaaaaa3', 'type_id' => $type, 'course_id' => $other->id,
+        ]);
+
+        $this->postJson("/api/courses/{$course->id}/playlist/videos", ['video_ids' => ['aaaaaaaaaa3'], 'type_id' => $type, 'status' => 'to_watch'])
+            ->assertOk()
+            ->assertJsonPath('existing', [$theirs->id]);
+        $this->assertSame($other->id, $theirs->fresh()->course_id);
+
+        $this->postJson("/api/courses/{$course->id}/playlist/videos", ['video_ids' => ['aaaaaaaaaa1']])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['type_id', 'status']);
+
+        $plain = $this->course('https://example.com/course');
+        $this->postJson("/api/courses/{$plain->id}/playlist/videos", ['video_ids' => ['aaaaaaaaaa1'], 'type_id' => $type, 'status' => 'to_watch'])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'playlist_missing');
+    }
+
+    /** ვიდეოების მოდული გამორთულია — ცხადი 403 და არა ჩუმი 404 */
+    public function test_import_needs_the_video_module(): void
+    {
+        $course = $this->course('https://www.youtube.com/playlist?list='.self::LIST);
+        $plain = User::create(['name' => 'nino', 'username' => 'nino', 'email' => 'nino@example.com', 'password' => 'password']);
+        $plain->modules()->sync(Module::where('key', 'course')->pluck('id')->all());
+        $course->forceFill(['user_id' => $plain->id])->save();
+
+        $this->actingAs($plain->refresh())
+            ->postJson("/api/courses/{$course->id}/playlist/videos", ['video_ids' => ['aaaaaaaaaa1'], 'type_id' => 1, 'status' => 'to_watch'])
+            ->assertStatus(403)
+            ->assertJsonPath('message', 'module_not_enabled')
+            ->assertJsonPath('module', 'video');
     }
 }

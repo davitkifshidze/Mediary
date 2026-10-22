@@ -1288,7 +1288,8 @@
     "missing_title": "The record has no title.",
     "missing_field": "The record is missing a required field.",
     "database_archive_invalid": "This is not a database export JSON ZIP.",
-    "database_archive_library": "This is a “My full export” — it goes in on the “Import” tab (adding)."
+    "database_archive_library": "This is a “My full export” — it goes in on the “Import” tab (adding).",
+    "playlist_missing": "The course link is not a YouTube playlist."
   },
   "fields": {
     "title": "Fields",
@@ -4097,11 +4098,20 @@
     "photoDeleteTitle": "Delete the photo?",
     "playlist": {
       "title": "Videos ({{count}})",
-      "hint": "The list comes from YouTube — with your key or, without one, through yt-dlp — and is kept for 24 hours; “Refresh” fetches it now. Click to play from there to the end, the arrow opens it on YouTube.",
+      "hint": "The list comes from YouTube — with your key or, without one, through yt-dlp — and is kept for 24 hours; “Refresh” fetches it now. Click to play from there to the end, the arrow opens it on YouTube; ticked videos are added to videos, in the course’s folder.",
       "total": "{{duration}} in total",
       "refresh": "Refresh",
       "openOnYoutube": "Open on YouTube",
-      "empty": "The playlist has no videos"
+      "empty": "The playlist has no videos",
+      "importHint": "The picked videos are added to the videos module, in this course’s folder. Type and status are the same for all and are remembered for next time; a video you already have is not copied.",
+      "addToVideos": "Add to videos",
+      "added": "Added {{created}}, already there {{existing}}",
+      "picked": "{{count}} picked",
+      "pickAll": "Pick all ({{count}})",
+      "pick": "Pick",
+      "inVideos": "In videos",
+      "local": "Local",
+      "inVideosCount": "In videos {{count}} · local {{local}}"
     }
   },
   "places": {

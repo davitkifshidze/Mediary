@@ -97,6 +97,20 @@ class Course extends Model
         return $this->hasMany(Video::class);
     }
 
+    /**
+     * „ვიდეოებშია N · ლოკალური M" — კურსის ფანჯრისთვის (`videos_count`, `downloaded_count`);
+     * `withCount()`-საც და `loadCount()`-საც ერთი სია.
+     *
+     * @return array<int|string, mixed>
+     */
+    public static function videoCounts(): array
+    {
+        return [
+            'videos',
+            'videos as downloaded_count' => fn ($q) => $q->where('download_status', Video::DOWNLOAD_READY),
+        ];
+    }
+
     /* ---------- helpers ---------- */
 
     /**
