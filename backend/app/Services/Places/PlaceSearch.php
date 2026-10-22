@@ -39,6 +39,9 @@ class PlaceSearch
     /** ბმულის წერტილიდან რა მანძილზე ჩაითვლება კანდიდატი „იგივე ადგილად" (მ) */
     private const LINK_MATCH_METERS = 400;
 
+    /** წყაროს ფოტოების ჭერი — გალერეის ერთი შენახვის ჭერი (`PlaceController::GALLERY_URLS_MAX`) */
+    private const MAX_PHOTOS = 10;
+
     private const DAYS = [
         'monday' => 'ორშაბათი', 'tuesday' => 'სამშაბათი', 'wednesday' => 'ოთხშაბათი', 'thursday' => 'ხუთშაბათი',
         'friday' => 'პარასკევი', 'saturday' => 'შაბათი', 'sunday' => 'კვირა',
@@ -147,10 +150,14 @@ class PlaceSearch
     }
 
     /**
-     * **Google Maps-ის ბმული → მონახაზი.** მოკლე ბმული `SafeHttp`-ით
-     * იშლება; სახელით ძებნიდან ბმულის წერტილთან ყველაზე ახლოს მდგომი ადგილი
-     * აირჩევა; ვერ მოიძებნა ან გასაღები არ გაქვს — სახელი, კოორდინატები და
-     * Nominatim-ის მისამართი (გასაღების გარეშეც).
+     * **Google Maps-ის ბმული → მონახაზი.** მოკლე ბმული `SafeHttp::unfold()`-ით
+     * იშლება (სამიზნე გვერდი აღარ იხსნება — 429/თანხმობა ბმულს ვეღარ კარგავს).
+     * რიგი: ბმულში Google-ის ID თუ წერია — **ზუსტი ობიექტი** (`exact()`); მერე
+     * სახელით ძებნიდან ბმულის წერტილთან ყველაზე ახლოს მდგომი; ვერ მოიძებნა ან
+     * გასაღები არ გაქვს — სახელი, კოორდინატები და Nominatim-ის მისამართი.
+     *
+     * ⚠️ მოკლე ბმული ზოგჯერ **მისამართის პინია** და არა ბიზნესის (მისი ID ქუჩის
+     * ობიექტია) — მაშინ ზუსტი პასუხიც მისამართია; ბიზნესს მისი გაზიარებული ბმული სჭირდება.
      *
      * @return array<string, mixed>|null `null` — ბმულიდან ვერაფერი იკითხება
      */
@@ -160,13 +167,19 @@ class PlaceSearch
         $url = trim($url);
 
         if (GoogleMapsLink::isShort($url)) {
-            $final = $this->http->fetch($url, 256 * 1024)['url'] ?? null;
-            $url = is_string($final) ? GoogleMapsLink::unwrap($final) : '';
+            $final = $this->http->unfold($url, fn (string $hop) => ! GoogleMapsLink::isShort($hop));
+            $url = $final ?? '';
         }
+        $url = GoogleMapsLink::unwrap($url);
 
         $link = $url !== '' ? GoogleMapsLink::parse($url) : null;
         if ($link === null) {
             return null;
+        }
+
+        $exact = $this->exact($link);
+        if ($exact !== null) {
+            return [...$exact, 'maps_url' => $exact['maps_url'] ?? $url];
         }
 
         if ($link['name'] !== null) {
@@ -196,6 +209,38 @@ class PlaceSearch
             'lng' => $link['lng'],
             'maps_url' => $url,
         ]);
+    }
+
+    /**
+     * **ბმულის ID → ზუსტი ობიექტი**: `place_id` — Google-ით (გასაღებით), CID ან
+     * `place_id` — SerpApi-ით (ერთი კრედიტი; Google Places API CID-ს არ იღებს).
+     * `null` — ID არ არის, გასაღები არ არის ან წყარომ ვერ იპოვა: მაშინ სახელით ძებნა.
+     *
+     * @param  array{name: ?string, lat: ?float, lng: ?float, cid: ?string, place_id: ?string}  $link
+     * @return array<string, mixed>|null
+     */
+    private function exact(array $link): ?array
+    {
+        if ($link['place_id'] !== null && $this->google->configured()) {
+            $draft = $this->googleDetails($link['place_id'], null);
+            if ($draft !== null) {
+                return $this->complete($draft);
+            }
+        }
+
+        if (($link['cid'] !== null || $link['place_id'] !== null) && $this->serpapi->configured()) {
+            try {
+                $row = $this->serpapi->place($link['cid'], $link['place_id']);
+            } catch (SerpQuotaExceeded) {
+                $row = null;
+            }
+            $draft = $row !== null ? $this->fromSerpApi($row) : null;
+            if ($draft !== null) {
+                return $this->complete($draft);
+            }
+        }
+
+        return null;
     }
 
     /** უკუ-გეოკოდირება (პინის გადათრევა) */
@@ -405,6 +450,11 @@ class PlaceSearch
         ];
     }
 
+    /**
+     * SerpApi-ს ორი ფორმა: ძებნის `local_results`-ის რიგი და ერთი ადგილის
+     * `place_results` (`type` — სია, საათები — `hours: [{day: value}]`, ფოტოები —
+     * `images: [{title, thumbnail}]`).
+     */
     private function fromSerpApi(array $r): ?array
     {
         $name = $this->text($r['title'] ?? null);
@@ -413,13 +463,27 @@ class PlaceSearch
             return null;
         }
 
+        $days = (array) ($r['operating_hours'] ?? []);
+        foreach ((array) ($r['hours'] ?? []) as $row) {
+            $days += is_array($row) ? $row : [];
+        }
         $hours = [];
-        foreach ((array) ($r['operating_hours'] ?? []) as $day => $value) {
+        foreach ($days as $day => $value) {
             if (is_string($value)) {
                 $hours[] = (self::DAYS[strtolower((string) $day)] ?? $day).': '.$value;
             }
         }
-        $photo = $this->upscale($this->text($r['thumbnail'] ?? null));
+
+        // მთავარი ესკიზი + ადგილის ფოტოების სია (ერთი პასუხიდან), დიდი ზომით და დუბლის გარეშე
+        $photos = [];
+        foreach ([$r['thumbnail'] ?? null, ...array_map(fn ($image) => is_array($image) ? ($image['thumbnail'] ?? null) : null, (array) ($r['images'] ?? []))] as $url) {
+            $url = $this->upscale($this->text($url));
+            if ($url !== null && ! in_array($url, $photos, true)) {
+                $photos[] = $url;
+            }
+        }
+        $photos = array_slice($photos, 0, self::MAX_PHOTOS);
+        $kind = is_array($r['type'] ?? null) ? ($r['type'][0] ?? null) : ($r['type'] ?? null);
 
         return [
             ...$this->blank('serpapi', (string) $id),
@@ -427,14 +491,14 @@ class PlaceSearch
             'address' => $this->text($r['address'] ?? null),
             'lat' => $this->num($r['gps_coordinates']['latitude'] ?? null),
             'lng' => $this->num($r['gps_coordinates']['longitude'] ?? null),
-            'kind' => $this->text($r['type'] ?? null),
+            'kind' => $this->text($kind),
             'rating' => $this->num($r['rating'] ?? null),
             'rating_count' => is_numeric($r['reviews'] ?? null) ? (int) $r['reviews'] : null,
             'phone' => $this->text($r['phone'] ?? null),
             'website' => $this->text($r['website'] ?? null),
             'hours' => $hours,
-            'photo' => $photo,
-            'photos' => $photo ? [$photo] : [],
+            'photo' => $photos[0] ?? null,
+            'photos' => $photos,
         ];
     }
 

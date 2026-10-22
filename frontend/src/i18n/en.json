@@ -4186,7 +4186,7 @@
     "visitedOn": "Visited {{date}}",
     "files": "Files",
     "noFiles": "No files.",
-    "photosHint": "Photos you took yourself live here; ones found on the web go to the gallery.",
+    "photosHint": "Photos you took yourself live here; ones fetched from the source or the web are in the gallery below.",
     "lookupTitle": "Search the source",
     "lookupHint": "Paste a Google Maps link or type a name. Source — Google Places (with your key, suggesting while you type), without it Google Maps through SerpApi/Serper, and OpenStreetMap last. Picking one fills the address, city, coordinates, phone, website, hours, rating and photos — filling in by hand always works.",
     "lookupPlaceholder": "e.g. Vardzia",
@@ -4231,7 +4231,14 @@
     "addressOffer": "At this point: {{address}}",
     "addressUpdate": "Update the address",
     "addressKeep": "Keep",
-    "hoursTitle": "Opening hours"
+    "hoursTitle": "Opening hours",
+    "photoPickTitle": "Source photos",
+    "photoPickHint": "Ticked photos are downloaded into the place’s gallery on save; ★ marks the main photo when you haven’t uploaded your own.",
+    "photoPickGoogleHint": "The full gallery (up to 6 large photos) comes with a Google key (“Data sources”).",
+    "photoPickToggle": "Pick this photo",
+    "photoPickMain": "Make it the main photo",
+    "galleryTitle": "Gallery",
+    "galleryHint": "Photos fetched from the source (link or search) and from the web, kept in the gallery module. Your own uploads are above."
   },
   "personal": {
     "hint": "Photos and videos of your people — persons, albums and uploads from your device. Everything lives on a private disk and only you see it; the public profile shows only an album you open yourself.",

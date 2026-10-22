@@ -5,6 +5,7 @@ namespace App\Support;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -133,6 +134,66 @@ class SafeHttp
                 'url' => $target['url'],
                 'truncated' => $body['truncated'],
             ];
+        }
+
+        return null;
+    }
+
+    /**
+     * **redirect-ების გაყოლა სხეულის გარეშე** — ბრუნდება ჯაჭვის პირველი
+     * მისამართი, რომელსაც `$wanted` იღებს (მოკლე ბმული → სრული), თვითონ კი
+     * აღარ იხსნება. `null` — ჯაჭვი გაწყდა ან ჭერს გადააჭარბა.
+     *
+     * ⚠️ სამიზნის გახსნა ზედმეტიც იყო და მავნეც: Google-ის რუკის გვერდი
+     * სერვერს ხშირად 429-ს ან თანხმობის გვერდს უბრუნებს და `fetch()` მაშინ
+     * მთელ ბმულს კარგავდა, მაშინ როცა საჭირო მისამართი უკვე `Location`-ში ეწერა.
+     * ყოველი ნახტომი იმავე ფილტრს გადის (`resolve()`), რასაც `fetch()`-ისა.
+     *
+     * @param  callable(string): bool  $wanted
+     */
+    public function unfold(string $url, callable $wanted, int $timeout = 15): ?string
+    {
+        $current = $url;
+
+        for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
+            if ($wanted($current)) {
+                return $current;
+            }
+
+            $target = $this->resolve($current);
+
+            if ($target === null) {
+                return null;
+            }
+
+            try {
+                $res = Http::timeout($timeout)
+                    ->withOptions([
+                        'verify' => storage_path('cacert.pem'),
+                        'allow_redirects' => false,
+                        // ⚠️ `stream` არა: მაშინ Guzzle ნაკადის დამმუშავებელს ირჩევს, ის კი
+                        // `CURLOPT_RESOLVE`-ს (DNS-ის მიბმას) უგულებელყოფს. სხეული მხოლოდ
+                        // redirect-ზე იკითხება (პატარაა), სხვა პასუხი თავებზევე წყდება.
+                        'on_headers' => function ($response) {
+                            $status = $response->getStatusCode();
+                            if ($status < 300 || $status >= 400 || (int) $response->getHeaderLine('Content-Length') > 65536) {
+                                throw new RuntimeException('not a redirect');
+                            }
+                        },
+                        'curl' => [CURLOPT_RESOLVE => [$target['resolve']]],
+                    ])
+                    ->get($target['url']);
+            } catch (Throwable) {
+                return null;
+            }
+
+            $location = $res->status() >= 300 && $res->status() < 400 ? $res->header('Location') : '';
+
+            if ($location === '' || $location === null) {
+                return null;
+            }
+
+            $current = $this->absolute($target['url'], $location);
         }
 
         return null;

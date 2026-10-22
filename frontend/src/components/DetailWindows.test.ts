@@ -135,7 +135,8 @@ describe('detail windows', () => {
     before(list, i18n.t('boardGames.shops'), i18n.t('boardGames.rulesTitle'))
   })
 
-  it('place: photos before the documents', async () => {
+  // წყაროდან ჩამოტანილი ფოტოები (`gallery_images`) ადგილის ფანჯარაშიც ჩანს — ჩემი ფოტოების შემდეგ
+  it('place: my photos, then the fetched gallery, then the documents', async () => {
     const { PlaceDetail } = await import('@/components/PlaceDetail')
     const place = {
       id: 3,
@@ -149,6 +150,8 @@ describe('detail windows', () => {
     await mount(h(PlaceDetail, { place, onClose: () => {} }))
 
     expect(document.body.textContent).toContain('Aspindza')
-    before(headings(), i18n.t('places.fileKinds.image'), i18n.t('places.fileKinds.doc'))
+    const list = headings()
+    before(list, i18n.t('places.fileKinds.image'), i18n.t('places.galleryTitle'))
+    before(list, i18n.t('places.galleryTitle'), i18n.t('places.fileKinds.doc'))
   })
 })

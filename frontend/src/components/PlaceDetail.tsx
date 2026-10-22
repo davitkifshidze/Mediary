@@ -32,6 +32,7 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { PlaceRoutes } from '@/components/PlaceRoutes'
+import { RecordGallery } from '@/components/RecordGallery'
 
 /**
  * **ადგილის ბარათი.**
@@ -41,9 +42,10 @@ import { PlaceRoutes } from '@/components/PlaceRoutes'
  * OSRM-ით, ალტერნატივებით და შენახვით; ღრმა ბმული Google Maps-ზე/OSM-ზე
  * ყოველთვის რჩება. 2026-09-21-ის „მოგვიანებით" სწორედ ეს იყო.
  *
- * ⚠️ **ვებიდან მოტანილი ფოტო აქ არ ჩანს** — ის `gallery_images`-შია და
- * გალერეის სექციაში იხატება. აქ მხოლოდ ჩემი ატვირთვებია (`place_files`),
- * ზუსტად ის განაწილება, რაც ვიდეოსა და სამაგიდო თამაშს აქვს.
+ * ფოტოები ორ საცავშია: ზემოთ ჩემი ატვირთვები (`place_files`), ქვემოთ —
+ * წყაროდან (ბმული/ძებნა, ამრჩევში მონიშნულები) და ვებიდან ჩამოტანილი
+ * (`gallery_images`, `RecordGallery`). ⚠️ მეორე აქამდე მხოლოდ გალერეის
+ * მოდულში ჩანდა — არჩეული ფოტოები ადგილიდან „ქრებოდა".
  */
 const KIND_ICON: Record<PlaceFileKind, typeof MapPin> = {
   image: ImageIcon,
@@ -245,6 +247,11 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
           emptyTitle={t('places.photosEmpty')}
           deleteTitle={t('places.photoDeleteTitle')}
         />
+
+        {/* წყაროდან და ვებიდან ჩამოტანილი ფოტოები (`gallery_images`) */}
+        <DetailSection title={t('places.galleryTitle')} hint={t('places.galleryHint')}>
+          <RecordGallery type="place" id={place.id} bare query={[place.name, place.city].filter(Boolean).join(' ')} />
+        </DetailSection>
 
         {place.description && (
           <Markdown text={place.description} className="text-sm text-muted-foreground" />

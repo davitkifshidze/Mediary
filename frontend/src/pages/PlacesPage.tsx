@@ -19,6 +19,7 @@ import {
   updatePlace,
   type Place,
   type PlaceCandidate,
+  type PlaceLookup,
   type PlaceCategory,
   type PlaceFileKind,
   type PlaceFilters,
@@ -47,6 +48,7 @@ import { RecordActionBar } from '@/components/RecordActionBar'
 import { EnumStatusMenu } from '@/components/StatusMenu'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { PosterUploader } from '@/components/PosterUploader'
+import { PlacePhotoPick } from '@/components/PlacePhotoPick'
 import { TagSelect } from '@/components/TagSelect'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import {
@@ -558,8 +560,10 @@ function PlaceForm({
     rating: place?.source_rating ?? null,
     count: place?.source_rating_count ?? null,
   })
-  /** წყაროს ფოტოები: შენახვისას გალერეაში, პირველი — მთავარი (ფოტო თუ არ გაქვს) */
-  const [galleryUrls, setGalleryUrls] = useState<string[]>([])
+  /** წყაროს ფოტოები: ✓ — შენახვისას გალერეაში ჩამოდის, ★ — მთავარი (ფოტო თუ არ გაქვს); რიგი წყაროსია */
+  const [sourcePhotos, setSourcePhotos] = useState<string[]>([])
+  const [pickedPhotos, setPickedPhotos] = useState<string[]>([])
+  const [mainPhoto, setMainPhoto] = useState<string | null>(null)
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(
     place?.photo ? (storageUrl(place.photo) ?? place.photo) : null,
@@ -650,14 +654,35 @@ function PlaceForm({
   }
 
   /**
-   * მონახაზი → ფორმა. ⚠️ **შენი სახელი არ გადაიწერება**; დანარჩენი წყაროსია
-   * (მისამართი, ქალაქი, კოორდინატები, ტელეფონი, საათები…), კატეგორია — მხოლოდ
-   * ცარიელზე; ფოტო — მხოლოდ თუ შენი არ აირჩიე.
+   * მთავარი ფოტო (★) — პრევიუც მისი ხდება, თუ მთავარი მართლა წყაროდან მოვა:
+   * შენს ატვირთულს ან უკვე შენახულს არ ვეხებით (backend-იც მხოლოდ ცარიელს ავსებს).
    */
-  const applyDraft = (d: PlaceCandidate) => {
+  const showMain = (url: string | null) => {
+    setMainPhoto(url)
+    if (photo || (preview && !sourcePreview)) return
+    setPreview(url)
+    setSourcePreview(!!url)
+    setRemovePhoto(false)
+  }
+
+  /** ✓ ჩართვა/გამორთვა; მთავარის მოხსნისას მთავარი შემდეგი მონიშნული ხდება */
+  const togglePhoto = (url: string) => {
+    const next = pickedPhotos.includes(url) ? pickedPhotos.filter((u) => u !== url) : sourcePhotos.filter((u) => u === url || pickedPhotos.includes(u))
+    setPickedPhotos(next)
+    if (url === mainPhoto && !next.includes(url)) showMain(next[0] ?? null)
+    else if (!mainPhoto && next.length) showMain(next[0])
+  }
+
+  /**
+   * მონახაზი → ფორმა. სახელი: **ახალ ადგილზე ბმულის სახელი აკრეფილს ანაცვლებს**
+   * (ბმული ცხადად ამბობს, რა ადგილია), რედაქტირებისას და ძებნიდან არჩევისას —
+   * შენი რჩება. დანარჩენი წყაროსია (მისამართი, ქალაქი, კოორდინატები, ტელეფონი,
+   * საათები…), კატეგორია — მხოლოდ ცარიელზე; ფოტოები — ამრჩევში (ყველა მონიშნული).
+   */
+  const applyDraft = ({ draft: d, live }: PlaceLookup, fromLink = false) => {
     setForm((f) => ({
       ...f,
-      name: f.name || d.name || f.name,
+      name: fromLink && !place && d.name ? d.name : f.name || d.name || f.name,
       address: d.address ?? f.address,
       city: d.city ?? f.city,
       country: d.country ?? f.country,
@@ -672,12 +697,12 @@ function PlaceForm({
       categoryId: f.categoryId || matchCategory(d.kind),
     }))
     if (d.rating != null) setSourceRating({ rating: d.rating, count: d.rating_count })
-    if (d.photos.length) setGalleryUrls(d.photos)
-    if (d.photo && !photo && (!preview || sourcePreview)) {
-      setPreview(d.photo)
-      setSourcePreview(true)
-      setRemovePhoto(false)
-    }
+    // ⚠️ ახალი მონახაზი წინას ფოტოებს ანაცვლებს — სხვა ადგილის ფოტო აქ აღარ ეკუთვნის
+    const photos = d.photos.length ? d.photos : d.photo ? [d.photo] : []
+    setSourcePhotos(photos)
+    setPickedPhotos(photos)
+    showMain(d.photo ?? photos[0] ?? null)
+    if (!live) setLiveOn(false)
     setResults(null)
     setAddressOffer(null)
     toast({ title: t('places.candidateTaken'), variant: 'success' })
@@ -685,16 +710,16 @@ function PlaceForm({
 
   /** კანდიდატი → დეტალები (Google-ის შემოთავაზებას სახელის გარდა არაფერი აქვს; OSM-ისა უკვე სრულია) */
   const take = useMutation({
-    mutationFn: (c: PlaceCandidate) =>
-      c.source === 'nominatim' ? Promise.resolve(c) : lookupPlace(c, lookupQuery.trim(), session),
-    onSuccess: applyDraft,
+    mutationFn: (c: PlaceCandidate): Promise<PlaceLookup> =>
+      c.source === 'nominatim' ? Promise.resolve({ draft: c, live: liveOn }) : lookupPlace(c, lookupQuery.trim(), session),
+    onSuccess: (res) => applyDraft(res),
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
   /** Google Maps-ის ბმული (მოკლეც) → ფორმა */
   const fromLink = useMutation({
     mutationFn: (url: string) => placeFromLink(url),
-    onSuccess: applyDraft,
+    onSuccess: (res) => applyDraft(res, true),
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
   const readLink = (raw: string) => {
@@ -815,8 +840,9 @@ function PlaceForm({
       opening_hours: form.hours.split('\n').map((line) => line.trim()).filter(Boolean),
       source_rating: sourceRating.rating,
       source_rating_count: sourceRating.count,
-      // შენი ატვირთული ფოტო მთავარია; წყაროს ფოტოები მაინც გალერეაში ჩამოდის
-      gallery_urls: galleryUrls,
+      // მონიშნული წყაროს ფოტოები გალერეაში ჩამოდის, ★ — პირველი (backend მას ცარიელ მთავარ ფოტოდ სვამს);
+      // შენი ატვირთული ფოტო მაინც მთავარია
+      gallery_urls: mainPhoto && pickedPhotos.includes(mainPhoto) ? [mainPhoto, ...pickedPhotos.filter((u) => u !== mainPhoto)] : pickedPhotos,
     })
   }
 
@@ -892,6 +918,19 @@ function PlaceForm({
           )}
         </QuickFill>
 
+        {/* წყაროს ფოტოები: რომელი ჩამოვიდეს (✓) და რომელი იყოს მთავარი (★) */}
+        {sourcePhotos.length > 0 && (
+          <PlacePhotoPick
+            photos={sourcePhotos}
+            picked={pickedPhotos}
+            main={mainPhoto}
+            starable={!photo && (sourcePreview || !preview)}
+            hint={joinHints(t('places.photoPickHint'), liveOn ? undefined : t('places.photoPickGoogleHint'))}
+            onToggle={togglePhoto}
+            onMain={showMain}
+          />
+        )}
+
         {/* ფოტო ზემოთაა, სახელსა და აღწერასთან ერთად */}
         <FormSection
           title={t('form.sections.basic')}
@@ -914,11 +953,15 @@ function PlaceForm({
                   setPreview(URL.createObjectURL(file))
                 }}
                 onClear={() => {
+                  // წყაროს მთავარი ფოტოს მოხსნა = მისი მოხსნა ამრჩევშიც (მთავარი შემდეგი მონიშნული ხდება)
+                  if (sourcePreview && mainPhoto) {
+                    togglePhoto(mainPhoto)
+
+                    return
+                  }
                   setPhoto(null)
                   setRemovePhoto(true)
                   setPreview(null)
-                  // წყაროს ფოტოს მოხსნა მის ჩამოტვირთვასაც აუქმებს
-                  if (sourcePreview) setGalleryUrls([])
                   setSourcePreview(false)
                 }}
               />

@@ -113,6 +113,13 @@ export interface PlaceCandidate {
   maps_url: string | null
 }
 
+/** ერთი მონახაზი (კანდიდატის დეტალები ან ბმული) */
+export interface PlaceLookup {
+  draft: PlaceCandidate
+  /** Google-ის გასაღები გაქვს? (მის გარეშე ფოტოების ამრჩევი ამბობს, რომ სრული გალერია მისით მოდის) */
+  live: boolean
+}
+
 export interface PlaceSearchResult {
   results: PlaceCandidate[]
   /** რომელმა წყარომ უპასუხა */
@@ -249,20 +256,20 @@ export async function fetchPlaceCandidates(query: string): Promise<PlaceCandidat
 }
 
 /** არჩეული კანდიდატი → სრული მონახაზი (ფოტოები, ქალაქი კოორდინატიდან…) */
-export async function lookupPlace(candidate: PlaceCandidate, query: string, session?: string): Promise<PlaceCandidate> {
+export async function lookupPlace(candidate: PlaceCandidate, query: string, session?: string): Promise<PlaceLookup> {
   const { data } = await api.post('/places/lookup', {
     source: candidate.source,
     source_id: candidate.source_id,
     query,
     ...(session ? { session } : {}),
   })
-  return data.draft
+  return { draft: data.draft, live: !!data.live }
 }
 
 /** Google Maps-ის ბმული (მოკლეც) → მონახაზი */
-export async function placeFromLink(url: string): Promise<PlaceCandidate> {
+export async function placeFromLink(url: string): Promise<PlaceLookup> {
   const { data } = await api.post('/places/lookup/link', { url })
-  return data.draft
+  return { draft: data.draft, live: !!data.live }
 }
 
 /** კოორდინატი → მისამართი (პინის გადათრევა) */

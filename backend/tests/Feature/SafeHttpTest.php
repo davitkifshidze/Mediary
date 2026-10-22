@@ -138,6 +138,31 @@ class SafeHttpTest extends TestCase
         Http::assertSentCount(SafeHttp::MAX_REDIRECTS + 1);
     }
 
+    /**
+     * **`unfold()` — redirect-ის გაყოლა სამიზნის გახსნის გარეშე** (მოკლე ბმული):
+     * პირველი მისამართი, რომელსაც გამომძახებელი იღებს, ბრუნდება და აღარ იხსნება —
+     * ე.ი. მისი 429 ბმულს ვეღარ წაშლის; კერძო ქსელი და მარყუჟი ისევ იჭრება.
+     */
+    public function test_unfold_stops_at_the_wanted_address_without_opening_it(): void
+    {
+        Http::fake([
+            '203.0.113.10/short' => Http::response('', 302, ['Location' => 'http://203.0.113.20/maps/place/X']),
+            '203.0.113.20/*' => Http::response('', 429),
+            '203.0.113.30/*' => Http::response('', 302, ['Location' => 'http://127.0.0.1/maps']),
+        ]);
+
+        $this->assertSame(
+            'http://203.0.113.20/maps/place/X',
+            $this->http->unfold('http://203.0.113.10/short', fn (string $url) => str_contains($url, '/maps/')),
+        );
+        Http::assertSentCount(1);
+
+        // კერძო მისამართზე ნახტომი იჭრება, თუნდაც „სასურველი" იყოს
+        $this->assertNull($this->http->unfold('http://203.0.113.30/short', fn (string $url) => str_contains($url, '/maps') && ! str_contains($url, '127.0.0.1')));
+        // redirect-ის გარეშე პასუხი — ჯაჭვი გაწყდა
+        $this->assertNull($this->http->unfold('http://203.0.113.20/other', fn () => false));
+    }
+
     /* ================= ზომის ჭერი ================= */
 
     /**

@@ -241,13 +241,34 @@ describe('PlacesPage form — suggestions while typing and a Google Maps link', 
 
   const value = (selector: string) => document.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)?.value
 
+  async function pasteLink(url: string) {
+    const link = document.querySelector<HTMLInputElement>('#p-maplink')!
+    await type(link, url)
+    await act(async () => {
+      link.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+    })
+    await flush()
+  }
+
+  async function openEdit() {
+    const edit = [...document.querySelectorAll<HTMLButtonElement>('[data-testid="record-actions"] button')].find((b) =>
+      b.textContent?.includes(i18n.t('actions.edit')),
+    )!
+    await act(async () => edit.click())
+    await flush()
+  }
+
+  const tiles = () => [...document.querySelectorAll<HTMLButtonElement>('[data-testid="place-photo"]')]
+  const stars = () => [...document.querySelectorAll<HTMLButtonElement>('[data-testid="place-photo-main"]')]
+  const previewSrc = () => document.querySelector('[data-testid="poster-preview"] img')?.getAttribute('src') ?? null
+
   it('suggests while typing (Google) and a pick fills everything, the category too', async () => {
     mocks.searchPlaces.mockResolvedValue({
       results: [{ ...draft, address: 'კოსტავას ქ., თბილისი', lat: null, lng: null, phone: null, hours: [], photo: null, photos: [] }],
       source: 'google',
       live: true,
     })
-    mocks.lookupPlace.mockResolvedValue(draft)
+    mocks.lookupPlace.mockResolvedValue({ draft, live: true })
     await mount([], [category])
     await openAdd()
 
@@ -296,7 +317,7 @@ describe('PlacesPage form — suggestions while typing and a Google Maps link', 
 
   it('a pasted Google Maps link fills the form, and saving sends the source details and photos', async () => {
     const existing = place(9, { name: 'ჩემი სახინკლე', category_id: 5, category, status: 'to_visit', lat: null, lng: null })
-    mocks.placeFromLink.mockResolvedValue(draft)
+    mocks.placeFromLink.mockResolvedValue({ draft, live: true })
     mocks.updatePlace.mockResolvedValue(existing)
     await mount([existing], [category])
 
@@ -334,5 +355,77 @@ describe('PlacesPage form — suggestions while typing and a Google Maps link', 
         lat: 41.7151,
       }),
     )
+  })
+
+  /* ბმული ცხადად ამბობს, რა ადგილია — ახალზე მისი სახელი აკრეფილს ანაცვლებს
+     (რედაქტირებისას კი შენი რჩება — ზემოთ) */
+  it('on a new place the link name replaces the typed one', async () => {
+    mocks.placeFromLink.mockResolvedValue({ draft: { ...draft, name: 'Pictograma' }, live: true })
+    await mount([], [category])
+    await openAdd()
+
+    await type(document.querySelector<HTMLInputElement>('#p-name')!, 'ჩემი სახელი')
+    await pasteLink('https://maps.app.goo.gl/AbCdEf123')
+
+    expect(value('#p-name')).toBe('Pictograma')
+  })
+
+  it('source photos are all ticked, ★ picks the main one and sends it first, an unticked one stays behind', async () => {
+    const existing = place(9, { name: 'ჩემი სახინკლე', category_id: 5, category, status: 'to_visit' })
+    mocks.placeFromLink.mockResolvedValue({ draft, live: false })
+    mocks.updatePlace.mockResolvedValue(existing)
+    await mount([existing], [category])
+    await openEdit()
+    await pasteLink('https://maps.app.goo.gl/AbCdEf123')
+
+    // ყველა მონიშნულია, მთავარი — პირველი, პრევიუც მისია
+    expect(tiles()).toHaveLength(2)
+    expect(tiles().map((b) => b.getAttribute('aria-checked'))).toEqual(['true', 'true'])
+    expect(stars().map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false'])
+    expect(previewSrc()).toBe(draft.photos[0])
+
+    // ★ მეორეზე — პრევიუ მისი ხდება
+    await act(async () => stars()[1].click())
+    expect(previewSrc()).toBe(draft.photos[1])
+    expect(stars().map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true'])
+
+    // პირველის მოხსნა — ის აღარ ჩამოვა
+    await act(async () => tiles()[0].click())
+    expect(tiles()[0].getAttribute('aria-checked')).toBe('false')
+    expect(stars()).toHaveLength(1)
+
+    await act(async () => document.querySelector<HTMLFormElement>('form')!.requestSubmit())
+    await flush()
+
+    expect(mocks.updatePlace).toHaveBeenCalledWith(9, expect.objectContaining({ gallery_urls: [draft.photos[1]] }))
+  })
+
+  it('unticking the main photo hands the preview to the next ticked one, and none leaves no preview', async () => {
+    mocks.placeFromLink.mockResolvedValue({ draft, live: true })
+    await mount([], [category])
+    await openAdd()
+    await pasteLink('https://maps.app.goo.gl/AbCdEf123')
+
+    await act(async () => tiles()[0].click())
+    expect(previewSrc()).toBe(draft.photos[1])
+    await act(async () => tiles()[1].click())
+    expect(previewSrc()).toBeNull()
+
+    // ხელახლა მონიშვნა მთავარსაც აბრუნებს
+    await act(async () => tiles()[0].click())
+    expect(previewSrc()).toBe(draft.photos[0])
+  })
+
+  /* შენი ატვირთული ფოტო მთავარია — ★ მას ვერ ცვლის და აღარც ჩანს */
+  it('with your own photo there is no ★ and the preview stays yours', async () => {
+    const existing = place(9, { name: 'ჩემი სახინკლე', category_id: 5, category, status: 'to_visit', photo: 'places/mine.jpg' })
+    mocks.placeFromLink.mockResolvedValue({ draft, live: true })
+    await mount([existing], [category])
+    await openEdit()
+    await pasteLink('https://maps.app.goo.gl/AbCdEf123')
+
+    expect(tiles()).toHaveLength(2)
+    expect(stars()).toHaveLength(0)
+    expect(previewSrc()).toContain('places/mine.jpg')
   })
 })

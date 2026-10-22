@@ -130,6 +130,20 @@ class PlaceLookupTest extends TestCase
         ];
     }
 
+    /** მოკლე ბმულის გაშლა ქსელის გარეშე — `unfold()` ამ მისამართს „იპოვის" (`null` — ჯაჭვი გაწყდა) */
+    private function unfoldsTo(?string $target): void
+    {
+        $this->app->instance(SafeHttp::class, new class($target) extends SafeHttp
+        {
+            public function __construct(private readonly ?string $target) {}
+
+            public function unfold(string $url, callable $wanted, int $timeout = 15): ?string
+            {
+                return $this->target !== null && $wanted($this->target) ? $this->target : null;
+            }
+        });
+    }
+
     private function key(string $provider): void
     {
         UserCredential::create(['user_id' => $this->user->id, 'provider' => $provider, 'credentials' => ['key' => "{$provider}-key"]]);
@@ -299,19 +313,21 @@ class PlaceLookupTest extends TestCase
             ->assertJsonPath('message', 'map_link_unreadable');
     }
 
+    /** გასაღების გარეშე პასუხი ამბობს `live: false` — ფოტოების ამრჩევი ამაზე წერს მინიშნებას */
+    public function test_a_draft_says_whether_the_google_key_is_there(): void
+    {
+        $url = ['url' => 'https://www.google.com/maps/place/Pictogram/@41.71,44.82,17z/data=!3d41.7151!4d44.8271'];
+
+        $this->postJson('/api/places/lookup/link', $url)->assertOk()->assertJsonPath('live', false);
+
+        $this->key(CredentialProviders::GOOGLE_MAPS);
+        $this->postJson('/api/places/lookup/link', $url)->assertOk()->assertJsonPath('live', true);
+    }
+
     /** მოკლე ბმული `SafeHttp`-ით იშლება; სახელით ნაპოვნი, წერტილთან ახლოს მდგომი ადგილი ირჩევა */
     public function test_a_short_link_is_unfolded_and_matched_to_the_nearest_result(): void
     {
-        $this->app->instance(SafeHttp::class, new class extends SafeHttp
-        {
-            public function fetch(string $url, int $maxBytes, array $headers = [], int $timeout = 15): ?array
-            {
-                return [
-                    'body' => '', 'mime' => 'text/html', 'status' => 200, 'truncated' => false,
-                    'url' => 'https://consent.google.com/ml?continue='.urlencode('https://www.google.com/maps/place/Pictogram/@41.715,44.827,17z/data=!3d41.7151!4d44.8271'),
-                ];
-            }
-        });
+        $this->unfoldsTo('https://consent.google.com/ml?continue='.urlencode('https://www.google.com/maps/place/Pictogram/@41.715,44.827,17z/data=!3d41.7151!4d44.8271'));
 
         $this->key(CredentialProviders::SERPAPI);
         $this->serpAnswer = ['local_results' => [
@@ -324,6 +340,73 @@ class PlaceLookupTest extends TestCase
             ->assertJsonPath('draft.source', 'serpapi')
             ->assertJsonPath('draft.source_id', 'serp-1')
             ->assertJsonPath('draft.phone', '+995 32 222 22 22');
+    }
+
+    /**
+     * **ბმულში Google-ის ID-ია → ზუსტი ობიექტი**: CID (FTID-დან) SerpApi-ს
+     * `data_cid`-ით, სახელით ძებნისა და „უახლოესის" გარეშე; ერთი პასუხის
+     * `images` ფოტოების ამრჩევს რამდენიმე ფოტოს აძლევს (დიდი ზომით).
+     *
+     * ⚠️ 429-ის „sorry" გვერდი ბმულს აღარ კარგავს — `continue`-დან იკითხება.
+     */
+    public function test_a_link_with_a_google_id_asks_for_that_exact_place(): void
+    {
+        $this->unfoldsTo('https://www.google.com/sorry/index?continue='.urlencode(
+            'https://www.google.com/maps/place/31+Atoneli+St/data=!4m7!3m6!1s0x40440ce731f82b1d:0x9e4f761a61b9ff48!8m2!3d41.7005149!4d44.8017788!16s%2Fg%2F11bw4n4hy5'
+        ).'&q=EgQ');
+        $this->key(CredentialProviders::SERPAPI);
+        $this->serpAnswer = ['place_results' => $this->serpRow([
+            'title' => 'Pictograma',
+            'place_id' => 'ChIJexact',
+            'type' => ['Georgian restaurant', 'Restaurant'],
+            'operating_hours' => null,
+            'hours' => [['monday' => '11 AM–11 PM'], ['tuesday' => 'Closed']],
+            'images' => [
+                ['title' => 'All', 'thumbnail' => 'https://lh5.googleusercontent.com/p/AF1QipABC=w447-h298-k-no'],
+                ['title' => 'Menu', 'thumbnail' => 'https://lh5.googleusercontent.com/p/AF1QipMENU=w447-h298-k-no'],
+            ],
+        ])];
+
+        $this->postJson('/api/places/lookup/link', ['url' => 'https://maps.app.goo.gl/FhvBRiHwZmeqbWo6A'])
+            ->assertOk()
+            ->assertJsonPath('draft.source', 'serpapi')
+            ->assertJsonPath('draft.name', 'Pictograma')
+            ->assertJsonPath('draft.kind', 'Georgian restaurant')
+            ->assertJsonPath('draft.hours', ['ორშაბათი: 11 AM–11 PM', 'სამშაბათი: Closed'])
+            // ესკიზი და სიის პირველი ერთი ფაილია — ერთხელ
+            ->assertJsonPath('draft.photos', [
+                'https://lh5.googleusercontent.com/p/AF1QipABC=w1600-h1200-k-no',
+                'https://lh5.googleusercontent.com/p/AF1QipMENU=w1600-h1200-k-no',
+            ])
+            ->assertJsonPath('draft.photo', 'https://lh5.googleusercontent.com/p/AF1QipABC=w1600-h1200-k-no');
+
+        Http::assertSent(fn (Request $r) => str_contains($r->url(), 'serpapi.com')
+            && ($r['data_cid'] ?? null) === '11407466236833562440' && ! isset($r['q']));
+    }
+
+    /** `place_id` + Google-ის გასაღები → Google-ის დეტალები პირდაპირ (6 ფოტომდე) */
+    public function test_a_place_id_link_goes_straight_to_google_details(): void
+    {
+        $this->key(CredentialProviders::GOOGLE_MAPS);
+
+        $this->postJson('/api/places/lookup/link', ['url' => 'https://www.google.com/maps/search/?api=1&query=x&query_place_id=ChIJpictogram0001'])
+            ->assertOk()
+            ->assertJsonPath('draft.source', 'google')
+            ->assertJsonPath('draft.name', 'პიქტოგრამა')
+            ->assertJsonCount(2, 'draft.photos');
+
+        Http::assertSent(fn (Request $r) => str_contains($r->url(), 'places.googleapis.com/v1/places/ChIJpictogram0001'));
+        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'places:searchText'));
+    }
+
+    /** მოკლე ბმულის ჯაჭვი გაწყდა — 422, და არა 500 */
+    public function test_a_short_link_that_does_not_unfold_is_unreadable(): void
+    {
+        $this->unfoldsTo(null);
+
+        $this->postJson('/api/places/lookup/link', ['url' => 'https://maps.app.goo.gl/AbCdEf123'])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'map_link_unreadable');
     }
 
     /** პინის გადათრევა → მისამართი */

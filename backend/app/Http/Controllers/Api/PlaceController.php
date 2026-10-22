@@ -150,7 +150,10 @@ class PlaceController extends Controller
         return $this->blocked() ?? response()->json([...$found, 'live' => $this->search->live()]);
     }
 
-    /** ერთი კანდიდატი → ფორმის სრული მონახაზი (ჩანაწერს ისიც არ ქმნის) */
+    /**
+     * ერთი კანდიდატი → ფორმის სრული მონახაზი (ჩანაწერს ისიც არ ქმნის).
+     * `live` — Google-ის გასაღები გაქვს? (ფოტოების ამრჩევი მის გარეშე ამბობს, რომ სრული გალერია მისით მოდის)
+     */
     public function lookup(Request $request)
     {
         $data = $request->validate([
@@ -173,7 +176,7 @@ class PlaceController extends Controller
         $draft = $this->search->details($source, $id, (string) ($data['query'] ?? ''), $data['session'] ?? null);
 
         return $draft
-            ? response()->json(['draft' => $draft])
+            ? response()->json(['draft' => $draft, 'live' => $this->search->live()])
             : ($this->blocked() ?? response()->json(['message' => 'not_found'], 404));
     }
 
@@ -185,7 +188,7 @@ class PlaceController extends Controller
         $draft = $this->search->fromLink($data['url']);
 
         return $draft
-            ? response()->json(['draft' => $draft])
+            ? response()->json(['draft' => $draft, 'live' => $this->search->live()])
             : ($this->blocked() ?? response()->json(['message' => 'map_link_unreadable'], 422));
     }
 

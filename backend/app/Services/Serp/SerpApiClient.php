@@ -383,6 +383,31 @@ class SerpApiClient
         return is_array($data['place_results'] ?? null) ? [$data['place_results']] : [];
     }
 
+    /**
+     * **ერთი ადგილი Google-ის საკუთარი ID-ით** — `data_cid` (CID) ან `place_id`:
+     * ბმულიდან ზუსტი ობიექტი, სახელით ძებნისა და „უახლოესის" გარეშე.
+     *
+     * ⚠️ ერთი კრედიტი, ქეში და აღრიცხვა — `call()`-ისა. პასუხის `place_results`-ს
+     * ფოტოების სია (`images`) ახლავს — ცალკე (`google_maps_photos`) ძებნის გარეშე.
+     *
+     * @return array<string, mixed>|null `null` — ვერ მოიძებნა, წყარო არ პასუხობს ან გასაღები არ არის
+     */
+    public function place(?string $cid, ?string $placeId = null): ?array
+    {
+        $params = match (true) {
+            $cid !== null => ['data_cid' => $cid],
+            $placeId !== null => ['place_id' => $placeId],
+            default => null,
+        };
+        if ($params === null) {
+            return null;
+        }
+
+        $data = $this->call('google_maps', $params + ['hl' => 'ka', 'gl' => 'ge'], (string) ($cid ?? $placeId))['data'];
+
+        return is_array($data['place_results'] ?? null) ? $data['place_results'] : null;
+    }
+
     /* ---------- შიგნეული ---------- */
 
     /**
@@ -737,7 +762,8 @@ class SerpApiClient
             }
         }
 
-        return 0;
+        // ერთი ადგილი (`place()`, ზუსტი დამთხვევა) — სია კი არა, ერთი ობიექტი
+        return is_array($data['place_results'] ?? null) ? 1 : 0;
     }
 
     private function str(mixed $value, int $max = 500): ?string
