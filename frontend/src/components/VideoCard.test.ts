@@ -37,6 +37,8 @@ function video(extra: Partial<Video> = {}): Video {
     embed_url: 'https://www.youtube-nocookie.com/embed/talk',
     thumbnail: null,
     duration: 610,
+    source_size: null,
+    resolution: null,
     tags: [],
     is_favorite: false,
     watch_count: 0,
@@ -86,6 +88,17 @@ async function mount(subject: Video, overrides: Partial<VideoCardProps> = {}) {
 const badges = (el: HTMLElement) => [...el.querySelectorAll<HTMLElement>('[data-testid="video-badges"] > *')]
 
 describe('VideoCard', () => {
+  /* წყაროს გარჩევადობა და მიახლოებითი ზომა ხანგრძლივობის გვერდით; უცნობზე ჩიპი არ იხატება */
+  it('shows the source resolution and approximate size next to the duration', async () => {
+    const { el } = await mount(video({ duration: 213, resolution: '1080p', source_size: 440_401_920 }))
+    expect(el.querySelector('[data-testid="video-source"]')?.textContent).toBe('1080p · ~420.0 MB')
+    act(() => root?.unmount())
+    el.remove()
+
+    const bare = await mount(video({ duration: 213, resolution: null, source_size: null }))
+    expect(bare.el.querySelector('[data-testid="video-source"]')).toBeNull()
+  })
+
   it('draws type, status and platform as three equal badges with their own colours', async () => {
     const { el } = await mount(video())
 

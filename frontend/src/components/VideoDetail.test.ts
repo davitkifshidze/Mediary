@@ -66,6 +66,8 @@ function video(extra: Partial<Video> = {}): Video {
     embed_url: 'https://www.youtube-nocookie.com/embed/talk',
     thumbnail: null,
     duration: 610,
+    source_size: null,
+    resolution: null,
     tags: [],
     is_favorite: false,
     watch_count: 0,

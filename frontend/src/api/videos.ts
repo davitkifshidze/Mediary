@@ -48,6 +48,9 @@ export interface Video {
   /** storage-ის გზა ან პლატფორმის სრული URL */
   thumbnail: string | null
   duration: number | null
+  /** წყაროს ზომა (ბაიტი, მიახლოებით) და გარჩევადობა („1080p") — ბმულიდან, `yt-dlp`-ით */
+  source_size: number | null
+  resolution: string | null
   tags: string[]
   is_favorite: boolean
   watch_count: number
@@ -416,6 +419,12 @@ export async function deleteVideo(id: number): Promise<void> {
 
 export async function toggleVideoFavorite(id: number): Promise<Video> {
   const { data } = await api.patch(`/videos/${id}/favorite`)
+  return data.data
+}
+
+/** მეტამონაცემის ხელახლა წამოღება ბმულიდან (ცარიელი ველები, ზომა, გარჩევადობა) */
+export async function resyncVideo(id: number): Promise<Video> {
+  const { data } = await api.post(`/videos/${id}/resync`)
   return data.data
 }
 

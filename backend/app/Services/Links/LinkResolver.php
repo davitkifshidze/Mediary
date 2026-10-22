@@ -56,15 +56,19 @@ class LinkResolver
      * @return array{kind: string, url: string, platform: string, external_id: ?string, embed_url: ?string,
      *               title: ?string, description: ?string, image_url: ?string, favicon_url: ?string,
      *               site_name: ?string, domain: ?string, author: ?string, duration: ?int,
-     *               published_at: ?string, tags: list<string>}
+     *               published_at: ?string, tags: list<string>, size: ?int, resolution: ?string}
      */
-    public function resolve(string $url): array
+    public function resolve(string $url, bool $fresh = false): array
     {
         $url = trim($url);
 
         // ⚠️ გასაღების ვერსია — ძველ ქეშირებულ პასუხს ტეგები და თარიღი აკლდა, მოგვიანებით
-        // კი ფლეილისტზე YouTube-ის თანხმობის გვერდი იყო ქეშირებული
-        $meta = Cache::remember('link-meta:v3:'.sha1($url), now()->addMinutes(self::CACHE_MINUTES), fn () => $this->lookup($url));
+        // ფლეილისტზე YouTube-ის თანხმობის გვერდი იყო ქეშირებული, `v4`-მდე კი ზომა და გარჩევადობა არ ჰქონდა
+        $key = 'link-meta:v4:'.sha1($url);
+        if ($fresh) {
+            Cache::forget($key);
+        }
+        $meta = Cache::remember($key, now()->addMinutes(self::CACHE_MINUTES), fn () => $this->lookup($url));
 
         if (is_string($meta['description']) && mb_strlen($meta['description']) > self::DESCRIPTION_MAX) {
             $meta['description'] = mb_substr($meta['description'], 0, self::DESCRIPTION_MAX);
@@ -94,6 +98,9 @@ class LinkResolver
             'duration' => null,
             'published_at' => null,
             'tags' => [],
+            // ვიდეოს წყაროს ზომა (ბაიტი, მიახლოებით) და გარჩევადობა — `yt-dlp`-ით
+            'size' => null,
+            'resolution' => null,
         ];
 
         // მხოლოდ ფლეილისტი (ვიდეოს გარეშე); წყარომ არ უპასუხა — oEmbed-ზე გადადის
@@ -122,6 +129,8 @@ class LinkResolver
             $out['duration'] = $meta['duration'];
             $out['published_at'] = $meta['published_at'];
             $out['tags'] = $meta['tags'];
+            $out['size'] = $meta['size'];
+            $out['resolution'] = $meta['resolution'];
 
             // oEmbed-მა უპასუხა — გვერდის წაკითხვა აღარ სჭირდება
             if ($out['title'] !== null) {

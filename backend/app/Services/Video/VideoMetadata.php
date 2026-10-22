@@ -39,7 +39,8 @@ class VideoMetadata
      * @return array{
      *   platform: string, external_id: ?string, embed_url: ?string,
      *   title: ?string, description: ?string, duration: ?int, published_at: ?string,
-     *   tags: array<int, string>, thumbnail_url: ?string, author: ?string, source: ?string
+     *   tags: array<int, string>, thumbnail_url: ?string, author: ?string, source: ?string,
+     *   size: ?int, resolution: ?string
      * }
      */
     public function fetch(string $url): array
@@ -59,6 +60,9 @@ class VideoMetadata
             'thumbnail_url' => $parsed['thumbnail_url'],
             'author' => null,
             'source' => null,   // საიდან წამოვიდა: oembed | youtube_api | ytdlp | opengraph | null
+            // წყაროს ზომა (ბაიტი, მიახლოებით) და გარჩევადობა („1080p") — მხოლოდ `yt-dlp`-ით
+            'size' => null,
+            'resolution' => null,
         ];
 
         try {
@@ -171,6 +175,14 @@ class VideoMetadata
         $meta['thumbnail_url'] = $this->bestThumbnail($item['snippet']['thumbnails'] ?? []) ?? $meta['thumbnail_url'];
         $meta['source'] = 'youtube_api';
 
+        /* ⚠️ Data API ზომას არ იძლევა (მხოლოდ `hd`/`sd`) — ზომა და გარჩევადობა
+           `yt-dlp`-ით ცალკე მოდის (2–4 წმ), თუ ის დაყენებულია */
+        if ($this->ytdlp->available() && ($info = $this->ytdlp->info($url)) !== null) {
+            $meta['size'] = $info['size'] ?? null;
+            $meta['resolution'] = $info['resolution'] ?? null;
+            $meta['duration'] ??= $info['duration'];
+        }
+
         return $meta;
     }
 
@@ -192,6 +204,8 @@ class VideoMetadata
         $meta['tags'] = $info['tags'] ?: $meta['tags'];
         $meta['published_at'] = $info['published_at'];
         $meta['thumbnail_url'] = $info['thumbnail'] ?? $meta['thumbnail_url'];
+        $meta['size'] = $info['size'] ?? null;
+        $meta['resolution'] = $info['resolution'] ?? null;
         $meta['source'] = 'ytdlp';
 
         return $meta;

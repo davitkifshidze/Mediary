@@ -216,7 +216,10 @@
       "stalled": "Stopped — try again",
       "queued": "Queued"
     },
-    "noCourse": "No course"
+    "noCourse": "No course",
+    "resync": "Refresh details",
+    "resynced": "Details refreshed",
+    "sourceSize": "Source resolution and approximate size"
   },
   "requests": {
     "status": {
@@ -2785,7 +2788,12 @@
   "duration": {
     "hours": "h",
     "minutes": "min",
-    "seconds": "sec"
+    "seconds": "sec",
+    "invalid": "Can’t read that",
+    "pick": "Pick with wheels",
+    "confirm": "Pick — {{time}}",
+    "none": "Not set",
+    "title": "Duration"
   },
   "dates": {
     "pick": "Pick a date",

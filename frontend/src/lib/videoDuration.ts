@@ -1,3 +1,4 @@
+import { formatBytes } from '@/lib/utils'
 /**
  * პირდაპირი ფაილის ხანგრძლივობა ბრაუზერიდან.
  *
@@ -20,6 +21,15 @@ export function formatDuration(seconds: number | null | undefined): string | nul
   return h
     ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
     : `${m}:${String(s).padStart(2, '0')}`
+}
+
+/**
+ * წყაროს „ზომები" ერთ წარწერად — „1080p · ~420 MB" (`~` — ზომა მიახლოებითია);
+ * არცერთი თუ არ ვიცით — `null`.
+ */
+export function formatSource(v: { resolution: string | null; source_size: number | null }): string | null {
+  const parts = [v.resolution, v.source_size ? `~${formatBytes(v.source_size)}` : null].filter(Boolean)
+  return parts.length ? parts.join(' · ') : null
 }
 
 /** ბმული პირდაპირი მედია-ფაილია? (backend-ის `VideoUrl::parse`-ის ანალოგი) */

@@ -619,6 +619,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/videos/{video}/similar', [VideoController::class, 'similar']);
         Route::patch('/videos/{video}/favorite', [VideoController::class, 'toggleFavorite']);
         Route::post('/videos/{video}/watched', [VideoController::class, 'markWatched']);
+        // მეტამონაცემის ხელახლა წამოღება ბმულიდან (ხანგრძლივობა, ზომა, გარჩევადობა…)
+        Route::post('/videos/{video}/resync', [VideoController::class, 'resync']);
         Route::patch('/videos/{video}/status', [VideoStatusController::class, 'update']);
 
         /* ლოკალური ასლი: ერთი მისამართი, სამი ზმნა (დაწყება · მიწოდება ·

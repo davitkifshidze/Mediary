@@ -54,6 +54,8 @@ class Video extends Model
     protected $casts = [
         'tags' => 'array',
         'duration' => 'integer',
+        // წყაროს ზომა (ბაიტი, მიახლოებით) — `yt-dlp -J`-ის `filesize_approx`
+        'source_size' => 'integer',
         'is_favorite' => 'boolean',
         'watch_count' => 'integer',
         'watched_at' => 'datetime',

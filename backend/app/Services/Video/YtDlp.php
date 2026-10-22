@@ -87,8 +87,13 @@ class YtDlp
      * გარეშე** (~2–4 წმ). ⚠️ ჩავარდნა (ბინარი არაა, ქსელი, ტაიმაუტი) — `null`:
      * მეტამონაცემი არასავალდებულოა და ფორმა ხელით ივსება.
      *
+     * ⚠️ **ზომა და გარჩევადობაც აქედანაა** — იმავე `-J`-ით, დამატებითი პროცესის
+     * გარეშე. `-f` ჩამოწერის სელექტორია (`formatSelector()`), ე.ი. `filesize_approx`
+     * იმ ფაილისაა, რასაც „ჩამოტვირთვა" მართლა მოიტანს (მიახლოებითია); გარჩევადობა —
+     * ვიწრო გვერდით („1080p" ვერტიკალურ shorts-ზეც).
+     *
      * @return array{title: ?string, description: ?string, published_at: ?string, thumbnail: ?string,
-     *               duration: ?int, tags: list<string>, channel: ?string}|null
+     *               duration: ?int, tags: list<string>, channel: ?string, size: ?int, resolution: ?string}|null
      */
     public function info(string $url): ?array
     {
@@ -98,7 +103,7 @@ class YtDlp
         }
 
         // ⚠️ `--` — ბმული გარედან მოდის და ოფციად ვერასდროს წაიკითხება
-        $process = new Process([$binary, '-J', '--skip-download', '--no-playlist', '--no-warnings', '--', $url], null, ProcessEnv::for());
+        $process = new Process([$binary, '-J', '--skip-download', '--no-playlist', '--no-warnings', '-f', $this->formatSelector(), '--', $url], null, ProcessEnv::for());
         $process->setTimeout((int) config('mediary.ytdlp.info_timeout', 20));
 
         try {
@@ -124,7 +129,27 @@ class YtDlp
             'duration' => is_numeric($json['duration'] ?? null) ? (int) round((float) $json['duration']) : null,
             'tags' => array_values(array_slice(array_filter((array) ($json['tags'] ?? []), 'is_string'), 0, 20)),
             'channel' => $text($json['channel'] ?? null) ?? $text($json['uploader'] ?? null),
+            'size' => self::size($json),
+            'resolution' => self::resolution($json),
         ];
+    }
+
+    /** ჩამოსატვირთი ფაილის ზომა — `filesize`, მის გარეშე `filesize_approx` (შერწყმულზე ჯამი) */
+    public static function size(array $json): ?int
+    {
+        $size = $json['filesize'] ?? $json['filesize_approx'] ?? null;
+
+        return is_numeric($size) && $size > 0 ? (int) $size : null;
+    }
+
+    /** `1920x1080` → „1080p" (ვიწრო გვერდი); მხოლოდ აუდიო/უცნობი — `null` */
+    public static function resolution(array $json): ?string
+    {
+        $width = is_numeric($json['width'] ?? null) ? (int) $json['width'] : 0;
+        $height = is_numeric($json['height'] ?? null) ? (int) $json['height'] : 0;
+        $short = $width > 0 && $height > 0 ? min($width, $height) : $height;
+
+        return $short > 0 ? "{$short}p" : null;
     }
 
     /**

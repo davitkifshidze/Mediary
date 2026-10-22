@@ -222,6 +222,20 @@ class VideoController extends Controller
         return response()->noContent();
     }
 
+    /**
+     * **მეტამონაცემის ხელახლა წამოღება** — ბმულიდან, ქეშის გარეშე: ცარიელი
+     * ველები (ხანგრძლივობა, არხი, თარიღი, აღწერა…) ივსება, ზომა და გარჩევადობა
+     * ახლდება; შენ მიერ შევსებულს არ ეხება. ⚠️ `resync` `UPDATE_ENDPOINTS`-შია —
+     * უფლება `video.update`-ია.
+     */
+    public function resync(Request $request, Video $video)
+    {
+        $this->autofill($video, $request, true);
+        $video->save();
+
+        return new VideoResource($video->load(['type', 'course']));
+    }
+
     /** რჩეულის გადართვა */
     public function toggleFavorite(Video $video)
     {
@@ -357,7 +371,7 @@ class VideoController extends Controller
      * მომხმარებელმა შეავსო; ჩავარდნაზე ჩუმად გადის (`VideoMetadata` თვითონ ლოგავს).
      * `autofill=0`-ით გამორთვადია.
      */
-    private function autofill(Video $video, Request $request): void
+    private function autofill(Video $video, Request $request, bool $fresh = false): void
     {
         if (! $request->boolean('autofill', true)) {
             return;
@@ -369,13 +383,14 @@ class VideoController extends Controller
             && (! $video->thumbnail_url || $video->thumbnail_url === VideoUrl::parse($video->url)['thumbnail_url']);
         $needsTitle = ! $video->title;
         $needsRest = ! $video->description || ! $video->duration || ! $video->tags || $defaultThumb
-            || ! $video->channel || ! $video->published_at;
+            || ! $video->channel || ! $video->published_at || ! $video->source_size || ! $video->resolution;
         if (! $needsTitle && ! $needsRest) {
             return;
         }
 
         // იგივე წყარო და იგივე ქეში, რაც ფორმის probe-ს: შენახვა ბმულს მეორედ არ კითხულობს
-        $meta = app(LinkResolver::class)->resolve($video->url);
+        // (`resync()` — ქეშის გარეშე)
+        $meta = app(LinkResolver::class)->resolve($video->url, $fresh);
 
         if ($needsTitle) {
             $video->title = $meta['title'] ?: parse_url($video->url, PHP_URL_HOST) ?: $video->url;
@@ -399,6 +414,13 @@ class VideoController extends Controller
         }
         if ($defaultThumb && $meta['image_url']) {
             $video->thumbnail_url = $meta['image_url'];
+        }
+        // ზომა და გარჩევადობა წყაროსია და ხელით არ იწერება — ახალი პასუხი ძველს ანაცვლებს
+        if ($meta['size'] ?? null) {
+            $video->source_size = (int) $meta['size'];
+        }
+        if ($meta['resolution'] ?? null) {
+            $video->resolution = mb_substr((string) $meta['resolution'], 0, 20);
         }
     }
 }

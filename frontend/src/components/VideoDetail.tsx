@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Download, ExternalLink, FileText, FileX, MonitorPlay, PictureInPicture2, Play, Plus, SquarePen, Trash2, Tv, Upload } from 'lucide-react'
+import { CalendarDays, Clock, Download, ExternalLink, FileText, FileX, HardDrive, MonitorPlay, PictureInPicture2, Play, Plus, SquarePen, Trash2, Tv, Upload } from 'lucide-react'
 import {
   createVideoNote,
   deleteVideoDownload,
@@ -26,7 +26,7 @@ import { cn, formatBytes } from '@/lib/utils'
 import { LocalVideoPlayer } from '@/components/LocalVideoPlayer'
 import { usePlayer } from '@/lib/player'
 import { PlayerSpot } from '@/components/PlayerSpot'
-import { formatDuration } from '@/lib/videoDuration'
+import { formatDuration, formatSource } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Markdown } from '@/components/ui/markdown'
@@ -214,7 +214,7 @@ export function VideoDetail({
           <>
             <VideoSpot video={video} onPlay={() => onPlay(video)} />
             {/* ვინ ატვირთა და როდის (ვებძებნიდან ან ბმულის ჩასმისას) */}
-            {(video.channel || video.published_at) && (
+            {(video.channel || video.published_at || video.duration || formatSource(video)) && (
               <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {video.channel && (
                   <span className="inline-flex items-center gap-1.5" title={t('fields.name.video.channel')}>
@@ -226,6 +226,19 @@ export function VideoDetail({
                   <span className="inline-flex items-center gap-1.5" title={t('fields.name.video.published_at')}>
                     <CalendarDays className="size-3.5" />
                     {date(video.published_at)}
+                  </span>
+                )}
+                {video.duration ? (
+                  <span className="inline-flex items-center gap-1.5" title={t('duration.title')}>
+                    <Clock className="size-3.5" />
+                    {formatDuration(video.duration)}
+                  </span>
+                ) : null}
+                {/* წყაროს ზომა — მიახლოებით (`~`), ლოკალური ასლის ზომა ცალკე ჩანართშია */}
+                {formatSource(video) && (
+                  <span className="inline-flex items-center gap-1.5" title={t('videos.sourceSize')} data-testid="video-detail-source">
+                    <HardDrive className="size-3.5" />
+                    {formatSource(video)}
                   </span>
                 )}
               </p>

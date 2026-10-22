@@ -13,7 +13,7 @@ import { downloadBusy, type Video } from '@/api/videos'
 import { storageUrl } from '@/lib/api'
 import { useDateFormat } from '@/lib/dates'
 import { cn, formatBytes } from '@/lib/utils'
-import { formatDuration } from '@/lib/videoDuration'
+import { formatDuration, formatSource } from '@/lib/videoDuration'
 import { openOnClick } from '@/lib/recordClick'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { CardActions } from '@/components/RecordView'
@@ -71,6 +71,7 @@ export function VideoCard({
   const thumb = storageUrl(v.thumbnail)
   // რიგში მდგომიც „მიმდინარეა" — ორივეზე ლოდინია
   const running = downloadBusy(v)
+  const source = formatSource(v)
 
   return (
     <RecordContextMenu actions={actions}>
@@ -96,9 +97,15 @@ export function VideoCard({
           <span className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 transition-opacity hover:opacity-100">
             <Play className="size-10 text-white" />
           </span>
-          {v.duration && (
-            <span className="absolute bottom-2 right-2 rounded-md bg-black/75 px-1.5 py-0.5 text-xs text-white">
-              {formatDuration(v.duration)}
+          {/* წყაროს ზომა/გარჩევადობა ხანგრძლივობის გვერდით */}
+          {(v.duration || source) && (
+            <span className="absolute bottom-2 right-2 flex gap-1 text-xs text-white">
+              {source && (
+                <span className="rounded-md bg-black/75 px-1.5 py-0.5" data-testid="video-source">
+                  {source}
+                </span>
+              )}
+              {v.duration && <span className="rounded-md bg-black/75 px-1.5 py-0.5">{formatDuration(v.duration)}</span>}
             </span>
           )}
           {/* „ეს ლოკალურად მაქვს“ საერთო სიაშიც ჩანს; ფერები თემიდან */}

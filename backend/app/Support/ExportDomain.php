@@ -117,7 +117,7 @@ final class ExportDomain
             'fields' => [
                 // `course` — კურსის სათაური („საქაღალდე"); იმპორტი არსებულ კურსს სათაურით პოულობს
                 'id', 'title', 'type', 'course', 'status', 'status_name', 'tags', 'url', 'platform',
-                'external_id', 'embed_url', 'channel', 'published_at', 'duration', 'is_favorite', 'watch_count',
+                'external_id', 'embed_url', 'channel', 'published_at', 'duration', 'source_size', 'resolution', 'is_favorite', 'watch_count',
                 'watched_at', 'description', 'thumbnail_path', 'thumbnail_url', 'download_name', 'visibility', 'created_at',
                 'custom_fields', 'files', 'notes',
             ],

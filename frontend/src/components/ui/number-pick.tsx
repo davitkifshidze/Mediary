@@ -37,6 +37,7 @@ export function NumberPick({
   className,
   size = 'default',
   id,
+  format,
 }: {
   value: number
   onChange: (value: number) => void
@@ -64,18 +65,23 @@ export function NumberPick({
    */
   size?: 'sm' | 'md' | 'default'
   id?: string
+  /** რიცხვის წარწერა სიაში (მაგ. 90 → „1 სთ 30 წთ"); ნაგულისხმევად — თვითონ რიცხვი */
+  format?: (n: number) => string
 }) {
   const { t } = useTranslation()
 
   const rest = options.filter((n) => n !== 0)
   const list = allowNone ? (noneLast ? [...rest, 0] : [0, ...rest]) : rest
   const known = list.includes(value)
-  const [custom, setCustom] = useState(!known)
+  /* ⚠️ „სხვა" ღიაა, როცა აირჩიე **ან** მნიშვნელობა სიაში არ არის — გარედან
+     მოსული რიცხვი (მაგ. TMDB-ის 142 წთ) სხვაგვარად ცარიელ სელექტად დარჩებოდა */
+  const [chose, setCustom] = useState(false)
+  const custom = chose || !known
 
   const clamp = (n: number) => Math.min(max, Math.max(min, n))
   const small = size === 'sm'
   const inline = size !== 'default'
-  const labelOf = (n: number) => (n === 0 ? (noneLabel ?? t('numberPick.none')) : String(n))
+  const labelOf = (n: number) => (n === 0 ? (noneLabel ?? t('numberPick.none')) : (format?.(n) ?? String(n)))
 
   return (
     <div className={cn('flex items-center gap-2', className)}>

@@ -1,19 +1,32 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import '@/i18n'
+import i18n from '@/i18n'
 
 /* ============================================================
-   **ხანგრძლივობის ველი — ერთი ჩარჩო, ერთი ხაზი**.
+   **ხანგრძლივობა — ერთი ველი (წამები) და მზა ვარიანტები (წუთები)**.
 
-   შენი სიტყვები: „საათებს რომ ვაწვები, ერთი ინფუთი რომ ემატება, საათების
-   გარეშე ქვევით ხტება და რეალურად შეყვანილი დრო კი კიდევ უფრო ქვევით".
-   მოწმდება: ერთი ჩარჩო; საათის სეგმენტი ყოველთვის ჩანს (ჩასართავი ღილაკი
-   აღარ არის — ე.ი. ჩართვაზე სიგანე არ იცვლება); ჯამი ჩარჩოს შიგნითაა;
-   ≥ 1 სთ სწორად იშლება და გადავარდნა ნორმალიზდება.
+   შენი სიტყვები: „ვიდეოს ხანგრძლივობა ესეთი ინფუთი საშინელებაა". მოწმდება:
+   ტექსტის ყველა ფორმა (`1:05:30`, `65:30`, `90`, `1სთ 5წთ`, `1h 5m`), ექო,
+   ველიდან გასვლისას ფორმატირება, წაუკითხავი ტექსტი (წითელი ჩარჩო, მნიშვნელობა
+   არ იცვლება), ბორბლები მხოლოდ დადასტურებაზე; წუთებში — მზა ვარიანტები,
+   „სხვა" სიაში არარსებულზე და „არ არის" = `null`.
    ============================================================ */
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+if (!('ResizeObserver' in globalThis)) {
+  ;(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}
+
+beforeAll(async () => {
+  await import('@/components/ui/duration-input')
+}, 60_000)
+vi.setConfig({ testTimeout: 15_000 })
 
 let root: Root | null = null
 let container: HTMLDivElement | null = null
@@ -25,18 +38,33 @@ afterEach(() => {
   container = null
 })
 
-async function mount(props: Record<string, unknown>) {
+async function flush() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+}
+
+/** ველი თავისი მდგომარეობით — როგორც ფორმაში */
+async function mount(props: Record<string, unknown> = {}, onChange = vi.fn()) {
   const { DurationInput } = await import('@/components/ui/duration-input')
+  function Harness() {
+    const [v, setV] = useState<number | null>((props.value as number | null) ?? null)
+    return h(DurationInput, {
+      ...props,
+      value: v,
+      onChange: (next: number | null) => {
+        setV(next)
+        onChange(next)
+      },
+    } as Parameters<typeof DurationInput>[0])
+  }
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
-  await act(async () =>
-    root!.render(h(DurationInput, { value: null, onChange: () => {}, ...props } as Parameters<typeof DurationInput>[0])),
-  )
-  return container
+  await act(async () => root!.render(h(Harness)))
+  await flush()
+  return { el: container, onChange }
 }
-
-const inputs = (el: HTMLElement) => [...el.querySelectorAll('input')] as HTMLInputElement[]
 
 function type(input: HTMLInputElement, value: string) {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
@@ -46,71 +74,101 @@ function type(input: HTMLInputElement, value: string) {
   })
 }
 
-describe('DurationInput', () => {
-  it('is one h-10 frame with the hours segment always there — no toggle button', async () => {
-    const el = await mount({ id: 'd' })
-    const frames = el.querySelectorAll('[data-testid="duration-input"]')
-    expect(frames).toHaveLength(1)
-    expect(frames[0].className).toContain('h-10')
-    expect(frames[0].className).toContain('flex-nowrap')
-    // სთ · წთ · წმ — ჩარჩოს შიგნით, ღილაკი არ არის
-    expect(inputs(el)).toHaveLength(3)
-    expect(el.querySelector('button')).toBeNull()
-    expect(inputs(el)[0].id).toBe('d')
+const field = (el: HTMLElement) => el.querySelector<HTMLInputElement>('[data-testid="duration-input"] input')!
+const echo = (el: HTMLElement) => el.querySelector('[data-testid="duration-total"]')?.textContent ?? null
+
+describe('parseDuration', () => {
+  it('reads every written form and refuses what it cannot read', async () => {
+    const { parseDuration } = await import('@/components/ui/duration-input')
+
+    expect(parseDuration('1:05:30')).toBe(3930)
+    expect(parseDuration('65:30')).toBe(3930)
+    expect(parseDuration('90')).toBe(90)
+    expect(parseDuration('1სთ 5წთ')).toBe(3900)
+    expect(parseDuration('1 საათი 5 წუთი 30 წამი')).toBe(3930)
+    expect(parseDuration('1h 5m 30s')).toBe(3930)
+    expect(parseDuration('  ')).toBeNull()
+    expect(parseDuration('0')).toBeNull()
+    // წუთი/წამი 60-ზე მეტი — ბოლო ნაწილებში შეცდომაა
+    expect(parseDuration('1:75')).toBeUndefined()
+    expect(parseDuration('1:61:00')).toBeUndefined()
+    expect(parseDuration('abc')).toBeUndefined()
+    expect(parseDuration('5 dogs')).toBeUndefined()
+  })
+})
+
+describe('DurationInput — seconds', () => {
+  it('is one field showing the formatted value, with the id on the input', async () => {
+    const { el } = await mount({ id: 'd', value: 3930 })
+
+    expect(el.querySelectorAll('[data-testid="duration-input"] input')).toHaveLength(1)
+    expect(field(el).id).toBe('d')
+    expect(field(el).value).toBe('1:05:30')
+    // ფორმატირებულზე ექო ზედმეტია
+    expect(echo(el)).toBeNull()
   })
 
-  it('splits ≥ 1 h correctly and shows the total inside the frame', async () => {
-    const el = await mount({ value: 3930 })
-    expect(inputs(el).map((i) => i.value)).toEqual(['1', '5', '30'])
-    const total = el.querySelector('[data-testid="duration-total"]')!
-    expect(total.textContent).toBe('1:05:30')
-    expect(el.querySelector('[data-testid="duration-input"]')!.contains(total)).toBe(true)
+  it('typing emits seconds, echoes how it read it and formats on blur', async () => {
+    const { el, onChange } = await mount()
+
+    type(field(el), '90')
+    expect(onChange).toHaveBeenLastCalledWith(90)
+    expect(echo(el)).toBe('= 1:30')
+
+    type(field(el), '1სთ 5წთ')
+    expect(onChange).toHaveBeenLastCalledWith(3900)
+
+    act(() => field(el).dispatchEvent(new FocusEvent('focusout', { bubbles: true })))
+    expect(field(el).value).toBe('1:05:00')
+    expect(echo(el)).toBeNull()
   })
 
-  it('minutes mode (film) has no seconds segment and words the total', async () => {
-    const el = await mount({ value: 135, unit: 'minutes' })
-    expect(inputs(el)).toHaveLength(2)
-    expect(inputs(el).map((i) => i.value)).toEqual(['2', '15'])
-    expect(el.querySelector('[data-testid="duration-total"]')?.textContent).toBe('2 სთ 15 წთ')
+  it('unreadable text marks the frame and keeps the last good value', async () => {
+    const { el, onChange } = await mount({ value: 60 })
+
+    type(field(el), 'abc')
+    expect(onChange).not.toHaveBeenCalled()
+    expect(el.querySelector('[data-testid="duration-input"]')!.className).toContain('border-destructive')
+    expect(echo(el)).toBe(i18n.t('duration.invalid'))
+
+    // ცარიელი = „მითითებული არაა"
+    type(field(el), '')
+    expect(onChange).toHaveBeenLastCalledWith(null)
   })
 
-  it('typing in hours emits seconds and nothing is added to the frame', async () => {
-    const onChange = vi.fn()
-    const el = await mount({ onChange })
-    const before = el.querySelector('[data-testid="duration-input"]')!.children.length
+  it('the clock opens h/m/s wheels that change the value only on confirm', async () => {
+    const { el, onChange } = await mount({ value: 3930 })
 
-    type(inputs(el)[0], '2')
-    expect(onChange).toHaveBeenLastCalledWith(7200)
-    type(inputs(el)[1], '3')
-    expect(onChange).toHaveBeenLastCalledWith(7380)
+    await act(async () => el.querySelector<HTMLButtonElement>('[data-testid="duration-wheel"]')!.click())
+    await flush()
+    expect(onChange).not.toHaveBeenCalled()
 
-    // ჯამი დაემატა — სხვა არაფერი (სეგმენტები იგივეა)
-    expect(inputs(el)).toHaveLength(3)
-    expect(el.querySelector('[data-testid="duration-input"]')!.children.length).toBe(before + 1)
+    const confirm = document.querySelector<HTMLButtonElement>('[data-testid="duration-wheel-confirm"]')!
+    expect(confirm.textContent).toContain('1:05:30')
+    await act(async () => confirm.click())
+
+    expect(onChange).toHaveBeenLastCalledWith(3930)
+    expect(document.querySelector('[data-testid="duration-wheel-confirm"]')).toBeNull()
   })
+})
 
-  it('normalises an overflow on blur: 90 min → 1 h 30 min', async () => {
-    const { DurationInput } = await import('@/components/ui/duration-input')
-    function Harness() {
-      const [v, setV] = useState<number | null>(null)
-      return h(DurationInput, { value: v, onChange: setV, unit: 'minutes' })
-    }
-    container = document.createElement('div')
-    document.body.appendChild(container)
-    root = createRoot(container)
-    await act(async () => root!.render(h(Harness)))
+describe('DurationInput — minutes', () => {
+  const trigger = (el: HTMLElement) => el.querySelector('[role="combobox"]')!
 
-    const [hours, minutes] = inputs(container)
-    type(minutes, '90')
-    act(() => minutes.dispatchEvent(new FocusEvent('focusout', { bubbles: true })))
+  it('a preset shows in words, an off-list value opens "other", empty is "none"', async () => {
+    let mounted = await mount({ unit: 'minutes', value: 90 })
+    expect(trigger(mounted.el).textContent).toContain('1 სთ 30 წთ')
+    act(() => root?.unmount())
+    mounted.el.remove()
 
-    expect(hours.value).toBe('1')
-    expect(minutes.value).toBe('30')
-  })
+    mounted = await mount({ unit: 'minutes', value: 142 })
+    expect(trigger(mounted.el).textContent).toContain(i18n.t('numberPick.other'))
+    expect(mounted.el.querySelector<HTMLInputElement>('input[type="number"]')?.value).toBe('142')
+    act(() => root?.unmount())
+    mounted.el.remove()
 
-  it('a min–max pair carries its prefix inside each frame', async () => {
-    const el = await mount({ unit: 'minutes', prefix: 'მინ.' })
-    expect(el.querySelector('[data-testid="duration-input"]')!.textContent).toContain('მინ.')
-    expect(inputs(el)[0].getAttribute('aria-label')).toContain('მინ.')
+    mounted = await mount({ unit: 'minutes', value: null, prefix: 'მინ.' })
+    expect(trigger(mounted.el).textContent).toContain(i18n.t('duration.none'))
+    expect(mounted.el.querySelector('[data-testid="duration-input"]')!.textContent).toContain('მინ.')
   })
 })

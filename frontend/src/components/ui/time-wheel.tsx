@@ -63,8 +63,8 @@ export function parseClock(value: string | null | undefined): [number, number] |
   return h > 23 || min > 59 ? null : [h, min]
 }
 
-/** ბორბლის სტილი — ჩვენი ტოკენებით; მონიშნული ზოლი `primary`-ის რბილი ფონია */
-const WHEEL_CLASSES = {
+/** ბორბლის სტილი — ჩვენი ტოკენებით; მონიშნული ზოლი `primary`-ის რბილი ფონია (ხანგრძლივობის ბორბლებიც) */
+export const WHEEL_CLASSES = {
   optionItem: 'text-muted-foreground tabular-nums',
   highlightWrapper: 'rounded-md bg-primary/10 text-foreground',
   highlightItem: 'font-semibold tabular-nums',

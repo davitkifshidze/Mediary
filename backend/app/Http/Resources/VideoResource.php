@@ -37,6 +37,9 @@ class VideoResource extends JsonResource
             // ატვირთული thumbnail → /storage/…; თუ არაა — პლატფორმის URL
             'thumbnail' => $this->thumbnail_path ?: $this->thumbnail_url,
             'duration' => $this->duration,
+            // წყაროს ზომა (ბაიტი, მიახლოებით) და გარჩევადობა („1080p") — ბმულიდან, `yt-dlp`-ით
+            'source_size' => $this->source_size,
+            'resolution' => $this->resolution,
             'tags' => $this->tags ?? [],
             'is_favorite' => $this->is_favorite,
             'watch_count' => $this->watch_count,

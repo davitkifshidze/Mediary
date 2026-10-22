@@ -23,6 +23,7 @@ import {
   MonitorPlay,
   Play,
   Plus,
+  RefreshCw,
   Search,
   Tags,
 } from 'lucide-react'
@@ -30,6 +31,7 @@ import {
   createVideo,
   deleteVideo,
   pickRandomVideos,
+  resyncVideo,
   setVideoStatus,
   deleteVideoDownload,
   downloadBusy,
@@ -59,7 +61,7 @@ import { errorMessage, fieldErrors, translateCode } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
-import { formatDuration, isDirectMediaUrl, probeMediaDuration } from '@/lib/videoDuration'
+import { formatDuration, formatSource, isDirectMediaUrl, probeMediaDuration } from '@/lib/videoDuration'
 import { usePlayer, videoItem } from '@/lib/player'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { PosterUploader } from '@/components/PosterUploader'
@@ -301,6 +303,15 @@ export function VideosPage() {
 
   const favorite = useMutation({ mutationFn: toggleVideoFavorite, onSuccess: invalidate, onError: fail })
   const remove = useMutation({ mutationFn: deleteVideo, onSuccess: invalidate, onError: fail })
+  // მეტამონაცემის ხელახლა წამოღება (ხანგრძლივობა, ზომა, გარჩევადობა…) — ცარიელს ავსებს
+  const resync = useMutation({
+    mutationFn: resyncVideo,
+    onSuccess: () => {
+      invalidate()
+      toast({ title: t('videos.resynced'), variant: 'success' })
+    },
+    onError: fail,
+  })
   // სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
   const status = useMutation({
     mutationFn: ({ id, next }: { id: number; next: string }) => setVideoStatus(id, next),
@@ -464,6 +475,13 @@ export function VideosPage() {
       label: t('videos.source'),
       icon: MENU_ICONS.link,
       run: () => window.open(v.url, '_blank', 'noopener,noreferrer'),
+    },
+    {
+      key: 'resync',
+      label: t('videos.resync'),
+      icon: RefreshCw,
+      disabled: resync.isPending,
+      run: () => resync.mutate(v.id),
     },
     statusActions(t('form.status'), statuses, v.status, lang, (key) => status.mutate({ id: v.id, next: key })),
     favoriteAction(v.is_favorite, () => favorite.mutate(v.id), t),
@@ -641,6 +659,7 @@ export function VideosPage() {
                       {v.channel && <span className="truncate">{v.channel}</span>}
                       {v.published_at && <span>{fmt.date(v.published_at)}</span>}
                       {v.duration ? <span>{formatDuration(v.duration)}</span> : null}
+                      {formatSource(v) && <span>{formatSource(v)}</span>}
                       {/* „ეს ლოკალურად მაქვს" სტრიქონშიც ჩანს */}
                       {v.download_status === 'ready' && (
                         <span className="inline-flex items-center gap-1 text-[var(--status-watched)]">

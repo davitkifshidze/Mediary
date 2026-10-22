@@ -187,11 +187,17 @@ class LinkResolverTest extends TestCase
                     'duration' => 213,
                     'tags' => ['rick'],
                     'channel' => 'Rick Astley',
+                    'size' => 440_401_920,
+                    'resolution' => '1080p',
                 ];
             }
         });
 
         $meta = app(LinkResolver::class)->resolve('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+
+        // ზომა და გარჩევადობა იმავე `-J`-იდან
+        $this->assertSame(440_401_920, $meta['size']);
+        $this->assertSame('1080p', $meta['resolution']);
 
         // oEmbed-ის სათაური რჩება, დანარჩენი yt-dlp-იდან
         $this->assertSame('Never Gonna Give You Up', $meta['title']);
@@ -259,5 +265,102 @@ class LinkResolverTest extends TestCase
         $this->assertSame('OG Desc', $meta['description']);
         $this->assertSame('http://203.0.113.10/cover.jpg', $meta['thumbnail_url']);
         $this->assertSame('opengraph', $meta['source']);
+    }
+
+    /** `-J`-ის ზომა: `filesize`, მის გარეშე `filesize_approx`; გარჩევადობა — ვიწრო გვერდი */
+    public function test_yt_dlp_json_gives_the_size_and_the_short_side_resolution(): void
+    {
+        $this->assertSame(1000, YtDlp::size(['filesize' => 1000, 'filesize_approx' => 2000]));
+        $this->assertSame(2000, YtDlp::size(['filesize' => null, 'filesize_approx' => 2000.4]));
+        $this->assertNull(YtDlp::size(['filesize_approx' => 0]));
+
+        $this->assertSame('1080p', YtDlp::resolution(['width' => 1920, 'height' => 1080]));
+        // ვერტიკალური shorts — „1080p" და არა „1920p"
+        $this->assertSame('1080p', YtDlp::resolution(['width' => 1080, 'height' => 1920]));
+        $this->assertSame('720p', YtDlp::resolution(['height' => 720]));
+        $this->assertNull(YtDlp::resolution(['vcodec' => 'none']));
+    }
+
+    /** გასაღებით: Data API + ზომა და გარჩევადობა `yt-dlp`-ით (Data API ზომას არ იძლევა) */
+    public function test_with_a_key_the_size_still_comes_from_yt_dlp(): void
+    {
+        Http::fake([
+            'www.youtube.com/oembed*' => Http::response(['title' => 'oEmbed title'], 200),
+            'www.googleapis.com/youtube/v3/videos*' => Http::response(['items' => [[
+                'snippet' => ['title' => 'API title', 'publishedAt' => '2009-10-25T06:57:33Z'],
+                'contentDetails' => ['duration' => 'PT3M33S'],
+            ]]], 200),
+        ]);
+        $this->app->instance(YtDlp::class, new class extends YtDlp
+        {
+            public function available(): bool
+            {
+                return true;
+            }
+
+            public function info(string $url): ?array
+            {
+                return ['title' => null, 'description' => null, 'published_at' => null, 'thumbnail' => null,
+                    'duration' => 999, 'tags' => [], 'channel' => null, 'size' => 12_345, 'resolution' => '720p'];
+            }
+        });
+        $user = $this->userWithModules('lika');
+        UserCredential::create(['user_id' => $user->id, 'provider' => CredentialProviders::YOUTUBE, 'credentials' => ['key' => 'yt-key']]);
+        CredentialStore::forget();
+        $this->actingAs($user);
+
+        $meta = app(LinkResolver::class)->resolve('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+
+        $this->assertSame('API title', $meta['title']);
+        // ხანგრძლივობა API-სია
+        $this->assertSame(213, $meta['duration']);
+        $this->assertSame(12_345, $meta['size']);
+        $this->assertSame('720p', $meta['resolution']);
+    }
+
+    /**
+     * შენახვა ზომასა და გარჩევადობას იწერს; „ხელახლა წამოღება" (`resync`) ქეშს
+     * გვერდს უვლის და უხანგრძლივობო ვიდეოს ავსებს — შენს შევსებულს არ ეხება.
+     */
+    public function test_saving_stores_the_size_and_resync_fills_an_old_video(): void
+    {
+        $this->fake();
+        $answer = new \ArrayObject(['duration' => null]);
+        $this->app->instance(YtDlp::class, new class($answer) extends YtDlp
+        {
+            public function __construct(private \ArrayObject $answer) {}
+
+            public function available(): bool
+            {
+                return true;
+            }
+
+            public function info(string $url): ?array
+            {
+                return ['title' => null, 'description' => null, 'published_at' => null, 'thumbnail' => null,
+                    'duration' => $this->answer['duration'], 'tags' => [], 'channel' => 'Rick Astley', 'size' => 440_401_920, 'resolution' => '1080p'];
+            }
+        });
+        $user = $this->userWithModules('mari');
+        $this->actingAs($user);
+        $type = $this->getJson('/api/video-types')->json('data.0.id');
+
+        $created = $this->postJson('/api/videos', [
+            'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            'title' => 'Rick',
+            'type_id' => $type,
+            'status' => 'to_watch',
+        ])->assertCreated()
+            ->assertJsonPath('data.source_size', 440_401_920)
+            ->assertJsonPath('data.resolution', '1080p')
+            ->assertJsonPath('data.duration', null);
+
+        // წყარომ მოგვიანებით ხანგრძლივობა თქვა — ქეშის მიუხედავად ახალი პასუხი მოდის
+        $answer['duration'] = 213;
+        $this->postJson('/api/videos/'.$created->json('data.id').'/resync')
+            ->assertOk()
+            ->assertJsonPath('data.duration', 213)
+            ->assertJsonPath('data.title', 'Rick')
+            ->assertJsonPath('data.channel', 'Rick Astley');
     }
 }
