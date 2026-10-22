@@ -1,6 +1,8 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { DateLib } from 'react-day-picker'
+import { enUS, ka } from 'react-day-picker/locale'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import i18n from '@/i18n'
 
@@ -130,6 +132,8 @@ describe('DateRangePicker', () => {
 })
 
 describe('DatePicker month and year views', () => {
+  /** თვის სახელი კალენდრის ლოკალიდან — იგივე წყარო, რაც დღეების თავს წერს */
+  const monthName = (date: Date) => new DateLib({ locale: i18n.language === 'ka' ? ka : enUS }).format(date, 'LLLL')
   const caption = () => document.querySelector<HTMLButtonElement>('[data-testid="calendar-caption"]')!
   const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === text)!
 
@@ -151,9 +155,12 @@ describe('DatePicker month and year views', () => {
     const months = document.querySelector('[data-testid="calendar-months"]')!
     expect(document.querySelector('[data-testid="calendar-year"]')?.textContent).toBe('2026')
     expect(months.querySelectorAll('.grid button')).toHaveLength(12)
-    expect(months.querySelector('.fb-cal-today')?.textContent).toBe(
-      new Intl.DateTimeFormat(i18n.language === 'ka' ? 'ka-GE' : 'en-US', { month: 'long' }).format(NOW),
-    )
+    expect(months.querySelector('.fb-cal-today')?.textContent).toBe(monthName(NOW))
+    // დღეების ხედის ჩარჩო: იგივე ფესვი, მსხვილი თავი და ბიბლიოთეკის ისრები
+    expect(months.className).toContain('rdp-root')
+    expect(months.className).toContain('fb-rdp')
+    expect(months.querySelector('.rdp-month_caption')).not.toBeNull()
+    expect(months.querySelectorAll('.rdp-nav .rdp-chevron')).toHaveLength(2)
 
     // წელი → წლების სია (12-12), ისრით უკან
     await act(async () => document.querySelector<HTMLButtonElement>('[data-testid="calendar-year"]')!.click())
@@ -165,7 +172,7 @@ describe('DatePicker month and year views', () => {
     // წელი → იმ წლის თვეები → თვე → იმ თვის რიცხვები
     await act(async () => button('2010').click())
     expect(document.querySelector('[data-testid="calendar-year"]')?.textContent).toBe('2010')
-    const march = new Intl.DateTimeFormat(i18n.language === 'ka' ? 'ka-GE' : 'en-US', { month: 'long' }).format(new Date(2010, 2, 1))
+    const march = monthName(new Date(2010, 2, 1))
     await act(async () => button(march).click())
     expect(caption().textContent).toContain('2010')
 
@@ -174,5 +181,26 @@ describe('DatePicker month and year views', () => {
     )!
     await act(async () => day.click())
     expect(onChange).toHaveBeenCalledWith('2010-03-15')
+  })
+})
+
+describe('month names follow the calendar language', () => {
+  it('Georgian UI → Georgian month names in the grid, the same words as the caption', async () => {
+    const { DatePicker } = await import('@/components/ui/date-picker')
+    const previous = i18n.language
+    await act(async () => void (await i18n.changeLanguage('ka')))
+    try {
+      await mount(h(DatePicker, { id: 'when', value: '2026-10-05', onChange: vi.fn() }))
+      const caption = document.querySelector('[data-testid="calendar-caption"]')!.textContent!
+      expect(caption).toContain('ოქტომბერი')
+
+      await act(async () => document.querySelector<HTMLButtonElement>('[data-testid="calendar-caption"]')!.click())
+      const names = [...document.querySelectorAll('[data-testid="calendar-months"] .fb-cal-cell')].map((b) => b.textContent)
+      expect(names[0]).toBe('იანვარი')
+      expect(names[9]).toBe('ოქტომბერი')
+      expect(names.every((name) => /^[ა-ჿ]+$/.test(name ?? ''))).toBe(true)
+    } finally {
+      await act(async () => void (await i18n.changeLanguage(previous)))
+    }
   })
 })

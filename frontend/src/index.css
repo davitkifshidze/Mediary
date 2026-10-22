@@ -987,33 +987,41 @@
   background-color: color-mix(in oklab, var(--primary) 8%, transparent);
   font-weight: 600;
 }
-/* კალენდრის თავი — თვე/წელი ღილაკია (დაჭერით თვეებზე, მერე წლებზე ადის);
-   ისრები აიქონ-ღილაკებია — ჰოვერზე ფონის გარეშე, მხოლოდ ფერი */
+/* კალენდრის თავი — თვე/წელი ღილაკია (დაჭერით თვეებზე, მერე წლებზე ადის).
+   ⚠️ შრიფტს თავიდან იღებს (`rdp-month_caption` — მსხვილი), ე.ი. დღეების,
+   თვეებისა და წლების ხედში წარწერა ერთნაირია */
 .fb-cal-drill {
   display: inline-flex;
   align-items: center;
-  height: 1.75rem;
+  height: var(--rdp-nav_button-height, 1.75rem);
   margin-inline-start: -0.5rem;
   padding: 0 0.5rem;
   border-radius: var(--radius);
-  font-size: 0.875rem;
-  font-weight: 600;
   cursor: pointer;
   transition: background-color 150ms;
 }
 .fb-cal-drill:hover {
   background-color: var(--muted);
 }
-.fb-cal-nav {
-  display: grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  color: var(--muted-foreground);
+/* თვის/წლის უჯრა — დღის ღილაკის სიმაღლე, რადიუსი და ფერები (ჰოვერი, არჩეული);
+   დღევანდელის ნიშანი — `fb-cal-today` (ზემოთ) */
+.fb-cal-cell {
+  height: var(--rdp-day_button-height);
+  padding: 0 0.25rem;
+  overflow: hidden;
+  border-radius: var(--rdp-day_button-border-radius);
+  font: inherit;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   cursor: pointer;
+  transition: background-color 150ms;
 }
-.fb-cal-nav:hover {
-  color: var(--foreground);
+.fb-cal-cell:hover:not([aria-pressed='true']) {
+  background-color: var(--muted);
+}
+.fb-cal-cell[aria-pressed='true'] {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
 }
 
 /* yet-another-react-lightbox — ჩვენს „სართულებზე" მიბმა.

@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
-import { DayPicker, type DateRange, type MonthCaptionProps } from 'react-day-picker'
+import { Chevron, DateLib, DayPicker, type DateRange, type MonthCaptionProps } from 'react-day-picker'
 import { ka, enUS } from 'react-day-picker/locale'
-import { CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, Clock, X } from 'lucide-react'
+import { CalendarCheck, CalendarDays, Clock, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LAYER_POPUP } from '@/lib/layers'
 import { nowClock, nowLocal, todayLocal, useDateFormat } from '@/lib/dates'
@@ -105,100 +105,114 @@ const DRILL_COMPONENTS = { MonthCaption: DrillCaption }
 
 const startOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1)
 
+type CalendarProps = ReturnType<typeof useCalendarProps>
+
 /**
  * კალენდრის ხედი: დღეები · თვეები · წლები. `dayPicker` — `DayPicker`-ის
  * დამატებითი პროპები, `panel` — თვეების/წლების ბადე (დღეების ხედში `null`).
+ *
+ * ⚠️ **ბადე დღეების ხედის ჩარჩოშია** — იგივე `rdp-root fb-rdp` ფესვი, თავი
+ * (`rdp-month_caption`, მსხვილი წარწერა), ისრები (`rdp-nav` + ბიბლიოთეკის
+ * `Chevron`, ფერადი) და დღის ღილაკის ზომა/ფერები (`fb-cal-cell`): ხედიდან
+ * ხედზე გადასვლისას მხოლოდ შიგთავსი იცვლება.
+ * ⚠️ **თვის სახელი კალენდრის ლოკალიდანაა** (`DateLib`, იგივე, რაც დღეების
+ * თავს წერს) და არა ბრაუზერის `Intl`-იდან — ბრაუზერს ქართულის მონაცემები
+ * შეიძლება არ ჰქონდეს და თვეები ინგლისურად ჩამოვიდოდა, თავი კი ქართულად.
  */
-function useCalendarView(selected: Date | undefined) {
-  const { t, i18n } = useTranslation()
+function useCalendarView(selected: Date | undefined, calendar: CalendarProps) {
+  const { t } = useTranslation()
   const [view, setView] = useState<CalendarView>('days')
   const [month, setMonth] = useState(() => startOfMonth(selected ?? new Date()))
   const year = month.getFullYear()
   const today = new Date()
-  const intl = i18n.language === 'ka' ? 'ka-GE' : 'en-US'
 
   const drill = useCallback((at: Date) => {
     setMonth(startOfMonth(at))
     setView('months')
   }, [])
 
-  const cell = (active: boolean, current: boolean) =>
-    cn(
-      'h-9 cursor-pointer truncate rounded-md px-1 text-[13px] transition-colors',
-      active ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
-      current && !active && 'fb-cal-today',
-    )
+  const cell = (active: boolean, current: boolean) => cn('fb-cal-cell', current && !active && 'fb-cal-today')
 
-  const header = (label: string, onLabel: (() => void) | null, step: number, prev: string, next: string) => (
-    <div className="mb-2 flex items-center gap-1">
-      {onLabel ? (
-        <button type="button" className="fb-cal-drill" onClick={onLabel} title={t('dates.pickYear')} data-testid="calendar-year">
-          {label}
-        </button>
-      ) : (
-        <span className="px-2 text-sm font-semibold tabular-nums">{label}</span>
-      )}
-      <span className="ml-auto flex gap-1">
-        <button type="button" aria-label={prev} className="fb-cal-nav" onClick={() => setMonth(new Date(year - step, month.getMonth(), 1))}>
-          <ChevronLeft className="size-4" />
-        </button>
-        <button type="button" aria-label={next} className="fb-cal-nav" onClick={() => setMonth(new Date(year + step, month.getMonth(), 1))}>
-          <ChevronRight className="size-4" />
-        </button>
-      </span>
+  const frame = (testId: string, label: string, onLabel: (() => void) | null, step: number, prev: string, next: string, grid: ReactNode) => (
+    <div className={cn('rdp-root', calendar.className)} data-testid={testId}>
+      <div className="rdp-months">
+        <nav className="rdp-nav">
+          <button type="button" aria-label={prev} className="rdp-button_previous" onClick={() => setMonth(new Date(year - step, month.getMonth(), 1))}>
+            <Chevron orientation="left" className="rdp-chevron" />
+          </button>
+          <button type="button" aria-label={next} className="rdp-button_next" onClick={() => setMonth(new Date(year + step, month.getMonth(), 1))}>
+            <Chevron orientation="right" className="rdp-chevron" />
+          </button>
+        </nav>
+        <div className="rdp-month">
+          <div className="rdp-month_caption">
+            {onLabel ? (
+              <button type="button" className="fb-cal-drill" onClick={onLabel} title={t('dates.pickYear')} data-testid="calendar-year">
+                <span className="rdp-caption_label">{label}</span>
+              </button>
+            ) : (
+              <span className="rdp-caption_label tabular-nums">{label}</span>
+            )}
+          </div>
+          {/* დღეების ბადის სიგანე — 7 × `--rdp-day-width` */}
+          <div className="mt-1 grid w-[252px] grid-cols-3 gap-1">{grid}</div>
+        </div>
+      </div>
     </div>
   )
 
   let panel: ReactNode = null
 
   if (view === 'months') {
-    const name = new Intl.DateTimeFormat(intl, { month: 'long' })
-    panel = (
-      <div className="w-64" data-testid="calendar-months">
-        {header(String(year), () => setView('years'), 1, t('dates.prevYear'), t('dates.nextYear'))}
-        <div className="grid grid-cols-3 gap-1">
-          {Array.from({ length: 12 }, (_, m) => {
-            const active = selected?.getFullYear() === year && selected.getMonth() === m
-            return (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={active}
-                className={cell(active, today.getFullYear() === year && today.getMonth() === m)}
-                onClick={() => {
-                  setMonth(new Date(year, m, 1))
-                  setView('days')
-                }}
-              >
-                {name.format(new Date(year, m, 1))}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+    const lib = new DateLib({ locale: calendar.locale })
+    panel = frame(
+      'calendar-months',
+      String(year),
+      () => setView('years'),
+      1,
+      t('dates.prevYear'),
+      t('dates.nextYear'),
+      Array.from({ length: 12 }, (_, m) => {
+        const active = selected?.getFullYear() === year && selected.getMonth() === m
+        return (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={active}
+            className={cell(active, today.getFullYear() === year && today.getMonth() === m)}
+            onClick={() => {
+              setMonth(new Date(year, m, 1))
+              setView('days')
+            }}
+          >
+            {lib.format(new Date(year, m, 1), 'LLLL')}
+          </button>
+        )
+      }),
     )
   } else if (view === 'years') {
     const from = Math.floor(year / 12) * 12
-    panel = (
-      <div className="w-64" data-testid="calendar-years">
-        {header(`${from} – ${from + 11}`, null, 12, t('dates.prevYears'), t('dates.nextYears'))}
-        <div className="grid grid-cols-3 gap-1">
-          {Array.from({ length: 12 }, (_, i) => from + i).map((y) => (
-            <button
-              key={y}
-              type="button"
-              aria-pressed={selected?.getFullYear() === y}
-              className={cn(cell(selected?.getFullYear() === y, today.getFullYear() === y), 'tabular-nums')}
-              onClick={() => {
-                setMonth(new Date(y, month.getMonth(), 1))
-                setView('months')
-              }}
-            >
-              {y}
-            </button>
-          ))}
-        </div>
-      </div>
+    panel = frame(
+      'calendar-years',
+      `${from} – ${from + 11}`,
+      null,
+      12,
+      t('dates.prevYears'),
+      t('dates.nextYears'),
+      Array.from({ length: 12 }, (_, i) => from + i).map((y) => (
+        <button
+          key={y}
+          type="button"
+          aria-pressed={selected?.getFullYear() === y}
+          className={cn(cell(selected?.getFullYear() === y, today.getFullYear() === y), 'tabular-nums')}
+          onClick={() => {
+            setMonth(new Date(y, month.getMonth(), 1))
+            setView('months')
+          }}
+        >
+          {y}
+        </button>
+      )),
     )
   }
 
@@ -210,8 +224,6 @@ function useCalendarView(selected: Date | undefined) {
   }
 }
 
-type CalendarProps = ReturnType<typeof useCalendarProps>
-
 /** ერთი თარიღის კალენდარი — თავიდან თვეებსა და წლებზე ადის; არჩეული თვე იხსნება */
 function SingleCalendar({
   calendar,
@@ -222,7 +234,7 @@ function SingleCalendar({
   selected: Date | undefined
   onSelect: (date: Date | undefined) => void
 }) {
-  const view = useCalendarView(selected)
+  const view = useCalendarView(selected, calendar)
   return view.panel ?? view.wrap(<DayPicker {...calendar} {...view.dayPicker} mode="single" selected={selected} onSelect={onSelect} />)
 }
 
@@ -236,7 +248,7 @@ function RangeCalendar({
   selected: DateRange | undefined
   onSelect: (range: DateRange | undefined) => void
 }) {
-  const view = useCalendarView(selected?.from)
+  const view = useCalendarView(selected?.from, calendar)
   return (
     view.panel ??
     view.wrap(<DayPicker {...calendar} {...view.dayPicker} mode="range" numberOfMonths={2} selected={selected} onSelect={onSelect} />)
