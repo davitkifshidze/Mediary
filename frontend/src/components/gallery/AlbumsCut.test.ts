@@ -108,6 +108,22 @@ function button(scope: ParentNode, text: string) {
 }
 
 describe('AlbumsCut', () => {
+  /* „ალბომებში პატარა ზომისაა ღილაკები… ვერ ეტევა" — სამი `h-9` ღილაკი ტექსტით + ⋯,
+     ჩაკეტვა/განბლოკვა და ფოტოების წაშლა კი მენიუშია */
+  it('the album card has open, edit and delete as full buttons and the rest in ⋯', async () => {
+    const i18n = (await import('@/i18n')).default
+    const node = await mountAlbumsCut()
+
+    const row = node.querySelector('[data-testid="stack-actions"]')!
+    const labels = [...row.querySelectorAll('button')].map((b) => b.textContent?.trim())
+    expect(labels).toEqual([i18n.t('actions.open'), i18n.t('actions.edit'), i18n.t('confirm.delete'), ''])
+    for (const btn of row.querySelectorAll('button')) {
+      expect(btn.className).not.toContain('h-7')
+    }
+    // განბლოკვა ზოლში აღარ არის — მენიუშია
+    expect(row.querySelector('.lucide-lock-open')).toBeNull()
+  })
+
   it('ჩაკეტილ ალბომში შესვლა ბლარიან ფილებს ხატავს და პაროლს იქვე ითხოვს', async () => {
     const node = await mountAlbumsCut()
 

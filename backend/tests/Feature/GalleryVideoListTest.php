@@ -72,4 +72,33 @@ class GalleryVideoListTest extends TestCase
 
         $this->getJson('/api/gallery/videos?sort=sideways')->assertStatus(422);
     }
+
+    /**
+     * **მოდულის ტაბები და დაჯგუფება** — რიცხვები მოდულის ფილტრამდე (ძებნის
+     * შემდეგ), მსახიობი `actor`-ად; `group` ჯერ მფლობელით ალაგებს, რომ ჯგუფი
+     * გვერდებზე არ გაიხლიჩოს.
+     */
+    public function test_module_tabs_count_and_grouping_keeps_owners_together(): void
+    {
+        $this->seedVideos();
+        $other = Movie::create(['user_id' => $this->user->id, 'year' => 2000]);
+        GalleryVideo::create(['user_id' => $this->user->id, 'videoable_type' => 'movie', 'videoable_id' => $other->id, 'url' => 'https://youtu.be/four', 'platform' => 'youtube', 'title' => 'Gamma clip']);
+
+        $this->getJson('/api/gallery/videos?type=movie')
+            ->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('facets.types.movie', 3)
+            ->assertJsonPath('facets.types.actor', 1)
+            ->assertJsonPath('facets.types.all', 4);
+        $this->getJson('/api/gallery/videos?type=actor')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.title', 'Interview');
+        // ძებნა რიცხვებსაც ჭრის
+        $this->getJson('/api/gallery/videos?q=gamma')->assertOk()->assertJsonPath('facets.types.all', 1);
+
+        $owners = collect($this->getJson('/api/gallery/videos?type=movie&group=record&sort=new')->assertOk()->json('data'))
+            ->map(fn ($v) => $v['owner']['id'])->all();
+        // ერთი ფილმის ბმულები ერთად — შუაში სხვა ფილმი არ ერევა
+        $this->assertSame($owners, collect($owners)->sort()->values()->all());
+
+        $this->getJson('/api/gallery/videos?group=sideways')->assertStatus(422);
+    }
 }

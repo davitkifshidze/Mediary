@@ -103,14 +103,12 @@ export function RecordsCut({
   /* ⚠️ **მთვლელებისთვის ცალკე, ფილტრის გარეშე მოთხოვნა** (`previews: 0`).
      ბარათებს დომენების სრული სურათი სჭირდებათ, ჯგუფების სია კი უკვე
      გაფილტრულია — ერთმანეთში რომ აგვერია, არჩეული დომენის გარდა ყველა
-     ბარათი ნულს აჩვენებდა. ესკიზები აქ არ იკითხება, ე.ი. ეს იაფი
-     მოთხოვნაა და იმავე ქეშში ზის, რასაც „ყველა" ტაბი ისედაც კითხულობს. */
-  // დომენის რიცხვები „ფოტოიანი / უფოტო / ყველა" არჩევანს მიჰყვება (`?have=`)
-  const haveParam = params.get('have')
-  const have: 'with' | 'without' | 'all' = haveParam === 'without' || haveParam === 'all' ? haveParam : 'with'
+     ბარათი ნულს აჩვენებდა. ესკიზები აქ არ იკითხება, ე.ი. ეს იაფი მოთხოვნაა.
+     ⚠️ რიცხვი მოდულის **მთლიანია** — „ფოტოიანი/უფოტო" მას აღარ ჭრის
+     (სერვერი `facets.types`-ს ფილტრამდე ითვლის), ე.ი. `?have=` აქ არ მიდის. */
   const facetsQ = useQuery({
-    queryKey: ['gallery-groups', 'record', { previews: 0, have }],
-    queryFn: () => fetchGalleryGroups('record', { previews: 0, have }),
+    queryKey: ['gallery-groups', 'record', { previews: 0 }],
+    queryFn: () => fetchGalleryGroups('record', { previews: 0 }),
   })
 
   const counts = facetsQ.data?.facets?.types ?? {}
@@ -185,9 +183,6 @@ export function RecordsCut({
           key={`record:${active}`}
           by="record"
           type={active === 'all' ? undefined : active}
-          /* ფილტრის ჟანრი/სტატუსი იმ დომენებს ეკითხება, რომლებიც ეკრანზეა:
-             ერთი ტაბი — ერთი დომენი, „ყველა" — ყველა ჩართული */
-          domains={active === 'all' ? parents.map((p) => p.key) : [active]}
           onDownloadRecord={onDownloadRecord}
           onDownloadActor={onDownloadActor}
         />

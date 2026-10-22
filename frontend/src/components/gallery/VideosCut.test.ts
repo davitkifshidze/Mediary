@@ -12,8 +12,9 @@ import i18n from '@/i18n'
    **გალერეის ვიდეოების გვერდი — თავიდან**.
 
    ⚠️ მოწმდება: ვერტიკალური ბარათები ესკიზით, ორხაზიანი სათაურით, არხით და
-   მფლობელის ჩიპით; ღილაკები ტექსტით; „მფლობელი" ჭრილი სერვერს `owner_type`-ს
-   უგზავნის; „ჩანაწერის მიხედვით" დაჯგუფება სექციებს აკეთებს.
+   მფლობელის ჩიპით; ღილაკები ტექსტით; მოდულის ტაბები (რიცხვით) სერვერს `type`-ს
+   უგზავნის; ნაგულისხმევად დაჯგუფებულია ჩანაწერით (`group` სერვერზე),
+   „არეული" — ბრტყელი სია.
    ============================================================ */
 
 const mocks = vi.hoisted(() => ({
@@ -80,7 +81,11 @@ async function flush() {
 }
 
 async function mount() {
-  mocks.fetchGalleryVideos.mockResolvedValue({ data: items, meta: { page: 1, per_page: 24, total: 3, last_page: 1 } })
+  mocks.fetchGalleryVideos.mockResolvedValue({
+    data: items,
+    meta: { page: 1, per_page: 24, total: 3, last_page: 1 },
+    facets: { types: { movie: 2, actor: 1, all: 3 } },
+  })
   const { VideosCut } = await import('@/components/gallery/VideosCut')
   container = document.createElement('div')
   document.body.appendChild(container)
@@ -119,20 +124,28 @@ describe('VideosCut', () => {
     // წაშლა ზოლში აღარ არის — კონტექსტურ მენიუშია
     expect(button(first, i18n.t('actions.delete'))).toBeUndefined()
 
-    expect(mocks.fetchGalleryVideos).toHaveBeenCalledWith(expect.objectContaining({ page: 1, per_page: 24, sort: 'new' }))
+    expect(mocks.fetchGalleryVideos).toHaveBeenCalledWith(expect.objectContaining({ page: 1, per_page: 24, sort: 'new', group: 'record' }))
   })
 
-  it('the owner filter is sent to the server and grouping splits the page by owner', async () => {
+  it('groups by record by default, the mixed layout is flat and a module tab is sent to the server', async () => {
     const el = await mount()
 
-    await act(async () => button(el, i18n.t('gallery.videoOwnerActor'))!.click())
-    await flush()
-    expect(mocks.fetchGalleryVideos).toHaveBeenLastCalledWith(expect.objectContaining({ owner_type: 'actor' }))
+    // ნაგულისხმევი — ჩანაწერით დაჯგუფებული
+    const headings = () => [...el.querySelectorAll('section > h3')].map((n) => n.textContent ?? '')
+    expect(headings().some((x) => x.includes('Dune') && x.includes('2'))).toBe(true)
+    expect(headings().some((x) => x.includes('Zendaya'))).toBe(true)
 
-    await act(async () => button(el, i18n.t('gallery.videoByOwner'))!.click())
+    // „არეული" — სექციების გარეშე და `group`-ის გარეშე
+    await act(async () => button(el, i18n.t('gallery.layout.mixed'))!.click())
     await flush()
-    const headings = [...el.querySelectorAll('section > h3')].map((n) => n.textContent ?? '')
-    expect(headings.some((x) => x.includes('Dune') && x.includes('2'))).toBe(true)
-    expect(headings.some((x) => x.includes('Zendaya'))).toBe(true)
+    expect(headings()).toHaveLength(0)
+    expect(mocks.fetchGalleryVideos).toHaveBeenLastCalledWith(expect.objectContaining({ group: undefined }))
+
+    // მოდულის ტაბი რიცხვით — მსახიობები
+    const actors = [...el.querySelectorAll('button')].find((b) => b.textContent?.includes(i18n.t('gallery.inner.actors')))!
+    expect(actors.textContent).toContain('1')
+    await act(async () => actors.click())
+    await flush()
+    expect(mocks.fetchGalleryVideos).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'actor' }))
   })
 })

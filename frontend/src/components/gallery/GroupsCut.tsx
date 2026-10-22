@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -16,18 +16,14 @@ import { MEDIA_NAV_KEY, type MediaType } from '@/lib/media'
 import type { PhotoAction } from '@/lib/photoActions'
 import { sectionGalleryGroups, sortGalleryGroups } from '@/lib/galleryGroups'
 import { useContentLang } from '@/lib/settings'
-import { isMediaKey, useModules } from '@/lib/modules'
-import { statusName, useMergedStatuses } from '@/lib/statuses'
-import { useFilterDraft } from '@/lib/filters'
+import { useModules } from '@/lib/modules'
 import { tintStyle } from '@/lib/gameMeta'
-import { fetchGenres } from '@/api/media'
 import { cn, formatBytes } from '@/lib/utils'
 import { Chip } from '@/components/ui/chip'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
 import { StatusBadge } from '@/components/StatusBadge'
-import { FilterGroup, FilterOption, FilterOptionList, FilterPanel, FilterRange, FilterTrigger } from '@/components/FilterPanel'
 import { LayoutToggle } from '@/components/gallery/LayoutToggle'
 import {
   GALLERY_GROUP_SECTIONS,
@@ -78,9 +74,6 @@ import { WebVideoDialog } from '@/components/WebVideoDialog'
    ============================================================ */
 
 
-/** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
-const EMPTY_PANEL = { genres: [] as string[], statuses: [] as string[], yearMin: '', yearMax: '' }
-
 /** მსახიობებს წელი არ აქვთ — „წლით" დალაგება ჩუმად არაფერს გააკეთებდა */
 const ACTOR_SORTS: readonly GalleryGroupSort[] = ['photos', 'photos_asc', 'title', 'bytes']
 
@@ -118,7 +111,6 @@ export function GroupsCut({
   by,
   type,
   from,
-  domains,
   onDownloadRecord,
   onDownloadActor,
 }: {
@@ -127,8 +119,6 @@ export function GroupsCut({
   type?: GalleryParentKind
   /** მსახიობების ჭრილის დომენის ტაბი — ვინც ამ დომენში თამაშობს */
   from?: MediaType
-  /** რომელი დომენების ჟანრი/სტატუსი ივარგებს ფილტრში */
-  domains?: GalleryParentKind[]
   /** ჩანაწერზე ჩამოტვირთვა — დიალოგს გვერდი ხსნის (სკოუპი უკვე ცნობილია) */
   onDownloadRecord?: (group: GalleryGroup) => void
   /** მსახიობზე ჩამოტვირთვა პარამეტრებით */
@@ -141,24 +131,18 @@ export function GroupsCut({
   const confirm = useConfirm()
   const { toast } = useToast()
 
-  /* ---------- ფილტრები `FilterPanel` + `useFilterDraft`-ზე ----------
-     ⚠️ **„ფოტოიანი / უფოტო / ყველა“ URL-შია** (`?have=`): დომენის ბარათების
-     რიცხვებიც (`RecordsCut`) ამას კითხულობს, ე.ი. „უფოტოზე" გადასვლა მათაც
-     ცვლის — აქამდე ისინი `have:'with'`-ზე იყო მიბმული. ზოლის კონტროლები
-     (ძებნა, რჩეული, ხედი, დალაგება, დაჯგუფება) უმალ მოქმედებენ, პანელის
-     სია (ჟანრი, სტატუსი, წელი) კი „გაფილტვრა“-ზე. */
+  /* ---------- ზოლის კონტროლები ----------
+     ⚠️ **„ფოტოიანი / უფოტო / ყველა" URL-შია** (`?have=`, მხოლოდ with/without —
+     „ყველა" ნაგულისხმევია): „თავიდან ფოტოიანი იყო მონიშნული და მოდულზე ნაკლები
+     ეწერა". ტაბებს თავიანთი რიცხვი აქვს (`facets.have`), მოდულის ბარათს —
+     მთლიანი. ძებნა, რჩეული, ხედი, დალაგება და დაჯგუფება უმალ მოქმედებენ;
+     ჟანრის/სტატუსის/წლის ფილტრის პანელი წაიშალა („საშინელებაა, სრულად წაშალე"). */
   const { all: modules } = useModules()
   const [q, setQ] = useState('')
   const [favorite, setFavorite] = useState(false)
   const [layout, setLayout] = useState<'grouped' | 'mixed'>('grouped')
   const [sort, setSort] = useState<GalleryGroupSort>('photos')
   const [section, setSection] = useState<GalleryGroupSection>('none')
-  const [panelOpen, setPanelOpen] = useState(false)
-  const [applied, setApplied] = useState(EMPTY_PANEL)
-  const { draft, setDraft, dirty, apply, clear, activeCount } = useFilterDraft(applied, EMPTY_PANEL, (next) => {
-    setApplied(next)
-    setPanelOpen(false)
-  })
   const [gender, setGender] = useState<'all' | 'female' | 'male'>('all')
   /**
    * შეკრებილი სექციები.
@@ -176,34 +160,18 @@ export function GroupsCut({
   const [params, setParams] = useSearchParams()
   const location = useLocation()
   const haveParam = params.get('have')
-  const have: 'with' | 'without' | 'all' = haveParam === 'without' || haveParam === 'all' ? haveParam : 'with'
+  const have: 'with' | 'without' | 'all' = haveParam === 'with' || haveParam === 'without' ? haveParam : 'all'
   const setHave = (next: 'with' | 'without' | 'all') =>
     setParams(
       (prev) => {
         const n = new URLSearchParams(prev)
-        if (next === 'with') n.delete('have')
+        if (next === 'all') n.delete('have')
         else n.set('have', next)
         n.delete('open')
         return n
       },
       { replace: true },
     )
-  const mediaDomains = (by === 'record' ? (domains ?? (type ? [type] : [])) : []).filter(isMediaKey)
-  const genresQ = useQuery({
-    queryKey: ['genres', mediaDomains.length === 1 ? mediaDomains[0] : 'all'],
-    // ერთი დომენი → **დომენის** ჟანრები; „ყველა" — გლობალური სია
-    queryFn: () => fetchGenres(mediaDomains.length === 1 ? mediaDomains[0] : undefined),
-    enabled: mediaDomains.length > 0,
-  })
-  const statuses = useMergedStatuses(mediaDomains)
-  const genreLabel = (slug: string) => {
-    const genre = genresQ.data?.find((g) => g.slug === slug)
-    return genre ? (lang === 'ka' ? genre.name_ka || genre.name_en : genre.name_en || genre.name_ka) || slug : slug
-  }
-  // პანელის სია დომენის ცვლილებაზე ინულდება — სხვა დომენის ჟანრი აქ არაფერს ჭრის
-  useEffect(() => {
-    setApplied(EMPTY_PANEL)
-  }, [type, from])
   const [webOn, setWebOn] = useState<GalleryGroup | null>(null)
   const [videoOn, setVideoOn] = useState<GalleryGroup | null>(null)
 
@@ -216,11 +184,7 @@ export function GroupsCut({
     q: q.trim() || undefined,
     gender: by === 'actor' && gender !== 'all' ? gender : undefined,
     have: by === 'record' ? have : undefined,
-    genre: by === 'record' && applied.genres.length ? applied.genres.join(',') : undefined,
-    status: by === 'record' && applied.statuses.length ? applied.statuses.join(',') : undefined,
     favorite: by === 'record' && favorite ? true : undefined,
-    year_min: by === 'record' && applied.yearMin ? Number(applied.yearMin) : undefined,
-    year_max: by === 'record' && applied.yearMax ? Number(applied.yearMax) : undefined,
     previews: 5,
   } as const
 
@@ -664,13 +628,18 @@ export function GroupsCut({
 
         {/* ⚠️ „წყაროს"/„მომწოდებლის" ჭრილში ჯგუფი **დომენია** — იქ არც ძებნას
             აქვს აზრი და არც ჟანრს, ამიტომ ფილტრის ზოლი მხოლოდ ორ ჭრილშია.
-            ზოლი ერთი სიმაღლისაა (h-10 ძებნა, h-9 კონტროლები), სია `FilterPanel`-შია. */}
+            ზოლი ერთი სიმაღლისაა (h-10 ძებნა, h-9 კონტროლები). */}
         {by === 'record' && (
           <div className="mb-3">
             <CutTabs
               size="sm"
               layout="inline"
-              options={(['with', 'without', 'all'] as const).map((key) => ({ key, label: t(`gallery.have.${key}`) }))}
+              options={(['with', 'without', 'all'] as const).map((key) => ({
+                key,
+                label: t(`gallery.have.${key}`),
+                // არჩეული მოდულის რიცხვები — „ფოტოიანი 12 · უფოტო 226 · ყველა 238"
+                count: groupsQ.data?.facets?.have?.[key],
+              }))}
               value={have}
               onChange={(key) => setHave(key as 'with' | 'without' | 'all')}
             />
@@ -712,86 +681,10 @@ export function GroupsCut({
                     {t(closed.size >= sections.length ? 'gallery.expandAll' : 'gallery.collapseAll')}
                   </Button>
                 )}
-                {mediaDomains.length > 0 && <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />}
               </div>
             </div>
 
-            {/* არჩეული — პანელის გარეთაც ჩანს, ჯვრით */}
-            {activeCount > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                {applied.genres.map((slug) => (
-                  <Chip key={slug} active remove onClick={() => setApplied({ ...applied, genres: applied.genres.filter((x) => x !== slug) })}>
-                    {genreLabel(slug)}
-                  </Chip>
-                ))}
-                {applied.statuses.map((key) => (
-                  <Chip key={key} active remove onClick={() => setApplied({ ...applied, statuses: applied.statuses.filter((x) => x !== key) })}>
-                    {statusName(statuses.find((status) => status.key === key), lang) || key}
-                  </Chip>
-                ))}
-                {(applied.yearMin || applied.yearMax) && (
-                  <Chip active remove onClick={() => setApplied({ ...applied, yearMin: '', yearMax: '' })}>
-                    {`${applied.yearMin || '…'} – ${applied.yearMax || '…'}`}
-                  </Chip>
-                )}
-              </div>
-            )}
           </div>
-        )}
-
-        {mediaDomains.length > 0 && (
-          <FilterPanel
-            activeCount={activeCount}
-            dirty={dirty}
-            onApply={() => apply(draft)}
-            onClear={clear}
-            open={panelOpen}
-            onOpenChange={setPanelOpen}
-          >
-            <FilterGroup title={t('filter.genres')} count={draft.genres.length}>
-              <FilterOptionList>
-                {(genresQ.data ?? []).map((genre) => (
-                  <FilterOption
-                    key={genre.slug}
-                    label={genreLabel(genre.slug)}
-                    checked={draft.genres.includes(genre.slug)}
-                    onChange={(on) =>
-                      setDraft((d) => ({ ...d, genres: on ? [...d.genres, genre.slug] : d.genres.filter((x) => x !== genre.slug) }))
-                    }
-                  />
-                ))}
-              </FilterOptionList>
-            </FilterGroup>
-            {statuses.length > 0 && (
-              <FilterGroup title={t('filter.statuses')} count={draft.statuses.length}>
-                <FilterOptionList>
-                  {statuses.map((status) => (
-                    <FilterOption
-                      key={status.key}
-                      label={statusName(status, lang)}
-                      checked={draft.statuses.includes(status.key)}
-                      onChange={(on) =>
-                        setDraft((d) => ({ ...d, statuses: on ? [...d.statuses, status.key] : d.statuses.filter((x) => x !== status.key) }))
-                      }
-                    />
-                  ))}
-                </FilterOptionList>
-              </FilterGroup>
-            )}
-            <FilterGroup title={t('filter.year')} count={(draft.yearMin ? 1 : 0) + (draft.yearMax ? 1 : 0)}>
-              <FilterRange
-                label={t('filter.year')}
-                from={draft.yearMin}
-                to={draft.yearMax}
-                onFrom={(value) => setDraft((d) => ({ ...d, yearMin: value }))}
-                onTo={(value) => setDraft((d) => ({ ...d, yearMax: value }))}
-                fromPlaceholder={t('filter.from')}
-                toPlaceholder={t('filter.to')}
-                min={1888}
-                max={2100}
-              />
-            </FilterGroup>
-          </FilterPanel>
         )}
 
         <div className="mb-3 flex flex-wrap items-center gap-2">

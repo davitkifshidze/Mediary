@@ -13,6 +13,7 @@ import {
   Film,
   ImageOff,
   Lock,
+  MoreHorizontal,
   MoveRight,
   Play,
   Square,
@@ -39,6 +40,7 @@ import { fetchPrivateObjectUrl, usePrivateFileUrl } from '@/components/PrivateFi
 import { useInViewOnce } from '@/lib/inView'
 import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { Pagination } from '@/components/ui/pagination'
 import { useClientPages } from '@/lib/paged'
 import { PAGE_ALL, PHOTO_COLUMNS, PHOTO_PER_PAGE_MAX, usePhotoPageSize } from '@/lib/pageSize'
@@ -716,14 +718,14 @@ function LockedPhotoCell({ item, onOpen }: { item: PhotoItem; onOpen: () => void
      რეალური პროპორცია რიგებს უთანასწოროს ხდიდა და განბლოკვის შემდეგ უჯრა ფორმას
      იცვლიდა — ბადე ხტებოდა. */
   return (
-    <li className="relative overflow-hidden rounded-xl border border-border bg-muted">
+    <li className="relative flex h-full flex-col justify-center overflow-hidden rounded-xl border border-border bg-muted">
       <button
         type="button"
         onClick={onOpen}
         title={t('gallery.albumUnlock')}
         aria-label={t('gallery.albumUnlock')}
         className={cn(
-          'block w-full cursor-pointer',
+          'relative block w-full cursor-pointer',
           item.portrait ? 'aspect-[2/3]' : 'aspect-video',
         )}
       >
@@ -842,11 +844,15 @@ function PhotoCell({
       <ContextMenuTrigger asChild disabled={!menu}>
         <li
           ref={tileRef}
+          /* ⚠️ **`flex h-full flex-col`**: ერთ რიგში პორტრეტი ლანდშაფტის გვერდითაა და
+             ბადე უჯრას რიგის სიმაღლემდე ჭიმავს — ფოტო ახლა შუაშია (`flex-1`
+             ჩარჩო), წარწერა და ღილაკები კი რიგის ყველა უჯრაში ერთ ქვედა ხაზზე */
           className={cn(
-            'group relative overflow-hidden rounded-xl border bg-card transition-colors',
+            'group relative flex h-full flex-col overflow-hidden rounded-xl border bg-card transition-colors',
             checked ? 'border-primary' : 'border-border',
           )}
         >
+          <div className="flex flex-1 flex-col justify-center bg-muted/40">
           <button
             type="button"
             // მონიშვნის რეჟიმში სურათზე დაჭერა ნიშნავს „მონიშნე", და არა „გახსენი"
@@ -882,6 +888,7 @@ function PhotoCell({
               </span>
             ) : null}
           </button>
+          </div>
           {item.favorite && (
             <span
               className="pointer-events-none absolute left-2 top-2 grid size-6 place-items-center rounded-md bg-black/55 text-favorite"
@@ -949,57 +956,68 @@ function PhotoCell({
           )}
 
           {footer && (
-            <div className="flex items-center justify-between gap-2 px-2.5 py-2">
-              <span className="min-w-0 text-xs text-muted-foreground">
-                <span className="block truncate">{caption}</span>
-                {item.size != null && formatBytes(item.size)}
-              </span>
-              <span className="flex shrink-0 items-center gap-1">
-                {/* ⚠️ „ეს მთავარია" **ნიშანია და არა გამორთული ღილაკი** — მოქმედება,
-                    რომელიც ვერ იმუშავებს, სიაშიც აღარაა */}
-                {isPrimary && (
-                  <span className="grid size-7 place-items-center" title={t('gallery.isPrimary')}>
-                    <Star className="size-3.5 fill-primary text-primary" />
-                  </span>
-                )}
+            <div className="mt-auto space-y-2 px-2.5 py-2">
+              {(caption || item.size != null || isPrimary) && (
+                <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                  {/* ⚠️ „ეს მთავარია" **ნიშანია და არა ღილაკი** — მოქმედება, რომელიც ვერ იმუშავებს, სიაშიც აღარაა */}
+                  {isPrimary && (
+                    <Star className="size-3.5 shrink-0 fill-primary text-primary" aria-label={t('gallery.isPrimary')} />
+                  )}
+                  <span className="truncate">{caption}</span>
+                  {item.size != null && <span className="ml-auto shrink-0 tabular-nums">{formatBytes(item.size)}</span>}
+                </p>
+              )}
 
-                {quick.map((action) => (
-                  <button
-                    key={action.key}
-                    type="button"
-                    onClick={action.run}
-                    title={action.label}
-                    aria-label={action.label}
-                    className={cn(
-                      'grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground',
-                      action.danger
-                        ? 'hover:bg-destructive/10 hover:text-destructive'
-                        : 'hover:bg-muted hover:text-foreground',
-                    )}
-                  >
-                    <action.icon className={cn('size-3.5', action.iconClassName)} />
-                  </button>
-                ))}
+              {/* რჩეული · წაშლა — `h-9` ღილაკები ტექსტით (ჩანაწერის ბარათის ზომა) + ⋯;
+                  დანარჩენი (გახსნა, შესახებ, მთავარად, ჩამოტვირთვა…) მენიუშია */}
+              {(quick.length > 0 || menu) && (
+                <div className="flex items-center gap-1.5 [&>*]:h-9" data-testid="photo-actions">
+                  {quick.map((action) =>
+                    action.key === 'favorite' ? (
+                      <FavoriteButton key={action.key} active={!!item.favorite} onToggle={action.run} className="min-w-0 flex-1" />
+                    ) : (
+                      <Button
+                        key={action.key}
+                        type="button"
+                        variant={action.danger ? 'destructiveOutline' : 'outline'}
+                        size="sm"
+                        className="min-w-0 flex-1"
+                        title={action.label}
+                        onClick={action.run}
+                      >
+                        <action.icon className={cn('size-3.5', action.iconClassName)} />
+                        <span className="truncate">{action.key === 'delete' ? t('confirm.delete') : action.label}</span>
+                      </Button>
+                    ),
+                  )}
 
-                {/* ⚠️ **„⋯" კლავიატურის გზაა** — მარჯვენა კლიკი მალსახმობია და არა
-                    ერთადერთი კარი (სენსორული ეკრანი, Tab-ნავიგაცია) */}
-                {menu && (
-                  <ActionMenu label={t('actions.more')}>
-                    {actions.map((action) => (
-                      <ActionMenuClose key={action.key} asChild>
-                        <button
-                          type="button"
-                          onClick={action.run}
-                          className={actionItemClass(action.danger ? 'destructive' : undefined)}
-                        >
-                          <action.icon className={cn('size-3.5', action.iconClassName)} />
-                          {action.label}
-                        </button>
-                      </ActionMenuClose>
-                    ))}
-                  </ActionMenu>
-                )}
-              </span>
+                  {/* ⚠️ **„⋯" კლავიატურის გზაა** — მარჯვენა კლიკი მალსახმობია და არა
+                      ერთადერთი კარი (სენსორული ეკრანი, Tab-ნავიგაცია) */}
+                  {menu && (
+                    <ActionMenu
+                      label={t('actions.more')}
+                      trigger={
+                        <Button type="button" variant="outline" size="sm" className="ml-auto w-9 shrink-0 px-0 text-muted-foreground">
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      }
+                    >
+                      {actions.map((action) => (
+                        <ActionMenuClose key={action.key} asChild>
+                          <button
+                            type="button"
+                            onClick={action.run}
+                            className={actionItemClass(action.danger ? 'destructive' : undefined)}
+                          >
+                            <action.icon className={cn('size-3.5', action.iconClassName)} />
+                            {action.label}
+                          </button>
+                        </ActionMenuClose>
+                      ))}
+                    </ActionMenu>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </li>

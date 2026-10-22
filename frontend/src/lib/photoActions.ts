@@ -42,7 +42,7 @@ export interface PhotoAction {
   run: () => void
   /** წითლად, გამყოფის ქვემოთ */
   danger?: boolean
-  /** უჯრის ქვედა ზოლშიც ჩანს ხატულად (დანარჩენი მხოლოდ მენიუშია) */
+  /** უჯრის ქვედა ზოლშიც ჩანს — ღილაკად, ტექსტით (დანარჩენი მხოლოდ მენიუშია) */
   quick?: boolean
   /** აიქონის დამატებითი კლასი — მაგ. შევსებული ვარსკვლავი რჩეულზე */
   iconClassName?: string
@@ -103,12 +103,13 @@ export function photoActions({
     { key: 'open', label: t('photos.open'), icon: Maximize2, run: onOpen },
   ]
 
-  if (onInfo) list.push({ key: 'info', label: t('photos.info'), icon: Info, run: onInfo, quick: true })
+  // „ფოტოს შესახებ" და „მთავარად" მხოლოდ მენიუშია — ზოლში რჩეული და წაშლაა (`h-9`, ტექსტით)
+  if (onInfo) list.push({ key: 'info', label: t('photos.info'), icon: Info, run: onInfo })
 
   // ⚠️ უკვე მთავარი ფოტო პუნქტს კარგავს — გამორთული ღილაკის ნაცვლად
   // მდგომარეობას ვარსკვლავის ნიშანი ამბობს უჯრაზე
   if (onPrimary && !isPrimary) {
-    list.push({ key: 'primary', label: t('gallery.setPrimary'), icon: Star, run: onPrimary, quick: true })
+    list.push({ key: 'primary', label: t('gallery.setPrimary'), icon: Star, run: onPrimary })
   }
 
   /* რჩეული (ვარსკვლავი და ფერი); ⚠️ `quick` — უჯრის ზოლშიც,

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FolderPlus, Images, Lock, LockOpen, SquarePen, Trash2 } from 'lucide-react'
+import { FolderPlus, Images, Lock, LockOpen, Maximize2, SquarePen, Trash2 } from 'lucide-react'
 import {
   deleteGalleryAlbum,
   fetchGalleryAlbums,
@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { PhotoStack } from '@/components/ui/photo-stack'
-import { contextMenuItems, MENU_ICONS } from '@/components/ui/record-menu'
+import { contextMenuItems, MENU_ICONS, RecordActionMenu, type MenuAction } from '@/components/ui/record-menu'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { GroupPhotos } from '@/components/gallery/GroupPhotos'
@@ -225,7 +225,7 @@ export function AlbumsCut() {
           }
         />
       ) : (
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <Sortable ids={groups.map((g) => g.id)} layout="grid" onReorder={(ids) => reorderAlbums.mutate(ids)}>
           {groups.map((group) => {
             const album = albumOf(group.id)
@@ -233,6 +233,54 @@ export function AlbumsCut() {
 
             /** წაშლის ფილტრი — იგივე ენა, რითიც ჯგუფში შესვლა */
             const filters = { owner: `album:${group.id}` }
+            const openAlbum = () => setOpen({ id: group.id, title: titleOf(group.id) })
+            const askDeletePhotos = async () => {
+              const ok = await confirm({
+                title: t('gallery.deleteGroupTitle'),
+                description: t('gallery.deleteGroupHint', { count: group.photos, name: titleOf(group.id) }),
+                confirmText: t('confirm.delete'),
+                variant: 'destructive',
+              })
+              if (ok) removePhotos.mutate(filters)
+            }
+            const askDeleteAlbum = async () => {
+              if (!album) return
+              const ok = await confirm({
+                title: t('gallery.albumDeleteTitle'),
+                description: t('gallery.albumDeleteHint', { name: album.name }),
+                confirmText: t('confirm.delete'),
+                variant: 'destructive',
+              })
+              if (ok) remove.mutate(album.id)
+            }
+            /* ⋯ და მარჯვენა კლიკი — ერთი სია: გახსნა · (განბლოკვა/ჩაკეტვა) · — ·
+               რედაქტირება · ფოტოების წაშლა · ალბომის წაშლა. ქვედა ზოლში მხოლოდ
+               სამი მთავარია (გახსნა · რედაქტირება · წაშლა), დანარჩენი — ⋯-ში. */
+            const menu: MenuAction[] = [
+              { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: openAlbum },
+              ...(album && locked
+                ? [{ key: 'unlock', label: t('gallery.albumUnlock'), icon: LockOpen, run: () => setUnlocking(album) }]
+                : []),
+              ...(album && group.locked && group.unlocked
+                ? [{ key: 'relock', label: t('gallery.albumRelock'), icon: Lock, run: () => relock.mutate(album.id) }]
+                : []),
+              ...(album
+                ? [{ key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing({ album }) }]
+                : []),
+              ...(group.photos > 0 && !locked
+                ? [{
+                    key: 'deletePhotos',
+                    label: t('gallery.deleteGroup', { count: group.photos }),
+                    icon: Images,
+                    danger: true,
+                    separator: !album,
+                    run: () => void askDeletePhotos(),
+                  }]
+                : []),
+              ...(album
+                ? [{ key: 'deleteAlbum', label: t('gallery.albumDeleteTitle'), icon: MENU_ICONS.delete, danger: true, run: () => void askDeleteAlbum() }]
+                : []),
+            ]
 
             return (
               <SortableItem key={`album:${group.id}`} id={group.id}>
@@ -251,136 +299,30 @@ export function AlbumsCut() {
                      423-ს აბრუნებდა და ბადე ცარიელი იყო; ახლა `lockedPhotos()`
                      ბლარიან რიგებს აბრუნებს (`path` არასდროს), ე.ი. აქ გაჩერება
                      ბლარიან ბადესთან ერთად პაროლის ღილაკსაც ანდებდა. */
-                  onClick={() => setOpen({ id: group.id, title: titleOf(group.id) })}
-                  /* მარჯვენა ღილაკი: გახსნა · (განბლოკვა/ჩაკეტვა) · — · რედაქტირება ·
-                     ფოტოების წაშლა · ალბომის წაშლა — იგივე, რაც ქვედა ზოლის ღილაკებია */
-                  menu={contextMenuItems([
-                    { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpen({ id: group.id, title: titleOf(group.id) }) },
-                    ...(album && locked
-                      ? [{ key: 'unlock', label: t('gallery.albumUnlock'), icon: LockOpen, run: () => setUnlocking(album) }]
-                      : []),
-                    ...(album && group.locked && group.unlocked
-                      ? [{ key: 'relock', label: t('gallery.albumRelock'), icon: Lock, run: () => relock.mutate(album.id) }]
-                      : []),
-                    ...(album
-                      ? [{ key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing({ album }) }]
-                      : []),
-                    ...(group.photos > 0 && !locked
-                      ? [{
-                          key: 'deletePhotos',
-                          label: t('gallery.deleteGroup', { count: group.photos }),
-                          icon: Images,
-                          danger: true,
-                          separator: !album,
-                          run: async () => {
-                            const ok = await confirm({
-                              title: t('gallery.deleteGroupTitle'),
-                              description: t('gallery.deleteGroupHint', { count: group.photos, name: titleOf(group.id) }),
-                              confirmText: t('confirm.delete'),
-                              variant: 'destructive',
-                            })
-                            if (ok) removePhotos.mutate(filters)
-                          },
-                        }]
-                      : []),
-                    ...(album
-                      ? [{
-                          key: 'deleteAlbum',
-                          label: t('gallery.albumDeleteTitle'),
-                          icon: MENU_ICONS.delete,
-                          danger: true,
-                          run: async () => {
-                            const ok = await confirm({
-                              title: t('gallery.albumDeleteTitle'),
-                              description: t('gallery.albumDeleteHint', { name: album.name }),
-                              confirmText: t('confirm.delete'),
-                              variant: 'destructive',
-                            })
-                            if (ok) remove.mutate(album.id)
-                          },
-                        }]
-                      : []),
-                  ])}
+                  onClick={openAlbum}
+                  menu={contextMenuItems(menu)}
                   actions={
-                    /* ⚠️ **ფოტოების წაშლა ორივე ბარათს აქვს**, სახელის
-                       რედაქტირება და ალბომის წაშლა კი მხოლოდ ნამდვილს:
-                       „ალბომის გარეშე" ფსევდო-ჯგუფია — მას არც სახელი აქვს
-                       და არც წაშლა, ე.ი. იქ ეს ღილაკები ვერაფერს გააკეთებდა. */
+                    /* ⚠️ სამი `h-9` ღილაკი ტექსტით + ⋯ (`GroupsCut`-ის ბარათის წესი): აქამდე
+                       ხუთამდე ღილაკი `h-7 text-xs`-ით ერთ რიგში იჭრებოდა. „ალბომის გარეშე"
+                       ფსევდო-ჯგუფს რედაქტირება და წაშლა არ აქვს. */
                     <>
-                      {group.photos > 0 && !locked && (
-                        <Button
-                          variant="destructiveOutline"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={async () => {
-                            const ok = await confirm({
-                              title: t('gallery.deleteGroupTitle'),
-                              description: t('gallery.deleteGroupHint', {
-                                count: group.photos,
-                                name: titleOf(group.id),
-                              }),
-                              confirmText: t('confirm.delete'),
-                              variant: 'destructive',
-                            })
-                            if (ok) removePhotos.mutate(filters)
-                          }}
-                        >
-                          <Images className="size-3.5" />
-                          {t('gallery.deleteGroup', { count: group.photos })}
-                        </Button>
-                      )}
-                      {album ? (
+                      <Button variant="outline" size="sm" className="min-w-0 flex-1" onClick={openAlbum}>
+                        <Maximize2 className="size-3.5" />
+                        <span className="truncate">{t('actions.open')}</span>
+                      </Button>
+                      {album && (
                         <>
-                          {group.locked && group.unlocked && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => relock.mutate(album.id)}
-                            >
-                              <Lock className="size-3.5" />
-                              {t('gallery.albumRelock')}
-                            </Button>
-                          )}
-                          {locked && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => setUnlocking(album)}
-                            >
-                              <LockOpen className="size-3.5" />
-                              {t('gallery.albumUnlock')}
-                            </Button>
-                          )}
-                          <Button
-                            variant="edit"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => setEditing({ album })}
-                          >
+                          <Button variant="edit" size="sm" className="min-w-0 flex-1" onClick={() => setEditing({ album })}>
                             <SquarePen className="size-3.5" />
-                            {t('actions.edit')}
+                            <span className="truncate">{t('actions.edit')}</span>
                           </Button>
-                          <Button
-                            variant="destructiveOutline"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={async () => {
-                              const ok = await confirm({
-                                title: t('gallery.albumDeleteTitle'),
-                                description: t('gallery.albumDeleteHint', { name: album.name }),
-                                confirmText: t('confirm.delete'),
-                                variant: 'destructive',
-                              })
-                              if (ok) remove.mutate(album.id)
-                            }}
-                          >
+                          <Button variant="destructiveOutline" size="sm" className="min-w-0 flex-1" onClick={() => void askDeleteAlbum()}>
                             <Trash2 className="size-3.5" />
-                            {t('confirm.delete')}
+                            <span className="truncate">{t('confirm.delete')}</span>
                           </Button>
                         </>
-                      ) : null}
+                      )}
+                      <RecordActionMenu actions={menu} label={t('actions.more')} />
                     </>
                   }
                 />

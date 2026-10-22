@@ -382,7 +382,6 @@
     "ranges": "Ranges",
     "search": "Search the list",
     "noMatches": "Nothing matches",
-    "statuses": "Statuses",
     "clearGroup": "Clear this group",
     "clearAll": "Clear everything"
   },
@@ -1854,7 +1853,6 @@
     "deleteHint": "“{{name}}” moves to the trash — it comes back from there with its songs. The songs stay in your library."
   },
   "gallery": {
-    "videoOwner": "Owner",
     "videoOwnerRecord": "Record",
     "videoOwnerActor": "Actor",
     "videoSearch": "Search by title or channel…",
@@ -1863,8 +1861,6 @@
       "old": "Oldest",
       "title": "By title"
     },
-    "videoFlat": "Flat",
-    "videoByOwner": "By record",
     "videoNoMatch": "No video matches",
     "videoNoMatchHint": "Change the search or the owner filter.",
     "fetchShort": "Download",
@@ -2142,7 +2138,11 @@
     "albumPublicHint": "A photo normally inherits its parent’s visibility; for a photo with no parent the album is the only way.",
     "albumAccountPassword": "Account password",
     "albumAccountPasswordHint": "Changing or removing the lock asks for your Mediary account password — a forgotten album password is no longer a dead end.",
-    "lockedGridHint": "The album is locked — {{count}} photos are hidden. The files never leave the server."
+    "lockedGridHint": "The album is locked — {{count}} photos are hidden. The files never leave the server.",
+    "videoGroup": {
+      "record": "By record",
+      "module": "By module"
+    }
   },
   "boardGames": {
     "title": "Board games",

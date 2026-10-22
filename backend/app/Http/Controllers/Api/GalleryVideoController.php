@@ -56,10 +56,21 @@ class GalleryVideoController extends Controller
             // ვიდეოების გვერდის ძებნა, მფლობელის სახე და დალაგება
             'q' => ['nullable', 'string', 'max:200'],
             'owner_type' => ['nullable', 'in:record,actor'],
+            // მოდული (`movie` · `song` · … · `actor`) — ფოტოების `type`-ის იგივე სია
+            'type' => ['nullable', 'string', 'regex:/^('.$owners.')$/'],
             'sort' => ['nullable', 'in:new,old,title'],
+            /* დაჯგუფება: ჯერ მფლობელით (ჩანაწერით) ან მოდულით, მერე არჩეული რიგით —
+               ⚠️ სერვერზე, თორემ ჯგუფი გვერდებზე გაიხლიჩებოდა */
+            'group' => ['nullable', 'in:record,module'],
         ]);
 
         $query = GalleryVideo::query();
+
+        match ($data['group'] ?? null) {
+            'record' => $query->orderBy('videoable_type')->orderBy('videoable_id'),
+            'module' => $query->orderBy('videoable_type'),
+            default => null,
+        };
 
         match ($data['sort'] ?? 'new') {
             'old' => $query->orderBy('id'),
@@ -83,6 +94,20 @@ class GalleryVideoController extends Controller
             $query->where(fn ($w) => $w->where('title', 'like', Like::contains($q))->orWhere('channel', 'like', Like::contains($q)));
         }
 
+        /* მოდულის ტაბების რიცხვები — მოდულის ფილტრამდე (ძებნის შემდეგ), ერთი
+           `GROUP BY`-ით; რიგის `ORDER BY` აქ ზედმეტია */
+        $facets = (clone $query)->reorder()
+            ->selectRaw('videoable_type, count(*) as total')
+            ->groupBy('videoable_type')
+            ->pluck('total', 'videoable_type')
+            ->mapWithKeys(fn ($n, $kind) => [($kind === GalleryParent::ACTOR ? 'actor' : $kind) => (int) $n])
+            ->all();
+        $facets['all'] = array_sum($facets);
+
+        if ($type = $data['type'] ?? null) {
+            $query->where('videoable_type', $type === 'actor' ? GalleryParent::ACTOR : $type);
+        }
+
         $page = $query->paginate($data['per_page'] ?? 24)->withQueryString();
 
         return response()->json([
@@ -93,6 +118,7 @@ class GalleryVideoController extends Controller
                 'total' => $page->total(),
                 'last_page' => $page->lastPage(),
             ],
+            'facets' => ['types' => (object) $facets],
         ]);
     }
 

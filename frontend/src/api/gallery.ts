@@ -343,6 +343,8 @@ export interface GalleryVideo {
 export interface GalleryVideoPage {
   data: GalleryVideo[]
   meta: { page: number; per_page: number; total: number; last_page: number }
+  /** მოდულის ტაბების რიცხვები (`movie` · … · `actor` · `all`) — მოდულის ფილტრამდე */
+  facets?: { types?: Partial<Record<string, number>> }
 }
 
 /* ---------- ჯგუფები და ჭრილები ---------- */
@@ -406,7 +408,10 @@ export interface GalleryGroups {
    */
   facets?: {
     gender?: { all: number; female: number; male: number }
+    /** მოდულის ბარათები — მოდულის **მთლიანი** რიცხვი („ფოტოიანი/უფოტოს" ფილტრამდე) */
     types?: Partial<Record<string, number>>
+    /** „ფოტოიანი · უფოტო · ყველა" ტაბები — არჩეულ მოდულზე */
+    have?: { with: number; without: number; all: number }
   }
   /** `kind:id` → ესკიზების გზები (ბადეზე „რა დევს შიგნით") */
   previews: Record<string, StackPreview[]>
@@ -681,8 +686,7 @@ export async function fetchGallerySummary(): Promise<GallerySummary> {
  * სია ყოველთვის `has('galleryImages')`-ით იწყებოდა, ე.ი. სწორედ ის ჩანაწერები
  * არსად ჩანდა, რომლებისთვისაც ჩამოტვირთვა არსებობს.
  *
- * ⚠️ `genre`/`status` **მძიმით გაყოფილი სიაა** — ჟანრები AND-ით, სტატუსები
- * OR-ით (ჩანაწერი ორ სტატუსში ვერ იქნება); იგივე წესი, რაც ბიბლიოთეკის სიას.
+ * ⚠️ ნაგულისხმევი „ყველა"-ა; ჟანრის/სტატუსის/წლის ფილტრი წაიშალა.
  */
 export interface GalleryGroupQuery {
   /** ჩანაწერების ჭრილის დომენის ტაბი — `movie` · `song` · … */
@@ -692,10 +696,6 @@ export interface GalleryGroupQuery {
   q?: string
   gender?: 'female' | 'male'
   have?: 'with' | 'without' | 'all'
-  genre?: string
-  status?: string
-  year_min?: number
-  year_max?: number
   favorite?: boolean
   /** დასტას ხუთი ბარათი აქვს — ე.ი. სამი ესკიზი აღარ ჰყოფნის */
   previews?: number
@@ -891,6 +891,8 @@ export async function setGalleryPrimary(id: number): Promise<{ poster_path: stri
 /** ვიდეოების გვერდის პარამეტრები */
 export type GalleryVideoOwnerType = 'record' | 'actor'
 export type GalleryVideoSort = 'new' | 'old' | 'title'
+/** დაჯგუფება სერვერზე იწყობა (ჯგუფი გვერდებზე არ იხლიჩება) */
+export type GalleryVideoGroup = 'record' | 'module'
 
 export async function fetchGalleryVideos(
   params: {
@@ -899,7 +901,10 @@ export async function fetchGalleryVideos(
     per_page?: number
     q?: string
     owner_type?: GalleryVideoOwnerType
+    /** მოდული (`movie` · `song` · … · `actor`) */
+    type?: string
     sort?: GalleryVideoSort
+    group?: GalleryVideoGroup
   } = {},
 ): Promise<GalleryVideoPage> {
   const { data } = await api.get('/gallery/videos', { params })

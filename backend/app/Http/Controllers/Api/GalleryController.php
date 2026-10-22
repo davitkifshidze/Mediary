@@ -226,10 +226,6 @@ class GalleryController extends Controller
                `has('galleryImages')`-ით იწყებოდა, ე.ი. „რომელ ფილმს **არ**
                აქვს ფოტო" კითხვას გალერეაში პასუხი საერთოდ არ ჰქონდა. */
             'have' => ['nullable', 'in:with,without,all'],
-            'genre' => ['nullable', 'string', 'max:400'],
-            'status' => ['nullable', 'string', 'max:200'],
-            'year_min' => ['nullable', 'integer', 'min:1800', 'max:2200'],
-            'year_max' => ['nullable', 'integer', 'min:1800', 'max:2200'],
             'favorite' => ['nullable', 'boolean'],
             'previews' => ['nullable', 'integer', 'min:0', 'max:'.self::MAX_PREVIEWS],
         ]);
@@ -353,7 +349,8 @@ class GalleryController extends Controller
     private function recordGroups($user, array $data, ?string $q, int $previews)
     {
         $groups = collect();
-        $have = $data['have'] ?? 'with';
+        // ⚠️ ნაგულისხმევი „ყველა": „ფოტოიანი" თავიდანვე მონიშნული იყო და ბარათზე ნაკლები ეწერა
+        $have = $data['have'] ?? 'all';
 
         /* **დომენის ბარათების ფასეტური მთვლელი.**
 
@@ -386,20 +383,16 @@ class GalleryController extends Controller
                 ->withCount(['galleryImages as photos' => $unlocked])
                 ->withSum(['galleryImages as photo_bytes' => $unlocked], 'size');
 
-            /* ⚠️ **„უფოტო" ცალკე შეკითხვაა და არა გაფილტრული სია.** `photos = 0`
-               `withCount`-ის შედეგია, ე.ი. `where`-ში ვერ შევა (HAVING-ს კი
-               ექვსი დომენის გაერთიანებაზე აზრი არ აქვს) — ამიტომ დარჩა `doesntHave`. */
-            match ($have) {
-                'without' => $query->whereDoesntHave('galleryImages', $unlocked),
-                'all' => null,
-                default => $query->whereHas('galleryImages', $unlocked),
-            };
-
+            /* ⚠️ **„ფოტოიანი/უფოტო" აქ აღარ ჭრის** — ყველა ჩანაწერი მოდის და
+               ფილტრი ქვემოთ, ფასეტების შემდეგ დევს: მოდულის ბარათი მოდულის
+               **მთლიან** რიცხვს ამბობს, ტაბები კი თავიანთს (`facets.have`). */
             if ($q) {
                 $this->applyTitleSearch($query, $type, $model, $q);
             }
 
-            $this->applyRecordFilters($query, $type, $data);
+            if (! empty($data['favorite'])) {
+                $query->where('is_favorite', true);
+            }
 
             // ჟანრი ბარათზეც გამოდის (შიდა დაჯგუფებისთვის), ე.ი. ერთხელ იტვირთება
             if (MediaDomain::has($type)) {
@@ -448,6 +441,7 @@ class GalleryController extends Controller
            სწორად არჩევს. */
         $groups = $groups->sortByDesc('photos')->values();
 
+        // მოდულის ბარათები — „ფოტოიანი/უფოტოს" ფილტრამდე (მოდულის მთლიანი რიცხვი)
         $facets = $groups->countBy('kind')->map(fn ($n) => (int) $n)->all();
         $facets['all'] = $groups->count();
 
@@ -455,53 +449,22 @@ class GalleryController extends Controller
             $groups = $groups->where('kind', $type)->values();
         }
 
+        // „ფოტოიანი · უფოტო · ყველა" ტაბების რიცხვები — არჩეულ მოდულზე
+        $withPhotos = $groups->where('photos', '>', 0)->count();
+        $haveFacets = ['with' => $withPhotos, 'without' => $groups->count() - $withPhotos, 'all' => $groups->count()];
+
+        $groups = match ($have) {
+            'with' => $groups->where('photos', '>', 0)->values(),
+            'without' => $groups->where('photos', 0)->values(),
+            default => $groups,
+        };
+
         return response()->json([
             'by' => 'record',
             'groups' => $groups,
-            'facets' => ['types' => (object) $facets],
+            'facets' => ['types' => (object) $facets, 'have' => $haveFacets],
             'previews' => $this->previews($groups, null, $previews),
         ]);
-    }
-
-    /**
-     * ჩანაწერების ჭრილის ფილტრები.
-     *
-     * ⚠️ **ჟანრი/წელი/სტატუსი მხოლოდ მედია-დომენებზე მოქმედებს და
-     * ინტერფეისიც მხოლოდ იქ ხატავს მათ.** სამი მშობელს სამნაირი ჟანრი აქვს
-     * (გლობალური პოლიმორფული `genres`, `song_genres`/`game_genres` pivot-ით,
-     * წიგნს კი ერთი `genre_id`), სტატუსი კი მედიაზე ლექსიკონია, წიგნზე/
-     * თამაშზე enum, სიმღერაზე კი საერთოდ არ არსებობს. ერთ საერთო
-     * `where`-ად ჩაწერა SQL-ის შეცდომა იქნებოდა — იგივე წესი, რაც
-     * `applyTitleSearch()`-ს აქვს.
-     */
-    private function applyRecordFilters($query, string $type, array $data): void
-    {
-        if (! empty($data['favorite'])) {
-            $query->where('is_favorite', true);
-        }
-
-        if (! MediaDomain::has($type)) {
-            return;
-        }
-
-        // ⚠️ სია **AND**-ით იჭრება (`?genre=drama,comedy` = ორივე) — იგივე წესი,
-        // რაც ბიბლიოთეკის სიას აქვს (`MovieController::index`)
-        foreach ($this->slugList($data['genre'] ?? null) as $slug) {
-            $query->whereHas('genres', fn ($genre) => $genre->where('slug', $slug));
-        }
-
-        // ⚠️ სტატუსები კი **OR** — ერთი ჩანაწერი ორ სტატუსში ვერ იქნება
-        if ($keys = $this->slugList($data['status'] ?? null)) {
-            $query->statusKey($keys);
-        }
-
-        if (! empty($data['year_min'])) {
-            $query->where('year', '>=', (int) $data['year_min']);
-        }
-
-        if (! empty($data['year_max'])) {
-            $query->where('year', '<=', (int) $data['year_max']);
-        }
     }
 
     /**

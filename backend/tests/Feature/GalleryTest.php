@@ -769,13 +769,13 @@ class GalleryTest extends TestCase
     }
 
     /**
-     * **„ფოტოიანი / უფოტო".**
+     * **„ფოტოიანი / უფოტო / ყველა" და რიცხვები.**
      *
-     * ⚠️ ჯგუფების სია ყოველთვის `has('galleryImages')`-ით იწყებოდა, ე.ი.
-     * სწორედ ის ჩანაწერები არსად ჩანდა, რომლებისთვისაც ჩამოტვირთვა არსებობს
-     * („რომელ ფილმს არ აქვს ფოტო" კითხვას გალერეაში პასუხი არ ჰქონდა).
+     * ⚠️ ნაგულისხმევი „ყველა"-ა (აქამდე „ფოტოიანი" იყო და მოდულის ბარათზე
+     * ნაკლები ეწერა); მოდულის ბარათი მოდულის **მთლიან** რიცხვს ამბობს
+     * (`facets.types` ფილტრამდე), ტაბები კი თავიანთს (`facets.have`).
      */
-    public function test_records_cut_lists_records_without_photos(): void
+    public function test_records_cut_defaults_to_all_and_counts_each_tab(): void
     {
         $withPhoto = $this->makeMovie('Fight Club');
         $without = $this->makeMovie('Se7en', 807);
@@ -784,8 +784,17 @@ class GalleryTest extends TestCase
         $this->actingAs($this->user)
             ->getJson('/api/gallery/groups?by=record')
             ->assertOk()
+            ->assertJsonCount(2, 'groups')
+            ->assertJsonPath('facets.types.movie', 2)
+            ->assertJsonPath('facets.have', ['with' => 1, 'without' => 1, 'all' => 2]);
+
+        $this->actingAs($this->user)
+            ->getJson('/api/gallery/groups?by=record&have=with')
+            ->assertOk()
             ->assertJsonCount(1, 'groups')
-            ->assertJsonPath('groups.0.id', $withPhoto->id);
+            ->assertJsonPath('groups.0.id', $withPhoto->id)
+            // ბარათი ისევ მთლიანს ამბობს
+            ->assertJsonPath('facets.types.movie', 2);
 
         $this->actingAs($this->user)
             ->getJson('/api/gallery/groups?by=record&have=without')
@@ -793,20 +802,13 @@ class GalleryTest extends TestCase
             ->assertJsonCount(1, 'groups')
             ->assertJsonPath('groups.0.id', $without->id)
             ->assertJsonPath('groups.0.photos', 0);
-
-        $this->actingAs($this->user)
-            ->getJson('/api/gallery/groups?by=record&have=all')
-            ->assertOk()
-            ->assertJsonCount(2, 'groups');
     }
 
     /**
-     * **ჟანრი/წელი/სტატუსი და შიდა დაჯგუფების საკვები.**
-     *
-     * ⚠️ სამივე ველი **ჯგუფშივე** ბრუნდება: სექციებად დაყოფა ფრონტზე ხდება
-     * და თითო ბარათზე ცალკე მოთხოვნა ასჯერ გაიგზავნებოდა.
+     * **ფილტრის პანელი წაიშალა** — ჟანრი/წელი/სტატუსი სიას აღარ ჭრის, ჯგუფი
+     * კი შიდა დაჯგუფების საკვებს (ჟანრი · წელი · სტატუსი) ისევ თვითონ მოიტანს.
      */
-    public function test_record_groups_filter_by_genre_year_and_status(): void
+    public function test_record_groups_still_carry_genre_year_and_status_for_sections(): void
     {
         $drama = Genre::create(['slug' => 'drama']);
         $drama->translations()->create(['locale' => 'ka', 'name' => 'დრამა']);
@@ -824,31 +826,16 @@ class GalleryTest extends TestCase
         $old->applyStatusKey('watched');
         $old->save();
 
-        // ჟანრი
-        $this->actingAs($this->user)
-            ->getJson('/api/gallery/groups?by=record&genre=drama')
+        $groups = collect($this->actingAs($this->user)
+            ->getJson('/api/gallery/groups?by=record&genre=drama&year_min=2000&status=watched')
             ->assertOk()
-            ->assertJsonCount(1, 'groups')
-            ->assertJsonPath('groups.0.id', $old->id)
-            ->assertJsonPath('groups.0.genres.0.slug', 'drama');
+            ->assertJsonCount(2, 'groups')
+            ->json('groups'))->keyBy('id');
 
-        // წელი
-        $this->actingAs($this->user)
-            ->getJson('/api/gallery/groups?by=record&year_min=2000')
-            ->assertOk()
-            ->assertJsonCount(1, 'groups')
-            ->assertJsonPath('groups.0.id', $new->id)
-            ->assertJsonPath('groups.0.year', 2021);
-
-        /* სტატუსი — ⚠️ **ობიექტია და არა სტრიქონი**: სახელი
-           მფლობელის ლექსიკონშია და გასაღები მარტო არაფერს ამბობს */
-        $this->actingAs($this->user)
-            ->getJson('/api/gallery/groups?by=record&status=watched')
-            ->assertOk()
-            ->assertJsonCount(1, 'groups')
-            ->assertJsonPath('groups.0.id', $old->id)
-            ->assertJsonPath('groups.0.status.key', 'watched')
-            ->assertJsonPath('groups.0.status.role', 'done');
+        $this->assertSame('drama', $groups[$old->id]['genres'][0]['slug']);
+        $this->assertSame(2021, $groups[$new->id]['year']);
+        $this->assertSame('watched', $groups[$old->id]['status']['key']);
+        $this->assertSame('done', $groups[$old->id]['status']['role']);
     }
 
     /**

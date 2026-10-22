@@ -64,7 +64,7 @@ afterEach(() => {
   container = null
 })
 
-async function mountGroupsCut(initialPath = '/gallery/actors') {
+async function mountGroupsCut(initialPath = '/gallery/actors', props: Record<string, unknown> = { by: 'actor' }) {
   const { GroupsCut } = await import('@/components/gallery/GroupsCut')
   const { useLocation } = await import('react-router-dom')
   // URL-ის „ზონდი" — `?open=`-ის შემოწმებისთვის
@@ -85,7 +85,7 @@ async function mountGroupsCut(initialPath = '/gallery/actors') {
         h(
           MemoryRouter,
           { initialEntries: [initialPath] },
-          h(TooltipProvider, null, h(GroupsCut, { by: 'actor' }), h(Probe)),
+          h(TooltipProvider, null, h(GroupsCut, props as Parameters<typeof GroupsCut>[0]), h(Probe)),
         ),
       ),
     )
@@ -182,5 +182,31 @@ describe('GroupsCut', () => {
 
     expect(button(node, 'ფოტოები ვებიდან'), 'გახსნილი ჯგუფის ზოლი').toBeTruthy()
     expect(button(node, 'Mel Gibson'), 'ბარათების სია არ ჩანს').toBeFalsy()
+  })
+})
+
+/* ბიბლიოთეკის ჭრილი: „ყველა" ნაგულისხმევად, ტაბებს თავიანთი რიცხვი აქვს და
+   ჟანრის/სტატუსის/წლის ფილტრის ღილაკი აღარ არის */
+describe('GroupsCut — records', () => {
+  it('starts on "all", counts each have-tab and has no filter panel', async () => {
+    const api = await import('@/api/gallery')
+    const fetchGroups = vi.mocked(api.fetchGalleryGroups)
+    fetchGroups.mockResolvedValue({
+      by: 'record',
+      groups: [{ ...group, kind: 'movie', id: 9, title: 'Dune', photos: 0 }],
+      facets: { types: { movie: 238, all: 238 }, have: { with: 12, without: 226, all: 238 } },
+      previews: {},
+    } as never)
+
+    const node = await mountGroupsCut('/gallery/records', { by: 'record', type: 'movie' })
+
+    expect(fetchGroups).toHaveBeenLastCalledWith('record', expect.objectContaining({ have: 'all' }))
+    expect(fetchGroups.mock.calls.at(-1)?.[1]).not.toHaveProperty('genre')
+    const tab = (label: string) => [...node.querySelectorAll('button')].find((b) => b.textContent?.includes(label))
+    expect(tab(i18n.t('gallery.have.with'))?.textContent).toContain('12')
+    expect(tab(i18n.t('gallery.have.without'))?.textContent).toContain('226')
+    expect(tab(i18n.t('gallery.have.all'))?.getAttribute('aria-pressed') ?? tab(i18n.t('gallery.have.all'))?.getAttribute('aria-selected')).toBe('true')
+    // ჟანრის/სტატუსის/წლის ფილტრის ღილაკი („ფილტრი") აღარ არის
+    expect(tab(i18n.t('filter.more'))).toBeUndefined()
   })
 })

@@ -7,7 +7,7 @@ import {
   deleteGalleryVideo,
   fetchGalleryVideos,
   type GalleryVideo as GalleryVideoItem,
-  type GalleryVideoOwnerType,
+  type GalleryVideoGroup,
   type GalleryVideoSort,
 } from '@/api/gallery'
 import type { VideoPlatform } from '@/api/videos'
@@ -16,7 +16,7 @@ import { isAllowedEmbed } from '@/lib/embed'
 import { usePages } from '@/lib/paged'
 import { errorMessage } from '@/lib/errors'
 import { tintStyle } from '@/lib/gameMeta'
-import { useModules } from '@/lib/modules'
+import { moduleName, useModules } from '@/lib/modules'
 import { usePlayer, type PlayerItem } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
 import { cn } from '@/lib/utils'
@@ -29,6 +29,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { ModuleIcon } from '@/components/ModuleIcon'
+import { LayoutToggle, type GalleryLayout } from '@/components/gallery/LayoutToggle'
 
 /* ============================================================
    შენახული **ვიდეო-ბმულები** — თავიდან გადაკეთებული.
@@ -42,10 +43,11 @@ import { ModuleIcon } from '@/components/ModuleIcon'
    ⚠️ **ვერტიკალური ბარათების ბადე** (აქამდე ჰორიზონტალური `h-20 w-32` ესკიზებით):
    `aspect-video` ესკიზი ხანგრძლივობითა და Play-ით, სათაური ორ ხაზად, არხი ·
    თარიღი, მფლობელის ჩიპი მოდულის ფერით; ღილაკები **ტექსტით** (დაკვრა · ჩანაწერი ·
-   წყარო), წაშლა — კონტექსტურ მენიუში. ზედა ზოლში ძებნა, „მფლობელი“ ჭრილი
-   (ყველა · ჩანაწერი · მსახიობი), დალაგება და დაჯგუფება „ჩანაწერის მიხედვით“ —
-   ძებნა/ფილტრი/დალაგება სერვერზეა (`q`, `owner_type`, `sort`), დაჯგუფება
-   მიმდინარე გვერდზე ფრონტზე.
+   წყარო), წაშლა — კონტექსტურ მენიუში. ზედა ზოლში მოდულის ტაბები (ფერით,
+   ხატულით და რიცხვით — `facets.types`, ბიბლიოთეკის ჭრილივით), ძებნა, დალაგება,
+   „დაჯგუფებული / არეული" (`LayoutToggle`, როგორც სხვა ჭრილებში) და დაჯგუფება
+   „ჩანაწერით · მოდულით". ⚠️ დაჯგუფების რიგი **სერვერზეა** (`group`) — ჯგუფი
+   გვერდებზე აღარ იხლიჩება; სექციებად კი მიმდინარე გვერდი იყოფა.
 
    ⚠️ **დაკვრა საერთო დამკვრელშია**: გვერდის გადართვა დაკვრას არ
    წყვეტს. `kind: 'link'` ნიშნავს, რომ მრიცხველი არ არსებობს — ბმულს
@@ -55,12 +57,13 @@ import { ModuleIcon } from '@/components/ModuleIcon'
    ============================================================ */
 
 const SORTS: GalleryVideoSort[] = ['new', 'old', 'title']
+const VIDEO_GROUPS: GalleryVideoGroup[] = ['record', 'module']
 
 /** გვერდზე — ბადის 4 სვეტის (და 3-ისა და 2-ის) ჯერადი */
 const VIDEO_PAGE_SIZE = 24
 
 export function VideosCut() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const confirm = useConfirm()
   const navigate = useNavigate()
@@ -71,9 +74,13 @@ export function VideosCut() {
 
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
-  const [owner, setOwner] = useState<'all' | GalleryVideoOwnerType>('all')
+  const [facets, setFacets] = useState<Partial<Record<string, number>>>({})
+  /** მოდულის ტაბი — `movie` · … · `actor` (ფოტოების `type`-ის იგივე სია) */
+  const [type, setType] = useState<string>('all')
   const [sort, setSort] = useState<GalleryVideoSort>('new')
-  const [grouping, setGrouping] = useState<'flat' | 'owner'>('flat')
+  const [layout, setLayout] = useState<GalleryLayout>('grouped')
+  const [grouping, setGrouping] = useState<GalleryVideoGroup>('record')
+  const group = layout === 'grouped' ? grouping : undefined
 
   // ძებნა აკრეფისას, 350 ms ჩამორჩენით — ვიდეოების მოდულის იგივე წესი
   useEffect(() => {
@@ -85,15 +92,20 @@ export function VideosCut() {
 
   /* 24 = 4 სვეტის ჯერადი (6 რიგი); ნომრები + „მეტის ჩვენება" — ფილტრის შეცვლა პირველ გვერდზე აბრუნებს */
   const query = usePages({
-    queryKey: ['gallery-videos', { term, owner, sort }],
+    queryKey: ['gallery-videos', { term, type, sort, group }],
     fetchPage: (page) =>
       fetchGalleryVideos({
         page,
         per_page: VIDEO_PAGE_SIZE,
         q: term || undefined,
-        owner_type: owner === 'all' ? undefined : owner,
+        type: type === 'all' ? undefined : type,
         sort,
-      }).then((r) => ({ items: r.data, total: r.meta.total, lastPage: r.meta.last_page })),
+        group,
+      }).then((r) => {
+        // მოდულის ტაბების რიცხვები — მოდულის ფილტრამდე, ყოველ გვერდზე ერთნაირი
+        setFacets(r.facets?.types ?? {})
+        return { items: r.data, total: r.meta.total, lastPage: r.meta.last_page }
+      }),
   })
 
   const remove = useMutation({
@@ -122,21 +134,22 @@ export function VideosCut() {
 
   const playFrom = (index: number) => player.play(items.map(toItem), index, t('gallery.videosTitle'))
 
-  const ownerKey = (video: GalleryVideoItem) => `${video.owner.kind}:${video.owner.id}`
-
-  /* დაჯგუფება „ჩანაწერის მიხედვით": მიმდინარე გვერდის ბმულები მფლობელის
-     სექციებად, რიგი — როგორც სერვერმა მოიტანა */
+  /* დაჯგუფება: მიმდინარე გვერდის ბმულები ჩანაწერის ან მოდულის სექციებად,
+     რიგი — როგორც სერვერმა დაალაგა (`group`) */
+  const sectionKey = (video: GalleryVideoItem) =>
+    grouping === 'module' ? video.owner.kind : `${video.owner.kind}:${video.owner.id}`
   const sections = useMemo(() => {
-    if (grouping !== 'owner') return null
+    if (!group) return null
     const map = new Map<string, { key: string; video: GalleryVideoItem; items: GalleryVideoItem[] }>()
     items.forEach((video) => {
-      const key = ownerKey(video)
+      const key = sectionKey(video)
       const bucket = map.get(key) ?? { key, video, items: [] }
       bucket.items.push(video)
       map.set(key, bucket)
     })
     return [...map.values()]
-  }, [items, grouping])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sectionKey მხოლოდ grouping-ზეა დამოკიდებული
+  }, [items, group, grouping])
 
   const openOwner = (video: GalleryVideoItem) =>
     video.owner.kind === 'actor'
@@ -151,22 +164,37 @@ export function VideosCut() {
   const iconOf = (video: GalleryVideoItem) =>
     video.owner.kind === 'actor' ? 'User' : (modules.find((m) => m.key === video.owner.kind)?.icon ?? 'Images')
 
+  /** მოდულის სახელი სექციისა და ტაბისთვის (მსახიობი — ცალკე) */
+  const moduleLabel = (kind: string) => {
+    if (kind === 'actor') return t('gallery.inner.actors')
+    const module = modules.find((m) => m.key === kind)
+    return module ? moduleName(module, i18n.language) : kind
+  }
+  const moduleKinds = Object.keys(facets).filter((key) => key !== 'all' && (facets[key] ?? 0) > 0)
+
   const toolbar = (
     <div className="mb-4 space-y-3">
-      <CutTabs
-        size="sm"
-        layout="inline"
-        label={t('gallery.videoOwner')}
-        options={[
-          { key: 'all', label: t('filter.all') },
-          { key: 'record', label: t('gallery.videoOwnerRecord') },
-          { key: 'actor', label: t('gallery.videoOwnerActor') },
-        ]}
-        value={owner}
-        onChange={(key) => {
-          setOwner(key as 'all' | GalleryVideoOwnerType)
-        }}
-      />
+      {/* მოდულის ტაბები — ფერით, ხატულით და რიცხვით (ბიბლიოთეკის ჭრილივით) */}
+      {moduleKinds.length > 0 && (
+        <CutTabs
+          label={t('gallery.domainScope')}
+          options={[
+            { key: 'all', label: t('filter.all'), count: facets.all },
+            ...moduleKinds.map((kind) => {
+              const module = modules.find((m) => m.key === (kind === 'actor' ? 'gallery' : kind))
+              return {
+                key: kind,
+                label: moduleLabel(kind),
+                count: facets[kind] ?? 0,
+                color: module?.color ?? null,
+                node: <ModuleIcon name={kind === 'actor' ? 'User' : (module?.icon ?? 'Images')} className="size-4 text-[var(--mod)]" />,
+              }
+            }),
+          ]}
+          value={type}
+          onChange={setType}
+        />
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-0 flex-1 sm:max-w-xs">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -193,16 +221,25 @@ export function VideosCut() {
               </SelectContent>
             </Select>
           </label>
-          <CutTabs
-            size="sm"
-            layout="inline"
-            options={[
-              { key: 'flat', label: t('gallery.videoFlat') },
-              { key: 'owner', label: t('gallery.videoByOwner') },
-            ]}
-            value={grouping}
-            onChange={(key) => setGrouping(key as 'flat' | 'owner')}
-          />
+          {/* „დაჯგუფებული / არეული" — სხვა ჭრილების იგივე გადამრთველი */}
+          <LayoutToggle value={layout} onChange={setLayout} />
+          {layout === 'grouped' && (
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="hidden sm:inline">{t('gallery.groupSection.label')}</span>
+              <Select value={grouping} onValueChange={(next) => setGrouping(next as GalleryVideoGroup)}>
+                <SelectTrigger className="h-9 w-auto min-w-32 text-sm" data-testid="video-grouping">
+                  <SelectFitValue labels={VIDEO_GROUPS.map((key) => t(`gallery.videoGroup.${key}`))} />
+                </SelectTrigger>
+                <SelectContent>
+                  {VIDEO_GROUPS.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {t(`gallery.videoGroup.${key}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+          )}
         </div>
       </div>
     </div>
@@ -340,8 +377,8 @@ export function VideosCut() {
       ) : !items.length ? (
         <EmptyState
           icon={<Video className="size-6" />}
-          title={term || owner !== 'all' ? t('gallery.videoNoMatch') : t('gallery.noVideos')}
-          hint={term || owner !== 'all' ? t('gallery.videoNoMatchHint') : t('gallery.noVideosHint')}
+          title={term || type !== 'all' ? t('gallery.videoNoMatch') : t('gallery.noVideos')}
+          hint={term || type !== 'all' ? t('gallery.videoNoMatchHint') : t('gallery.noVideosHint')}
         />
       ) : sections ? (
         <div className="space-y-6">
@@ -349,7 +386,9 @@ export function VideosCut() {
             <section key={section.key}>
               <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
                 <ModuleIcon name={iconOf(section.video)} className="size-4" />
-                <span className="truncate">{section.video.owner.title ?? `#${section.video.owner.id}`}</span>
+                <span className="truncate">
+                  {grouping === 'module' ? moduleLabel(section.video.owner.kind) : (section.video.owner.title ?? `#${section.video.owner.id}`)}
+                </span>
                 <span className="text-xs font-normal text-muted-foreground tabular-nums">{section.items.length}</span>
               </h3>
               {grid(section.items)}
