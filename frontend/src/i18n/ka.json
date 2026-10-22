@@ -2786,7 +2786,9 @@
     "pickTime": "დროის არჩევა",
     "hour": "საათი",
     "minute": "წუთი",
-    "timeConfirm": "არჩევა — {{time}}"
+    "timeConfirm": "არჩევა — {{time}}",
+    "today": "დღეს",
+    "now": "ახლა"
   },
   "photos": {
     "pickOn": "მონიშვნა",

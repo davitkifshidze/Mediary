@@ -3,8 +3,9 @@ import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { WheelPicker, WheelPickerWrapper, type WheelPickerOption } from '@ncdai/react-wheel-picker'
 import '@ncdai/react-wheel-picker/style.css'
 import { useTranslation } from 'react-i18next'
-import { Check } from 'lucide-react'
+import { Check, Clock } from 'lucide-react'
 import { LAYER_POPUP } from '@/lib/layers'
+import { nowClock } from '@/lib/dates'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -36,6 +37,9 @@ import { cn } from '@/lib/utils'
    ცვლის — `onConfirm` მხოლოდ ღილაკზე (ან Enter-ზე) იძახება, გარეთ დაჭერა და
    `Escape` კი ცვლილებას აუქმებს: მნიშვნელობა **დადასტურებისთანავე** ემატება,
    ე.ი. დამატება ერთ ცხად ქმედებაზე დგას და არა ყოველ ტრიალზე.
+
+   ⚠️ **„ახლა"** „არჩევის" გვერდითაა — ერთი დაჭერით მიმდინარე სთ:წთ-ს ადასტურებს;
+   ცარიელ ველზე ბორბლებიც მიმდინარე დროიდან იწყება (აქამდე — 09:00-იდან).
    ============================================================ */
 
 function pad(n: number): string {
@@ -65,7 +69,7 @@ const WHEEL_CLASSES = {
 
 export function TimeWheelPopover({
   value,
-  fallback = '09:00',
+  fallback,
   onConfirm,
   children,
   align = 'start',
@@ -73,7 +77,7 @@ export function TimeWheelPopover({
   onOpenChange: onOpenChangeProp,
   autoFocus = true,
 }: {
-  /** რით გაიხსნას; ცარიელზე — `fallback` */
+  /** რით გაიხსნას; ცარიელზე — `fallback`, მის გარეშე — მიმდინარე დრო */
   value: string | null
   fallback?: string
   onConfirm: (value: string) => void
@@ -104,7 +108,7 @@ export function TimeWheelPopover({
      კონტროლირებულ რეჟიმში გახსნა მშობლისგან მოდის და Radix-ის callback-ს არ გაივლის. */
   useEffect(() => {
     if (!open) return
-    const [h, m] = parseClock(value) ?? parseClock(fallback) ?? [9, 0]
+    const [h, m] = parseClock(value) ?? parseClock(fallback ?? nowClock()) ?? [9, 0]
     setHour(h)
     setMinute(m)
   }, [open, value, fallback])
@@ -114,8 +118,8 @@ export function TimeWheelPopover({
     onOpenChangeProp?.(next)
   }
 
-  const confirm = () => {
-    onConfirm(`${pad(hour)}:${pad(minute)}`)
+  const confirm = (picked = `${pad(hour)}:${pad(minute)}`) => {
+    onConfirm(picked)
     onOpenChange(false)
   }
 
@@ -139,7 +143,7 @@ export function TimeWheelPopover({
           onOpenAutoFocus={autoFocus ? undefined : (e) => e.preventDefault()}
           className={cn(
             LAYER_POPUP,
-            'fb-content w-52 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl focus:outline-none',
+            'fb-content w-64 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl focus:outline-none',
           )}
         >
           <WheelPickerWrapper>
@@ -154,10 +158,16 @@ export function TimeWheelPopover({
             </div>
           </WheelPickerWrapper>
 
-          <Button type="button" size="sm" className="mt-3 w-full" onClick={confirm}>
-            <Check className="size-3.5" />
-            {t('dates.timeConfirm', { time: `${pad(hour)}:${pad(minute)}` })}
-          </Button>
+          <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">
+            <Button type="button" variant="outline" size="sm" data-testid="time-now" onClick={() => confirm(nowClock())}>
+              <Clock className="size-3.5" />
+              {t('dates.now')}
+            </Button>
+            <Button type="button" size="sm" onClick={() => confirm()}>
+              <Check className="size-3.5" />
+              {t('dates.timeConfirm', { time: `${pad(hour)}:${pad(minute)}` })}
+            </Button>
+          </div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>

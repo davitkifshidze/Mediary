@@ -11,6 +11,27 @@ import { useSettings, type DateFormat } from '@/lib/settings'
    ============================================================ */
 
 /**
+ * **„ახლა" ლოკალურად** — `YYYY-MM-DDTHH:mm` (წუთამდე), ზუსტად ის ფორმატი, რასაც
+ * `DatePicker withTime` და `<input type="datetime-local">` ელის. ⚠️ ლოკალური
+ * საათებიდან და არა `toISOString()`-იდან — ის UTC-ში გადადის და თბილისის ღამის
+ * საათებში წინა დღეს დაწერდა.
+ */
+export function nowLocal(at: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}T${pad(at.getHours())}:${pad(at.getMinutes())}`
+}
+
+/** დღევანდელი თარიღი — `YYYY-MM-DD` */
+export function todayLocal(at: Date = new Date()): string {
+  return nowLocal(at).slice(0, 10)
+}
+
+/** მიმდინარე დრო — `HH:mm` */
+export function nowClock(at: Date = new Date()): string {
+  return nowLocal(at).slice(11)
+}
+
+/**
  * `iso` განზრახ **`sv-SE`-თია** და არა `toISOString()`-ით: ეს უკანასკნელი
  * UTC-ზე გადაჰყავს თარიღი, ე.ი. თბილისის ღამის საათებში წინა დღეს აჩვენებდა.
  */

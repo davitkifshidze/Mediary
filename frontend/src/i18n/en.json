@@ -2786,7 +2786,9 @@
     "pickTime": "Pick a time",
     "hour": "Hour",
     "minute": "Minute",
-    "timeConfirm": "Pick {{time}}"
+    "timeConfirm": "Pick {{time}}",
+    "today": "Today",
+    "now": "Now"
   },
   "photos": {
     "pickOn": "Select",

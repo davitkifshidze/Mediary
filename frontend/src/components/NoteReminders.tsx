@@ -32,6 +32,7 @@ import { ReminderCard } from '@/components/ReminderCard'
 import { EmptyState } from '@/components/ui/empty-state'
 import { activeCount, reminderInput, sortReminders } from '@/lib/reminders'
 import { cn, fromDateTimeLocal, toDateTimeLocal } from '@/lib/utils'
+import { nowLocal } from '@/lib/dates'
 
 /* ============================================================
    **შეხსენებები — ერთი ბლოკი ორ ადგილას.**
@@ -91,19 +92,24 @@ interface ReminderDraft {
   channels: ReminderChannel[]
 }
 
-const EMPTY_DRAFT: ReminderDraft = {
+/**
+ * ახალი შეხსენება. ⚠️ „ერთხელ"-ის დრო და ფანჯრის დასაწყისი **ახლით** ივსება —
+ * აქ „ახლა" აზრიანი საწყისია (ცარიელი ველი შენახვაზე ჩავარდებოდა ან ფანჯარას
+ * უსაზღვროს დატოვებდა); ფუნქციაა და არა მუდმივა, რომ „ახლა" გახსნის მომენტისა იყოს.
+ */
+const newDraft = (): ReminderDraft => ({
   mode: 'once',
-  remindAt: '',
+  remindAt: nowLocal(),
   minutes: '15',
   times: ['09:00'],
   weekdays: [1],
   days: [1],
   month: '1',
   repeat: '',
-  startsAt: '',
+  startsAt: nowLocal(),
   endsAt: '',
   channels: ['browser'],
-}
+})
 
 /** არსებული შეხსენება → მონახაზი (ჩასწორება) */
 function draftOf(reminder: NoteReminder): ReminderDraft {
@@ -347,7 +353,7 @@ function ReminderEditor({
 }) {
   const { t } = useTranslation()
   const [draft, setDraft] = useState<ReminderDraft>(() =>
-    reminder ? draftOf(reminder) : EMPTY_DRAFT,
+    reminder ? draftOf(reminder) : newDraft(),
   )
   /** ბოლოს დამატებული დრო უკვე არჩეულია? (შეტყობინება ღილაკის ქვეშ) */
   const [duplicate, setDuplicate] = useState<string | null>(null)

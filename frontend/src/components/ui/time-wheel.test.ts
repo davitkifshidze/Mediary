@@ -192,3 +192,34 @@ describe('TimeWheelPopover', () => {
     expect(confirmButton()).toBeTruthy()
   })
 })
+
+describe('TimeWheelPopover "now"', () => {
+  it('"now" confirms the current time in one click, and an empty field opens the wheels at it', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 22, 14, 5))
+    try {
+      const { TimePicker } = await import('@/components/ui/time-picker')
+      const onChange = vi.fn()
+      container = document.createElement('div')
+      document.body.appendChild(container)
+      root = createRoot(container)
+      await act(async () => root!.render(h(TooltipProvider, null, h(TimePicker, { value: null, onChange }))))
+      await flush()
+
+      await act(async () => clockButton()!.click())
+      await flush()
+      // ცარიელ ველზე ბორბლები მიმდინარე დროიდან იწყება (აქამდე — 09:00)
+      expect(confirmButton()?.textContent).toContain('14:05')
+
+      const now = document.querySelector<HTMLButtonElement>('[data-testid="time-now"]')!
+      expect(now.textContent).toBe(i18n.t('dates.now'))
+      await act(async () => now.click())
+      await flush()
+
+      expect(onChange).toHaveBeenCalledWith('14:05')
+      expect(confirmButton()).toBeFalsy()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

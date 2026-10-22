@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { DayPicker, type DateRange } from 'react-day-picker'
 import { ka, enUS } from 'react-day-picker/locale'
-import { CalendarDays, X } from 'lucide-react'
+import { CalendarCheck, CalendarDays, Clock, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LAYER_POPUP } from '@/lib/layers'
-import { useDateFormat } from '@/lib/dates'
+import { nowClock, nowLocal, todayLocal, useDateFormat } from '@/lib/dates'
+import { Button } from '@/components/ui/button'
 import { TimePicker } from '@/components/ui/time-picker'
 import 'react-day-picker/style.css'
 
@@ -29,6 +30,12 @@ import 'react-day-picker/style.css'
    ჩანაცვლება drop-in-ია და UTC-ს გადაყვანა ისევ ერთ ადგილას რჩება.
    `toISOString()` განზრახ არ გამოიყენება: თბილისის ღამის საათებში
    ერთი დღით უკან გადაიხტებოდა (იგივე ხაფანგი, რაც `lib/dates.ts`-შია).
+
+   ⚠️ **„დღეს" / „ახლა"** — კალენდრის ძირში ერთი ღილაკი: თარიღზე „დღეს",
+   დროიანზე „ახლა" (დღეს + მიმდინარე სთ:წთ), პერიოდზე „დღეს" დასაწყისად.
+   დროიან ველზე დღის არჩევა ცარიელ დროს **მიმდინარე** საათით ავსებს (აქამდე
+   ყოველთვის 09:00 იწერებოდა). ველს თავად არ ავსებს — ცარიელი = უცნობი;
+   წინასწარ შევსება გამომძახებლის საქმეა, იქ სადაც „ახლა" აზრიანია (შეხსენება).
    ============================================================ */
 
 /** `Date` → `YYYY-MM-DD` ლოკალურად (არა UTC-ში) */
@@ -58,7 +65,7 @@ function useCalendarProps() {
   }
 }
 
-/** გახსნადი ბუდე — trigger + კალენდარი popover-ში */
+/** გახსნადი ბუდე — trigger + კალენდარი popover-ში; `children` იღებს `close`-ს („დღეს"/„ახლა" ხურავს) */
 function CalendarPopover({
   id,
   text,
@@ -70,7 +77,7 @@ function CalendarPopover({
   text: string | null
   placeholder: string
   onClear?: () => void
-  children: React.ReactNode
+  children: (close: () => void) => React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
 
@@ -110,7 +117,7 @@ function CalendarPopover({
             'fb-content rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl focus:outline-none',
           )}
         >
-          {children}
+          {children(() => setOpen(false))}
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
@@ -146,8 +153,8 @@ export function DatePicker({
     if (!date) return onChange(null)
     const day = toISODate(date)
     // ⚠️ დროის გარეშე შენახვა 00:00-ს ნიშნავს; ველი ცარიელი რომ იყოს,
-    // backend-ის `date_format` ვალიდაცია ჩავარდებოდა
-    onChange(withTime ? `${day}T${nextTime || '09:00'}` : day)
+    // backend-ის `date_format` ვალიდაცია ჩავარდებოდა — ცარიელ დროს მიმდინარე ავსებს
+    onChange(withTime ? `${day}T${nextTime || nowClock()}` : day)
   }
 
   return (
@@ -157,15 +164,31 @@ export function DatePicker({
       placeholder={placeholder ?? t('dates.pick')}
       onClear={() => onChange(null)}
     >
-      <DayPicker {...calendar} mode="single" selected={selected} onSelect={(d) => emit(d)} />
-      {withTime && (
-        <div className="mt-2 flex items-center gap-2 border-t border-border pt-2">
-          <span className="text-xs text-muted-foreground">{t('dates.time')}</span>
-          <TimePicker
-            value={time}
-            onChange={(v) => emit(selected ?? new Date(), v ?? '09:00')}
-          />
-        </div>
+      {(close) => (
+        <>
+          <DayPicker {...calendar} mode="single" selected={selected} onSelect={(d) => emit(d)} />
+          {withTime && (
+            <div className="mt-2 flex items-center gap-2 border-t border-border pt-2">
+              <span className="text-xs text-muted-foreground">{t('dates.time')}</span>
+              <TimePicker value={time} onChange={(v) => emit(selected ?? new Date(), v ?? nowClock())} />
+            </div>
+          )}
+          <div className="mt-2 flex border-t border-border pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="date-today"
+              onClick={() => {
+                onChange(withTime ? nowLocal() : todayLocal())
+                close()
+              }}
+            >
+              {withTime ? <Clock className="size-3.5" /> : <CalendarCheck className="size-3.5" />}
+              {t(withTime ? 'dates.now' : 'dates.today')}
+            </Button>
+          </div>
+        </>
       )}
     </CalendarPopover>
   )
@@ -206,18 +229,38 @@ export function DateRangePicker({
       placeholder={placeholder ?? t('dates.pickRange')}
       onClear={() => onChange({ from: null, to: null })}
     >
-      <DayPicker
-        {...calendar}
-        mode="range"
-        numberOfMonths={2}
-        selected={selected}
-        onSelect={(range) =>
-          onChange({
-            from: range?.from ? toISODate(range.from) : null,
-            to: range?.to ? toISODate(range.to) : null,
-          })
-        }
-      />
+      {() => (
+        <>
+          <DayPicker
+            {...calendar}
+            mode="range"
+            numberOfMonths={2}
+            selected={selected}
+            onSelect={(range) =>
+              onChange({
+                from: range?.from ? toISODate(range.from) : null,
+                to: range?.to ? toISODate(range.to) : null,
+              })
+            }
+          />
+          {/* „დღეს" — დასაწყისად; დასასრული რჩება, თუ დღევანდელის შემდეგაა (ღია რჩება — მეორე დღე ირჩევა) */}
+          <div className="mt-2 flex border-t border-border pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="date-today"
+              onClick={() => {
+                const today = todayLocal()
+                onChange({ from: today, to: value.to && value.to >= today ? value.to : null })
+              }}
+            >
+              <CalendarCheck className="size-3.5" />
+              {t('dates.today')}
+            </Button>
+          </div>
+        </>
+      )}
     </CalendarPopover>
   )
 }
