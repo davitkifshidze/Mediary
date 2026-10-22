@@ -154,8 +154,12 @@ function useCalendarView(selected: Date | undefined, calendar: CalendarProps) {
               <span className="rdp-caption_label tabular-nums">{label}</span>
             )}
           </div>
-          {/* დღეების ბადის სიგანე — 7 × `--rdp-day-width` */}
-          <div className="mt-1 grid w-[252px] grid-cols-3 gap-1">{grid}</div>
+          {/* ⚠️ სიგანე შიგთავსისაა (`w-max`): სამი თანაბარი სვეტი უგრძესი სახელის სიგანით —
+              თვის სახელი სრულად ჩანს და ფანჯარა საჭიროებისამებრ ფართოვდება; ქვედა
+              ზღვარი დღეების ბადის სიგანეა (7 × `--rdp-day-width`); ტელეფონზე ორი სვეტი, რომ ეკრანს არ გასცდეს */}
+          <div className="mt-1 grid w-max min-w-[252px] grid-cols-2 gap-1 sm:grid-cols-3" data-testid="calendar-grid">
+            {grid}
+          </div>
         </div>
       </div>
     </div>

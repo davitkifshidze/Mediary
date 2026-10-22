@@ -161,6 +161,10 @@ describe('DatePicker month and year views', () => {
     expect(months.className).toContain('fb-rdp')
     expect(months.querySelector('.rdp-month_caption')).not.toBeNull()
     expect(months.querySelectorAll('.rdp-nav .rdp-chevron')).toHaveLength(2)
+    // სახელები სრულად — ბადე შიგთავსის სიგანისაა, უჯრა არ იკვეცება
+    const grid = months.querySelector('[data-testid="calendar-grid"]')!
+    expect(grid.className).toContain('w-max')
+    expect([...grid.children].every((c) => !c.className.includes('truncate'))).toBe(true)
 
     // წელი → წლების სია (12-12), ისრით უკან
     await act(async () => document.querySelector<HTMLButtonElement>('[data-testid="calendar-year"]')!.click())

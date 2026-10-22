@@ -993,9 +993,9 @@
 .fb-cal-drill {
   display: inline-flex;
   align-items: center;
-  height: var(--rdp-nav_button-height, 1.75rem);
+  height: 2rem;
   margin-inline-start: -0.5rem;
-  padding: 0 0.5rem;
+  padding: 0 0.75rem;
   border-radius: var(--radius);
   cursor: pointer;
   transition: background-color 150ms;
@@ -1004,15 +1004,15 @@
   background-color: var(--muted);
 }
 /* თვის/წლის უჯრა — დღის ღილაკის სიმაღლე, რადიუსი და ფერები (ჰოვერი, არჩეული);
-   დღევანდელის ნიშანი — `fb-cal-today` (ზემოთ) */
+   დღევანდელის ნიშანი — `fb-cal-today` (ზემოთ).
+   ⚠️ სახელი **სრულად** ჩანს (შეკვეცის გარეშე) — ბადე უგრძესი თვის სიგანისაა
+   (`date-picker.tsx`-ის `w-max`), ე.ი. „სექტემბერი" არ იჭრება */
 .fb-cal-cell {
   height: var(--rdp-day_button-height);
-  padding: 0 0.25rem;
-  overflow: hidden;
+  padding: 0 0.75rem;
   border-radius: var(--rdp-day_button-border-radius);
   font: inherit;
   white-space: nowrap;
-  text-overflow: ellipsis;
   cursor: pointer;
   transition: background-color 150ms;
 }
