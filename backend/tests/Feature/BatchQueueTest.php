@@ -87,6 +87,22 @@ class BatchQueueTest extends TestCase
         });
     }
 
+    /**
+     * რიგის ამოწურვა ნამდვილი worker-ით — ამავე PHP პროცესში.
+     *
+     * ⚠️ **`--memory=0` აუცილებელია.** worker-ის ნაგულისხმევი 128 MB-იანი
+     * ზღვარი `memory_get_usage()`-ს ზომავს, ე.ი. აქ **მთელი PHPUnit-პროცესის**
+     * მეხსიერებას და არა worker-ისას. სრული ნაკრები ამ ზღვარს შუა გზაზე
+     * სცდება, worker კი ყოველი job-ის შემდეგ ამოწმებს და პირველივეზე
+     * ჩერდება — მრავალერთეულიანი ტესტი ერთ შედეგს ხედავდა, მაშინ როცა
+     * ფაილი ცალკე ყოველთვის მწვანე იყო. პროდაქშენის worker ცალკე პროცესია
+     * (`BatchController::startWorker()`), ამიტომ იქ ზღვარი რჩება.
+     */
+    private function runWorker(): void
+    {
+        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1, '--memory' => 0]);
+    }
+
     private function makeMovie(User $owner, string $title): Movie
     {
         $movie = Movie::create(['user_id' => $owner->id, 'year' => 2020]);
@@ -315,7 +331,7 @@ class BatchQueueTest extends TestCase
             'options' => ['fields' => ['title']],
         ])->assertStatus(202)->json('id');
 
-        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+        $this->runWorker();
 
         $this->assertSame(1, DB::table('failed_jobs')->count(), 'ჩავარდნა `failed_jobs`-ში უნდა ჩაიწეროს');
 
@@ -464,7 +480,7 @@ class BatchQueueTest extends TestCase
         // ⚠️ გეგმასა და გაშვებას შორის წაშლილი ჩანაწერი — კანონიერი გამოტოვება
         $gone->delete();
 
-        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+        $this->runWorker();
 
         $items = collect(
             $this->actingAs($this->alice)->getJson("/api/batches/{$id}")->assertOk()->json('items')
@@ -495,7 +511,7 @@ class BatchQueueTest extends TestCase
             'options' => ['fields' => ['title']],
         ])->assertStatus(202)->json('id');
 
-        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+        $this->runWorker();
 
         $this->actingAs($this->bob)->getJson("/api/batches/{$id}")->assertStatus(404);
 
@@ -532,7 +548,7 @@ class BatchQueueTest extends TestCase
             'options' => ['fields' => ['title']],
         ])->assertStatus(202)->json('id');
 
-        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+        $this->runWorker();
 
         $items = collect(
             $this->actingAs($this->alice)->getJson("/api/batches/{$id}")->assertOk()->assertJsonPath('failed', 1)->json('items')
@@ -560,7 +576,7 @@ class BatchQueueTest extends TestCase
             'options' => ['sources' => ['tmdb']],
         ])->assertStatus(202)->json('id');
 
-        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+        $this->runWorker();
 
         $items = $this->actingAs($this->alice)->getJson("/api/batches/{$id}")
             ->assertOk()
@@ -590,7 +606,7 @@ class BatchQueueTest extends TestCase
             'options' => ['fields' => ['title']],
         ])->assertStatus(202)->json('id');
 
-        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+        $this->runWorker();
 
         $items = collect($this->actingAs($this->alice)->getJson("/api/batches/{$id}")->assertOk()->assertJsonPath('failed', 0)->json('items'))->keyBy('id');
 
@@ -616,7 +632,7 @@ class BatchQueueTest extends TestCase
             'options' => ['fields' => ['title']],
         ])->assertStatus(202)->json('id');
 
-        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+        $this->runWorker();
 
         $items = $this->actingAs($this->alice)->getJson("/api/batches/{$id}")->assertOk()->json('items');
 
