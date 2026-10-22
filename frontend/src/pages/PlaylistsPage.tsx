@@ -132,6 +132,9 @@ export function PlaylistsPage() {
               }
               actions={actions}
               onEdit={() => setEditing(playlist)}
+              onDelete={() => setDeleting(playlist)}
+              /* რჩეული პლეილისტს არ აქვს — ბარათის პირველი უჯრა დაკვრაა */
+              lead={<PlayPlaylistButton playlist={playlist} />}
               bar={
                 <span className="flex shrink-0 items-center gap-1">
                   {/* სიმღერები სიაში არ მოდის (`songs_count`-ია), ამიტომ
@@ -193,16 +196,11 @@ function PlayPlaylistButton({ playlist }: { playlist: Playlist }) {
 
   if (!playlist.songs_count) return null
 
+  /* ტექსტით და `h-9`-ით — რიგის სხვა ღილაკების ზომა; ბარათში 2×2-ის პირველი უჯრაა */
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      disabled={start.isPending}
-      onClick={() => start.mutate()}
-      aria-label={t('playback.playAll')}
-      title={t('playback.playAll')}
-    >
-      {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
+    <Button variant="outline" size="sm" disabled={start.isPending} onClick={() => start.mutate()}>
+      {start.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
+      {t('playback.playAll')}
     </Button>
   )
 }

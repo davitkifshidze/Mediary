@@ -472,6 +472,13 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
                   tags={record.tags}
                   actions={actions}
                   onEdit={() => setEditing(record)}
+                  onDelete={() => void askDelete(record)}
+                  favorite={{
+                    active: record.is_favorite,
+                    pending: favorite.isPending && favorite.variables === record.id,
+                    onToggle: () => favorite.mutate(record.id),
+                  }}
+                  badges={<VisibilityBadge value={record.visibility} />}
                   bar={
                     <div className="flex shrink-0 items-center gap-1">
                       {isPlayableRecord(record) && (

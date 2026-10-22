@@ -325,7 +325,20 @@ export function NotesPage() {
 
           <RecordList layout={layout}>
             {notes.map((note) => {
-              /* მარჯვენა ღილაკის მენიუ: გახსნა · სტატუსი ▸ · რჩეული · შეხსენებები ·
+              const fav = {
+                active: note.is_favorite,
+                pending: favorite.isPending && favorite.variables === note.id,
+                onToggle: () => favorite.mutate(note.id),
+              }
+              const askDelete = async () => {
+                const ok = await confirm({
+                  title: t('notes.deleteTitle'),
+                  description: t('notes.deleteHint', { name: note.title }),
+                  variant: 'destructive',
+                })
+                if (ok) remove.mutate(note.id)
+              }
+              /* მარჯვენა ღილაკის მენიუ (და ბარათის „მოქმედება"): გახსნა · სტატუსი ▸ · რჩეული · შეხსენებები ·
                  (ბმული) · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
                 { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpened(note) },
@@ -341,14 +354,7 @@ export function NotesPage() {
                   label: t('actions.delete'),
                   icon: MENU_ICONS.delete,
                   danger: true,
-                  run: async () => {
-                    const ok = await confirm({
-                      title: t('notes.deleteTitle'),
-                      description: t('notes.deleteHint', { name: note.title }),
-                      variant: 'destructive',
-                    })
-                    if (ok) remove.mutate(note.id)
-                  },
+                  run: askDelete,
                 },
               ]
               return (
@@ -396,6 +402,10 @@ export function NotesPage() {
                   hashTags={false}
                   actions={actions}
                   onEdit={() => setEditing(note)}
+                  onDelete={askDelete}
+                  favorite={fav}
+                  /* ბარათში სტატუსი ბეჯად რჩება; შეხსენებები „მოქმედების" მენიუშია */
+                  badges={<StatusBadge status={note.status} size="row" />}
                   /* კლასტერი: ბმული ტექსტით → სტატუსი („დაარქივებული") →
                      **შემხსენებელი** (ქარვისფერი, ტექსტით და რიცხვით) → **რჩეული** → რედაქტირება →
                      წაშლა; ყველა h-9. ⚠️ ბმულის სლოტი უბმულოზეც ადგილზეა (`invisible`), მაგრამ
@@ -418,28 +428,12 @@ export function NotesPage() {
                       {/* აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
                       <StatusBadge status={note.status} size="row" />
                       <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(note)} />
-                      <FavoriteButton
-                        active={note.is_favorite}
-                        pending={favorite.isPending && favorite.variables === note.id}
-                        onToggle={() => favorite.mutate(note.id)}
-                      />
+                      <FavoriteButton active={fav.active} pending={fav.pending} onToggle={fav.onToggle} />
                       <Button variant="edit" size="sm" onClick={() => setEditing(note)}>
                         <SquarePen className="size-3.5" />
                         {t('actions.edit')}
                       </Button>
-                      <Button
-                        variant="destructiveOutline"
-                        size="sm"
-                        onClick={async () => {
-                          const ok = await confirm({
-                            title: t('notes.deleteTitle'),
-                            description: t('notes.deleteHint', { name: note.title }),
-                            variant: 'destructive',
-                          })
-                          if (ok) remove.mutate(note.id)
-                        }}
-                        aria-label={t('actions.delete')}
-                      >
+                      <Button variant="destructiveOutline" size="sm" onClick={askDelete} aria-label={t('actions.delete')}>
                         <Trash2 className="size-3.5" />
                         {t('actions.delete')}
                       </Button>

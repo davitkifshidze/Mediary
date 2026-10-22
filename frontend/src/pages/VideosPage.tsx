@@ -18,6 +18,7 @@ import {
   Link2,
   ListVideo,
   Loader2,
+  MonitorPlay,
   Play,
   Plus,
   Search,
@@ -298,6 +299,14 @@ export function VideosPage() {
   })
 
   const download = useMutation({ mutationFn: startVideoDownload, onSuccess: invalidate, onError: fail })
+  /* yt-dlp სერვერზე არ არის — მოთხოვნის ნაცვლად ახსნა */
+  const startDownload = (v: Video) => {
+    if (ytdlpQ.data && !ytdlpQ.data.available) {
+      toast({ title: t('videos.local.unavailable'), variant: 'error' })
+      return
+    }
+    download.mutate(v.id)
+  }
   const dropDownload = useMutation({ mutationFn: deleteVideoDownload, onSuccess: invalidate, onError: fail })
 
   /* ⚠️ ჩამოწერა **ფონურად** მიდის (`artisan serve` ერთნაკადიანია), ე.ი.
@@ -426,12 +435,16 @@ export function VideosPage() {
     },
     statusActions(t('form.status'), statuses, v.status, lang, (key) => status.mutate({ id: v.id, next: key })),
     favoriteAction(v.is_favorite, () => favorite.mutate(v.id), t),
-    ...(!v.download_status || v.download_status === 'failed'
-      ? [{ key: 'download', label: t('videos.local.start'), icon: Download, run: () => download.mutate(v.id) }]
+    /* ჩამოტვირთვა (გაჭედილისაც — „ხელახლა") და მზა ასლის დაკვრა/წაშლა — ბარათის ზოლიდან აქ
+       გადმოვიდა: ბარათზე 2×2-ია, მდგომარეობას ესკიზის ბეჯი ამბობს */
+    ...(!v.download_status || v.download_status === 'failed' || v.download_stale
+      ? [{ key: 'download', label: t('videos.local.start'), icon: Download, disabled: download.isPending, run: () => startDownload(v) }]
       : []),
-    /* ლოკალური ასლის წაშლა ბარათის ზოლიდან აქ გადმოვიდა: ზოლში ერთი ღილაკი დარჩა */
     ...(v.download_status === 'ready'
-      ? [{ key: 'drop', label: t('videos.local.remove'), icon: FileX, run: () => void askDropDownload(v) }]
+      ? [
+          { key: 'local', label: t('videos.local.play'), icon: MonitorPlay, run: () => setLocal(v) },
+          { key: 'drop', label: t('videos.local.remove'), icon: FileX, run: () => void askDropDownload(v) },
+        ]
       : []),
     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(v) },
     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete(v) },
@@ -532,39 +545,27 @@ export function VideosPage() {
             />
           )}
 
-          {/* ბარათები `VideoCard`-ითაა (ახლანდელი), ბადე და სტრიქონები — `RecordView`-ით;
-              მენიუ ერთია (`videoActions`). სვეტების რიცხვს **ბადის** სიგანე წყვეტს და არა
-              `main`-ისა (ადრე `@container`-ით — ფილტრების 280 px-იანი პანელიც ითვლებოდა და ბარათი
-              ~300 px-მდე ვიწროვდებოდა): ბარათი ~340 px-ზე ვიწრო არ ხდება; ტელეფონზე — ერთი სვეტი */}
+          {/* ბარათები `VideoCard`-ითაა (ესკიზი, ბეჯები, ტეგები), ბადე და სტრიქონები — `RecordView`-ით;
+              მენიუ ერთია (`videoActions`). სვეტები სიის ბარათების წესით (`RecordList` — სიის
+              საკუთარი სიგანე, ≤ 3, ტელეფონზე ერთი) */}
           {layout === 'cards' ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,21.25rem),1fr))] gap-4" data-testid="video-grid">
+            <RecordList layout="cards">
               {videos.map((v) => (
-                <VideoCard
-                  key={v.id}
-                  video={v}
-                  actions={videoActions(v)}
-                  lang={lang}
-                  onOpen={() => setDetail(v)}
-                  onEdit={() => setEditing(v)}
-                  onDelete={() => void askDelete(v)}
-                  onToggleFavorite={() => favorite.mutate(v.id)}
-                  favoritePending={favorite.isPending && favorite.variables === v.id}
-                  onPlayLocal={() => setLocal(v)}
-                  download={{
-                    hint: downloadHint(v),
-                    available: !ytdlpQ.data || ytdlpQ.data.available,
-                    pending: download.isPending,
-                    onStart: () => {
-                      if (ytdlpQ.data && !ytdlpQ.data.available) {
-                        toast({ title: t('videos.local.unavailable'), variant: 'error' })
-                        return
-                      }
-                      download.mutate(v.id)
-                    },
-                  }}
-                />
+                <li key={v.id} data-testid="video-grid-item">
+                  <VideoCard
+                    video={v}
+                    actions={videoActions(v)}
+                    lang={lang}
+                    onOpen={() => setDetail(v)}
+                    onEdit={() => setEditing(v)}
+                    onDelete={() => void askDelete(v)}
+                    onToggleFavorite={() => favorite.mutate(v.id)}
+                    favoritePending={favorite.isPending && favorite.variables === v.id}
+                    downloadHint={downloadHint(v)}
+                  />
+                </li>
               ))}
-            </div>
+            </RecordList>
           ) : (
             <RecordList layout={layout}>
               {videos.map((v) => (

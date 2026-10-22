@@ -12,11 +12,9 @@ import i18n from '@/i18n'
    ⚠️ მოწმდება: ტიპი · სტატუსი · პლატფორმა სამივე `h-7 min-w-24`-ია და ფერს
    ატარებს (YouTube — `--platform-youtube`, ტიპი — თავისი ფერი); უტიპო ვიდეოზე
    სლოტი მაინც სამია; ტეგების სლოტი ტეგების გარეშეც ადგილზეა (`min-h-7`);
-   მოქმედებების ზოლში ყველა კონტროლი `h-9`-ია და ჩამოტვირთვა ერთი ღილაკია
-   (მზაზე — ბმული ლოკალურ ფაილზე, თორემ — ჩამოტვირთვის ღილაკი).
-   ზოლში ზუსტად ოთხი ღილაკია (რჩეული · ჩამოტვირთვა ·
-   რედაქტირება · წაშლა), „წყარო" კონტექსტურ მენიუშია, ესკიზი და სათაური
-   ფანჯარას ხსნის.
+   ზოლი სიის ბარათების 2×2-ია (რჩეული · რედაქტირება / წაშლა · „მოქმედება"),
+   ყველა `h-9`; ჩამოტვირთვის მდგომარეობას ესკიზის ბეჯი ამბობს, „წყარო" მენიუშია;
+   ბარათზე დაჭერა ნებისმიერ ადგილას ფანჯარას ხსნის, ღილაკზე დაჭერა — არა.
    ============================================================ */
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -74,8 +72,7 @@ async function mount(subject: Video, overrides: Partial<VideoCardProps> = {}) {
     onEdit: vi.fn(),
     onDelete: vi.fn(),
     onToggleFavorite: vi.fn(),
-    download: { hint: 'hint', available: true, pending: false, onStart: vi.fn() },
-    onPlayLocal: vi.fn(),
+    downloadHint: 'hint',
     ...overrides,
   }
   container = document.createElement('div')
@@ -122,50 +119,51 @@ describe('VideoCard', () => {
     expect(meta.textContent).toContain('Studio')
   })
 
-  it('the actions bar sits at the bottom with four h-9 controls that never get cut', async () => {
+  it('the actions bar is the shared 2×2: favourite · edit / delete · actions, all h-9', async () => {
     const { el, props } = await mount(video())
 
     const bar = el.querySelector<HTMLElement>('[data-testid="video-actions"]')!
     expect(bar.className).toContain('mt-auto')
-    // ჭრის ნაცვლად — მეორე ხაზი
-    expect(bar.className).toContain('flex-wrap')
-    expect(bar.className).toContain('min-w-0')
-    const controls = [...bar.querySelectorAll<HTMLElement>('a, button')]
-    // რჩეული · ჩამოტვირთვა · რედაქტირება · წაშლა — „წყარო" და „აქედან დაკვრა" ზოლში აღარ არის
+    const grid = bar.querySelector<HTMLElement>('[data-testid="record-card-actions"]')!
+    expect(grid.className).toContain('grid-cols-2')
+    const controls = [...grid.children] as HTMLElement[]
     expect(controls).toHaveLength(4)
     for (const c of controls) expect(c.className).toContain('h-9')
+    expect(controls.map((c) => c.textContent)).toEqual([
+      i18n.t('filter.favorite'),
+      i18n.t('actions.edit'),
+      i18n.t('actions.delete'),
+      i18n.t('actions.menu'),
+    ])
+    // ჩამოტვირთვა და „წყარო" ზოლში აღარ არის — მენიუშია
+    expect(bar.querySelector('[data-testid="download-control"]')).toBeNull()
     expect(bar.querySelector('a')).toBeNull()
-    expect(bar.querySelector(`[aria-label="${i18n.t('playback.playFromHere')}"]`)).toBeNull()
-    expect(controls[0].textContent).toContain(i18n.t('filter.favorite'))
-    expect(controls[3].getAttribute('aria-label')).toBe(i18n.t('actions.delete'))
 
-    // რჩეული ზოლშია და არა სათაურის ხაზზე
     await act(async () => controls[0].click())
     expect(props.onToggleFavorite).toHaveBeenCalled()
-
-    const download = el.querySelector<HTMLButtonElement>('button[data-testid="download-control"]')!
-    await act(async () => download.click())
-    expect(props.download.onStart).toHaveBeenCalled()
-
-    await act(async () => [...bar.querySelectorAll('button')].find((b) => b.textContent?.includes(i18n.t('actions.edit')))!.click())
+    await act(async () => controls[1].click())
     expect(props.onEdit).toHaveBeenCalled()
+    await act(async () => controls[2].click())
+    expect(props.onDelete).toHaveBeenCalled()
+    // ღილაკზე დაჭერა ბარათს არ ხსნის
+    expect(props.onOpen).not.toHaveBeenCalled()
   })
 
-  it('a downloaded video shows the local-copy badge and opens the local player instead of downloading', async () => {
-    const { el, props } = await mount(video({ download_status: 'ready', download_size: 329 * 1024 * 1024, download_format: 'mp4' }))
+  it('a downloaded video shows the local-copy badge on the thumbnail', async () => {
+    const { el } = await mount(video({ download_status: 'ready', download_size: 329 * 1024 * 1024, download_format: 'mp4' }))
 
     const badge = el.querySelector<HTMLElement>('[data-testid="download-badge"]')!
     expect(badge.className).toContain('rounded-md')
     expect(badge.className).toContain('bg-[var(--status-watched)]')
     expect(badge.textContent).toContain(i18n.t('videos.local.ready'))
+    expect(badge.getAttribute('title')).toBe('hint')
+  })
 
-    // მზა ასლი ცალკე ფლეერში იხსნება, არა ბრაუზერის მნახველში
-    const control = el.querySelector<HTMLButtonElement>('button[data-testid="download-control"][data-local="ready"]')!
-    expect(control.getAttribute('aria-label')).toBe(i18n.t('videos.local.play'))
-    expect(el.querySelector('a[href*="/download"]')).toBeNull()
-    await act(async () => control.click())
-    expect(props.onPlayLocal).toHaveBeenCalled()
-    expect(props.download.onStart).not.toHaveBeenCalled()
+  it('a click anywhere on the card body opens the window', async () => {
+    const { el, props } = await mount(video())
+
+    await act(async () => el.querySelector<HTMLElement>('[data-testid="video-meta"]')!.click())
+    expect(props.onOpen).toHaveBeenCalledTimes(1)
   })
 
   it('the thumbnail and the title open the window; the source link lives in the context menu', async () => {

@@ -290,6 +290,11 @@ export function CoursesPage() {
                       remove.mutate(course.id)
                     }
                   }
+                  const fav = {
+                    active: course.is_favorite,
+                    pending: favorite.isPending && favorite.variables === course.id,
+                    onToggle: () => favorite.mutate(course.id),
+                  }
                   /* მარჯვენა ღილაკის მენიუ: გახსნა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
                   const actions: MenuAction[] = [
                     { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(course) },
@@ -330,6 +335,8 @@ export function CoursesPage() {
                         .join(' · ')}
                       tags={course.tags}
                       actions={actions}
+                      onDelete={askDelete}
+                      favorite={fav}
                       onEdit={() => setEditing(course)}
                       /* ერთი ზოლი ყველა სიაზე: სტატუსი (ჩამოსაშლელი) · რჩეული · ფაილები ·
                          ბმული (უბმულოზე უხილავი სლოტი) · რედაქტირება · წაშლა — ყველა h-9 */
@@ -344,15 +351,11 @@ export function CoursesPage() {
                               onChange={(next) => status.mutate({ id: course.id, next })}
                             />
                           }
-                          favorite={{
-                            active: course.is_favorite,
-                            pending: favorite.isPending && favorite.variables === course.id,
-                            onToggle: () => favorite.mutate(course.id),
-                          }}
+                          favorite={fav}
                           files={{ count: course.files_count ?? 0, onOpen: () => setDetail(course) }}
                           link={{ href: course.url, label: t('actions.link'), icon: ExternalLink, title: course.url ?? undefined }}
                           onEdit={() => setEditing(course)}
-                          onDelete={() => void askDelete()}
+                          onDelete={askDelete}
                         />
                       }
                     />

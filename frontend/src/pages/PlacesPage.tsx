@@ -322,6 +322,16 @@ export function PlacesPage() {
                       remove.mutate(place.id)
                     }
                   }
+                  const fav = {
+                    active: place.is_favorite,
+                    pending: favorite.isPending && favorite.variables === place.id,
+                    onToggle: () => favorite.mutate(place.id),
+                  }
+                  const badges = (
+                    <>
+                      <RatingBadge value={place.rating} size="row" className="mr-1" />
+                    </>
+                  )
                   /* მარჯვენა ღილაკის მენიუ: გახსნა · რუკა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
                   const actions: MenuAction[] = [
                     { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(place) },
@@ -366,17 +376,16 @@ export function PlacesPage() {
                       }
                       tags={place.tags}
                       actions={actions}
+                      onDelete={askDelete}
+                      favorite={fav}
+                      badges={badges}
                       onEdit={() => setEditing(place)}
                       /* ერთი ზოლი: შეფასება (უშეფასებოზე არაფერი) · რუკა (კოორდინატის გარეშე
                          უხილავი სლოტი) · სტატუსი (ჩამოსაშლელი) · რჩეული · ფაილები · რედაქტირება ·
                          წაშლა — ყველა h-9 */
                       bar={
                         <RecordActionBar
-                          before={
-                            <>
-                              <RatingBadge value={place.rating} size="row" className="mr-1" />
-                            </>
-                          }
+                          before={badges}
                           status={
                             <EnumStatusMenu
                               domain="place"
@@ -386,15 +395,11 @@ export function PlacesPage() {
                               onChange={(next) => status.mutate({ id: place.id, next })}
                             />
                           }
-                          favorite={{
-                            active: place.is_favorite,
-                            pending: favorite.isPending && favorite.variables === place.id,
-                            onToggle: () => favorite.mutate(place.id),
-                          }}
+                          favorite={fav}
                           files={{ count: place.files_count ?? 0, onOpen: () => setDetail(place) }}
                           link={{ href: place.map_url, label: t('actions.map'), icon: MapIcon, title: t('places.openMap') }}
                           onEdit={() => setEditing(place)}
-                          onDelete={() => void askDelete()}
+                          onDelete={askDelete}
                         />
                       }
                     />

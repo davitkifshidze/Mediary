@@ -285,9 +285,38 @@ export function BoardGamesPage() {
           <RecordList layout={layout}>
             {games.map((game) => {
               const image = storageUrl(game.image)
-              /* მარჯვენა ღილაკის მენიუ: გახსნა · რჩეული · — · რედაქტირება · წაშლა (სტატუსი სამაგიდოს არ აქვს) */
+              const href = game.links[0]?.url || game.bgg_url
+              const fav = {
+                active: game.is_favorite,
+                pending: favorite.isPending && favorite.variables === game.id,
+                onToggle: () => favorite.mutate(game.id),
+              }
+              const askDelete = async () => {
+                const ok = await confirm({
+                  title: t('boardGames.deleteTitle'),
+                  description: t('boardGames.deleteHint', { name: game.title }),
+                  variant: 'destructive',
+                })
+                if (ok) remove.mutate(game.id)
+              }
+              const badges = (
+                <>
+                  {game.bgg_rating != null && (
+                    <Badge size="row" className="mr-1 bg-secondary tabular-nums">
+                      BGG {game.bgg_rating}
+                    </Badge>
+                  )}
+                  {/* „★ 4.6" ერთი ბეჯით ყველგან; BGG-ის ქულა ცალკე რჩება */}
+                  <RatingBadge value={game.rating} size="row" className="mr-1" />
+                </>
+              )
+              /* მარჯვენა ღილაკის მენიუ (და ბარათის „მოქმედება"): გახსნა · ბმული · რჩეული · — · რედაქტირება · წაშლა
+                 (სტატუსი სამაგიდოს არ აქვს) */
               const actions: MenuAction[] = [
                 { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpened(game) },
+                ...(href
+                  ? [{ key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: () => window.open(href, '_blank', 'noopener,noreferrer') }]
+                  : []),
                 favoriteAction(game.is_favorite, () => favorite.mutate(game.id), t),
                 { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(game) },
                 {
@@ -295,14 +324,7 @@ export function BoardGamesPage() {
                   label: t('actions.delete'),
                   icon: MENU_ICONS.delete,
                   danger: true,
-                  run: async () => {
-                    const ok = await confirm({
-                      title: t('boardGames.deleteTitle'),
-                      description: t('boardGames.deleteHint', { name: game.title }),
-                      variant: 'destructive',
-                    })
-                    if (ok) remove.mutate(game.id)
-                  },
+                  run: askDelete,
                 },
               ]
               return (
@@ -351,43 +373,25 @@ export function BoardGamesPage() {
                     </>
                   }
                   actions={actions}
+                  onDelete={askDelete}
+                  favorite={fav}
+                  badges={badges}
                   onEdit={() => setEditing(game)}
                   /* ერთი ზოლი ყველა სიაზე: BGG · ქულა · რჩეული · ფაილები · ბმული (უბმულოზე უხილავი სლოტი) ·
                      რედაქტირება · წაშლა; სამაგიდოს სტატუსი არ აქვს (დახურული გადაწყვეტილება) */
                   bar={
                     <RecordActionBar
-                      before={
-                        <>
-                          {game.bgg_rating != null && (
-                            <Badge size="row" className="mr-1 bg-secondary tabular-nums">
-                              BGG {game.bgg_rating}
-                            </Badge>
-                          )}
-                          {/* „★ 4.6" ერთი ბეჯით ყველგან; BGG-ის ქულა ცალკე რჩება */}
-                          <RatingBadge value={game.rating} size="row" className="mr-1" />
-                        </>
-                      }
-                      favorite={{
-                        active: game.is_favorite,
-                        pending: favorite.isPending && favorite.variables === game.id,
-                        onToggle: () => favorite.mutate(game.id),
-                      }}
+                      before={badges}
+                      favorite={fav}
                       files={{ count: game.files_count ?? 0, onOpen: () => setOpened(game) }}
                       link={{
-                        href: game.links[0]?.url || game.bgg_url,
+                        href,
                         label: t('actions.link'),
                         icon: ExternalLink,
                         title: game.links[0]?.label || game.bgg_url || undefined,
                       }}
                       onEdit={() => setEditing(game)}
-                      onDelete={async () => {
-                        const ok = await confirm({
-                          title: t('boardGames.deleteTitle'),
-                          description: t('boardGames.deleteHint', { name: game.title }),
-                          variant: 'destructive',
-                        })
-                        if (ok) remove.mutate(game.id)
-                      }}
+                      onDelete={askDelete}
                     />
                   }
                 />

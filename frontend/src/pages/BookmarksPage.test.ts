@@ -519,6 +519,8 @@ describe('BookmarksPage view toggle', () => {
     const el = await mount()
 
     expect(layoutOf(el)).toBe('cards')
-    expect(el.querySelector('[data-testid="record-card-bar"] [data-testid="record-actions"]')).not.toBeNull()
+    // ბარათზე 2×2 (რჩეული · რედაქტირება / წაშლა · მოქმედება) და არა სტრიქონის სრული ზოლი
+    expect(el.querySelector('[data-testid="record-card-bar"] [data-testid="record-card-actions"]')).not.toBeNull()
+    expect(el.querySelector('[data-testid="record-actions"]')).toBeNull()
   })
 })

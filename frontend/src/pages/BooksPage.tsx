@@ -309,9 +309,28 @@ export function BooksPage() {
           <RecordList layout={layout}>
             {books.map((book) => {
               const cover = storageUrl(book.cover)
-              /* მარჯვენა ღილაკის მენიუ: გახსნა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+              /* ახალი `source_url` უპირატესია; `links[0]` ძველი ჩანაწერებისთვის რჩება */
+              const href = book.source_url || book.links[0]?.url
+              const fav = {
+                active: book.is_favorite,
+                pending: favorite.isPending && favorite.variables === book.id,
+                onToggle: () => favorite.mutate(book.id),
+              }
+              const askDelete = async () => {
+                const ok = await confirm({
+                  title: t('books.deleteTitle'),
+                  description: t('books.deleteHint', { name: title(book) }),
+                  variant: 'destructive',
+                })
+                if (ok) remove.mutate(book.id)
+              }
+              const badges = <RatingBadge value={book.rating} size="row" className="mr-1" />
+              /* მარჯვენა ღილაკის მენიუ (და ბარათის „მოქმედება"): გახსნა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
                 { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpened(book) },
+                ...(href
+                  ? [{ key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: () => window.open(href, '_blank', 'noopener,noreferrer') }]
+                  : []),
                 {
                   key: 'status',
                   label: t('form.status'),
@@ -328,20 +347,7 @@ export function BooksPage() {
                 { key: 'progress', label: t('books.menuProgress'), icon: BookOpenCheck, run: () => setProgressFor(book) },
                 { key: 'gallery', label: t('books.menuGallery'), icon: Images, run: () => setOpened(book) },
                 { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(book) },
-                {
-                  key: 'delete',
-                  label: t('actions.delete'),
-                  icon: MENU_ICONS.delete,
-                  danger: true,
-                  run: async () => {
-                    const ok = await confirm({
-                      title: t('books.deleteTitle'),
-                      description: t('books.deleteHint', { name: title(book) }),
-                      variant: 'destructive',
-                    })
-                    if (ok) remove.mutate(book.id)
-                  },
-                },
+                { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: askDelete },
               ]
               return (
                 <RecordView
@@ -406,14 +412,13 @@ export function BooksPage() {
                   tags={book.tags}
                   actions={actions}
                   onEdit={() => setEditing(book)}
+                  onDelete={askDelete}
+                  favorite={fav}
+                  badges={badges}
                   /* ერთი ზოლი ყველა სიაზე: ქულა · სტატუსი (ჩამოსაშლელი) · რჩეული · ფაილები · ბმული · რედაქტირება · წაშლა */
                   bar={
                     <RecordActionBar
-                      before={
-                        <>
-                          <RatingBadge value={book.rating} size="row" className="mr-1" />
-                        </>
-                      }
+                      before={badges}
                       status={
                         <EnumStatusMenu
                           domain="book"
@@ -423,28 +428,16 @@ export function BooksPage() {
                           onChange={(next) => status.mutate({ id: book.id, next })}
                         />
                       }
-                      favorite={{
-                        active: book.is_favorite,
-                        pending: favorite.isPending && favorite.variables === book.id,
-                        onToggle: () => favorite.mutate(book.id),
-                      }}
+                      favorite={fav}
                       files={{ count: book.files_count ?? 0, onOpen: () => setOpened(book) }}
-                      /* ახალი `source_url` უპირატესია; `links[0]` ძველი ჩანაწერებისთვის რჩება */
                       link={{
-                        href: book.source_url || book.links[0]?.url,
+                        href,
                         label: t('actions.link'),
                         icon: ExternalLink,
                         title: book.source_url || book.links[0]?.label || book.links[0]?.url,
                       }}
                       onEdit={() => setEditing(book)}
-                      onDelete={async () => {
-                        const ok = await confirm({
-                          title: t('books.deleteTitle'),
-                          description: t('books.deleteHint', { name: title(book) }),
-                          variant: 'destructive',
-                        })
-                        if (ok) remove.mutate(book.id)
-                      }}
+                      onDelete={askDelete}
                     />
                   }
                 />

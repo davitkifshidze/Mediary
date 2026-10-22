@@ -144,6 +144,84 @@ describe('RecordView', () => {
     expect(onEdit).toHaveBeenCalledTimes(1)
   })
 
+  it('cards with a delete action draw the 2×2 — favourite · edit / delete · actions — instead of the bar', async () => {
+    const onDelete = vi.fn()
+    const onToggle = vi.fn()
+    const { el, onEdit } = await view('cards', {
+      onDelete,
+      favorite: { active: false, onToggle },
+      badges: h('span', { 'data-testid': 'rating' }, '★ 8'),
+    })
+
+    // სამი სვეტი მაქსიმუმ, სვეტების ზღვრები სიის საკუთარ სიგანეზეა
+    const list = el.querySelector('[data-testid="record-list"]')!
+    expect(list.className).toContain('@5xl:grid-cols-3')
+    expect(list.className).not.toContain('@7xl')
+    expect(list.parentElement?.className).toContain('@container')
+
+    expect(el.querySelector('[data-testid="bar"]')).toBeNull()
+    expect(el.querySelector('[data-testid="record-card-bar"] [data-testid="rating"]')).not.toBeNull()
+    const cells = [...el.querySelector('[data-testid="record-card-actions"]')!.children] as HTMLElement[]
+    expect(cells.map((c) => c.textContent)).toEqual([
+      i18n.t('filter.favorite'),
+      i18n.t('actions.edit'),
+      i18n.t('actions.delete'),
+      i18n.t('actions.menu'),
+    ])
+    for (const c of cells) {
+      expect(c.className).toContain('h-9')
+    }
+    expect(cells[2].className).toContain('border-destructive/60')
+
+    await act(async () => cells[0].click())
+    await act(async () => cells[1].click())
+    await act(async () => cells[2].click())
+    expect(onToggle).toHaveBeenCalledTimes(1)
+    expect(onEdit).toHaveBeenCalledTimes(1)
+    expect(onDelete).toHaveBeenCalledTimes(1)
+  })
+
+  it('a module without a favourite gets its lead in the first cell, and an odd last cell spans the row', async () => {
+    const { el } = await view('cards', { onDelete: vi.fn(), lead: h('button', { type: 'button' }, 'play') })
+    const grid = el.querySelector('[data-testid="record-card-actions"]')!
+
+    expect(grid.firstElementChild?.textContent).toBe('play')
+    expect(grid.className).toContain('[&>:last-child:nth-child(odd)]:col-span-2')
+  })
+
+  it('grid tops out at six columns', async () => {
+    const { el } = await view('grid')
+    const list = el.querySelector('[data-testid="record-list"]')!
+
+    expect(list.className).toContain('@5xl:grid-cols-6')
+    expect(list.className).not.toContain('grid-cols-8')
+  })
+
+  it('a click anywhere on the record opens it — not on its buttons, and not for a song', async () => {
+    for (const layout of ['rows', 'cards', 'grid'] as const) {
+      const { el, onOpen, onEdit } = await view(layout, { onDelete: vi.fn() })
+      const li = el.querySelector('li')!
+      expect(li.className).toContain('cursor-pointer')
+
+      await act(async () => li.click())
+      expect(onOpen).toHaveBeenCalledTimes(1)
+
+      // ღილაკზე დაჭერა თავის საქმეს აკეთებს და ჩანაწერს არ ხსნის
+      const edit = [...el.querySelectorAll('button')].find((b) => b.textContent === i18n.t('actions.edit'))
+      if (edit) {
+        await act(async () => edit.click())
+        expect(onEdit).toHaveBeenCalledTimes(1)
+      }
+      expect(onOpen).toHaveBeenCalledTimes(1)
+      act(() => root?.unmount())
+      container?.remove()
+    }
+
+    const { el, onOpen } = await view('rows', { staticTitle: true })
+    await act(async () => el.querySelector('li')!.click())
+    expect(onOpen).not.toHaveBeenCalled()
+  })
+
   it('without a photo draws the placeholder in every layout', async () => {
     for (const layout of ['rows', 'cards', 'grid'] as const) {
       const { el } = await view(layout, { photo: null })

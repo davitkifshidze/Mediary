@@ -2,15 +2,10 @@ import { useTranslation } from 'react-i18next'
 import {
   CalendarDays,
   Clock,
-  Download,
   Eye,
   HardDriveDownload,
   Loader2,
-  MonitorPlay,
   Play,
-  RotateCcw,
-  SquarePen,
-  Trash2,
   TriangleAlert,
 } from 'lucide-react'
 import type { Video } from '@/api/videos'
@@ -18,10 +13,9 @@ import { storageUrl } from '@/lib/api'
 import { useDateFormat } from '@/lib/dates'
 import { cn, formatBytes } from '@/lib/utils'
 import { formatDuration } from '@/lib/videoDuration'
-import { Button } from '@/components/ui/button'
-import { FavoriteButton } from '@/components/ui/favorite-button'
+import { openOnClick } from '@/lib/recordClick'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { CardActions } from '@/components/RecordView'
 import { VideoBadges } from '@/components/VideoBadges'
 
 /* ============================================================
@@ -35,31 +29,17 @@ import { VideoBadges } from '@/components/VideoBadges'
    `flex h-full flex-col`-ია, ბეჯების სტრიქონი ყოველთვის სამია (`VideoBadges`),
    მეტა-ხაზი ყოველთვის ერთი სტრიქონია (`truncate`, ცარიელზეც ადგილს იკავებს),
    ტეგების სლოტი `min-h-7`-ია ტეგების გარეშეც, მოქმედებების ზოლი `mt-auto`-თი
-   ქვემოთაა და ყველა კონტროლი `h-9`. ჩამოტვირთვის მდგომარეობა **ერთი**
-   ღილაკია (ზომა და ფორმატი თულთიპში), რომ ზოლის სიგრძე არ იცვლებოდეს;
-   ლოკალური ასლის წაშლა კონტექსტურ მენიუშია.
+   ქვემოთაა და ყველა კონტროლი `h-9`.
 
    ⚠️ ჩამოტვირთვის ბეჯი ესკიზზე თემის ფერებზეა: მზა — `--status-watched`,
    გაჩერებული — `--status-towatch`, ჩავარდნილი — `--destructive`; `rounded-md`.
 
-   ⚠️ **ზოლში ოთხი ღილაკია: რჩეული · ჩამოტვირთვა ·
-   რედაქტირება · წაშლა.** ადრე იქ „წყარო“ და „აქედან დაკვრაც“ იდგა და
-   ვიწრო ბარათზე ზოლი ბოლოში იჭრებოდა. ესკიზი და სათაური ფანჯარას ხსნის —
-   დაკვრა იქაა, ბმული — ფანჯრის „ბმულის გახსნა“ და კონტექსტური მენიუ
-   (იქვეა „აქედან დაკვრაც“). რჩეული სათაურის ხაზიდან ზოლში ჩამოვიდა (`h-9`).
-   ზოლი არასოდეს იჭრება: ღილაკები `shrink-0`-ია და უკიდურესად ვიწროზე ზოლი
-   მეორე ხაზზე გადადის (`flex-wrap`); ბადის სვეტი კი ბარათს ~340 px-ზე ნაკლებს
-   არ აძლევს (`VideosPage`).
+   ⚠️ **ზოლი სიის ბარათების 2×2-ია** (`CardActions`): რჩეული · რედაქტირება /
+   წაშლა · „მოქმედება". ჩამოტვირთვა, ლოკალური დაკვრა, წყარო და „აქედან დაკვრა"
+   „მოქმედების" მენიუშია (იგივე სია, რაც მარჯვენა ღილაკზე); ჩამოტვირთვის
+   მდგომარეობას ესკიზის ბეჯი ამბობს. ბარათზე დაჭერა ნებისმიერ ადგილას ფანჯარას
+   ხსნის (`openOnClick`). სვეტები — სიის ბარათების წესით (`RecordList`, ≤ 3).
    ============================================================ */
-
-export interface VideoCardDownload {
-  /** თულთიპის ტექსტი — მდგომარეობის ახსნა (`downloadHint`) */
-  hint: string
-  /** yt-dlp სერვერზე არის */
-  available: boolean
-  pending: boolean
-  onStart: () => void
-}
 
 export interface VideoCardProps {
   video: Video
@@ -70,9 +50,8 @@ export interface VideoCardProps {
   onDelete: () => void
   onToggleFavorite: () => void
   favoritePending?: boolean
-  download: VideoCardDownload
-  /** მზა ლოკალური ასლი ცალკე ფლეერში იხსნება (არა ბრაუზერის მნახველში) */
-  onPlayLocal: () => void
+  /** ჩამოტვირთვის ბეჯის თულთიპი — მდგომარეობის ახსნა (`downloadHint`) */
+  downloadHint: string
 }
 
 export function VideoCard({
@@ -84,8 +63,7 @@ export function VideoCard({
   onDelete,
   onToggleFavorite,
   favoritePending,
-  download,
-  onPlayLocal,
+  downloadHint,
 }: VideoCardProps) {
   const { t } = useTranslation()
   const fmt = useDateFormat()
@@ -94,7 +72,11 @@ export function VideoCard({
 
   return (
     <RecordContextMenu actions={actions}>
-      <article className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card" data-testid="video-card">
+      <article
+        className="flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card"
+        onClick={openOnClick(onOpen)}
+        data-testid="video-card"
+      >
         {/* ⚠️ ფანჯრის გახსნა **ნახვად აღარ ითვლება**: ნახვას დამკვრელი ითვლის ჩართვაზე */}
         <button
           type="button"
@@ -120,7 +102,7 @@ export function VideoCard({
           {/* „ეს ლოკალურად მაქვს“ საერთო სიაშიც ჩანს; ფერები თემიდან */}
           {v.download_status && (
             <span
-              title={download.hint}
+              title={downloadHint}
               data-testid="download-badge"
               className={cn(
                 'absolute left-2 top-2 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-white',
@@ -204,75 +186,14 @@ export function VideoCard({
             ))}
           </div>
 
-          {/* ოთხი ღილაკი; `min-w-0` + `shrink-0` + `flex-wrap`: ჭრის ნაცვლად მეორე ხაზი */}
-          <div
-            className="mt-auto flex min-w-0 flex-wrap items-center gap-1 border-t border-border pt-2 [&>*]:shrink-0"
-            data-testid="video-actions"
-          >
-            {/* რჩეული ტექსტით და ფერით (სათაურის ხაზიდან აქ ჩამოვიდა, `h-9`) */}
-            <FavoriteButton active={v.is_favorite} pending={favoritePending} onToggle={onToggleFavorite} />
-
-            {/* ლოკალური ასლი ერთ ღილაკში; მზაზე — ლოკალური ფლეერი, თორემ — ჩამოტვირთვა */}
-            {v.download_status === 'ready' ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={t('videos.local.play')}
-                    data-testid="download-control"
-                    data-local="ready"
-                    className="text-[var(--status-watched)]"
-                    onClick={onPlayLocal}
-                  >
-                    <MonitorPlay className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {t('videos.local.play')} · {download.hint}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={running || download.pending}
-                    aria-label={t('videos.local.start')}
-                    data-testid="download-control"
-                    onClick={download.onStart}
-                  >
-                    {running ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : v.download_stale ? (
-                      /* ⚠️ დამტრიალებელი აქ ტყუილი იქნებოდა — არაფერი ტრიალებს; „ხელახლა სცადე“ */
-                      <RotateCcw className="size-3.5" />
-                    ) : (
-                      <Download className="size-3.5" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {download.available ? download.hint : t('videos.local.unavailable')}
-                </TooltipContent>
-              </Tooltip>
-            )}
-
-            <Button variant="edit" size="sm" onClick={onEdit}>
-              <SquarePen className="size-3.5" />
-              {t('actions.edit')}
-            </Button>
-            <Button
-              variant="destructiveOutline"
-              size="sm"
-              className="ml-auto"
-              aria-label={t('actions.delete')}
-              onClick={onDelete}
-            >
-              <Trash2 className="size-3.5" />
-              {t('actions.delete')}
-            </Button>
+          {/* 2×2 — რჩეული · რედაქტირება / წაშლა · „მოქმედება" (ჩამოტვირთვა, ლოკალური დაკვრა, წყარო, სტატუსი) */}
+          <div className="mt-auto border-t border-border pt-2" data-testid="video-actions">
+            <CardActions
+              favorite={{ active: v.is_favorite, pending: favoritePending, onToggle: onToggleFavorite }}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              actions={actions}
+            />
           </div>
         </div>
       </article>

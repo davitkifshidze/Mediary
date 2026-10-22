@@ -1,9 +1,11 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MoreHorizontal, SquarePen } from 'lucide-react'
+import { MoreHorizontal, SquarePen, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { RecordActionMenu, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Sortable, SortableHandle, SortableItem, type SortableId } from '@/components/ui/sortable'
+import { openOnClick } from '@/lib/recordClick'
 import type { RecordLayout } from '@/lib/recordLayout'
 import { cn } from '@/lib/utils'
 
@@ -15,10 +17,18 @@ import { cn } from '@/lib/utils'
    კონტექსტური მენიუ — და `RecordList`-ის განლაგება წყვეტს, როგორ დაიხატოს:
 
    - **სტრიქონები** — ახლანდელი რიგი, ზუსტად იმავე ფორმით (მოქმედებების ზოლით);
-   - **ბარათები** — ფართო ფოტო ზემოთ (ვიდეოს ბარათის სტილით), სათაური, მეტა,
-     ტეგები, ქვემოთ იგივე ზოლი (ვიწრო ბარათში ის ორ ხაზად იშლება);
-   - **ბადე** — კომპაქტური უჯრა: ფოტო + სათაური; მოქმედებები ჰოვერზე
+   - **ბარათები** (3 სვეტი) — ფართო ფოტო ზემოთ (ვიდეოს ბარათის სტილით),
+     სათაური, მეტა, ტეგები, ბეჯები და ქვემოთ **2×2 ღილაკი**: რჩეული ·
+     რედაქტირება / წაშლა · „მოქმედება" (მთელი მენიუ — ბმული, სტატუსი ▸,
+     მოდულის პუნქტები). სრული ზოლი ვიწრო ბარათში სიგანის მიხედვით
+     უწესრიგოდ იშლებოდა; ოთხი ტოლი ღილაკი ყოველ ბარათზე ერთ ადგილზეა;
+   - **ბადე** (6 სვეტი) — კომპაქტური უჯრა: ფოტო + სათაური; მოქმედებები ჰოვერზე
      („რედაქტირება" + „მეტი" — მთელი მენიუ) და მარჯვენა ღილაკზე.
+
+   ⚠️ **დაჭერა ჩანაწერის ნებისმიერ ადგილას ხსნის** (სამივე განლაგებაში) —
+   გარდა ღილაკების, ბმულების, ველების, მენიუს, დამკვრელისა და სახელურის;
+   მონიშნული ტექსტიც არ ხსნის. სიმღერას (`staticTitle`) ეს არ ეხება —
+   მისი ფოტო უკრავს და ფანჯარა არ აქვს.
 
    ⚠️ **ფოტოს ფორმა მოდულისაა** (`poster` 2:3 — წიგნი; `wide` — თამაში, ვიდეო;
    `square` — ბუკმარკი, ჩანაწერი). ბადეში ფორმა რჩება (ყდის ჩამოჭრა კვადრატად
@@ -36,12 +46,16 @@ import { cn } from '@/lib/utils'
 
 const LayoutContext = createContext<RecordLayout>('rows')
 
-/* ⚠️ კონტეინერის ზღვრები (`<main>` `@container`-ია) — დამკვრელის პანელით
-   მიწოლილ გვერდზე სვეტები თავისით იკლებს (`MovieGrid`-ის წესი) */
+/* ⚠️ **ზღვრები სიის საკუთარ სიგანეზეა** (`RecordList`-ის `@container` გარსი) და
+   არა `<main>`-ისაზე: `<main>`-ში ფილტრის პანელიც (~280px) ითვლებოდა, ე.ი. 1280px
+   ეკრანზე სამი ~210px-იანი ბარათი გამოდიოდა და 2×2 ღილაკები ვეღარ ეტეოდა (ვიდეოების
+   ბადემ ეს უკვე იცოდა). დამკვრელის პანელით მიწოლილ გვერდზეც სვეტები თავისით იკლებს.
+   ბარათი ≥ ~320px-ია (`@2xl` = 42rem → 2, `@5xl` = 64rem → 3). */
 const LIST: Record<RecordLayout, string> = {
   rows: 'space-y-2',
-  cards: 'grid grid-cols-1 gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3 @7xl:grid-cols-4',
-  grid: 'grid grid-cols-2 gap-3 @2xl:grid-cols-3 @3xl:grid-cols-4 @5xl:grid-cols-6 @7xl:grid-cols-8',
+  // ⚠️ ზედა ზღვარი 3 და 6 სვეტია — ფართო ეკრანზე უჯრა იზრდება და სვეტი აღარ ემატება
+  cards: 'grid grid-cols-1 gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3',
+  grid: 'grid grid-cols-2 gap-3 @2xl:grid-cols-3 @3xl:grid-cols-4 @5xl:grid-cols-6',
 }
 
 export function RecordList<T extends SortableId>({
@@ -58,15 +72,17 @@ export function RecordList<T extends SortableId>({
 }) {
   return (
     <LayoutContext.Provider value={layout}>
-      <ul className={cn(LIST[layout], className)} data-layout={layout} data-testid="record-list">
-        {sortable ? (
-          <Sortable ids={sortable.ids} onReorder={sortable.onReorder} layout={layout === 'rows' ? 'list' : 'grid'}>
-            {children}
-          </Sortable>
-        ) : (
-          children
-        )}
-      </ul>
+      <div className="@container">
+        <ul className={cn(LIST[layout], className)} data-layout={layout} data-testid="record-list">
+          {sortable ? (
+            <Sortable ids={sortable.ids} onReorder={sortable.onReorder} layout={layout === 'rows' ? 'list' : 'grid'}>
+              {children}
+            </Sortable>
+          ) : (
+            children
+          )}
+        </ul>
+      </div>
     </LayoutContext.Provider>
   )
 }
@@ -101,12 +117,20 @@ export interface RecordViewProps {
   tags?: readonly string[]
   /** `#` ტეგის წინ — ჩანაწერებს არ აქვს */
   hashTags?: boolean
-  /** მოქმედებების ზოლი (`RecordActionBar`) — სტრიქონსა და ბარათში */
+  /** მოქმედებების ზოლი (`RecordActionBar`) — სტრიქონში (და ბარათში, თუ `onDelete` არ არის) */
   bar: ReactNode
-  /** კონტექსტური მენიუ — ბადეში „მეტიც" ესაა */
+  /** კონტექსტური მენიუ — ბადეში „მეტი" და ბარათში „მოქმედებაც" ესაა */
   actions: MenuAction[]
-  /** ბადის ჰოვერზე „რედაქტირება" (ზოლი იქ არ ჩანს) */
+  /** ბადის ჰოვერზე და ბარათის 2×2-ში „რედაქტირება" */
   onEdit?: () => void
+  /** ბარათის 2×2-ის წაშლა; მის გარეშე ბარათი გვერდის `bar`-ს ხატავს */
+  onDelete?: () => void
+  /** ბარათის 2×2-ის პირველი უჯრა — რჩეული */
+  favorite?: { active: boolean; pending?: boolean; onToggle: () => void }
+  /** პირველი უჯრა რჩეულის არმქონე მოდულზე (პლეილისტი — დაკვრა) */
+  lead?: ReactNode
+  /** ბარათში ღილაკების თავზე — შეფასება, BGG, „საჯარო" (სტრიქონში ისინი ზოლის `before`-შია) */
+  badges?: ReactNode
   /** `RecordList`-ის `sortable`-ის წევრი */
   sortId?: SortableId
   testId?: string
@@ -116,19 +140,28 @@ export interface RecordViewProps {
 
 export function RecordView(props: RecordViewProps) {
   const layout = useContext(LayoutContext)
-  const { actions, sortId, testId } = props
+  const { actions, sortId, testId, onOpen, staticTitle } = props
 
   const body = layout === 'cards' ? <CardBody {...props} /> : layout === 'grid' ? <TileBody {...props} /> : <RowBody {...props} />
-  const className = ROOT[layout]
+  const className = cn(ROOT[layout], !staticTitle && 'cursor-pointer')
+  // სიმღერა (`staticTitle`) — ფოტო უკრავს, ფანჯარა არ აქვს
+  const openFromAnywhere = staticTitle ? undefined : openOnClick(onOpen)
 
   return (
     <RecordContextMenu actions={actions}>
       {sortId != null ? (
-        <SortableItem id={sortId} handle className={className} data-testid={testId} data-record-layout={layout}>
+        <SortableItem
+          id={sortId}
+          handle
+          className={className}
+          onClick={openFromAnywhere}
+          data-testid={testId}
+          data-record-layout={layout}
+        >
           {body}
         </SortableItem>
       ) : (
-        <li className={className} data-testid={testId} data-record-layout={layout}>
+        <li className={className} onClick={openFromAnywhere} data-testid={testId} data-record-layout={layout}>
           {body}
         </li>
       )}
@@ -264,8 +297,63 @@ function RowBody(props: RecordViewProps) {
 
 /* ---------- ბარათი ---------- */
 
+/**
+ * **ბარათის 2×2** — რჩეული · რედაქტირება / წაშლა · „მოქმედება".
+ *
+ * ⚠️ ოთხივე `h-9`, ერთი სიგანის (`w-full`), თითო თავისი ფერით: რჩეული —
+ * `--favorite`, რედაქტირება — `edit`, წაშლა — `destructiveOutline`,
+ * „მოქმედება" — ნეიტრალური, ჩანაწერის მთელი მენიუთი (`actions` — იგივე სია,
+ * რაც მარჯვენა ღილაკზეა: ბმული, სტატუსი ▸, მოდულის პუნქტები).
+ * ⚠️ კენტი რაოდენობისას (რჩეულის გარეშე, დასაკრავის გარეშე) ბოლო უჯრა მთელ
+ * რიგზეა — ცარიელი ხვრელი არ რჩება. `px-2.5` — ~300px-იან ბარათში
+ * „რედაქტირება" აიქონით ეტევა.
+ * ⚠️ ვიდეოს ბარათიც (`VideoCard`) ამას ხატავს — ორი ბარათი ერთი ზოლით.
+ */
+export function CardActions({
+  favorite,
+  lead,
+  onEdit,
+  onDelete,
+  actions,
+  badges,
+}: Pick<RecordViewProps, 'favorite' | 'lead' | 'onEdit' | 'actions' | 'badges'> & { onDelete: () => void }) {
+  const { t } = useTranslation()
+
+  return (
+    <>
+      {badges && <div className="mb-2 flex flex-wrap items-center gap-1 empty:hidden">{badges}</div>}
+      <div
+        className="grid grid-cols-2 gap-1.5 [&>*]:w-full [&>*]:min-w-0 [&>*]:justify-center [&>*]:px-2.5 [&>:last-child:nth-child(odd)]:col-span-2"
+        data-testid="record-card-actions"
+      >
+        {favorite ? <FavoriteButton active={favorite.active} pending={favorite.pending} onToggle={favorite.onToggle} /> : lead}
+        {onEdit && (
+          <Button type="button" variant="edit" size="sm" onClick={onEdit}>
+            <SquarePen className="size-3.5" />
+            {t('actions.edit')}
+          </Button>
+        )}
+        <Button type="button" variant="destructiveOutline" size="sm" aria-label={t('actions.delete')} onClick={onDelete}>
+          <Trash2 className="size-3.5" />
+          {t('actions.delete')}
+        </Button>
+        <RecordActionMenu
+          actions={actions}
+          label={t('actions.menu')}
+          trigger={
+            <Button type="button" variant="outline" size="sm" className="text-muted-foreground">
+              <MoreHorizontal className="size-3.5" />
+              {t('actions.menu')}
+            </Button>
+          }
+        />
+      </div>
+    </>
+  )
+}
+
 function CardBody(props: RecordViewProps) {
-  const { extra, bar, sortId } = props
+  const { extra, bar, sortId, onDelete } = props
 
   return (
     <>
@@ -279,10 +367,10 @@ function CardBody(props: RecordViewProps) {
         <Meta props={props} className="mt-1 whitespace-normal" />
         {extra}
         <Tags props={props} />
-        {/* ⚠️ ზოლი ვიწრო ბარათში ორ ხაზად იშლება (`[&>*]:flex-wrap` — ზოლის ძირი) */}
+        {/* 2×2 (`CardActions`); `onDelete`-ის გარეშე — გვერდის ზოლი, ვიწრო ბარათში ორ ხაზად (`[&>*]:flex-wrap`) */}
         <div className="mt-auto pt-3">
-          <div className="border-t border-border pt-2 [&>*]:flex-wrap" data-testid="record-card-bar">
-            {bar}
+          <div className={cn('border-t border-border pt-2', !onDelete && '[&>*]:flex-wrap')} data-testid="record-card-bar">
+            {onDelete ? <CardActions {...props} onDelete={onDelete} /> : bar}
           </div>
         </div>
       </div>

@@ -338,6 +338,24 @@ export function SongsPage() {
           <RecordList layout={layout}>
             {songs.map((song) => {
               const cover = storageUrl(song.thumbnail)
+              const fav = {
+                active: song.is_favorite,
+                pending: favorite.isPending && favorite.variables === song.id,
+                onToggle: () => favorite.mutate(song.id),
+              }
+              const askDelete = async () => {
+                const ok = await confirm({
+                  title: t('songs.deleteTitle'),
+                  description: t('songs.deleteHint', { name: song.title }),
+                  variant: 'destructive',
+                })
+                if (ok) remove.mutate(song.id)
+              }
+              const badges = (
+                <>
+                  <RatingBadge value={song.rating} size="row" className="mr-1" />
+                </>
+              )
               /* მარჯვენა ღილაკის მენიუ: დაკვრა · წყარო · რჩეული · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
                 { key: 'play', label: t('playback.playFromHere'), icon: MENU_ICONS.play, run: () => void playFrom(song) },
@@ -354,14 +372,7 @@ export function SongsPage() {
                   label: t('actions.delete'),
                   icon: MENU_ICONS.delete,
                   danger: true,
-                  run: async () => {
-                    const ok = await confirm({
-                      title: t('songs.deleteTitle'),
-                      description: t('songs.deleteHint', { name: song.title }),
-                      variant: 'destructive',
-                    })
-                    if (ok) remove.mutate(song.id)
-                  },
+                  run: askDelete,
                 },
               ]
               return (
@@ -427,31 +438,19 @@ export function SongsPage() {
                   }
                   tags={song.tags}
                   actions={actions}
+                  onDelete={askDelete}
+                  favorite={fav}
+                  badges={badges}
                   onEdit={() => setEditing(song)}
                   /* ერთი ზოლი ყველა სიაზე: ქულა · რჩეული · ბმული · რედაქტირება · წაშლა;
                      სიმღერას სტატუსი და ფაილები არ აქვს (დახურული გადაწყვეტილებები) */
                   bar={
                     <RecordActionBar
-                      before={
-                        <>
-                          <RatingBadge value={song.rating} size="row" className="mr-1" />
-                        </>
-                      }
-                      favorite={{
-                        active: song.is_favorite,
-                        pending: favorite.isPending && favorite.variables === song.id,
-                        onToggle: () => favorite.mutate(song.id),
-                      }}
+                      before={badges}
+                      favorite={fav}
                       link={{ href: song.url, label: t('actions.link'), icon: ExternalLink, title: t('songs.source') }}
                       onEdit={() => setEditing(song)}
-                      onDelete={async () => {
-                        const ok = await confirm({
-                          title: t('songs.deleteTitle'),
-                          description: t('songs.deleteHint', { name: song.title }),
-                          variant: 'destructive',
-                        })
-                        if (ok) remove.mutate(song.id)
-                      }}
+                      onDelete={askDelete}
                     />
                   }
                 />

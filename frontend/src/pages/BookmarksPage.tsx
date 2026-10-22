@@ -398,6 +398,17 @@ export function BookmarksPage() {
           <RecordList layout={layout}>
             {bookmarks.map((bookmark) => {
               const image = storageUrl(bookmark.image)
+              const fav = {
+                active: bookmark.is_favorite,
+                pending: favorite.isPending && favorite.variables === bookmark.id,
+                onToggle: () => favorite.mutate(bookmark.id),
+              }
+              const badges = (
+                <>
+                  {/* ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი (რიგის ზომით) */}
+                  <VisibilityBadge value={bookmark.visibility} />
+                </>
+              )
               /* ერთი სია (`record-menu`): გახსნა (ფანჯარა) · ბმულის გახსნა ·
                  სტატუსი ▸ · რჩეული · ბმულის დამატება · გალერეა · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
@@ -461,6 +472,9 @@ export function BookmarksPage() {
                   }
                   tags={bookmark.tags}
                   actions={actions}
+                  onDelete={() => void askDelete(bookmark)}
+                  favorite={fav}
+                  badges={badges}
                   onEdit={() => setEditing(bookmark)}
                   /* ერთი ზოლი ყველა სიაზე: სტატუსი (ჩამოსაშლელი) · რჩეული ·
                      ფაილები (ფოტოები — ფანჯარა გალერეაზე) · ბმული (იგივე „გახსნის" მთვლელით) ·
@@ -468,12 +482,7 @@ export function BookmarksPage() {
                      ეჩვევა, ერთი დაჭერით მიდის. */
                   bar={
                     <RecordActionBar
-                      before={
-                        <>
-                          {/* ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი (რიგის ზომით) */}
-                          <VisibilityBadge value={bookmark.visibility} />
-                        </>
-                      }
+                      before={badges}
                       status={
                         <ActionMenu
                           label={t('bookmarks.statusChange')}
@@ -513,11 +522,7 @@ export function BookmarksPage() {
                           ))}
                         </ActionMenu>
                       }
-                      favorite={{
-                        active: bookmark.is_favorite,
-                        pending: favorite.isPending && favorite.variables === bookmark.id,
-                        onToggle: () => favorite.mutate(bookmark.id),
-                      }}
+                      favorite={fav}
                       // ჩემი ფოტოები + ვებიდან მოტანილი: ფანჯარა გალერეის სექციაზე იხსნება
                       files={{
                         count: (bookmark.files_count ?? 0) + (bookmark.photos_count ?? 0),

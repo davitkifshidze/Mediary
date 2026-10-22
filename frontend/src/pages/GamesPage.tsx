@@ -299,6 +299,24 @@ export function GamesPage() {
                 game.links.find((l) => l.kind === 'store') ??
                 game.links.find((l) => l.kind !== 'official') ??
                 game.links[0]
+              const fav = {
+                active: game.is_favorite,
+                pending: favorite.isPending && favorite.variables === game.id,
+                onToggle: () => favorite.mutate(game.id),
+              }
+              const askDelete = async () => {
+                const ok = await confirm({
+                  title: t('games.deleteTitle'),
+                  description: t('games.deleteHint', { name: title(game) }),
+                  variant: 'destructive',
+                })
+                if (ok) remove.mutate(game.id)
+              }
+              const badges = (
+                <>
+                  <RatingBadge value={game.rating} size="row" className="mr-1" />
+                </>
+              )
               /* მარჯვენა ღილაკის მენიუ: გახსნა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
                 { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpened(game) },
@@ -322,14 +340,7 @@ export function GamesPage() {
                   label: t('actions.delete'),
                   icon: MENU_ICONS.delete,
                   danger: true,
-                  run: async () => {
-                    const ok = await confirm({
-                      title: t('games.deleteTitle'),
-                      description: t('games.deleteHint', { name: title(game) }),
-                      variant: 'destructive',
-                    })
-                    if (ok) remove.mutate(game.id)
-                  },
+                  run: askDelete,
                 },
               ]
               return (
@@ -376,6 +387,9 @@ export function GamesPage() {
                     </>
                   }
                   actions={actions}
+                  onDelete={askDelete}
+                  favorite={fav}
+                  badges={badges}
                   onEdit={() => setEditing(game)}
                   /* ⚠️ **არჩევითი მარცხნივ, ყოველთვის არსებული მარჯვნივ.**
                      შენი სიტყვები: „რამდენიმეს MC და რიცხვი აქვს და მერე „გადაუწყვეტელი“ —
@@ -387,11 +401,7 @@ export function GamesPage() {
                      მაღაზიის ბმული (უბმულოზე უხილავი სლოტი — რიგი აღარ „ხტება") · რედაქტირება · წაშლა */
                   bar={
                     <RecordActionBar
-                      before={
-                        <>
-                          <RatingBadge value={game.rating} size="row" className="mr-1" />
-                        </>
-                      }
+                      before={badges}
                       status={
                         <EnumStatusMenu
                           domain="game"
@@ -401,22 +411,11 @@ export function GamesPage() {
                           onChange={(next) => status.mutate({ id: game.id, next })}
                         />
                       }
-                      favorite={{
-                        active: game.is_favorite,
-                        pending: favorite.isPending && favorite.variables === game.id,
-                        onToggle: () => favorite.mutate(game.id),
-                      }}
+                      favorite={fav}
                       files={{ count: game.files_count ?? 0, onOpen: () => setOpened(game) }}
                       link={{ href: store?.url, label: t('actions.link'), icon: ExternalLink, title: store?.label || store?.url }}
                       onEdit={() => setEditing(game)}
-                      onDelete={async () => {
-                        const ok = await confirm({
-                          title: t('games.deleteTitle'),
-                          description: t('games.deleteHint', { name: title(game) }),
-                          variant: 'destructive',
-                        })
-                        if (ok) remove.mutate(game.id)
-                      }}
+                      onDelete={askDelete}
                     />
                   }
                 />

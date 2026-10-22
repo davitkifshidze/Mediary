@@ -280,11 +280,12 @@ describe('VideoForm link info', () => {
 describe('VideosPage view toggle', () => {
   const layoutOf = (el: HTMLElement) => el.querySelector('[data-testid="record-list"]')?.getAttribute('data-layout')
 
-  it('keeps the current cards by default', async () => {
+  it('keeps the video cards by default, laid out by the shared card grid (at most 3 columns)', async () => {
     const el = await mountList()
 
     expect(el.querySelector('[data-testid="video-card"]')).not.toBeNull()
-    expect(el.querySelector('[data-testid="record-list"]')).toBeNull()
+    expect(layoutOf(el)).toBe('cards')
+    expect(el.querySelector('[data-testid="record-list"]')?.className).not.toContain('grid-cols-4')
   })
 
   it('opens in the saved rows with the shared action bar, and saves the switch to the grid', async () => {
