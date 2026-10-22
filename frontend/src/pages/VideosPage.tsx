@@ -14,6 +14,7 @@ import {
   Download,
   ExternalLink,
   FileX,
+  FolderOpen,
   Globe,
   HardDriveDownload,
   Link2,
@@ -34,6 +35,7 @@ import {
   fetchVideoDownloadStatus,
   fetchVideo,
   fetchVideoMetadata,
+  fetchVideoFolders,
   fetchVideoTypes,
   fetchVideos,
   startVideoDownload,
@@ -46,6 +48,9 @@ import {
   type VideoType,
 } from '@/api/videos'
 import { fetchWebVideoDetails } from '@/api/web'
+import { fetchCourses } from '@/api/courses'
+import { useModules } from '@/lib/modules'
+import { Chip, ChipRow } from '@/components/ui/chip'
 import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
 import { dedupeTags } from '@/lib/tags'
@@ -110,6 +115,9 @@ import { formatBytes } from '@/lib/utils'
    · ხანგრძლივობის ხელით ველი მოიხსნა; ავტომატური probe რჩება.
    ============================================================ */
 
+/** ფორმის „საქაღალდის გარეშე" — Radix-ის `Select` ცარიელ მნიშვნელობას არ იღებს */
+const NO_COURSE = 'none'
+
 /* `size`/`downloaded` ლოკალური ასლების სექციისთვისაა, მაგრამ ყველგან მუშაობს */
 const SORTS = ['newest', 'oldest', 'title', 'watched', 'size', 'downloaded'] as const
 
@@ -137,6 +145,8 @@ export function VideosPage() {
   /* „მხოლოდ ჩამოტვირთული" პანელის გადამრთველია (`?downloaded=1`); საიდბარის
      სექცია (`?view=downloaded`) იგივეს აკეთებს სათაურითა და ჯამური ზომით */
   const downloadedParam = useMemo(() => new URLSearchParams(search).get('downloaded') === '1', [search])
+  /** კურსის „საქაღალდე" (`?course=`) — სხვა ფილტრებთან ერთად მუშაობს */
+  const courseId = Number(params.get('course')) || null
 
   // მონახაზში სტატუსი/რჩეული აღარაა — ის საიდბარის სექციაა (`?view=`)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -173,6 +183,7 @@ export function VideosPage() {
     favorite: view === 'favorite' ? true : undefined,
     // „ჩამოწერილები" საიდბარის სექციაა, ე.ი. `?view=`-ში ზის; პანელის გადამრთველიც
     downloaded: view === 'downloaded' || downloadedParam ? true : undefined,
+    course: courseId ?? undefined,
     /* დანარჩენი `?view=` ლექსიკონის სტატუსია. ⚠️ „ყველა"/„რჩეული"/
        „ჩამოწერილი" სტატუსები არაა და ფილტრში არ უნდა გადავიდეს. */
     status:
@@ -189,6 +200,10 @@ export function VideosPage() {
     pageSize,
   })
   const typesQ = useQuery({ queryKey: ['video-types'], queryFn: fetchVideoTypes })
+  // კურსების „საქაღალდეები" — ჩიპებად ბადის ზემოთ (კურსები ≥1 ვიდეოთი)
+  const foldersQ = useQuery({ queryKey: ['videos', 'folders'], queryFn: fetchVideoFolders })
+  const folders = foldersQ.data ?? []
+  const folder = courseId ? folders.find((f) => f.id === courseId) : undefined
   const videos = query.items
   /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
   const total = query.total
@@ -393,6 +408,8 @@ export function VideosPage() {
     if (next.types.length) p.set('type', next.types.join(','))
     if (next.tags.length) p.set('tag', next.tags.join(','))
     if (next.downloaded) p.set('downloaded', '1')
+    // საქაღალდე პანელის ფილტრი არ არის — მისამართში რჩება
+    if (courseId) p.set('course', String(courseId))
     setPanelOpen(false)
     navigate({ pathname: '/videos', search: p.toString() })
   }
@@ -415,8 +432,18 @@ export function VideosPage() {
 
   // სათაური მიჰყვება იმას, რაც საიდბარში/პანელში აირჩა
   const onlyType = types.length === 1 ? allTypes.find((x) => String(x.id) === types[0]) : undefined
-  const heading =
-    view === 'favorite'
+  /** საქაღალდის ჩიპი: არჩეულზე დაჭერა მას ხსნის; დანარჩენი ფილტრები რჩება */
+  const openFolder = (id: number | null) => {
+    const next = new URLSearchParams(params)
+    next.delete('page')
+    if (id) next.set('course', String(id))
+    else next.delete('course')
+    setParams(next)
+  }
+
+  const heading = folder
+    ? folder.title
+    : view === 'favorite'
       ? t('filter.favorite')
       : view === 'downloaded'
         ? t('videos.downloadedSection')
@@ -528,6 +555,24 @@ export function VideosPage() {
 
       <div className="flex gap-6">
         <div className="min-w-0 flex-1">
+          {/* კურსების „საქაღალდეები" — კურსი, რომლის ვიდეოებიც აქაა; არჩეულზე დაჭერა აბრუნებს ყველას */}
+          {folders.length > 0 && (
+            <div className="mb-4" data-testid="video-folders">
+              <ChipRow>
+                {folders.map((f) => (
+                  <Chip
+                    key={f.id}
+                    active={f.id === courseId}
+                    icon={<FolderOpen className="size-3.5" />}
+                    count={f.videos_count}
+                    onClick={() => openFolder(f.id === courseId ? null : f.id)}
+                  >
+                    {f.title}
+                  </Chip>
+                ))}
+              </ChipRow>
+            </div>
+          )}
           {query.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
           {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
@@ -586,6 +631,12 @@ export function VideosPage() {
                   meta={
                     <>
                       {v.type && <span>{videoTypeName(v.type, lang)}</span>}
+                      {v.course && (
+                        <span className="inline-flex min-w-0 items-center gap-1">
+                          <FolderOpen className="size-3 shrink-0" />
+                          <span className="truncate">{v.course.title}</span>
+                        </span>
+                      )}
                       {v.channel && <span className="truncate">{v.channel}</span>}
                       {v.published_at && <span>{fmt.date(v.published_at)}</span>}
                       {v.duration ? <span>{formatDuration(v.duration)}</span> : null}
@@ -815,6 +866,8 @@ function VideoForm({
     // ახალ ვიდეოს პირველი ტიპი ენიჭება — select ცარიელი არ რჩება
     // ⚠️ აღარ იყენებს პირველ ტიპს ნაგულისხმევად: არჩევანი მომხმარებლისაა
     typeId: video?.type_id ? String(video.type_id) : '',
+    // კურსი („საქაღალდე"); `NO_COURSE` — საქაღალდის გარეშე
+    courseId: video?.course_id ? String(video.course_id) : NO_COURSE,
     // გასაღები; ცარიელი = ნაგულისხმევი (backend დაადებს)
     status: video?.status?.key ?? '',
     tags: video?.tags ?? [],
@@ -823,6 +876,17 @@ function VideoForm({
   const [duration, setDuration] = useState<number | null>(video?.duration ?? null)
   // რომელი ველი ჩანს, რა ჰქვია და სავალდებულოა თუ არა
   const fields = useModuleFields('video')
+  /* კურსები „საქაღალდის" ასარჩევად — მხოლოდ თუ კურსების მოდული ჩართულია
+     (თორემ `GET /courses` 403-ს დააბრუნებდა) */
+  const { has } = useModules()
+  const coursesQ = useQuery({
+    queryKey: ['courses', 'video-folder-pick'],
+    queryFn: () => fetchCourses({ all: true }).then((p) => p.items),
+    enabled: has('course'),
+  })
+  const courses = coursesQ.data ?? []
+  // შენახული კურსი ურნაში შეიძლება იყოს — მაშინ სიაში არ ჩანს, ველი კი მაინც უნდა ჩანდეს
+  const hasCourses = courses.length > 0 || !!video?.course_id
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(storageUrl(video?.thumbnail))
   /* ბმულიდან მოსული ფოტო **პირდაპირ ჩარჩოშია** (URL-ით); შენახვისას
@@ -978,6 +1042,8 @@ function VideoForm({
       title: form.title,
       url: form.url,
       type_id: form.typeId ? Number(form.typeId) : null,
+      // დამალულ ველს არ ვეხებით — თორემ საქაღალდიდან ჩუმად ამოიღებდა
+      course_id: fields.shows('course_id') ? (form.courseId === NO_COURSE ? null : Number(form.courseId)) : undefined,
       status: form.status || undefined,
       description: form.description || undefined,
       // ⚠️ ცარიელი `null`-ად მიდის და არა `undefined`-ად — გასუფთავება ასე ინახება
@@ -1180,6 +1246,25 @@ function VideoForm({
               </SelectContent>
             </Select>
           </FormField>
+
+          {/* კურსი — „საქაღალდე" ვიდეოებში (კურსების მოდული თუ ჩართულია) */}
+          {hasCourses && (
+            <FormField {...fields.field('course_id')} htmlFor="v-course" error={errors.course_id}>
+              <Select value={form.courseId} onValueChange={(v) => setForm((f) => ({ ...f, courseId: v }))}>
+                <SelectTrigger id="v-course">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_COURSE}>{t('videos.noCourse')}</SelectItem>
+                  {courses.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          )}
 
           <FormField
             {...fields.field('tags')}

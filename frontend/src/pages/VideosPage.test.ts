@@ -50,6 +50,8 @@ const mocks = vi.hoisted(() => ({
   fetchVideoTypes: vi.fn(),
   fetchVideoMetadata: vi.fn(),
   createVideo: vi.fn(),
+  // კურსების „საქაღალდეები" — ნაგულისხმევად არცერთი
+  fetchVideoFolders: vi.fn(),
   statuses: { data: [] as unknown[] },
   // მოდულის შენახული ხედი და მისი ჩუმი შენახვა
   modules: [] as { key: string; user_settings?: Record<string, unknown> }[],
@@ -62,6 +64,7 @@ vi.mock('@/api/videos', async (original) => ({
   fetchVideoTypes: mocks.fetchVideoTypes,
   fetchVideoMetadata: mocks.fetchVideoMetadata,
   createVideo: mocks.createVideo,
+  fetchVideoFolders: mocks.fetchVideoFolders,
 }))
 
 /* ფორმა იხსნება: ველების კატალოგი და დამატებითი ველები ცარიელი მოდის */
@@ -129,9 +132,10 @@ async function flush() {
 }
 
 /** სია ერთი ვიდეოთი (`entry` — `?new=1` ფორმას ხსნის) */
-async function mountList(entry = '/videos') {
+async function mountList(entry = '/videos', folders: unknown[] = [], videos: Video[] = [VIDEO]) {
   mocks.statuses.data = statuses
-  mocks.fetchVideos.mockResolvedValue({ items: [VIDEO], total: 1, lastPage: 1 })
+  mocks.fetchVideos.mockResolvedValue({ items: videos, total: videos.length, lastPage: 1 })
+  mocks.fetchVideoFolders.mockResolvedValue(folders)
   mocks.fetchVideoTypes.mockResolvedValue([])
 
   const { VideosPage } = await import('@/pages/VideosPage')
@@ -169,6 +173,7 @@ async function openAdd() {
     { id: 4, key: 'music', name_ka: 'მუსიკა', name_en: 'Music', icon: null, color: null, sort_order: 0 },
   ])
   mocks.fetchVideoMetadata.mockResolvedValue(META)
+  mocks.fetchVideoFolders.mockResolvedValue([])
 
   const { VideosPage } = await import('@/pages/VideosPage')
 
@@ -306,5 +311,38 @@ describe('VideosPage view toggle', () => {
 
     expect(layoutOf(el)).toBe('grid')
     expect(mocks.updateModuleSettings).toHaveBeenCalledWith('video', { view: 'grid' })
+  })
+})
+
+/* კურსი — „საქაღალდე": ჩიპი ბადის ზემოთ, `?course=` სიას ჭრის და სათაურს ცვლის */
+describe('VideosPage course folders', () => {
+  const FOLDER = { id: 3, title: 'Laravel', image: null, videos_count: 2, downloaded_count: 0 }
+  const chips = () => [...document.querySelectorAll<HTMLButtonElement>('[data-testid="video-folders"] button')]
+
+  it('shows the folders as chips and a click narrows the list to that course', async () => {
+    await mountList('/videos', [FOLDER])
+
+    expect(chips()).toHaveLength(1)
+    expect(chips()[0].textContent).toContain('Laravel')
+    expect(chips()[0].textContent).toContain('2')
+
+    await act(async () => chips()[0].click())
+    await flush()
+
+    expect(mocks.fetchVideos).toHaveBeenLastCalledWith(expect.objectContaining({ course: 3 }))
+    expect(document.querySelector('h1')?.textContent).toContain('Laravel')
+  })
+
+  it('opens straight into a folder from the address and the card names its course', async () => {
+    const el = await mountList('/videos?course=3', [FOLDER], [])
+    expect(mocks.fetchVideos).toHaveBeenCalledWith(expect.objectContaining({ course: 3 }))
+
+    // ბარათზე კურსი ჩანს
+    act(() => root?.unmount())
+    el.remove()
+    await mountList('/videos', [], [{ ...VIDEO, course_id: 3, course: { id: 3, title: 'Laravel', image: null } }])
+    expect(document.querySelector('[data-testid="video-course"]')?.textContent).toBe('Laravel')
+    // საქაღალდეების გარეშე ჩიპების რიგი არ იხატება
+    expect(document.querySelector('[data-testid="video-folders"]')).toBeNull()
   })
 })

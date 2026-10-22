@@ -1142,7 +1142,7 @@ export type PurgeTarget = (typeof PURGE_TARGETS)[number]
  */
 export type PurgeTargetKey = PurgeTarget | CustomModuleKey
 
-export const PURGE_MODES = ['all', 'ids', 'genre', 'status', 'type', 'tag'] as const
+export const PURGE_MODES = ['all', 'ids', 'genre', 'status', 'type', 'tag', 'course'] as const
 export type PurgeMode = (typeof PURGE_MODES)[number]
 
 /**
@@ -1162,8 +1162,9 @@ export const PURGE_TARGET_MODES = {
   // ანიმეს ფილმის/სერიალის იგივე ღერძები აქვს
   anime: ['ids', 'genre', 'status', 'all'],
   // ვიდეოს სტატუსი ახლა აქვს, ე.ი. სკოუპიც
-  // ⚠️ `ids` თერთმეტივეს აქვს — სარკეა `PurgeService::TARGET_MODES`-ისა
-  video: ['ids', 'type', 'tag', 'status', 'all'],
+  // ⚠️ `ids` თერთმეტივეს აქვს — სარკეა `PurgeService::TARGET_MODES`-ისა;
+  // `course` — კურსის „საქაღალდე" (`videos.course_id`)
+  video: ['ids', 'type', 'tag', 'status', 'course', 'all'],
   song: ['ids', 'type', 'tag', 'all'],
   book: ['ids', 'type', 'tag', 'status', 'all'],
   board_game: ['ids', 'type', 'all'],
@@ -1229,6 +1230,8 @@ export interface PurgeInput {
   status?: string
   type_ids?: number[]
   tags?: string[]
+  /** ვიდეოს კურსები („საქაღალდეები") — `mode = 'course'` */
+  course_ids?: number[]
   keep_favorites?: boolean
   /**
    * „ჩანაწერს ვშლი, ფოტოები გალერეაში დამიტოვე".

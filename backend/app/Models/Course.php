@@ -88,6 +88,15 @@ class Course extends Model
         return $this->hasMany(CourseFile::class)->orderByDesc('id');
     }
 
+    /**
+     * ვიდეოები ამ კურსის „საქაღალდეში". ⚠️ კურსის ურნა მათ არ ეხება (ჩამოტვირთული
+     * ასლი ძვირია) — საბოლოო წაშლაზე ბაზა `course_id`-ს ანულებს (`nullOnDelete`).
+     */
+    public function videos(): HasMany
+    {
+        return $this->hasMany(Video::class);
+    }
+
     /* ---------- helpers ---------- */
 
     /**

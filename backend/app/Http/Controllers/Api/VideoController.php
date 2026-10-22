@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Concerns\PicksRandomRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\VideoResource;
+use App\Models\Course;
 use App\Models\Status;
 use App\Models\Video;
 use App\Services\Links\LinkResolver;
@@ -36,10 +37,15 @@ class VideoController extends Controller
     public function index(Request $request, VideoSearch $search)
     {
         $query = Video::query()
-            ->with('type')
+            ->with(['type', 'course'])
             ->withCount(['images', 'documents', 'notes']);
         // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'video', $request);
+
+        // კურსის „საქაღალდე" (`/videos?course=`) — ვიდეოები, რომლებიც ამ კურსს ეკუთვნის
+        if ($course = $request->integer('course')) {
+            $query->where('course_id', $course);
+        }
 
         if ($platform = $request->string('platform')->toString()) {
             $query->where('platform', $platform);
@@ -116,9 +122,34 @@ class VideoController extends Controller
         return VideoResource::collection($search->similar($base, $video));
     }
 
+    /**
+     * **კურსების „საქაღალდეები"** — კურსები, რომლებსაც ერთი ვიდეო მაინც აქვს
+     * (ბადის ზემოთ ჩიპებად). სახელი, ფოტო და რიცხვი კურსისაა.
+     * ⚠️ ურნაში მყოფი კურსი აქ არ ჩანს (`trash` scope), მისი ვიდეოები კი სიაში რჩება.
+     */
+    public function folders()
+    {
+        $courses = Course::query()
+            ->whereHas('videos')
+            ->withCount([
+                'videos',
+                'videos as downloaded_count' => fn ($q) => $q->where('download_status', Video::DOWNLOAD_READY),
+            ])
+            ->orderBy('title')
+            ->get();
+
+        return response()->json(['data' => $courses->map(fn (Course $course) => [
+            'id' => $course->id,
+            'title' => $course->title,
+            'image' => $course->thumbnail_path ?: $course->image_url,
+            'videos_count' => (int) $course->videos_count,
+            'downloaded_count' => (int) $course->downloaded_count,
+        ])->values()]);
+    }
+
     public function show(Video $video)
     {
-        return new VideoResource($video->load('type'));
+        return new VideoResource($video->load(['type', 'course']));
     }
 
     /**
@@ -162,7 +193,7 @@ class VideoController extends Controller
         $video->save();
 
         // ბაზის default-ები (is_favorite/watch_count) მოდელზე ჯერ არ ასახულა
-        return (new VideoResource($video->refresh()->load('type')))->response()->setStatusCode(201);
+        return (new VideoResource($video->refresh()->load(['type', 'course'])))->response()->setStatusCode(201);
     }
 
     public function update(Request $request, Video $video)
@@ -172,7 +203,7 @@ class VideoController extends Controller
         $this->apply($video, $request, $data);
         $video->save();
 
-        return new VideoResource($video->load('type'));
+        return new VideoResource($video->load(['type', 'course']));
     }
 
     public function destroy(Video $video)
@@ -193,7 +224,7 @@ class VideoController extends Controller
         $video->is_favorite = ! $video->is_favorite;
         $video->save();
 
-        return new VideoResource($video->load('type'));
+        return new VideoResource($video->load(['type', 'course']));
     }
 
     /** „ვნახე" — მთვლელი + თარიღი */
@@ -204,7 +235,7 @@ class VideoController extends Controller
             'watched_at' => now(),
         ])->save();
 
-        return new VideoResource($video->load('type'));
+        return new VideoResource($video->load(['type', 'course']));
     }
 
     /* ---------- დამხმარეები ---------- */
@@ -232,6 +263,12 @@ class VideoController extends Controller
             ],
             // სტატუსი **საკუთარი** ლექსიკონიდან, ტიპის ზუსტი ანალოგი
             'status' => [...$must, 'string', Status::rule('video')],
+            // კურსი — „საქაღალდე"; მხოლოდ **საკუთარი** და ურნის გარეთ მყოფი
+            'course_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('courses', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
+            ],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'duration' => ['nullable', 'integer', 'min:0', 'max:864000'],
             'tags' => ['nullable', 'array', 'max:20'],
@@ -253,6 +290,9 @@ class VideoController extends Controller
         }
         if (array_key_exists('type_id', $data)) {
             $video->type_id = $data['type_id'] ?: null;
+        }
+        if (array_key_exists('course_id', $data)) {
+            $video->course_id = $data['course_id'] ?: null;
         }
         if (! empty($data['status'])) {
             $video->applyStatusKey($data['status']);

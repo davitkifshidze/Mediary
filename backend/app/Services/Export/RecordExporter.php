@@ -52,7 +52,7 @@ class RecordExporter
      * კი ჩვეულებრივი enum-სვეტი. სიაში ჩაწერის გარეშე პირველ ჯგუფზე
      * ფაილში ობიექტი ჩაიწერებოდა და CSV-ში `Illuminate\...\Status`.
      */
-    public const VIRTUAL = ['genres', 'genre', 'category', 'type', 'status', 'status_name', ...ExportDomain::EXTRAS];
+    public const VIRTUAL = ['genres', 'genre', 'category', 'type', 'course', 'status', 'status_name', ...ExportDomain::EXTRAS];
 
     /** მასივის ელემენტების გამყოფი CSV-ის უჯრაში (ტეგი/ჟანრი) */
     private const LIST_GLUE = ' | ';
@@ -299,6 +299,8 @@ class RecordExporter
             'genre' => $this->label($record->genre),
             'category' => $this->label($record->category),
             'type' => $this->label($record->type),
+            // ვიდეოს კურსი — სათაურით (id სხვა ბაზაში არაფერს ნიშნავს)
+            'course' => $record->course?->title,
             /* ექვს დომენზე ეს ლექსიკონის რიგია და გასაღები გვინდა,
                სამზე კი enum-სვეტი, ე.ი. თვითონ სტრიქონი. */
             'status' => StatusDomain::usesDictionary($module)

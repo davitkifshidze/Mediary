@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Clock,
   Eye,
+  FolderOpen,
   HardDriveDownload,
   Loader2,
   Play,
@@ -148,6 +149,13 @@ export function VideoCard({
             className="flex min-h-4 items-center gap-3 overflow-hidden whitespace-nowrap text-xs text-muted-foreground"
             data-testid="video-meta"
           >
+            {/* კურსი — „საქაღალდე" */}
+            {v.course && (
+              <span className="inline-flex min-w-0 items-center gap-1" title={v.course.title} data-testid="video-course">
+                <FolderOpen className="size-3 shrink-0" />
+                <span className="truncate">{v.course.title}</span>
+              </span>
+            )}
             {v.channel && (
               <span className="min-w-0 truncate" title={v.channel}>
                 {v.channel}

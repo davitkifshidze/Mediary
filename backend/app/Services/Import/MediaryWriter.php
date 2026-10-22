@@ -2,6 +2,7 @@
 
 namespace App\Services\Import;
 
+use App\Models\Course;
 use App\Models\CustomCategory;
 use App\Models\Genre;
 use App\Models\Status;
@@ -105,6 +106,7 @@ class MediaryWriter
         $model->forceFill($attrs);
 
         $this->dictionaries($user, $module, $model, $record);
+        $this->course($user, $module, $model, $record);
         $this->photo($user, $module, $model, $record, $files);
 
         if ($created = MediarySchema::moment($record['created_at'] ?? null)) {
@@ -225,6 +227,31 @@ class MediaryWriter
             if ($row = $this->dictionary($user, $module, $rel->getRelated(), $label, $record)) {
                 $model->setAttribute($rel->getForeignKeyName(), $row->getKey());
             }
+        }
+    }
+
+    /**
+     * ვიდეოს კურსი („საქაღალდე") — **არსებული** კურსი სათაურით; ახალს არ ქმნის:
+     * კურსი ჩანაწერია და არა ლექსიკონი, ცარიელი კურსი კი სიაში ზედმეტი იქნებოდა.
+     * ⚠️ ქართული სათაური PHP-ში შედარდება და არა SQL-ში (sqlite და MySQL რეგისტრს სხვანაირად ადარებს).
+     */
+    private function course(User $user, string $module, Model $model, array $record): void
+    {
+        $title = $this->text($record['course'] ?? null, 255);
+
+        if ($title === null || ! in_array('course', ExportDomain::fields($module), true) || ! method_exists($model, 'course')) {
+            return;
+        }
+
+        $key = mb_strtolower($title);
+        $match = Course::query()
+            ->withoutGlobalScope('owner')
+            ->where('user_id', $user->getKey())
+            ->get(['id', 'title'])
+            ->first(fn (Course $course) => mb_strtolower((string) $course->title) === $key);
+
+        if ($match) {
+            $model->setAttribute('course_id', $match->getKey());
         }
     }
 

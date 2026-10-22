@@ -156,6 +156,9 @@ class AdminPurgeController extends Controller
             'type_ids.*' => ['integer'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string'],
+            // ვიდეოს კურსი („საქაღალდე")
+            'course_ids' => ['nullable', 'array'],
+            'course_ids.*' => ['integer'],
             'keep_favorites' => ['nullable', 'boolean'],
             // ფოტოები უკატეგორიოში გადადის და არა იშლება
             'keep_gallery' => ['nullable', 'boolean'],
@@ -178,6 +181,7 @@ class AdminPurgeController extends Controller
             'status' => empty($data['status']),
             'type' => empty($data['type_ids']),
             'tag' => empty($data['tags']),
+            'course' => empty($data['course_ids']),
             default => false,
         };
 

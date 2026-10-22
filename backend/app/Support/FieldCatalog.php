@@ -80,6 +80,8 @@ final class FieldCatalog
             ['key' => 'type_id', 'type' => 'select', 'sort_order' => 30],
             // სტატუსი ვიდეოსაც: მართვადი ლექსიკონი, ფორმა მას ითვალისწინებს
             ['key' => 'status', 'type' => 'select', 'sort_order' => 35],
+            // კურსი — „საქაღალდე" ვიდეოებში; ⚠️ საჯარო გვერდზე არა: კურსი შეიძლება პირადი იყოს
+            ['key' => 'course_id', 'type' => 'select', 'public' => false, 'sort_order' => 37],
             [
                 'key' => 'duration',
                 'type' => 'number',

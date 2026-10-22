@@ -27,6 +27,7 @@ function video(extra: Partial<Video> = {}): Video {
     channel: 'Studio',
     published_at: '2024-05-01',
     type_id: 1,
+    course_id: null,
     type: { id: 1, key: 'fun', name_ka: 'გასართობი', name_en: 'Entertainment', icon: 'Clapperboard', color: 'c8', sort_order: 1 },
     status: { id: 2, key: 'to_watch', module: 'video', name_ka: 'სანახავი', name_en: 'To watch', role: 'todo', icon: 'Clock', color: null, is_default: true, sort_order: 0 },
     visibility: 'private',

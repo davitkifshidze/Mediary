@@ -22,6 +22,9 @@ export interface Video {
   /** მართვადი ტიპი — `kind` enum-ი აღარ არსებობს */
   type_id: number | null
   type?: VideoType | null
+  /** კურსი — „საქაღალდე" ვიდეოებში; ურნაში მყოფ კურსზე `course` `null`-ია, `course_id` რჩება */
+  course_id: number | null
+  course?: VideoCourse | null
   /** მართვადი სტატუსი; ამ მოდულს ის აქამდე არ ჰქონდა */
   status: Status | null
   /** საჯარო პროფილის წინაპირობა */
@@ -181,6 +184,20 @@ export async function reorderVideoTypes(ids: number[]): Promise<VideoType[]> {
 
 /* ---------- ვიდეოები ---------- */
 
+/** ვიდეოს კურსი მოკლედ („საქაღალდის" სახელი და ფოტო) */
+export interface VideoCourse {
+  id: number
+  title: string
+  image: string | null
+}
+
+/** კურსის „საქაღალდე" — კურსი ≥1 ვიდეოთი (`GET /videos/folders`) */
+export interface VideoFolder extends VideoCourse {
+  videos_count: number
+  /** ლოკალურად ჩამოტვირთული */
+  downloaded_count: number
+}
+
 export interface VideoFilters extends ListParams {
   q?: string
   platform?: string
@@ -191,6 +208,8 @@ export interface VideoFilters extends ListParams {
   type_id?: string
   /** მხოლოდ ლოკალურად ჩამოწერილები (მიმდინარეებიც) */
   downloaded?: boolean
+  /** კურსის „საქაღალდე" */
+  course?: number
   /** სტატუსის **გასაღები** (მძიმით გამოყოფილი სიაც შეიძლება) */
   status?: string
   sort?: string
@@ -200,6 +219,8 @@ export interface VideoInput {
   title: string
   url: string
   type_id?: number | null
+  /** კურსი („საქაღალდე"); `undefined` = არ შეცვალო, `null` = საქაღალდიდან ამოღება */
+  course_id?: number | null
   /** ლექსიკონის გასაღები; `undefined` = „არ შეცვალო" */
   status?: string
   visibility?: 'private' | 'public'
@@ -228,6 +249,7 @@ function toFormData(input: VideoInput): FormData {
   if (input.channel !== undefined) fd.append('channel', input.channel ?? '')
   if (input.published_at !== undefined) fd.append('published_at', input.published_at ?? '')
   if (input.type_id != null) fd.append('type_id', String(input.type_id))
+  if (input.course_id !== undefined) fd.append('course_id', input.course_id == null ? '' : String(input.course_id))
   if (input.status) fd.append('status', input.status)
   if (input.visibility) fd.append('visibility', input.visibility)
   if (input.duration != null) fd.append('duration', String(input.duration))
@@ -282,6 +304,12 @@ export async function pickRandomVideos(filters: VideoFilters, opts: PickOptions 
       ...pickParams(opts),
     },
   })
+  return data.data ?? []
+}
+
+/** კურსების „საქაღალდეები" — ბადის ზემოთ ჩიპებად */
+export async function fetchVideoFolders(): Promise<VideoFolder[]> {
+  const { data } = await api.get('/videos/folders')
   return data.data ?? []
 }
 

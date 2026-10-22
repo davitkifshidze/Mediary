@@ -1035,6 +1035,7 @@ class PurgeTest extends TestCase
             'type' => ['type_ids' => [1]],
             'tag' => ['tags' => ['ტეგი']],
             'status' => ['status' => $this->anyStatusFor($target)],
+            'course' => ['course_ids' => [1]],
             default => [],
         };
     }

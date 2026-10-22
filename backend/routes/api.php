@@ -598,6 +598,8 @@ Route::middleware('auth:sanctum')->group(function () {
            ⚠️ `{video}`-ზე **ზემოთ** უნდა იდგეს, თორემ „download-status" id-ად
            წაიკითხება — იგივე წესი, რაც `videos/bulk`-ს და `gallery/groups`-ს. */
         Route::get('/videos/download-status', [VideoDownloadController::class, 'status']);
+        // კურსების „საქაღალდეები" (კურსები ≥1 ვიდეოთი) — ⚠️ ისიც `{video}`-ზე ზემოთ
+        Route::get('/videos/folders', [VideoController::class, 'folders']);
         Route::post('/videos', [VideoController::class, 'store']);
         // მასობრივი ოპერაცია: ტიპი · ტეგის დამატება/მოხსნა.
         // `{video}`-ზე ზემოთ უნდა იყოს, თორემ „bulk" id-ად წაიკითხება.

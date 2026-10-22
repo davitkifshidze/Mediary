@@ -19,6 +19,13 @@ class VideoResource extends JsonResource
             // მართვადი ტიპი — `kind` enum-ი აღარ არსებობს
             'type_id' => $this->type_id,
             'type' => $this->whenLoaded('type', fn () => new VideoTypeResource($this->type)),
+            // კურსი — „საქაღალდე" (ურნაში მყოფი კურსი `null`-ია)
+            'course_id' => $this->course_id,
+            'course' => $this->whenLoaded('course', fn () => $this->course ? [
+                'id' => $this->course->id,
+                'title' => $this->course->title,
+                'image' => $this->course->thumbnail_path ?: $this->course->image_url,
+            ] : null),
             // ვიდეოს სტატუსი: ამ მოდულს ის აქამდე საერთოდ არ ჰქონდა
             'status' => StatusResource::brief($this->status),
             // საჯარო პროფილის წინაპირობა; default `private`

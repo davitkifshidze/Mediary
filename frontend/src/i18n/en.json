@@ -214,7 +214,8 @@
       "unavailable": "Downloading is off on this server — yt-dlp is not installed.",
       "noFfmpeg": "no ffmpeg — quality is limited",
       "stalled": "Stopped — try again"
-    }
+    },
+    "noCourse": "No course"
   },
   "requests": {
     "status": {
@@ -1303,7 +1304,8 @@
         "title": "Title",
         "type_id": "Type",
         "thumbnail": "Main photo",
-        "status": "Status"
+        "status": "Status",
+        "course_id": "Course"
       },
       "movie": {
         "rating": "My rating",
@@ -1469,7 +1471,8 @@
         "channel": "Who uploaded the video. Filled in automatically when you paste a link.",
         "published_at": "When the video was published at its source. Filled in automatically when added from the web search.",
         "tags": "Your own labels, used for filtering.",
-        "url": "YouTube · Vimeo · Dailymotion or a direct file."
+        "url": "YouTube · Vimeo · Dailymotion or a direct file.",
+        "course_id": "The course “folder” in videos; videos added from a course playlist land here on their own."
       },
       "movie": {
         "rating": "From 1 to 10. TMDB's own score is stored separately and isn't touched.",
@@ -1594,7 +1597,8 @@
       "genre": "By genre",
       "status": "By status",
       "type": "By type / category",
-      "tag": "By tag"
+      "tag": "By tag",
+      "course": "By course (folder)"
     },
     "targetOption": {
       "movie": "Movies",

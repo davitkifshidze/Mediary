@@ -145,6 +145,8 @@ export function PurgePage() {
   const [genres, setGenres] = useState<string[]>([])
   const [status, setStatus] = useState('')
   const [typeIds, setTypeIds] = useState<number[]>([])
+  /** ვიდეოს კურსები („საქაღალდეები") */
+  const [courseIds, setCourseIds] = useState<number[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [keepFavorites, setKeepFavorites] = useState(true)
   /**
@@ -228,12 +230,13 @@ export function PurgePage() {
       status: mode === 'status' ? status : undefined,
       type_ids: mode === 'type' ? typeIds : undefined,
       tags: mode === 'tag' ? tags : undefined,
+      course_ids: mode === 'course' ? courseIds : undefined,
       keep_favorites: keepFavorites,
       // გალერეის სამიზნეზე აზრი არ აქვს — სწორედ ფოტოებია წასაშლელი
       keep_gallery: target === 'gallery' ? undefined : keepGallery,
       user_id: userId,
     }),
-    [target, mode, mediaType, ids, genres, status, typeIds, tags, keepFavorites, keepGallery, userId],
+    [target, mode, mediaType, ids, genres, status, typeIds, tags, courseIds, keepFavorites, keepGallery, userId],
   )
 
   /** სკოუპი შევსებულია? (backend-იც ამოწმებს — ეს მხოლოდ UI-ს ბლოკავს) */
@@ -243,7 +246,8 @@ export function PurgePage() {
     (mode === 'genre' && genres.length > 0) ||
     (mode === 'status' && !!status) ||
     (mode === 'type' && typeIds.length > 0) ||
-    (mode === 'tag' && tags.length > 0)
+    (mode === 'tag' && tags.length > 0) ||
+    (mode === 'course' && courseIds.length > 0)
 
   const usersQ = useQuery({ queryKey: ['admin-users'], queryFn: fetchUsers })
   const genresQ = useQuery({ queryKey: ['genres'], queryFn: () => fetchGenres(), enabled: !byDictionary })
@@ -276,6 +280,13 @@ export function PurgePage() {
         user_id: userId,
       }),
     enabled: mode === 'ids',
+  })
+  /* ვიდეოს „საქაღალდეები" = **სამიზნე ანგარიშის** კურსები — იგივე წყარო, რაც
+     „კონკრეტულ ჩანაწერებს" აქვს (`/admin/purge/records`), ოღონდ კურსის სამიზნით */
+  const coursePoolQ = useQuery({
+    queryKey: ['purge-pool', 'course', null, userId ?? 'me'],
+    queryFn: () => fetchPurgeRecords({ target: 'course', user_id: userId }),
+    enabled: mode === 'course',
   })
   // ტეგების შემოთავაზება — ბიბლიოთეკაში უკვე არსებული ტეგები
   const videosQ = useQuery({
@@ -453,6 +464,7 @@ export function PurgePage() {
        და სულ სხვა ჩანაწერს წაშლიდა. */
     setIds([])
     setTypeIds([])
+    setCourseIds([])
     setTags([])
   }
 
@@ -602,6 +614,24 @@ export function PurgePage() {
                         }
                       />
                       {videoTypeName(type, lang)}
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {mode === m && m === 'course' && (
+                <div className="mt-2 space-y-1 pl-8" data-testid="purge-courses">
+                  {(coursePoolQ.data ?? []).map((course) => (
+                    <label key={course.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={courseIds.includes(course.id)}
+                        onCheckedChange={() =>
+                          setCourseIds((cur) =>
+                            cur.includes(course.id) ? cur.filter((x) => x !== course.id) : [...cur, course.id],
+                          )
+                        }
+                      />
+                      {course.title}
                     </label>
                   ))}
                 </div>

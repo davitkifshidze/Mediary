@@ -100,6 +100,15 @@ class Video extends Model
         return $this->belongsTo(VideoType::class, 'type_id');
     }
 
+    /**
+     * კურსი — „საქაღალდე" ვიდეოებში (ფლეილისტიდან დამატებული ან ხელით მიბმული).
+     * ⚠️ ურნაში მყოფი კურსი `trash` scope-ით აქ `null`-ია — საქაღალდე იმალება, ვიდეო რჩება.
+     */
+    public function course(): BelongsTo
+    {
+        return $this->belongsTo(Course::class, 'course_id');
+    }
+
     /* ---------- მიმაგრებული შიგთავსი — სექციის საკუთარი ცხრილები ---------- */
 
     public function files(): HasMany

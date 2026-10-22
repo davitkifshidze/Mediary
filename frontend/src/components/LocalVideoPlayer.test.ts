@@ -51,6 +51,7 @@ function video(extra: Partial<Video> = {}): Video {
     channel: null,
     published_at: null,
     type_id: null,
+    course_id: null,
     type: null,
     status: null,
     visibility: 'private',

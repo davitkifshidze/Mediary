@@ -76,7 +76,7 @@ class PurgeService
 {
     public const TARGETS = ['movie', 'series', 'anime', 'video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'place', 'personal', 'duty', 'gallery'];
 
-    public const MODES = ['all', 'ids', 'genre', 'status', 'type', 'tag'];
+    public const MODES = ['all', 'ids', 'genre', 'status', 'type', 'tag', 'course'];
 
     /**
      * **სამიზნე ანგარიშის ურნაში** (`/purge`). აკრეფილი
@@ -113,8 +113,8 @@ class PurgeService
         'series' => ['ids', 'genre', 'status', 'all'],
         // ანიმეს ფილმის/სერიალის იგივე ღერძები აქვს
         'anime' => ['ids', 'genre', 'status', 'all'],
-        // ვიდეოს სტატუსი ახლა აქვს, ე.ი. სკოუპიც
-        'video' => ['ids', 'type', 'tag', 'status', 'all'],
+        // ვიდეოს სტატუსი ახლა აქვს, ე.ი. სკოუპიც; `course` — კურსის „საქაღალდე" (`videos.course_id`)
+        'video' => ['ids', 'type', 'tag', 'status', 'course', 'all'],
         'song' => ['ids', 'type', 'tag', 'all'],
         'book' => ['ids', 'type', 'tag', 'status', 'all'],
         'board_game' => ['ids', 'type', 'all'],
@@ -793,6 +793,8 @@ class PurgeService
                     array_map('intval', $input['type_ids'] ?? []),
                 ),
             'tag' => null,
+            // კურსის „საქაღალდე" — მხოლოდ ვიდეოზე (`TARGET_MODES`)
+            'course' => $query->whereIn('course_id', array_map('intval', $input['course_ids'] ?? [])),
             default => null,
         };
 
