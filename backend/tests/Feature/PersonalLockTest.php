@@ -141,6 +141,8 @@ class PersonalLockTest extends TestCase
         $this->assertSame([], collect($this->getJson('/api/personal/albums')->json('data'))->pluck('id')->all());
         $this->getJson("/api/personal/albums/{$album->id}")->assertNotFound();
         $this->assertSame(['person:none'], collect($this->getJson('/api/personal/media/groups?by=person')->json('data'))->pluck('key')->all());
+        // პიროვნების „ალბომით" ხედი დამალულზე ცარიელია და შიგთავსს არ ამხელს
+        $this->assertSame([], $this->getJson("/api/personal/media/groups?by=album&person_id={$person->id}")->assertOk()->json('data'));
         $this->getJson('/api/personal/summary')->assertJsonPath('photos', 1)->assertJsonPath('albums', 0)->assertJsonPath('people', 1);
 
         // ფაილი და ესკიზი — 404, ზუსტად ისე, როგორც სხვისი

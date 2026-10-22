@@ -2,13 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Upload } from 'lucide-react'
 import { fetchPersonalSummary, PERSONAL_KEY } from '@/api/personal'
 import { useModules } from '@/lib/modules'
 import { PERSONAL_CUTS, type PersonalCut } from '@/lib/personalCuts'
 import { formatBytes } from '@/lib/utils'
 import { StorageBar } from '@/components/StorageBar'
-import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -16,6 +14,7 @@ import { AddAlbumButton, PersonalAlbumsCut } from '@/components/personal/Persona
 import { PersonalMediaCut } from '@/components/personal/PersonalMediaCut'
 import { AddPersonButton, PersonalPeopleCut } from '@/components/personal/PersonalPeopleCut'
 import { PersonalUploadDialog } from '@/components/personal/PersonalUploadDialog'
+import { PersonalUploadButton } from '@/components/personal/PersonalUploader'
 
 /* ============================================================
    **პირადი გალერეა — `/personal` და მისი ჭრილები.**
@@ -65,10 +64,7 @@ export function PersonalPage({ cut = 'people' }: { cut?: PersonalCut }) {
           <>
             {cut === 'people' && <AddPersonButton />}
             {cut === 'albums' && <AddAlbumButton />}
-            <Button onClick={() => setUploading(true)}>
-              <Upload className="size-4" />
-              {t('actions.upload')}
-            </Button>
+            <PersonalUploadButton onClick={() => setUploading(true)} />
           </>
         }
       />

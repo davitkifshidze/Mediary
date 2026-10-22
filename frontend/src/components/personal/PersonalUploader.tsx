@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, CheckCircle2, Film, ImageIcon, Loader2, RotateCcw, UploadCloud, X } from 'lucide-react'
+import { AlertCircle, CheckCheck, CheckCircle2, Film, ImageIcon, Loader2, RotateCcw, Upload, UploadCloud, X } from 'lucide-react'
 import { uploadPersonalMedia } from '@/api/personal'
 import { errorMessage } from '@/lib/errors'
+import { MODULE_ACCENT_FALLBACK, modAccent, useModules } from '@/lib/modules'
 import { invalidatePersonal } from '@/lib/personal'
 import { uploadProblem } from '@/lib/pendingUploads'
 import { limitFor, limitHint, useUploadLimits } from '@/lib/uploadLimits'
@@ -27,9 +28,16 @@ import { InfoHint } from '@/components/ui/info-hint'
    ითქმის და არა 300 მეგაბაიტის გაგზავნის შემდეგ. ფოტო თუ ვიდეო — ამას
    ბრაუზერის `file.type` წყვეტს; ნამდვილ შემოწმებას სერვერი შიგთავსით აკეთებს.
 
-   ⚠️ **ადგილი (ადამიანი/ალბომი) გამომძახებლისაა** — ადამიანის გვერდზე ფოტო
-   მას ეკუთვნის, ალბომისაზე — ალბომს (სერვერი ადამიანის ალბომზე ადამიანსაც
+   ⚠️ **ადგილი (პიროვნება/ალბომი) გამომძახებლისაა** — პიროვნების გვერდზე ფოტო
+   მას ეკუთვნის, ალბომისაზე — ალბომს (სერვერი პიროვნების ალბომზე პიროვნებასაც
    თვითონ სვამს).
+
+   ⚠️ **ზონა აღარ არის** („დიდი ღილაკი ჩააგდე… არ მომწონს"): ფაილს ირჩევს
+   ერთი „ატვირთვა" ღილაკი (`PersonalUploadButton` → `ref.open()`), ხოლო
+   **მთელი შიგთავსი** (`children` — ბადე, ჩანართები) გადათრევის სამიზნეა —
+   გადათრევისას ზემოდან მოდულის ფერის ნახევრად გამჭვირვალე „გაუშვი აქ"
+   ფარავს. რიგი კომპაქტური პანელია შიგთავსის თავზე და მხოლოდ მაშინ ჩანს,
+   როცა რამე ტვირთავს ან აიტვირთა; ფორმატები და ზღვრები ღილაკის `i`-შია.
    ============================================================ */
 
 type Status = 'pending' | 'uploading' | 'done' | 'error'
@@ -43,6 +51,11 @@ interface QueueItem {
   error?: string
 }
 
+/** რას აძლევს ატვირთვა გარეთ — ღილაკი ფაილის ამრჩევს ამით ხსნის */
+export interface PersonalUploaderHandle {
+  open: () => void
+}
+
 let nextKey = 1
 
 /** ბრაუზერის ტიპით — სერვერი მაინც შიგთავსით წყვეტს */
@@ -51,22 +64,26 @@ function kindOf(file: File): 'personal_video' | 'personal_photo' {
 }
 
 export function PersonalUploader({
+  ref,
   personId,
   albumId,
   className,
-  compact,
+  children,
 }: {
+  ref?: Ref<PersonalUploaderHandle>
   personId?: number | null
   albumId?: number | null
   className?: string
-  /** დაბალი ზონა — ადამიანისა და ალბომის გვერდზე ბადის თავზე */
-  compact?: boolean
+  /** გადათრევის სამიზნე — ბადე/ჩანართები; რიგის პანელი მის თავზე დგება */
+  children?: ReactNode
 }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
+  const { all } = useModules()
   const limitsQ = useUploadLimits()
   const photoLimit = limitFor(limitsQ.data, 'personal_photo')
   const videoLimit = limitFor(limitsQ.data, 'personal_video')
+  const color = all.find((m) => m.key === 'personal')?.color
 
   const [queue, setQueue] = useState<QueueItem[]>([])
   const busy = useRef(false)
@@ -139,70 +156,50 @@ export function PersonalUploader({
       })
   }, [queue, personId, albumId, qc])
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  /* ⚠️ `noClick`/`noKeyboard` — შიგთავსზე დაჭერა ფოტოს ხსნის და არა ფაილის
+     ამრჩევს; ამრჩევს მხოლოდ ღილაკი ხსნის (`open`) */
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     accept: { 'image/*': [], 'video/*': [] },
     multiple: true,
+    noClick: true,
+    noKeyboard: true,
   })
 
+  useImperativeHandle(ref, () => ({ open }), [open])
+
   const done = queue.filter((item) => item.status === 'done').length
-  const active = queue.filter((item) => item.status !== 'done')
 
   return (
-    <div className={className}>
-      <div
-        {...getRootProps()}
-        data-testid="personal-dropzone"
-        className={cn(
-          'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border text-center text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-muted',
-          compact ? 'px-4 py-4' : 'px-6 py-10',
-          isDragActive && 'border-primary bg-muted',
-        )}
-      >
-        <input {...getInputProps()} data-testid="personal-upload-input" />
-        <UploadCloud className={compact ? 'size-5' : 'size-8'} />
-        <span className="font-medium text-foreground">
-          {t(isDragActive ? 'personal.upload.dropActive' : 'personal.upload.drop')}
-        </span>
-        <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
-          <span className="inline-flex items-center gap-1">
-            <ImageIcon className="size-3.5" />
-            {limitHint(photoLimit, (n) => t('uploads.moreFormats', { count: n }))}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Film className="size-3.5" />
-            {limitHint(videoLimit, (n) => t('uploads.moreFormats', { count: n }))}
-          </span>
-          {videoLimit?.capped_by_server && <InfoHint tone="warn" info={t('personal.upload.cappedHint')} />}
-        </span>
-      </div>
+    <div {...getRootProps({ className: cn('relative', className) })} data-testid="personal-drop-target">
+      <input {...getInputProps()} data-testid="personal-upload-input" />
 
-      {(active.length > 0 || done > 0) && (
-        <div className="mt-3 rounded-xl border border-border bg-card">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
-            <span>
-              {t('personal.upload.status', { done, total: queue.length })}
-            </span>
+      {/* ---------- რიგი — კომპაქტური პანელი შიგთავსის თავზე ---------- */}
+      {queue.length > 0 && (
+        <div className="mb-4 rounded-xl border border-border bg-card" data-testid="personal-upload-queue">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2 text-sm">
+            <span className="text-muted-foreground">{t('personal.upload.status', { done, total: queue.length })}</span>
             {done > 0 && (
               <Button
-                variant="ghost"
+                type="button"
+                variant="outline"
                 size="sm"
-                className="h-7 px-2 text-xs"
                 onClick={() => setQueue((cur) => cur.filter((item) => item.status !== 'done'))}
               >
+                <CheckCheck className="size-4" />
                 {t('personal.upload.clearDone')}
               </Button>
             )}
           </div>
 
-          <ul className="max-h-64 divide-y divide-border overflow-y-auto">
+          <ul className="fb-scroll max-h-48 divide-y divide-border overflow-y-auto">
             {queue.map((item) => (
               <li key={item.key} className="flex items-center gap-3 px-3 py-2 text-sm" data-testid="personal-upload-row">
                 <span className="shrink-0 text-muted-foreground">
                   {item.status === 'uploading' ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : item.status === 'done' ? (
-                    <CheckCircle2 className="size-4 text-emerald-500" />
+                    <CheckCircle2 className="size-4 text-[var(--icon-ok)]" />
                   ) : item.status === 'error' ? (
                     <AlertCircle className="size-4 text-destructive" />
                   ) : item.file.type.startsWith('video/') ? (
@@ -219,7 +216,10 @@ export function PersonalUploader({
                   ) : (
                     <span className="mt-1 block h-1 overflow-hidden rounded-full bg-muted">
                       <span
-                        className={cn('block h-full rounded-full transition-[width]', item.status === 'done' ? 'bg-emerald-500' : 'bg-primary')}
+                        className={cn(
+                          'block h-full rounded-full transition-[width]',
+                          item.status === 'done' ? 'bg-[var(--icon-ok)]' : 'bg-primary',
+                        )}
                         style={{ width: `${Math.round(item.progress * 100)}%` }}
                       />
                     </span>
@@ -230,30 +230,79 @@ export function PersonalUploader({
 
                 {item.status === 'error' && (
                   <Button
-                    variant="ghost"
+                    type="button"
+                    variant="outline"
                     size="sm"
-                    className="h-7 px-2 text-xs"
                     onClick={() => patch(item.key, { status: 'pending', error: undefined, progress: 0 })}
                   >
-                    <RotateCcw className="size-3.5" />
+                    <RotateCcw className="size-4" />
                     {t('personal.upload.retry')}
                   </Button>
                 )}
                 {(item.status === 'error' || item.status === 'pending') && (
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => setQueue((cur) => cur.filter((row) => row.key !== item.key))}
-                    aria-label={t('actions.delete')}
-                    className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
                   >
-                    <X className="size-3.5" />
-                  </button>
+                    <X className="size-4" />
+                    {t('personal.upload.remove')}
+                  </Button>
                 )}
               </li>
             ))}
           </ul>
         </div>
       )}
+
+      {children}
+
+      {/* ---------- გადათრევა — მთელ სამიზნეზე, მოდულის ფერით ---------- */}
+      {isDragActive && (
+        <div
+          style={modAccent(color) ?? MODULE_ACCENT_FALLBACK}
+          className="pointer-events-none absolute inset-0 z-10 grid min-h-32 place-items-center rounded-xl border-2 border-dashed border-[var(--mod)] bg-[var(--mod-soft)] backdrop-blur-[1px]"
+          data-testid="personal-drop-overlay"
+        >
+          <span className="flex items-center gap-2 rounded-md bg-background/90 px-4 py-2 text-sm font-medium text-[var(--mod)] shadow-sm">
+            <UploadCloud className="size-5" />
+            {t('personal.upload.dropActive')}
+          </span>
+        </div>
+      )}
     </div>
+  )
+}
+
+/**
+ * **„ატვირთვა" — ერთი ღილაკი ყველგან** (პიროვნება, ალბომი, `/personal`-ის
+ * ფანჯარა), ფორმატები და ზღვრები მის `i`-შია. რას აკეთებს დაჭერა,
+ * გამომძახებელი წყვეტს: გვერდზე ფაილის ამრჩევს ხსნის, `/personal`-ზე — ფანჯარას.
+ */
+export function PersonalUploadButton({ onClick, size }: { onClick: () => void; size?: 'sm' }) {
+  const { t } = useTranslation()
+  const limitsQ = useUploadLimits()
+  const photoLimit = limitFor(limitsQ.data, 'personal_photo')
+  const videoLimit = limitFor(limitsQ.data, 'personal_video')
+  const more = (n: number) => t('uploads.moreFormats', { count: n })
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <Button type="button" size={size} onClick={onClick}>
+        <Upload className="size-4" />
+        {t('actions.upload')}
+      </Button>
+      <InfoHint
+        tone={videoLimit?.capped_by_server ? 'warn' : undefined}
+        info={
+          <>
+            <span className="block">{t('personal.upload.photoLimit', { limit: limitHint(photoLimit, more) })}</span>
+            <span className="block">{t('personal.upload.videoLimit', { limit: limitHint(videoLimit, more) })}</span>
+            {videoLimit?.capped_by_server && <span className="mt-1 block">{t('personal.upload.cappedHint')}</span>}
+          </>
+        }
+      />
+    </span>
   )
 }

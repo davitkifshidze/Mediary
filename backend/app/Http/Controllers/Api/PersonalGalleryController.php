@@ -52,6 +52,12 @@ class PersonalGalleryController extends Controller
      *
      * ⚠️ **„პიროვნების/ალბომის გარეშე" თავისი ბარათია** და ის ბოლოშია —
      * ცარიელი ჯგუფი საერთოდ არ ჩანს.
+     *
+     * ⚠️ **`person_id` — პიროვნების გვერდის „ალბომით" ხედი**: ითვლება მხოლოდ
+     * მისი ფოტო/ვიდეო, ე.ი. ჯგუფად ჩანს ყველა ალბომი, სადაც ის არის — „გარე"
+     * ალბომიც, სადაც მისი ფოტო დევს — და „ალბომის გარეშე". ჩაკეტილი და
+     * დაუხსნელი პიროვნების ფოტოს `PersonalMedia`-ს ლოკის სქოუპი ისედაც მალავს,
+     * ე.ი. პასუხი ცარიელი სიაა.
      */
     public function groups(Request $request)
     {
@@ -59,9 +65,11 @@ class PersonalGalleryController extends Controller
             'by' => ['required', 'in:'.implode(',', self::GROUP_BY)],
             'kind' => ['nullable', 'in:'.implode(',', PersonalMedia::KINDS)],
             'favorite' => ['nullable', 'boolean'],
+            'person_id' => ['nullable', 'integer'],
         ]);
 
         $base = PersonalMedia::query()
+            ->when(isset($data['person_id']), fn ($q) => $q->where('person_id', (int) $data['person_id']))
             ->when(isset($data['kind']), fn ($q) => $q->where('kind', $data['kind']))
             ->when(! empty($data['favorite']), fn ($q) => $q->where('is_favorite', true));
 

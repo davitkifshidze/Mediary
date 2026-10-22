@@ -246,9 +246,10 @@ export async function fetchPersonalMedia(filters: PersonalMediaFilters = {}): Pr
   return readPage<PersonalMedia>(data)
 }
 
+/** `person_id` — პიროვნების გვერდის „ალბომით" ხედი (მხოლოდ მისი ფოტო/ვიდეო) */
 export async function fetchPersonalGroups(
   by: PersonalGrouping,
-  filters: Pick<PersonalMediaFilters, 'kind' | 'favorite'> = {},
+  filters: Pick<PersonalMediaFilters, 'kind' | 'favorite' | 'person_id'> = {},
 ): Promise<PersonalGroup[]> {
   const { data } = await api.get('/personal/media/groups', { params: { by, ...mediaParams(filters) } })
   return data.data

@@ -18,8 +18,11 @@ import i18n from '@/i18n'
    თვეების გარეშე) სერვერის ჯგუფებს ითხოვს, ქვე-ფილტრი (ყველა · ფოტოები ·
    ვიდეოები · რჩეული) ერთი რიგია, ძებნა ჯგუფურ ხედშიც ჩანს და „ყველაზე"
    გადადის; „წარწერა" ფილის ღილაკიცაა და ლაითბოქსშიც; ატვირთვა **სათითაოდ**
-   მიდის, პიროვნების კონტექსტით, ზედმეტად დიდი კი სერვერამდე არ მიდის; ბადის
-   უჯრა — ესკიზი ბადეში, სრული ფოტო ლაითბოქსში, ვიდეო პირდაპირი მისამართით.
+   მიდის, პიროვნების კონტექსტით, ზედმეტად დიდი კი სერვერამდე არ მიდის; ზონა აღარ
+   არის — ერთი „ატვირთვა" ღილაკი, გადათრევისას გადაფარვა, რიგის `h-9` ღილაკები
+   ტექსტით; პიროვნების გვერდი — „ყველა" ჩანართი და „ალბომით" დაჯგუფება; ალბომის
+   გვერდი — ყველა · ფოტოები · ვიდეოები; ბადის უჯრა — ესკიზი ბადეში, სრული
+   ფოტო ლაითბოქსში, ვიდეო პირდაპირი მისამართით.
 
    ჩაკეტილი პიროვნება ბოქლომიანი ბარათია: დაჭერა პაროლს ითხოვს და არა
    გვერდს ხსნის, გვერდი კი მხოლოდ ბოქლომს ხატავს (ბადე საერთოდ არ ითხოვება).
@@ -97,6 +100,7 @@ const mocks = vi.hoisted(() => ({
   fetchPersonalGroups: vi.fn(),
   fetchPersonalAlbums: vi.fn(),
   fetchPerson: vi.fn(),
+  fetchPersonalAlbum: vi.fn(),
   unlockRecord: vi.fn(),
   uploadPersonalMedia: vi.fn(),
   fetchUploadLimits: vi.fn(),
@@ -110,6 +114,7 @@ vi.mock('@/api/personal', async (original) => ({
   fetchPersonalGroups: mocks.fetchPersonalGroups,
   fetchPersonalAlbums: mocks.fetchPersonalAlbums,
   fetchPerson: mocks.fetchPerson,
+  fetchPersonalAlbum: mocks.fetchPersonalAlbum,
   uploadPersonalMedia: mocks.uploadPersonalMedia,
 }))
 
@@ -378,7 +383,123 @@ describe('PersonalUploader', () => {
     // ზედმეტად დიდი სერვერამდე არ მიდის და მიზეზს წერს
     expect(mocks.uploadPersonalMedia).toHaveBeenCalledTimes(2)
     expect(container!.textContent).toContain('huge.mp4')
-    expect(container!.querySelectorAll('[data-testid="personal-upload-row"]').length).toBe(3)
+    const rows = container!.querySelectorAll<HTMLElement>('[data-testid="personal-upload-row"]')
+    expect(rows.length).toBe(3)
+
+    // რიგის ღილაკები — `h-9`, ტექსტით (აიქონ-მხოლოდ `X` აღარ არის)
+    const failed = [...rows[2].querySelectorAll('button')]
+    expect(failed.map((b) => b.textContent?.trim())).toEqual([i18n.t('personal.upload.retry'), i18n.t('personal.upload.remove')])
+    failed.forEach((b) => expect(b.className).toContain('h-9'))
+    const clear = [...container!.querySelectorAll<HTMLButtonElement>('[data-testid="personal-upload-queue"] button')].find(
+      (b) => b.textContent?.trim() === i18n.t('personal.upload.clearDone'),
+    )!
+    expect(clear.className).toContain('h-9')
+    await act(async () => clear.click())
+    expect(container!.querySelectorAll('[data-testid="personal-upload-row"]').length).toBe(1)
+  })
+
+  it('has no drop zone — the content is the drop target and shows an overlay while dragging', async () => {
+    defaults()
+    const { PersonalUploader } = await import('@/components/personal/PersonalUploader')
+    await render(h(PersonalUploader, { personId: 5 }, h('p', { 'data-testid': 'inside' }, 'grid')))
+
+    expect(container!.querySelector('[data-testid="personal-dropzone"]')).toBeNull()
+    expect(container!.querySelector('[data-testid="personal-upload-queue"]')).toBeNull()
+    const target = container!.querySelector<HTMLElement>('[data-testid="personal-drop-target"]')!
+    expect(target.querySelector('[data-testid="inside"]')).not.toBeNull()
+
+    const file = new File(['a'], 'a.jpg', { type: 'image/jpeg' })
+    const drag = new Event('dragenter', { bubbles: true })
+    Object.defineProperty(drag, 'dataTransfer', {
+      value: { types: ['Files'], files: [file], items: [{ kind: 'file', type: 'image/jpeg', getAsFile: () => file }] },
+    })
+    await act(async () => target.dispatchEvent(drag))
+    await flush()
+
+    const overlay = container!.querySelector('[data-testid="personal-drop-overlay"]')!
+    expect(overlay.textContent).toBe(i18n.t('personal.upload.dropActive'))
+  })
+})
+
+describe('PersonalPersonPage', () => {
+  async function mount(path = '/personal/people/1', setup?: () => void) {
+    defaults()
+    setup?.()
+    mocks.fetchPerson.mockResolvedValue(person(1, { photos: 3, videos: 2, albums: 1 }))
+    const { PersonalPersonPage } = await import('@/pages/PersonalPersonPage')
+    await render(h(Routes, null, h(Route, { path: '/personal/people/:id', element: h(PersonalPersonPage) })), path)
+  }
+  const pressed = (selector: string) =>
+    [...container!.querySelectorAll<HTMLButtonElement>(`${selector} button[aria-pressed]`)]
+
+  it('opens on "all" with every photo and video of the person, and one upload button', async () => {
+    await mount()
+
+    const tabs = pressed('[data-testid="person-tabs"]')
+    expect(tabs.map((b) => b.textContent)).toEqual([
+      `${i18n.t('personal.tabs.all')}5`,
+      `${i18n.t('personal.tabs.photos')}3`,
+      `${i18n.t('personal.tabs.videos')}2`,
+      `${i18n.t('personal.tabs.albums')}1`,
+    ])
+    expect(tabs[0].getAttribute('aria-pressed')).toBe('true')
+    expect(mocks.fetchPersonalMedia).toHaveBeenLastCalledWith(expect.objectContaining({ person_id: 1, kind: undefined }))
+
+    const uploads = [...container!.querySelectorAll('button')].filter((b) => b.textContent?.trim() === i18n.t('actions.upload'))
+    expect(uploads).toHaveLength(1)
+    expect(container!.querySelector('[data-testid="personal-dropzone"]')).toBeNull()
+    expect(container!.querySelector('[data-testid="personal-drop-target"]')).not.toBeNull()
+  })
+
+  it('groups the person by album through the server, with the kind of the tab', async () => {
+    await mount('/personal/people/1?tab=photos&group=album', () =>
+      mocks.fetchPersonalGroups.mockResolvedValue([
+        { key: 'album:4', title: 'ზღვა', subtitle: null, filter: { album_id: 4 }, photos: 2, videos: 0, total: 2, previews: [] },
+        { key: 'album:none', title: null, subtitle: null, filter: { no_album: true }, photos: 1, videos: 0, total: 1, previews: [] },
+      ]),
+    )
+
+    expect(pressed('[data-testid="person-grouping"]').find((b) => b.getAttribute('aria-pressed') === 'true')?.textContent).toBe(
+      i18n.t('personal.groups.album'),
+    )
+    expect(mocks.fetchPersonalGroups).toHaveBeenLastCalledWith('album', { kind: 'photo', favorite: undefined, person_id: 1 })
+    const groups = container!.querySelector('[data-testid="personal-groups"]')!
+    expect(groups.textContent).toContain('ზღვა')
+    expect(groups.textContent).toContain(i18n.t('personal.groups.noAlbum'))
+  })
+})
+
+describe('PersonalAlbumPage', () => {
+  const album = {
+    id: 4, name: 'მოგზაურობა', description: null, person_id: null, person: null, cover_media_id: null, cover: null,
+    visibility: 'private', photos: 3, videos: 2, sort_order: 0, created_at: null,
+    locked: false, unlocked: true, lock_hint: null, failed_unlocks: 0, unlock_blocked_until: null,
+  }
+
+  async function mount(path: string) {
+    defaults()
+    mocks.fetchPersonalAlbum.mockResolvedValue(album)
+    mocks.fetchPersonalMedia.mockResolvedValue({ items: [media(1), media(2)], total: 2 })
+    const { PersonalAlbumPage } = await import('@/pages/PersonalAlbumPage')
+    await render(h(Routes, null, h(Route, { path: '/personal/albums/:id', element: h(PersonalAlbumPage) })), path)
+  }
+
+  it('splits the album into all, photos and videos, and reorders only "all"', async () => {
+    await mount('/personal/albums/4')
+
+    const kinds = [...container!.querySelectorAll<HTMLButtonElement>('[data-testid="album-kinds"] button[aria-pressed]')]
+    expect(kinds.map((b) => b.textContent)).toEqual([
+      `${i18n.t('personal.kind.all')}5`,
+      `${i18n.t('personal.kind.photo')}3`,
+      `${i18n.t('personal.kind.video')}2`,
+    ])
+    expect(container!.textContent).toContain(i18n.t('personal.reorder.open'))
+    expect(container!.textContent).not.toContain(i18n.t('personal.upload.dragHint'))
+
+    await act(async () => kinds[2].click())
+    await flush()
+    expect(mocks.fetchPersonalMedia).toHaveBeenLastCalledWith(expect.objectContaining({ album_id: 4, kind: 'video', sort: 'manual' }))
+    expect(container!.textContent).not.toContain(i18n.t('personal.reorder.open'))
   })
 })
 

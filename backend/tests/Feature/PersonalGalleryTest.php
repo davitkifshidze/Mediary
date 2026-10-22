@@ -416,6 +416,18 @@ class PersonalGalleryTest extends TestCase
             ->assertJsonPath('photos', 2)
             ->assertJsonPath('videos', 1)
             ->assertJsonPath('ungrouped', 1);
+
+        // პიროვნების „ალბომით" ხედი — მხოლოდ მისი ფოტო/ვიდეო: „გარე" ალბომიც, სადაც ის არის, და „ალბომის გარეშე"
+        $own = $this->album('ქორწილი', $person->id);
+        $this->media(['person_id' => $person->id, 'album_id' => $own->id, 'kind' => 'video', 'thumb_path' => null]);
+        $this->media(['person_id' => $person->id, 'album_id' => $album->id]);
+        $mine = collect($this->getJson("/api/personal/media/groups?by=album&person_id={$person->id}")->assertOk()->json('data'))->keyBy('key');
+        $this->assertEqualsCanonicalizing(["album:{$own->id}", "album:{$album->id}", 'album:none'], $mine->keys()->all());
+        $this->assertSame(1, $mine["album:{$own->id}"]['videos']);
+        $this->assertSame(1, $mine["album:{$album->id}"]['total'], 'სხვისი ფოტო „გარე" ალბომში არ ითვლება');
+        $this->assertSame(1, $mine['album:none']['total']);
+        $this->assertSame(['no_album' => true], $mine['album:none']['filter']);
+        $this->assertSame([], $this->getJson('/api/personal/media/groups?by=album&person_id=999999')->assertOk()->json('data'));
     }
 
     /* ---------- ურნა ---------- */

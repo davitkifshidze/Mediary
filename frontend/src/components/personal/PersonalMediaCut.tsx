@@ -2,25 +2,19 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Folders, Image, Inbox, LayoutGrid, Search, Star, Users, Video } from 'lucide-react'
+import { Folders, Image, Inbox, LayoutGrid, Search, Star, Users, Video } from 'lucide-react'
 import {
-  fetchPersonalGroups,
   fetchPersonalSummary,
   PERSONAL_KEY,
   PERSONAL_SORTS,
-  type PersonalGroup,
   type PersonalGrouping,
   type PersonalMediaFilters,
   type PersonalSort,
 } from '@/api/personal'
-import { countLabel, privatePreviews } from '@/lib/personal'
-import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
-import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import { PhotoStack } from '@/components/ui/photo-stack'
 import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
-import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
+import { PersonalGroups } from '@/components/personal/PersonalGroups'
 import { PersonalMediaGrid } from '@/components/personal/PersonalMediaGrid'
 
 /* ============================================================
@@ -28,9 +22,9 @@ import { PersonalMediaGrid } from '@/components/personal/PersonalMediaGrid'
    **ყველა · პიროვნებით · ალბომით · დაუჯგუფებელი**; ქვემოთ ქვე-ფილტრი —
    **ყველა · ფოტოები · ვიდეოები · რჩეული**, მარჯვნივ ძებნა წარწერაში და სორტირება.
 
-   ⚠️ **ჯგუფები სერვერზე ითვლება** (`GET /personal/media/groups`) — ათასობით
-   ფოტოს ჩამოტანა მხოლოდ ჯგუფებად დასაყოფად ზედმეტი იქნებოდა. ჯგუფზე დაჭერა
-   იმავე ბადეს ხსნის ჯგუფის ფილტრით (`filter` სერვერის პასუხშივე მოდის).
+   ⚠️ **ჯგუფები სერვერზე ითვლება** და ერთი კომპონენტით იხატება
+   (`PersonalGroups` — იგივეა პიროვნების გვერდის „ალბომით" ხედი). გახსნილ
+   ჯგუფზე ზედა ბარათები და ქვე-ფილტრი რჩება — ფილტრი ჯგუფის ბადესაც ეხება.
 
    ⚠️ **თვეებით დაჯგუფება წაიშალა** („თვეებით სისულელე ტაბი მოაშორე") —
    გადაღების თარიღი მხოლოდ სორტირებაა. „დაუჯგუფებელი" ბარათი + ქვე-ფილტრი
@@ -73,7 +67,6 @@ export function PersonalMediaCut() {
   const [params] = useSearchParams()
   const [q, setQ] = useState(params.get('q') ?? '')
   const [sort, setSort] = useState<PersonalSort>('taken')
-  const [group, setGroup] = useState<PersonalGroup | null>(null)
 
   // ⚠️ იგივე ქეშია, რაც გვერდის მთვლელებს — ცალკე მოთხოვნა არ მიდის
   const summary = useQuery({ queryKey: [PERSONAL_KEY, 'summary'], queryFn: fetchPersonalSummary }).data
@@ -85,16 +78,7 @@ export function PersonalMediaCut() {
     sort,
   }
 
-  const by = grouping === 'person' || grouping === 'album' ? grouping : null
-  const groupsQ = useQuery({
-    queryKey: [PERSONAL_KEY, 'groups', by, { kind: base.kind, favorite: base.favorite }],
-    queryFn: () => fetchPersonalGroups(by!, { kind: base.kind, favorite: base.favorite }),
-    enabled: by !== null,
-  })
-
-  /** ჯგუფის სათაური — „გარეშე" ჯგუფს სახელი სერვერიდან არ მოდის */
-  const titleOf = (g: PersonalGroup) =>
-    g.title ?? t(g.key.startsWith('person') ? 'personal.groups.noPerson' : 'personal.groups.noAlbum')
+  const by: PersonalGrouping | null = grouping === 'person' || grouping === 'album' ? grouping : null
 
   /** ბარათის რიცხვი `summary`-დან; ჩატვირთვამდე — რიცხვის გარეშე */
   const groupingCount = (key: Grouping) => {
@@ -163,23 +147,6 @@ export function PersonalMediaCut() {
     </div>
   )
 
-  /* ---------- გახსნილი ჯგუფი ---------- */
-  if (group) {
-    return (
-      <section>
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setGroup(null)}>
-            <ArrowLeft className="size-4" />
-            {t('actions.back')}
-          </Button>
-          <h2 className="text-base font-semibold">{titleOf(group)}</h2>
-          <span className="text-sm text-muted-foreground">{countLabel(t, group.photos, group.videos)}</span>
-        </div>
-        <PersonalMediaGrid filters={{ ...base, ...group.filter }} />
-      </section>
-    )
-  }
-
   return (
     <section>
       <div className="mb-4" data-testid="personal-media-groupings">
@@ -205,26 +172,8 @@ export function PersonalMediaCut() {
           emptyText={t(grouping === 'ungrouped' ? 'personal.media.emptyUngrouped' : 'personal.media.empty')}
           emptyHint={grouping === 'ungrouped' ? undefined : t('personal.media.emptyHint')}
         />
-      ) : groupsQ.isLoading ? (
-        <GalleryStackSkeleton aspect="wide" />
-      ) : !(groupsQ.data ?? []).length ? (
-        <EmptyState icon={<Inbox className="size-6" />} title={t('personal.media.empty')} hint={t('personal.media.emptyHint')} />
       ) : (
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {(groupsQ.data ?? []).map((g) => (
-            <li key={g.key}>
-              <PhotoStack
-                title={titleOf(g)}
-                subtitle={g.subtitle ?? undefined}
-                label={countLabel(t, g.photos, g.videos)}
-                count={g.total}
-                images={privatePreviews(g.previews)}
-                aspect="wide"
-                onClick={() => setGroup(g)}
-              />
-            </li>
-          ))}
-        </ul>
+        <PersonalGroups key={by} by={by} filters={base} />
       )}
     </section>
   )

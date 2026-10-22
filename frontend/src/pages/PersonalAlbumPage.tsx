@@ -1,13 +1,14 @@
-import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useRef, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowUpDown, Folders, Globe, SquarePen, Trash2, Upload, UserRound } from 'lucide-react'
+import { ArrowLeft, ArrowUpDown, Folders, Globe, Image, LayoutGrid, SquarePen, Trash2, UserRound, Video } from 'lucide-react'
 import { fetchPersonalAlbum, isHidden, PERSONAL_KEY, updatePersonalAlbum } from '@/api/personal'
 import { errorMessage } from '@/lib/errors'
 import { countLabel, invalidatePersonal } from '@/lib/personal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { CutTabs } from '@/components/ui/cut-tabs'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/components/ui/feedback'
 import { PageContainer } from '@/components/ui/page'
@@ -18,14 +19,19 @@ import { PersonalDeleteDialog } from '@/components/personal/PersonalDeleteDialog
 import { PersonalLockActions, PersonalLockedScreen } from '@/components/personal/PersonalLock'
 import { PersonalMediaGrid } from '@/components/personal/PersonalMediaGrid'
 import { PersonalReorderDialog } from '@/components/personal/PersonalReorderDialog'
-import { PersonalUploader } from '@/components/personal/PersonalUploader'
+import { PersonalUploadButton, PersonalUploader, type PersonalUploaderHandle } from '@/components/personal/PersonalUploader'
 
 /* ============================================================
    **ალბომის გვერდი — `/personal/albums/:id`.**
 
-   ⚠️ ატვირთვის ზონა ალბომშივე ტვირთავს; ადამიანის ალბომზე ფოტო მის ადამიანსაც
-   ეკუთვნის (სერვერის ინვარიანტი). „უკან" — ადამიანის ალბომზე ადამიანის
-   ალბომების ჩანართზე, „გარე" ალბომზე — ალბომების ჭრილზე.
+   ⚠️ ატვირთვა ალბომშივე ტვირთავს — სათაურის „ატვირთვა" ან ფაილის გადათრევა
+   ბადეზე; პიროვნების ალბომზე ფოტო მის პიროვნებასაც ეკუთვნის (სერვერის
+   ინვარიანტი). „უკან" — პიროვნების ალბომზე პიროვნების ალბომების ჩანართზე,
+   „გარე" ალბომზე — ალბომების ჭრილზე.
+
+   ⚠️ **შიდა გაყოფა: ყველა · ფოტოები · ვიდეოები** (`?kind=`) — ქვე-ალბომები არ
+   არსებობს, ალბომი სახეობას არ ზღუდავს. „რიგის შეცვლა" მხოლოდ „ყველაზეა":
+   ხელით რიგი ერთია ორივე სახეობისთვის.
 
    ⚠️ **ჩაკეტილი და დაუხსნელი ალბომი** — ბოქლომიანი გვერდი; ბადე,
    ატვირთვა და ღილაკები გახსნამდე არ ჩანს.
@@ -38,6 +44,10 @@ export function PersonalAlbumPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { toast } = useToast()
+  const [params, setParams] = useSearchParams()
+  const kindParam = params.get('kind')
+  const kind = kindParam === 'photo' || kindParam === 'video' ? kindParam : undefined
+  const uploader = useRef<PersonalUploaderHandle>(null)
 
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -113,6 +123,7 @@ export function PersonalAlbumPage() {
               <Trash2 className="size-4" />
               {t('confirm.delete')}
             </Button>
+            <PersonalUploadButton onClick={() => uploader.current?.open()} />
           </>
         }
       />
@@ -138,18 +149,33 @@ export function PersonalAlbumPage() {
         </section>
       )}
 
-      <div className="mb-4 flex items-center gap-2 text-sm font-medium">
-        <Upload className="size-4 text-muted-foreground" />
-        {t('personal.album.uploadHere')}
+      {/* გაყოფა და ბადე — მთლიანად გადათრევის სამიზნე (ფაილი ამ ალბომში ჩავარდება) */}
+      <PersonalUploader ref={uploader} albumId={album.id} personId={album.person_id}>
+      <div className="mb-4" data-testid="album-kinds">
+        <CutTabs
+          layout="inline"
+          size="sm"
+          options={[
+            { key: 'all', label: t('personal.kind.all'), icon: LayoutGrid, count: album.photos + album.videos },
+            { key: 'photo', label: t('personal.kind.photo'), icon: Image, count: album.photos },
+            { key: 'video', label: t('personal.kind.video'), icon: Video, count: album.videos },
+          ]}
+          value={kind ?? 'all'}
+          onChange={(key) => {
+            const next = new URLSearchParams(params)
+            if (key === 'all') next.delete('kind')
+            else next.set('kind', key)
+            setParams(next, { replace: true })
+          }}
+        />
       </div>
-      <PersonalUploader compact albumId={album.id} personId={album.person_id} className="mb-5" />
 
       <PersonalMediaGrid
-        filters={{ album_id: album.id, sort: 'manual' }}
+        filters={{ album_id: album.id, sort: 'manual', kind }}
         primary={{ id: album.cover_media_id, set: (mediaId) => setCover.mutate(mediaId) }}
         emptyText={t('personal.album.empty')}
         extraTools={
-          album.photos + album.videos > 1 ? (
+          !kind && album.photos + album.videos > 1 ? (
             <Button variant="outline" size="sm" onClick={() => setReordering(true)}>
               <ArrowUpDown className="size-3.5" />
               {t('personal.reorder.open')}
@@ -157,6 +183,7 @@ export function PersonalAlbumPage() {
           ) : undefined
         }
       />
+      </PersonalUploader>
 
       {reordering && <PersonalReorderDialog filters={{ album_id: album.id }} onClose={() => setReordering(false)} />}
 

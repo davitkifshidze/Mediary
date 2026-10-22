@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Cake, Film, Folders, Image, SquarePen, Trash2, Upload, UserRound } from 'lucide-react'
+import { ArrowLeft, Cake, Film, Folders, Image, LayoutGrid, SquarePen, Trash2, UserRound } from 'lucide-react'
 import { fetchPersonalAlbums, fetchPerson, isHidden, PERSONAL_KEY, updatePerson } from '@/api/personal'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
@@ -20,36 +20,53 @@ import { PersonalAlbumCards } from '@/components/personal/PersonalAlbumCards'
 import { AddAlbumButton } from '@/components/personal/PersonalAlbumsCut'
 import { PersonDialog } from '@/components/personal/PersonDialog'
 import { PersonalDeleteDialog } from '@/components/personal/PersonalDeleteDialog'
+import { PersonalGroups } from '@/components/personal/PersonalGroups'
 import { PersonalLockActions, PersonalLockedScreen } from '@/components/personal/PersonalLock'
 import { PersonalMediaGrid } from '@/components/personal/PersonalMediaGrid'
-import { PersonalUploader } from '@/components/personal/PersonalUploader'
-import { PersonalUploadDialog } from '@/components/personal/PersonalUploadDialog'
+import { PersonalUploadButton, PersonalUploader, type PersonalUploaderHandle } from '@/components/personal/PersonalUploader'
 
 /* ============================================================
-   **ადამიანის გვერდი — `/personal/people/:id`.**
+   **პიროვნების გვერდი — `/personal/people/:id`.**
 
    შენი სიტყვები: „პიროვნების ფოტო/ვიდეო სექციები განცალკევებით ტაბებად,
-   ბარათების სახითაც".
+   ბარათების სახითაც" · „ჩემ განყოფილებაში იყოს საშუალება ვნახო ერთიანად,
+   ასევე დაჯგუფებულადაც".
 
-   ⚠️ **ჩანართები: ფოტოები · ვიდეოები · ალბომები** (`?tab=` — „უკან" იმავე
-   ჩანართზე აბრუნებს). ფოტოსა და ვიდეოს ჩანართს თავისი ატვირთვის ზონა აქვს:
-   ჩაგდებული ფაილი ამ ადამიანს ეკუთვნის.
+   ⚠️ **ჩანართები: ყველა · ფოტოები · ვიდეოები · ალბომები** (`?tab=`, „ყველა"
+   ნაგულისხმევია — „უკან" იმავე ჩანართზე აბრუნებს). პირველ სამზე
+   **დაჯგუფება: დაჯგუფების გარეშე · ალბომით** (`?group=album`) — ალბომით ხედი
+   „ფოტო & ვიდეოს" ჯგუფებია (`PersonalGroups`), მხოლოდ ამ პიროვნების ფოტო/ვიდეო
+   და ბოლოს „ალბომის გარეშე".
+
+   ⚠️ **ატვირთვა**: სათაურის „ატვირთვა" ფაილის ამრჩევს ხსნის, ჩანართების
+   მთელი არე კი გადათრევის სამიზნეა (`PersonalUploader`) — ფაილი ამ პიროვნებას
+   ეკუთვნის.
 
    ⚠️ **მთავარი ფოტო ბადიდან ირჩევა** („მთავარად დაყენება") — ცალკე
    ატვირთვა ორ სხვადასხვა „პორტრეტს" გააჩენდა.
 
-   ⚠️ **ჩაკეტილი და დაუხსნელი ადამიანი** — მხოლოდ სახელი, რიცხვი და
+   ⚠️ **ჩაკეტილი და დაუხსნელი პიროვნება** — მხოლოდ სახელი, რიცხვი და
    ბოქლომი (`PersonalLockedScreen`); ჰერო, ველები, ჩანართები და ღილაკები
    გახსნამდე არ იხატება — სერვერი მათ შიგთავსს ისედაც არ აგზავნის.
    ============================================================ */
 
-type Tab = 'photos' | 'videos' | 'albums'
+type Tab = 'all' | 'photos' | 'videos' | 'albums'
+
+type Grouping = 'none' | 'album'
 
 const TABS: { key: Tab; icon: typeof Image }[] = [
+  { key: 'all', icon: LayoutGrid },
   { key: 'photos', icon: Image },
   { key: 'videos', icon: Film },
   { key: 'albums', icon: Folders },
 ]
+
+/** ჩანართი → ბადის სახეობა („ყველა" — ორივე) */
+const KIND_OF: Record<Exclude<Tab, 'albums'>, 'photo' | 'video' | undefined> = {
+  all: undefined,
+  photos: 'photo',
+  videos: 'video',
+}
 
 /** სრული წლები დაბადების დღიდან */
 function ageOf(birthday: string): number {
@@ -70,11 +87,20 @@ export function PersonalPersonPage() {
   const { toast } = useToast()
   const { date } = useDateFormat()
   const [params, setParams] = useSearchParams()
-  const tab = (TABS.some((x) => x.key === params.get('tab')) ? params.get('tab') : 'photos') as Tab
+  const tab = (TABS.some((x) => x.key === params.get('tab')) ? params.get('tab') : 'all') as Tab
+  const grouping: Grouping = params.get('group') === 'album' ? 'album' : 'none'
+  const uploader = useRef<PersonalUploaderHandle>(null)
 
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [uploading, setUploading] = useState(false)
+
+  /** ნაგულისხმევი მნიშვნელობა მისამართში არ იწერება */
+  const setParam = (key: string, value: string, fallback: string) => {
+    const next = new URLSearchParams(params)
+    if (value === fallback) next.delete(key)
+    else next.set(key, value)
+    setParams(next, { replace: true })
+  }
 
   const personQ = useQuery({
     queryKey: [PERSONAL_KEY, 'person', personId],
@@ -154,10 +180,7 @@ export function PersonalPersonPage() {
               <Trash2 className="size-4" />
               {t('confirm.delete')}
             </Button>
-            <Button onClick={() => setUploading(true)}>
-              <Upload className="size-4" />
-              {t('actions.upload')}
-            </Button>
+            <PersonalUploadButton onClick={() => uploader.current?.open()} />
           </>
         }
       />
@@ -190,32 +213,60 @@ export function PersonalPersonPage() {
       {/* დამატებითი ველები ადამიანზე (თვითონ ინახავს თავს; ველის გარეშე არ ჩანს) */}
       <CustomFieldsCard module="personal" recordId={person.id} className="mb-5" />
 
-      <div className="mb-4">
+      {/* ჩანართები და შიგთავსი — მთლიანად გადათრევის სამიზნე (ფაილი ამ პიროვნებას ეკუთვნის) */}
+      <PersonalUploader ref={uploader} personId={person.id}>
+      <div className="mb-4" data-testid="person-tabs">
         <CutTabs
           options={TABS.map(({ key, icon }) => ({
             key,
             icon,
             label: t(`personal.tabs.${key}`),
-            count: key === 'photos' ? person.photos : key === 'videos' ? person.videos : person.albums,
+            count:
+              key === 'all'
+                ? person.photos + person.videos
+                : key === 'photos'
+                  ? person.photos
+                  : key === 'videos'
+                    ? person.videos
+                    : person.albums,
           }))}
           value={tab}
-          onChange={(key) => {
-            const next = new URLSearchParams(params)
-            if (key === 'photos') next.delete('tab')
-            else next.set('tab', key)
-            setParams(next, { replace: true })
-          }}
+          onChange={(key) => setParam('tab', key, 'all')}
         />
       </div>
 
       {tab !== 'albums' ? (
         <>
-          <PersonalUploader compact personId={person.id} className="mb-4" />
-          <PersonalMediaGrid
-            filters={{ person_id: person.id, kind: tab === 'photos' ? 'photo' : 'video' }}
-            primary={{ id: person.cover_media_id, set: (mediaId) => setCover.mutate(mediaId) }}
-            emptyText={t(tab === 'photos' ? 'personal.person.noPhotos' : 'personal.person.noVideos')}
-          />
+          <div className="mb-4" data-testid="person-grouping">
+            <CutTabs
+              layout="inline"
+              size="sm"
+              label={t('personal.groups.label')}
+              options={[
+                { key: 'none', label: t('personal.groups.none'), icon: LayoutGrid },
+                { key: 'album', label: t('personal.groups.album'), icon: Folders },
+              ]}
+              value={grouping}
+              onChange={(key) => setParam('group', key, 'none')}
+            />
+          </div>
+
+          {grouping === 'album' ? (
+            <PersonalGroups
+              key={tab}
+              by="album"
+              filters={{ person_id: person.id, kind: KIND_OF[tab] }}
+              primary={{ id: person.cover_media_id, set: (mediaId) => setCover.mutate(mediaId) }}
+            />
+          ) : (
+            <PersonalMediaGrid
+              filters={{ person_id: person.id, kind: KIND_OF[tab] }}
+              primary={{ id: person.cover_media_id, set: (mediaId) => setCover.mutate(mediaId) }}
+              emptyText={t(
+                tab === 'photos' ? 'personal.person.noPhotos' : tab === 'videos' ? 'personal.person.noVideos' : 'personal.person.noMedia',
+              )}
+            />
+          )}
         </>
       ) : (
         <section>
@@ -231,12 +282,12 @@ export function PersonalPersonPage() {
           )}
         </section>
       )}
+      </PersonalUploader>
 
       {editing && <PersonDialog person={person} onClose={() => setEditing(false)} />}
       {deleting && (
         <PersonalDeleteDialog target={{ kind: 'person', person }} onClose={() => setDeleting(false)} onDeleted={() => navigate('/personal')} />
       )}
-      {uploading && <PersonalUploadDialog personId={person.id} onClose={() => setUploading(false)} />}
     </PageContainer>
   )
 }
