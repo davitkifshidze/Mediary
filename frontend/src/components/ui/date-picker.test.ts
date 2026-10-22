@@ -128,3 +128,51 @@ describe('DateRangePicker', () => {
     expect(onPast).toHaveBeenLastCalledWith({ from: '2026-10-22', to: null })
   })
 })
+
+describe('DatePicker month and year views', () => {
+  const caption = () => document.querySelector<HTMLButtonElement>('[data-testid="calendar-caption"]')!
+  const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === text)!
+
+  it('opens on the chosen month, not today', async () => {
+    const { DatePicker } = await import('@/components/ui/date-picker')
+    await mount(h(DatePicker, { id: 'when', value: '2020-05-10', onChange: vi.fn() }))
+
+    expect(caption().textContent).toContain('2020')
+    expect(document.querySelector('.rdp-selected')?.textContent).toBe('10')
+  })
+
+  it('caption → months of the year → years → a year → its months → a month → its days', async () => {
+    const { DatePicker } = await import('@/components/ui/date-picker')
+    const onChange = vi.fn()
+    await mount(h(DatePicker, { id: 'when', value: null, onChange }))
+
+    // თავი → მიმდინარე წლის თვეები, ზემოთ წელი; მიმდინარე თვე მონიშნულია
+    await act(async () => caption().click())
+    const months = document.querySelector('[data-testid="calendar-months"]')!
+    expect(document.querySelector('[data-testid="calendar-year"]')?.textContent).toBe('2026')
+    expect(months.querySelectorAll('.grid button')).toHaveLength(12)
+    expect(months.querySelector('.fb-cal-today')?.textContent).toBe(
+      new Intl.DateTimeFormat(i18n.language === 'ka' ? 'ka-GE' : 'en-US', { month: 'long' }).format(NOW),
+    )
+
+    // წელი → წლების სია (12-12), ისრით უკან
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-testid="calendar-year"]')!.click())
+    const years = () => document.querySelector('[data-testid="calendar-years"]')!
+    expect(years().textContent).toContain('2016 – 2027')
+    await act(async () => document.querySelector<HTMLButtonElement>(`button[aria-label="${i18n.t('dates.prevYears')}"]`)!.click())
+    expect(years().textContent).toContain('2004 – 2015')
+
+    // წელი → იმ წლის თვეები → თვე → იმ თვის რიცხვები
+    await act(async () => button('2010').click())
+    expect(document.querySelector('[data-testid="calendar-year"]')?.textContent).toBe('2010')
+    const march = new Intl.DateTimeFormat(i18n.language === 'ka' ? 'ka-GE' : 'en-US', { month: 'long' }).format(new Date(2010, 2, 1))
+    await act(async () => button(march).click())
+    expect(caption().textContent).toContain('2010')
+
+    const day = [...document.querySelectorAll<HTMLButtonElement>('.rdp-day_button')].find(
+      (b) => b.textContent === '15' && !b.closest('.rdp-outside'),
+    )!
+    await act(async () => day.click())
+    expect(onChange).toHaveBeenCalledWith('2010-03-15')
+  })
+})

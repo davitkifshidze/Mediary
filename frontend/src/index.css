@@ -979,11 +979,41 @@
   background-color: var(--muted);
 }
 /* დღევანდელი — რბილი აქცენტი (ჩარჩო და მუქი ციფრი), არჩეულისგან გარჩევადი;
-   ბიბლიოთეკა მხოლოდ ფერს უცვლიდა და ცარიელ კალენდარზე „დღეს" ვერ ჩანდა */
-.fb-rdp .rdp-today:not(.rdp-outside):not(.rdp-selected) .rdp-day_button {
+   ბიბლიოთეკა მხოლოდ ფერს უცვლიდა და ცარიელ კალენდარზე „დღეს" ვერ ჩანდა;
+   `fb-cal-today` — იგივე ნიშანი თვეებისა და წლების ბადეში (მიმდინარე თვე/წელი) */
+.fb-rdp .rdp-today:not(.rdp-outside):not(.rdp-selected) .rdp-day_button,
+.fb-cal-today {
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--primary) 55%, transparent);
   background-color: color-mix(in oklab, var(--primary) 8%, transparent);
   font-weight: 600;
+}
+/* კალენდრის თავი — თვე/წელი ღილაკია (დაჭერით თვეებზე, მერე წლებზე ადის);
+   ისრები აიქონ-ღილაკებია — ჰოვერზე ფონის გარეშე, მხოლოდ ფერი */
+.fb-cal-drill {
+  display: inline-flex;
+  align-items: center;
+  height: 1.75rem;
+  margin-inline-start: -0.5rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+.fb-cal-drill:hover {
+  background-color: var(--muted);
+}
+.fb-cal-nav {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.fb-cal-nav:hover {
+  color: var(--foreground);
 }
 
 /* yet-another-react-lightbox — ჩვენს „სართულებზე" მიბმა.

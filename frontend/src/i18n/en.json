@@ -2782,6 +2782,12 @@
   "dates": {
     "pick": "Pick a date",
     "pickRange": "Pick a period",
+    "pickMonth": "Pick month and year",
+    "pickYear": "Pick year",
+    "prevYear": "Previous year",
+    "nextYear": "Next year",
+    "prevYears": "Earlier years",
+    "nextYears": "Later years",
     "time": "Time",
     "pickTime": "Pick a time",
     "hour": "Hour",

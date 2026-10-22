@@ -40,6 +40,9 @@ import { cn } from '@/lib/utils'
 
    ⚠️ **„ახლა"** „არჩევის" გვერდითაა — ერთი დაჭერით მიმდინარე სთ:წთ-ს ადასტურებს;
    ცარიელ ველზე ბორბლებიც მიმდინარე დროიდან იწყება (აქამდე — 09:00-იდან).
+   „არჩევა" ბორბლებზე დაყენებულ დროს ატარებს („არჩევა — 14:05") — დატრიალების
+   შემდეგ ჩანს, რა დაიწერება; popover `w-80`-ია, რომ ორი ღილაკი ჩარჩოში ეტეოდეს
+   (`w-64`-ზე „არჩევა — სთ:წთ" ჩარჩოს სცდებოდა).
    ============================================================ */
 
 function pad(n: number): string {
@@ -143,7 +146,7 @@ export function TimeWheelPopover({
           onOpenAutoFocus={autoFocus ? undefined : (e) => e.preventDefault()}
           className={cn(
             LAYER_POPUP,
-            'fb-content w-64 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl focus:outline-none',
+            'fb-content w-80 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl focus:outline-none',
           )}
         >
           <WheelPickerWrapper>
