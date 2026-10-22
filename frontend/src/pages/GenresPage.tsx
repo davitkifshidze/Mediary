@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Languages, SquarePen, Plus, Trash2 } from 'lucide-react'
@@ -21,16 +21,40 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useToast } from '@/components/ui/feedback'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { genreName } from '@/lib/display'
+import { modAccent, moduleName, useModules } from '@/lib/modules'
+import { ModuleIcon } from '@/components/ModuleIcon'
 import { cn } from '@/lib/utils'
 
+/** დომენი → ჟანრის რესურსის მთვლელი და მისი წარწერა (⚠️ ანიმეს სვეტი `animes_count`-ია) */
+const DOMAIN_COUNT: Record<MediaType, { field: 'movies_count' | 'series_count' | 'animes_count'; label: string }> = {
+  movie: { field: 'movies_count', label: 'genres.moviesCount' },
+  series: { field: 'series_count', label: 'genres.seriesCount' },
+  anime: { field: 'animes_count', label: 'genres.animesCount' },
+}
+
+/**
+ * **ჟანრების მართვა.** ჟანრი გლობალურია და სამ მედია-დომენს ერთად ეკუთვნის,
+ * ამიტომ ტაბი (ფილმი · სერიალი · ანიმე, მოდულის ფერში, `?tab=`) სიას კი არ ჭრის,
+ * არამედ **იმ დომენის რიცხვით ალაგებს** (`GET /genres?type=`) და მის რიცხვს
+ * ფერად ჩიპად აჩვენებს. ⚠️ 0-იანი ჟანრი არ იმალება — ბოლოში რჩება, რომ ჩანაწერის
+ * მიმაგრება აქედანაც შეიძლებოდეს. წიგნის/თამაშის/სიმღერის/სამაგიდოს ჟანრები
+ * სხვა ლექსიკონებია (`/dictionaries`).
+ */
 export function GenresPage() {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
-  const genresQ = useQuery({ queryKey: ['genres'], queryFn: () => fetchGenres() })
+  const { mediaModules } = useModules()
+  const [params, setParams] = useSearchParams()
+  // ⚠️ უცნობი/გამორთული ტაბი პირველზე ბრუნდება (`StatsPage`-ის წესი)
+  const requested = params.get('tab')
+  const tab: MediaType = mediaModules.find((m) => m.type === requested)?.type ?? mediaModules[0]?.type ?? 'movie'
+  const module = mediaModules.find((m) => m.type === tab)
+  const genresQ = useQuery({ queryKey: ['genres', tab], queryFn: () => fetchGenres(tab) })
   const [editing, setEditing] = useState<Genre | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Genre | null>(null)
 
   const genres = genresQ.data ?? []
+  const used = (type: MediaType) => genres.filter((g) => (g[DOMAIN_COUNT[type].field] ?? 0) > 0).length
 
   return (
     <PageContainer>
@@ -52,6 +76,30 @@ export function GenresPage() {
           </Button>
         }
       />
+
+      {/* დომენის ტაბები — ფერითა და ხატულით; რიცხვი = რამდენ ჟანრს აქვს ამ დომენის ჩანაწერი */}
+      {mediaModules.length > 1 && (
+        <div className="mb-4">
+          <CutTabs
+            layout="inline"
+            value={tab}
+            onChange={(key) =>
+              setParams((current) => {
+                const next = new URLSearchParams(current)
+                next.set('tab', key)
+                return next
+              })
+            }
+            options={mediaModules.map((m) => ({
+              key: m.type,
+              label: moduleName(m, i18n.language),
+              count: genresQ.data ? used(m.type) : undefined,
+              color: m.color,
+              node: <ModuleIcon name={m.icon} className="size-4 text-[var(--mod)]" />,
+            }))}
+          />
+        </div>
+      )}
 
       {genresQ.isLoading ? (
         <div className="text-muted-foreground">{t('api.loading')}</div>
@@ -76,29 +124,30 @@ export function GenresPage() {
                   {lang === 'ka' ? g.name_en : g.name_ka || '—'}
                 </div>
               </div>
-              {/* ორი მთვლელი ერთმანეთის ქვეშ, თითო თავის ჩარჩოში, ერთი სიგანით */}
-              <div className="flex w-28 shrink-0 flex-col gap-1">
-                <span className="rounded-[5px] border border-border bg-muted/60 px-2 py-0.5 text-center text-xs text-muted-foreground">
-                  {t('genres.moviesCount', { count: g.movies_count ?? 0 })}
-                </span>
-                <span className="rounded-[5px] border border-border bg-muted/60 px-2 py-0.5 text-center text-xs text-muted-foreground">
-                  {t('genres.seriesCount', { count: g.series_count ?? 0 })}
-                </span>
+              {/* არჩეული დომენის რიცხვი მოდულის ფერში; 0 — ჩამქრალი */}
+              <span
+                style={modAccent(module?.color)}
+                className={cn(
+                  'w-28 shrink-0 rounded-md border px-2 py-0.5 text-center text-xs',
+                  (g[DOMAIN_COUNT[tab].field] ?? 0) > 0
+                    ? 'border-[var(--mod)] bg-[var(--mod-soft)] text-[var(--mod)]'
+                    : 'border-border text-muted-foreground',
+                )}
+                data-testid="genre-count"
+              >
+                {t(DOMAIN_COUNT[tab].label, { count: g[DOMAIN_COUNT[tab].field] ?? 0 })}
+              </span>
+              {/* რიგის ღილაკები — `h-9`, აიქონი + ტექსტი (ყველგან ერთი ზომა) */}
+              <div className="flex shrink-0 items-center gap-1.5">
+                <Button type="button" variant="edit" size="sm" onClick={() => setEditing(g)} aria-label={t('genres.edit')}>
+                  <SquarePen className="size-3.5" />
+                  {t('actions.edit')}
+                </Button>
+                <Button type="button" variant="destructiveOutline" size="sm" onClick={() => setDeleting(g)}>
+                  <Trash2 className="size-3.5" />
+                  {t('confirm.delete')}
+                </Button>
               </div>
-              <button
-                onClick={() => setEditing(g)}
-                aria-label={t('genres.edit')}
-                className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-foreground"
-              >
-                <SquarePen className="size-4" />
-              </button>
-              <button
-                onClick={() => setDeleting(g)}
-                aria-label={t('confirm.delete')}
-                className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="size-4" />
-              </button>
             </li>
             </RecordContextMenu>
             )

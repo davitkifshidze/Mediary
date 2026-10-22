@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowRightLeft, Plus, Replace, Unlink, type LucideIcon } from 'lucide-react'
+import { ArrowRightLeft, Plus, Replace, Search, Unlink, type LucideIcon } from 'lucide-react'
 import {
   GENRE_ITEM_BUCKET,
   fetchGenreItems,
@@ -15,6 +15,7 @@ import { genreName, movieTitle } from '@/lib/display'
 import { moduleName, useModules } from '@/lib/modules'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Label } from '@/components/ui/label'
@@ -43,14 +44,20 @@ import { useContentLang } from '@/lib/settings'
    (ჩახსნა · გადატანა · ჩანაცვლება) **სამი თანაბარი ბარათია**: აიქონი +
    სათაური, ახსნა `i`-ში; არჩევა — ბარათით, შესრულება — ერთი „გამოყენება
    (N)" ქვედა ზოლში. ადრე ყოველ მოქმედებას თავისი ღილაკი ჰქონდა ახსნის
-   გვერდით და ტექსტი ღილაკს ვერ უსწორდებოდა. ჩადგმული `max-h-64` სქროლი
-   წაიშალა — სიას ფანჯრის სქროლი ატარებს (ფანჯარა თვითონ
-   იზრდება).
+   გვერდით და ტექსტი ღილაკს ვერ უსწორდებოდა.
+
+   ⚠️ **„ჩანაწერების" სია საძიებო და შემოფარგლულია** („238 ფილმი… ამხელა
+   სიაა — სქროლიანი და სერჩიანი მონაკვეთი"): ძებნა სათაურსა და წელში
+   (მონაცემი უკვე აქაა), `max-h-96` სქროლი, 50 სტრიქონი და „კიდევ N";
+   „ყველას მონიშვნა" სქროლის თავში წებოვანია და **ნაპოვნზე** მოქმედებს.
 
    ⚠️ **ქვედა ზოლი აქ იხატება და არა `GenresPage`-ში**: მონიშვნა და არჩეული
    მოქმედება ამ კომპონენტის მდგომარეობაა. ამიტომ ფანჯარა თავის „შენახვას"
    მხოლოდ სახელების ჩანართზე ხატავს.
    ============================================================ */
+
+/** რამდენი სტრიქონი ჩანს ერთბაშად — დანარჩენი „კიდევ N"-ით */
+const VISIBLE = 50
 
 /** რომელი სექცია ჩანს; `names` — სახელების ჩანართია, აქ არაფერი იხატება */
 export type GenreSection = 'names' | 'records' | 'add'
@@ -100,9 +107,14 @@ export function GenreItemsManager({
   const [action, setAction] = useState<ItemAction | null>(null)
   const [target, setTarget] = useState('')
   const [addIds, setAddIds] = useState<number[]>([])
+  const [search, setSearch] = useState('')
+  const [limit, setLimit] = useState(VISIBLE)
 
   const itemsQ = useQuery({ queryKey: ['genre-items', genre.id], queryFn: () => fetchGenreItems(genre.id) })
-  const items = (itemsQ.data?.[GENRE_ITEM_BUCKET[type]] as MovieListItem[] | undefined) ?? []
+  const items = useMemo(
+    () => (itemsQ.data?.[GENRE_ITEM_BUCKET[type]] as MovieListItem[] | undefined) ?? [],
+    [itemsQ.data, type],
+  )
   const { pool, isLoading: poolLoading } = useAttachPool(type, items)
   const others = allGenres.filter((g) => g.id !== genre.id)
   const targetGenre = others.find((g) => String(g.id) === target)
@@ -112,7 +124,20 @@ export function GenreItemsManager({
     setType(v)
     setSelected([])
     setAddIds([])
+    setSearch('')
+    setLimit(VISIBLE)
   }
+
+  /* ნაპოვნი — სათაური (ორივე ენაზე) ან წელი */
+  const found = useMemo(() => {
+    const needle = search.trim().toLowerCase()
+    if (!needle) return items
+    return items.filter((m) =>
+      [m.title_ka, m.title_en, movieTitle(m, lang), m.year != null ? String(m.year) : null]
+        .some((text) => !!text && text.toLowerCase().includes(needle)),
+    )
+  }, [items, search, lang])
+  const shown = found.slice(0, limit)
 
   const mut = useMutation({
     mutationFn: (input: GenreItemsInput) => updateGenreItems(genre.id, input),
@@ -131,8 +156,14 @@ export function GenreItemsManager({
   const toggle = (id: number) =>
     setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
 
-  const allSelected = items.length > 0 && selected.length === items.length
-  const toggleAll = () => setSelected(allSelected ? [] : items.map((m) => m.id))
+  /* „ყველას მონიშვნა" **ნაპოვნზე** მოქმედებს: ძებნით შევიწროებული სიის
+     მონიშვნა/მოხსნა სხვა (ახლა უხილავ) მონიშვნას არ ეხება */
+  const foundIds = found.map((m) => m.id)
+  const allSelected = foundIds.length > 0 && foundIds.every((id) => selected.includes(id))
+  const toggleAll = () =>
+    setSelected((cur) =>
+      allSelected ? cur.filter((id) => !foundIds.includes(id)) : [...new Set([...cur, ...foundIds])],
+    )
 
   const needsTarget = action === 'move' || action === 'replace'
   const busy = mut.isPending
@@ -211,22 +242,53 @@ export function GenreItemsManager({
           ) : (
             <>
               <div data-testid="genre-records">
-                <label className="flex cursor-pointer items-center gap-2.5 border-b border-border px-1 pb-2 text-sm font-medium">
-                  <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-                  {t('genres.selectAll')}
-                  <span className="text-muted-foreground">({countOf(type)})</span>
-                </label>
-                {/* ჩადგმული სქროლის გარეშე: სიას ფანჯრის სქროლი ატარებს */}
-                {items.map((m) => (
-                  <label
-                    key={m.id}
-                    className="flex cursor-pointer items-center gap-2.5 px-1 py-1.5 text-sm hover:bg-muted/50"
-                  >
-                    <Checkbox checked={selected.includes(m.id)} onCheckedChange={() => toggle(m.id)} />
-                    <span className="min-w-0 flex-1 truncate">{movieTitle(m, lang)}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">{m.year ?? '—'}</span>
+                <div className="relative mb-2">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value)
+                      setLimit(VISIBLE)
+                    }}
+                    placeholder={t('genres.itemsSearch')}
+                    aria-label={t('genres.itemsSearch')}
+                    className="pl-8"
+                    data-testid="genre-records-search"
+                  />
+                </div>
+
+                {/* სქროლი შემოფარგლულია; „ყველას მონიშვნა" მის თავში წებოვანია */}
+                <div className="fb-scroll max-h-96 overflow-y-auto rounded-md border border-border" data-testid="genre-records-list">
+                  <label className="sticky top-0 z-10 flex cursor-pointer items-center gap-2.5 border-b border-border bg-background px-2 py-2 text-sm font-medium">
+                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                    {t('genres.selectAll')}
+                    <span className="text-muted-foreground">({found.length})</span>
+                    <span className="ml-auto text-xs font-normal text-muted-foreground" data-testid="genre-records-state">
+                      {t('genres.itemsFound', { selected: selected.length, found: found.length })}
+                    </span>
                   </label>
-                ))}
+                  {found.length === 0 ? (
+                    <p className="px-2 py-4 text-center text-sm text-muted-foreground">{t('genres.itemsNoMatch')}</p>
+                  ) : (
+                    shown.map((m) => (
+                      <label
+                        key={m.id}
+                        className="flex cursor-pointer items-center gap-2.5 px-2 py-1.5 text-sm hover:bg-muted/50"
+                      >
+                        <Checkbox checked={selected.includes(m.id)} onCheckedChange={() => toggle(m.id)} />
+                        <span className="min-w-0 flex-1 truncate">{movieTitle(m, lang)}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">{m.year ?? '—'}</span>
+                      </label>
+                    ))
+                  )}
+                  {found.length > shown.length && (
+                    <div className="p-2">
+                      <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => setLimit((n) => n + VISIBLE)}>
+                        {t('purge.itemsMore', { count: found.length - shown.length })}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* სამი თანაბარი ბარათი; ახსნა `i`-ში, შესრულება — ქვედა ზოლიდან */}

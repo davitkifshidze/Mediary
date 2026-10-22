@@ -902,7 +902,11 @@
     "actPick": "რა ვუყოთ მონიშნულებს",
     "actNeedAction": "აირჩიე მოქმედება",
     "actNeedTarget": "აირჩიე სამიზნე ჟანრი",
-    "addItemsN": "დამატება ({{count}})"
+    "addItemsN": "დამატება ({{count}})",
+    "animesCount": "{{count}} ანიმე",
+    "itemsSearch": "ძებნა სათაურით ან წლით",
+    "itemsFound": "მონიშნულია {{selected}} / ნაპოვნია {{found}}",
+    "itemsNoMatch": "ამ ძებნით ვერაფერი მოიძებნა"
   },
   "bulkStatus": {
     "manage": "სტატუსის შეცვლა",

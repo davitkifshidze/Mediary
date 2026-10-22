@@ -902,7 +902,11 @@
     "actPick": "What to do with the selection",
     "actNeedAction": "pick an action",
     "actNeedTarget": "pick the target genre",
-    "addItemsN": "Add ({{count}})"
+    "addItemsN": "Add ({{count}})",
+    "animesCount": "{{count}} anime",
+    "itemsSearch": "Search by title or year",
+    "itemsFound": "{{selected}} picked / {{found}} found",
+    "itemsNoMatch": "Nothing matches this search"
   },
   "bulkStatus": {
     "manage": "Change status",

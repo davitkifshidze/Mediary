@@ -11,7 +11,8 @@ import i18n from '@/i18n'
    **ჟანრის რედაქტირების ფანჯარა**.
 
    ⚠️ მოწმდება: ჩანართები ბარათებია (`CutTabs`, `aria-pressed`); დომენი
-   მოდულის ბარათით ირჩევა (ანიმეც); „ჩანაწერებში" ჩადგმული სქროლი აღარ არის,
+   მოდულის ბარათით ირჩევა (ანიმეც); „ჩანაწერები" საძიებო და შემოფარგლულია
+   (`max-h-96`, 50 სტრიქონი + „კიდევ N", „ყველას მონიშვნა" ნაპოვნზე);
    სამი მოქმედება სამი თანაბარი ბარათია `i`-თი, შესრულება — ერთი
    „გამოყენება (N)" ქვედა ზოლიდან, რომელიც ამბობს, რა აკლია; სახელების
    „შენახვა" მხოლოდ სახელების ჩანართზეა.
@@ -95,16 +96,16 @@ async function flush() {
   })
 }
 
-async function openEditor() {
+async function openEditor(movies = [item(1, 'Alpha'), item(2, 'Beta')]) {
   mocks.modules.mediaModules = modules
   mocks.modules.all = modules
   mocks.modules.enabled = modules
   mocks.fetchGenres.mockResolvedValue([genre, { ...genre, id: 6, slug: 'comedy', name_ka: 'კომედია', name_en: 'Comedy' }])
   mocks.fetchGenreItems.mockResolvedValue({
-    movies: [item(1, 'Alpha'), item(2, 'Beta')],
+    movies,
     series: [],
     animes: [item(3, 'Gamma')],
-    movies_count: 2,
+    movies_count: movies.length,
     series_count: 0,
     animes_count: 1,
   })
@@ -126,9 +127,11 @@ async function openEditor() {
   await flush()
 }
 
-/** ბარათ-ჩანართი/ბარათი წარწერით */
+/** ბარათ-ჩანართი/ბარათი წარწერით — ფანჯრის შიგნით, თუ ფანჯარა ღიაა (გვერდსაც აქვს დომენის ტაბები) */
 const card = (label: string) =>
-  [...document.querySelectorAll<HTMLButtonElement>('button[aria-pressed]')].find((b) => b.textContent?.includes(label))
+  [...(document.querySelector('[role="dialog"]') ?? document).querySelectorAll<HTMLButtonElement>('button[aria-pressed]')].find((b) =>
+    b.textContent?.includes(label),
+  )
 
 const buttonWith = (label: string) =>
   [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes(label))
@@ -147,8 +150,10 @@ describe('GenresPage — the edit window', () => {
     await flush()
 
     expect(buttonWith(i18n.t('genres.save'))).toBeUndefined()
-    // ჩადგმული `max-h-64` აღარ არის
-    expect(document.querySelector('.max-h-64')).toBeNull()
+    // სია შემოფარგლულია და თავისით სქროლდება
+    const list = document.querySelector('[data-testid="genre-records-list"]')!
+    expect(list.className).toContain('max-h-96')
+    expect(list.className).toContain('overflow-y-auto')
     expect(document.querySelector('[data-testid="genre-records"]')?.textContent).toContain('Alpha')
 
     // დომენის ბარათები მოდულებიდან — ანიმეც, რიცხვით
@@ -195,5 +200,75 @@ describe('GenresPage — the edit window', () => {
 
     expect(mocks.confirm).toHaveBeenCalledTimes(1)
     expect(mocks.updateGenreItems).toHaveBeenCalledWith(5, { type: 'movie', action: 'detach', ids: [1] })
+  })
+})
+
+describe('GenresPage — records search', () => {
+  it('shows 50 rows at a time with "more"', async () => {
+    await openEditor(Array.from({ length: 60 }, (_, i) => item(i + 1, `Movie ${i + 1}`)))
+    await act(async () => card(i18n.t('genres.tabItems'))!.click())
+    await flush()
+
+    const rows = () => [...document.querySelectorAll('[data-testid="genre-records-list"] > label')].slice(1)
+    expect(rows()).toHaveLength(50)
+    await act(async () => buttonWith(i18n.t('purge.itemsMore', { count: 10 }))!.click())
+    expect(rows()).toHaveLength(60)
+  })
+
+  it('narrows the list by the search and select-all touches only the found rows', async () => {
+    await openEditor()
+    await act(async () => card(i18n.t('genres.tabItems'))!.click())
+    await flush()
+
+    const search = document.querySelector<HTMLInputElement>('[data-testid="genre-records-search"]')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(search, '2002')
+      search.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    const list = document.querySelector('[data-testid="genre-records-list"]')!
+    expect(list.textContent).toContain('Beta')
+    expect(list.textContent).not.toContain('Alpha')
+
+    // „ყველას მონიშვნა" სქროლის თავშია და ნაპოვნზე მოქმედებს
+    const all = list.querySelector<HTMLButtonElement>('label.sticky button[role="checkbox"]')!
+    await act(async () => all.click())
+    expect(document.querySelector('[data-testid="genre-records-state"]')?.textContent).toBe(
+      i18n.t('genres.itemsFound', { selected: 1, found: 1 }),
+    )
+    expect(document.querySelector('[data-testid="genre-apply-state"]')?.textContent).toContain(i18n.t('genres.selectedCount', { count: 1 }))
+  })
+})
+
+describe('GenresPage — the list', () => {
+  it('module tabs sort by that domain, the coloured chip shows its count and row buttons say what they do', async () => {
+    mocks.modules.mediaModules = modules
+    mocks.modules.all = modules
+    mocks.modules.enabled = modules
+    mocks.fetchGenres.mockResolvedValue([genre])
+
+    const { GenresPage } = await import('@/pages/GenresPage')
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    await act(async () =>
+      root!.render(h(MemoryRouter, null, h(QueryClientProvider, { client: qc }, h(TooltipProvider, null, h(GenresPage))))),
+    )
+    await flush()
+
+    expect(mocks.fetchGenres).toHaveBeenCalledWith('movie')
+    expect(container.querySelector('[data-testid="genre-count"]')?.textContent).toBe(i18n.t('genres.moviesCount', { count: 2 }))
+
+    await act(async () => card('ანიმე')!.click())
+    await flush()
+    expect(mocks.fetchGenres).toHaveBeenLastCalledWith('anime')
+    expect(container.querySelector('[data-testid="genre-count"]')?.textContent).toBe(i18n.t('genres.animesCount', { count: 1 }))
+
+    // რიგის ღილაკები — `h-9`, ტექსტით
+    const row = container.querySelector('li')!
+    const labels = [...row.querySelectorAll('button')].map((b) => b.textContent?.trim())
+    expect(labels).toEqual([i18n.t('actions.edit'), i18n.t('confirm.delete')])
+    for (const btn of row.querySelectorAll('button')) expect(btn.className).toContain('h-9')
   })
 })
