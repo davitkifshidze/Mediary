@@ -10,8 +10,9 @@ import { cn } from '@/lib/utils'
    კვადრატებად, გრიდებად, როუებად — როგორც გინდა".
 
    ⚠️ **გალერეის `LayoutToggle`-ის ფორმით** (სეგმენტები, აიქონი + ტექსტი),
-   ოღონდ `h-9` — `PageHeader`-ის ზოლის სხვა კონტროლების სიმაღლე. ტექსტი არ
-   იმალება: მარტო აიქონი „სამი კვადრატი თუ ოთხი?"-ს გამოსაცნობს ტოვებდა.
+   ოღონდ `h-10` — `PageHeader`-ის ზოლის სხვა კონტროლების (ძებნა, დალაგება,
+   ფილტრი, ღილაკები) სიმაღლე; `h-9` მხოლოდ ჩანაწერის მოქმედებების რიგისაა.
+   ტექსტი არ იმალება: მარტო აიქონი „სამი კვადრატი თუ ოთხი?"-ს გამოსაცნობს ტოვებდა.
 
    ⚠️ **`transition-transform` აქ განზრახ არაა** — `index.css`-ის გლობალური
    წესი ხატულებს hover-ზე ამოძრავებს და ამ კლასს ოპტ-აუტად კითხულობს.
@@ -38,7 +39,7 @@ export function ViewToggle({
     <div
       role="group"
       aria-label={t('view.label')}
-      className={cn('flex h-9 items-center gap-0.5 rounded-md border border-border p-0.5', className)}
+      className={cn('flex h-10 items-center gap-0.5 rounded-md border border-border p-0.5', className)}
       data-testid="view-toggle"
     >
       {MODES.map(({ key, icon: Icon }) => (

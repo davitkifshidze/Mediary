@@ -83,7 +83,7 @@ export function SettingsPage() {
         hint={<InfoHint info={t('settings.subtitle')} />}
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={reset}>
+            <Button variant="outline" onClick={reset}>
               <RotateCcw className="size-4" />
               {t('settings.reset')}
             </Button>

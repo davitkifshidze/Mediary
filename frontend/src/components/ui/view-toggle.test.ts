@@ -65,8 +65,8 @@ describe('ViewToggle', () => {
     const buttons = [...el.querySelectorAll<HTMLButtonElement>('button')]
     expect(buttons.map((b) => b.textContent)).toEqual([i18n.t('view.cards'), i18n.t('view.grid'), i18n.t('view.rows')])
     expect(pressed(el)?.textContent).toBe(i18n.t('view.rows'))
-    // `PageHeader`-ის ზოლის სიმაღლე
-    expect(el.querySelector('[data-testid="view-toggle"]')?.className).toContain('h-9')
+    // `PageHeader`-ის ზოლის სიმაღლე — ძებნისა და ღილაკების ტოლი
+    expect(el.querySelector('[data-testid="view-toggle"]')?.className).toContain('h-10')
 
     await act(async () => buttons[1].click())
     expect(onChange).toHaveBeenCalledWith('grid')

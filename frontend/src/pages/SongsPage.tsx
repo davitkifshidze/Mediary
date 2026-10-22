@@ -245,6 +245,15 @@ export function SongsPage() {
         subtitle={t('songs.count', { count: total })}
         actions={
           <>
+            {/* მთელი (გაფილტრული) სია რიგში — რიგის პირველი ღილაკი: ის გვერდის
+                მთავარი მოქმედებაა და ჰედერის მეორე ხაზზე ჩასვლისასაც თავში რჩება.
+                აქამდე მხოლოდ მთავარ ფოტოზე დაჭერა უკრავდა. */}
+            {songs.length > 0 && (
+              <Button variant="outline" onClick={() => playFrom()}>
+                <Play className="size-4" />
+                {t('playback.playAll')}
+              </Button>
+            )}
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             <Tooltip>
@@ -279,14 +288,6 @@ export function SongsPage() {
               </SelectContent>
             </Select>
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
-            {/* მთელი (გაფილტრული) სია რიგში. აქამდე მხოლოდ მთავარ
-                ფოტოზე დაჭერა უკრავდა — ვიდეოების გვერდს ეს ღილაკი ჰქონდა, აქ კი არა. */}
-            {songs.length > 0 && (
-              <Button variant="outline" onClick={() => playFrom()}>
-                <Play className="size-4" />
-                {t('playback.playAll')}
-              </Button>
-            )}
             <Link
               to="/playlists"
               className="inline-flex h-10 items-center gap-1.5 rounded-md border border-border px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"

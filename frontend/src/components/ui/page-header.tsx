@@ -121,7 +121,14 @@ export function PageHeader({
           </span>
         )}
 
-        <div className="min-w-0 flex-1">
+        {/* ⚠️ **სათაური საკუთარ სიგანეს იცავს** (`flex-auto`, და არა
+            `flex-1`-ის 0 ბაზისი): flex-wrap რიგს ბაზისით ანაწილებს, ე.ი. 0-ბაზისიანი
+            სათაური მოქმედებებთან ერთ ხაზზე ყოველთვის „ეტეოდა" და ~200px-მდე
+            იჭყლიტებოდა (სიმღერები: 8 კონტროლი, პლეერის პანელით — მუდამ). ახლა,
+            როცა სათაური და მოქმედებები ერთად არ ეტევა, **მოქმედებების მთელი
+            ბლოკი სათაურის ქვეშ ჩადის** და იქ თავის შიგნით ტყდება; სათაური მხოლოდ
+            ტელეფონზე იჭრება, როცა თვითონ სიგანეზე გრძელია. */}
+        <div className="min-w-0 flex-auto">
           {eyebrow && (
             <p className="truncate text-xs font-medium uppercase tracking-wider text-muted-foreground">
               {eyebrow}
@@ -136,7 +143,11 @@ export function PageHeader({
           {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
         </div>
 
-        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        {actions && (
+          <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="page-header-actions">
+            {actions}
+          </div>
+        )}
       </div>
     </header>
   )

@@ -450,6 +450,13 @@ export function VideosPage() {
         }
         actions={
           <>
+            {/* მთელი (გაფილტრული) სია რიგში — რიგის პირველი ღილაკი, როგორც სიმღერებში */}
+            {videos.length > 0 && (
+              <Button variant="outline" onClick={() => playHere(videos[0])}>
+                <ListVideo className="size-4" />
+                {t('playback.playAll')}
+              </Button>
+            )}
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             {/* ძებნა — განმარტება tooltip-ია და არა `title` */}
@@ -485,16 +492,6 @@ export function VideosPage() {
               </SelectContent>
             </Select>
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
-            {/* მთელი (გაფილტრული) სია რიგში */}
-            {videos.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => playHere(videos[0])}
-              >
-                <ListVideo className="size-4" />
-                {t('playback.playAll')}
-              </Button>
-            )}
             <Link
               to="/dictionaries/video-types"
               className="inline-flex h-10 items-center gap-1.5 rounded-md border border-border px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
