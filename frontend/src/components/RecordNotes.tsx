@@ -255,9 +255,9 @@ export function RecordNotes({
                 პირდაპირ იძახებდა მუტაციას, მაშინ როცა ფაილის წაშლა უკვე
                 კითხულობდა. */}
             <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 text-destructive"
+              variant="destructiveOutline"
+              size="sm"
+              className="shrink-0"
               onClick={async () => {
                 const ok = await confirm({
                   title: t('recordNotes.deleteTitle'),
@@ -267,9 +267,9 @@ export function RecordNotes({
                 if (ok) remove.mutate(note.id)
               }}
               aria-label={t('actions.delete')}
-              title={t('actions.delete')}
             >
-              <Trash2 className="size-4" />
+              <Trash2 className="size-3.5" />
+              {t('actions.delete')}
             </Button>
           </li>
         ))}

@@ -15,6 +15,14 @@
       და სტატუსი ერთ რიგშია, ე.ი. `StatusBadge`/`EnumStatusBadge`/`Badge`
       `size="row"`-ის გარეშე (~20 px) სხვა სიმაღლისაა.
 
+   3. **წაშლა წაშლის ოჯახითაა** — `Button`, რომელსაც `text-destructive` კლასით
+      „აწითლებენ" (`ghost`/`outline` + ფერი), ჩარჩოს ან შებრუნებულ ჰოვერს
+      ვერ იღებს და ზომაც თავისი აქვს: `variant="destructiveOutline"` (რიგი,
+      ბარათი, ქვესია) ან `destructive` (დიალოგის დასტური).
+   4. **ურნიანი `size="icon"`** (`h-10` აიქონ-ღილაკი) — ქვესიის წაშლა რიგის
+      დანარჩენ ღილაკებზე მაღალი იყო და მხოლოდ-აიქონი; ის `size="sm"`-ია
+      ტექსტით („წაშლა").
+
    ⚠️ `VisibilityBadge`-ს პატარა ვარიანტი აღარ აქვს (ყოველთვის `h-9`) — მას
    ეს სკრიპტი აღარ სჭირდება. შესვლების ბეჯი (`VisitBadge`, `h-7`) აღარ არსებობს.
    ⚠️ სკრიპტი და არა Vitest-ის ტესტი — `error-codes.mjs`-ის მიზეზით
@@ -28,12 +36,16 @@ const ALLOW_XS_FAVORITE = new Set([path.join('components', 'VideoCard.tsx')])
 
 const problems = []
 
-/** `<Tag …>`-ის ტექსტი პირველ `>`-მდე, რომელიც `{…}`-ის შიგნით არ არის */
+/** `<Tag …>`-ის ტექსტი პირველ `>`-მდე, რომელიც არც `{…}`-ის და არც ბრჭყალების შიგნით არ არის */
 function tagAt(text, start) {
   let depth = 0
+  let quote = null
   for (let i = start; i < text.length; i++) {
     const c = text[i]
-    if (c === '{') depth++
+    if (quote) {
+      if (c === quote) quote = null
+    } else if (c === '"' || c === "'" || c === '`') quote = c
+    else if (c === '{') depth++
     else if (c === '}') depth--
     else if (c === '>' && depth === 0) return text.slice(start, i + 1)
   }
@@ -62,6 +74,17 @@ function check(file) {
     }
   }
 
+  for (const m of text.matchAll(/<Button\b/g)) {
+    const tag = tagAt(text, m.index)
+    if (/\btext-destructive\b/.test(tag) && !/\bvariant=\{?["'`]?[^\s>]*destructive/.test(tag)) {
+      problems.push(`${rel}:${lineOf(text, m.index)}  Button text-destructive-ით — variant="destructiveOutline"`)
+    }
+    if (/\bsize="icon"/.test(tag)) {
+      const body = text.slice(m.index + tag.length, text.indexOf('</Button>', m.index))
+      if (/<Trash2?\b/.test(body)) problems.push(`${rel}:${lineOf(text, m.index)}  ურნიანი size="icon" — size="sm" ტექსტით`)
+    }
+  }
+
   if (!text.includes('<DetailHero')) return
   for (const m of text.matchAll(/\bbadges=\{/g)) {
     const open = m.index + m[0].length - 1
@@ -85,7 +108,7 @@ function walk(dir) {
 walk(SRC)
 
 if (problems.length) {
-  console.error('მოქმედებების რიგში ყველაფერი h-9 უნდა იყოს:\n  ' + problems.join('\n  '))
+  console.error('მოქმედებების რიგში ყველაფერი h-9 უნდა იყოს, წაშლა — წაშლის ოჯახით:\n  ' + problems.join('\n  '))
   process.exit(1)
 }
-console.log('მოქმედებების რიგები ერთი სიმაღლისაა (h-9).')
+console.log('მოქმედებების რიგები ერთი სიმაღლისაა (h-9), წაშლა ერთი ოჯახისაა.')

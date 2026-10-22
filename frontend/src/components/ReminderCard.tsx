@@ -246,17 +246,18 @@ export function ReminderCard({
             onCheckedChange={onToggle}
             aria-label={t('notes.reminderActive')}
           />
-          <Button variant="ghost" size="icon" onClick={onEdit} aria-label={t('actions.edit')}>
-            <SquarePen className="size-4" />
+          <Button variant="edit" size="sm" onClick={onEdit}>
+            <SquarePen className="size-3.5" />
+            {t('actions.edit')}
           </Button>
           <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive"
+            variant="destructiveOutline"
+            size="sm"
             onClick={onDelete}
             aria-label={t('actions.delete')}
           >
-            <Trash2 className="size-4" />
+            <Trash2 className="size-3.5" />
+            {t('actions.delete')}
           </Button>
         </span>
       </div>

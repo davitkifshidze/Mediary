@@ -224,11 +224,12 @@ function MediaGallery({ type, id, bare }: { type: MediaType; id: number; bare?: 
                 ისინი მსახიობზეა მიბმული და სხვა ფილმებშიც ჩანს; მათ თავისი
                 დასტის ღილაკი შლის. */}
             {deletable.length > 0 && (
+              /* წაშლის ოჯახის ფერი და შევსებული ჰოვერი; ჩარჩო — ზოლისაა (`border-0`) */
               <Button
                 type="button"
-                variant="ghost"
+                variant="destructiveOutline"
                 size="sm"
-                className="rounded-none text-destructive"
+                className="rounded-none border-0"
                 onClick={() => askDelete(deletable, detail?.record.poster_path)}
               >
                 <Trash2 className="size-4" />

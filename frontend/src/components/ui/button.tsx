@@ -11,10 +11,18 @@ const buttonVariants = cva(
         secondary: 'bg-secondary text-secondary-foreground hover:opacity-90',
         outline: 'border border-border bg-transparent hover:bg-muted',
         ghost: 'hover:bg-muted',
-        destructive: 'bg-destructive text-destructive-foreground hover:opacity-90',
-        // „გასუფთავება"/„მოხსნა" ტიპის ქმედებები — მოწითალო კონტური, არა სავსე წითელი
+        /* **წაშლის ოჯახი — ორი იერი.** `destructive` სავსე წითელია მუდმივი
+           ჩარჩოთი და ჰოვერზე ბრუნდება (ფონი — გვერდის, ტექსტი და აიქონი —
+           წითელი): დასტურის დიალოგი, დიალოგების ფუტერი, ფოტოს გადაფარვა.
+           `destructiveOutline` „რედაქტირების" სარკეა — წითელი ჩარჩო და
+           ტექსტი, ჰოვერზე ივსება: რიგის, ბარათისა და ქვესიის წაშლა.
+           ⚠️ `fb-destructive` `index.css`-ის სახელურია — აიქონი ტექსტს
+           მიჰყვება (ზოგადი ჰოვერის წესი ურნას წითლად ღებავს და სავსე წითელ
+           ფონზე გააქრობდა). ჩარჩო ორივეს აქვს, რომ ზომა არ შეიცვალოს. */
+        destructive:
+          'fb-destructive border border-destructive bg-destructive text-destructive-foreground hover:bg-background hover:text-destructive',
         destructiveOutline:
-          'border border-destructive/40 bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive',
+          'fb-destructive border border-destructive/60 bg-transparent text-destructive hover:border-destructive hover:bg-destructive hover:text-destructive-foreground',
         /* **რედაქტირება** (2026-09-28, შენი არჩევანი) — სტაფილოსფერი ჩარჩო და
            ტექსტი, ჰოვერზე სავსე სტაფილოსფერი ღილაკი. ერთი ვარიანტი ყველგან:
            ჩანაწერის გვერდი, სიების რიგები, ლექსიკონები, ველები, ალბომები.
@@ -35,7 +43,6 @@ const buttonVariants = cva(
        რჩება: იქ ის ღილაკის საზღვარია და არა აიქონის მორთულობა. */
     compoundVariants: [
       { size: 'icon', variant: ['ghost', 'outline'], class: 'hover:bg-transparent' },
-      { size: 'icon', variant: 'destructiveOutline', class: 'hover:bg-transparent' },
     ],
     defaultVariants: { variant: 'default', size: 'default' },
   },

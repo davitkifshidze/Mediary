@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Paperclip, SquarePen, Trash2, type LucideIcon } from 'lucide-react'
+import { CountBadge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { cn } from '@/lib/utils'
@@ -12,24 +13,26 @@ import { cn } from '@/lib/utils'
    სტილში მინდა, შესაბამისი სახელებით, აიქონებით და ფერებით" · „ერთი სტილის
    და ერთი ფერის სიმეტრიული ღილაკები".
 
-   რიგი და ზომა **ფიქსირებულია**: ბმული/რუკა (აიქონი + ტექსტი) · [ბეჯები] ·
+   რიგი და ზომა **ფიქსირებულია**: [ბეჯები] · ბმული/რუკა (აიქონი + ტექსტი) ·
    სტატუსი (ჩამოსაშლელი, `min-w-36`) · რჩეული · ფაილები (`Paperclip`
-   + „ფაილები" + რიცხვი) · რედაქტირება (`variant="edit"`) · წაშლა (წითელი).
-   ყველა `h-9`, `items-center`.
+   + „ფაილები" + `CountBadge`) · რედაქტირება (`variant="edit"`) · წაშლა
+   (`destructiveOutline`, აიქონი + „წაშლა"). ყველა `h-9`, `items-center`.
 
    ⚠️ **ბმულის სლოტი ყოველთვის ადგილზეა**: უბმულო ჩანაწერზე იგივე
    ზომის უხილავი ელემენტია, რომ რედაქტირება და წაშლა რიგიდან რიგში არ
-   ინაცვლებდეს. აქამდე ზოგ სიაში (თამაში, სამაგიდო) ის პირობითად ჩნდებოდა
-   და ღილაკები „ხტებოდა".
-   ⚠️ **სლოტი რიგის თავშია.** ფაილებსა და რედაქტირებას შორის
-   მდგარი უხილავი ღილაკი უბმულო ჩანაწერზე ცარიელ ხვრელად ჩანდა („ფაილებსა და
-   რედაქტირებას შორის დაშორება"); თავში ის სათაურის მხარეს უხილავად რჩება,
-   მარჯვნივ მიმაგრებული „სტატუსი · რჩეული · ფაილები · რედაქტირება · წაშლა"
-   კი ერთმანეთის გვერდით და რიგიდან რიგში ერთ ადგილზე დგას.
+   ინაცვლებდეს.
+   ⚠️ **ქრობადი ყველაფერი რიგის თავშია, სათაურის მხარეს** — ჯერ ბეჯები
+   (შეფასება, BGG, ვიზიტები: უშეფასებოზე `null`-ია), მერე ბმულის სლოტი
+   (უბმულოზე უხილავი). შუაში მდგარი ბეჯი უშეფასებო ჩანაწერზე „რუკასა" და
+   სტატუსს შორის ხვრელს ტოვებდა; ახლა მარჯვნივ მიმაგრებული „ბმული · სტატუსი ·
+   რჩეული · ფაილები · რედაქტირება · წაშლა" ყოველთვის ერთმანეთის გვერდით და
+   რიგიდან რიგში ერთ ადგილზე დგას.
+   ⚠️ **ფაილების რიცხვი 0-ზეც იხატება** (`CountBadge`) — ფაილიანი და უფაილო
+   რიგის ღილაკი ერთი სიგანისაა.
 
-   ⚠️ **აიქონ-ბმული `size-9` აღარ არსებობს** — „ბმული"/„რუკა" ტექსტითაა,
-   `outline sm` ღილაკის ფორმით (icon-only row actions დახურული გადაწყვეტილებაა).
-   წაშლა ერთადერთი აიქონ-ღილაკია და ის ყველგან ასეა (ჩანაწერები, ბუკმარკები).
+   ⚠️ **აიქონ-ღილაკი რიგში აღარ არის** — წაშლაც ტექსტითაა, როგორც
+   რედაქტირება (icon-only row actions დახურული გადაწყვეტილებაა); `aria-label`
+   რჩება. `scripts/action-rows.mjs` რიგში `size="icon"`-სა და ghost-წაშლას აგდებს.
 
    ⚠️ **სტატუსი ჩანაწერის ტიპზეა დამოკიდებული** (enum ან ლექსიკონი), ამიტომ
    ზოლი მას მზა ელემენტად იღებს (`EnumStatusMenu`) და თვითონ არ ხატავს.
@@ -55,7 +58,7 @@ export function RecordActionBar({
   onDelete,
   className,
 }: {
-  /** ზოლის დასაწყისი — ქულა, ვიზიტები, BGG და სხვა ბეჯები */
+  /** ზოლის დასაწყისი, ბმულის წინ — ქულა, BGG და სხვა ქრობადი ბეჯები */
   before?: ReactNode
   /** სტატუსის ჩამოსაშლელი (`EnumStatusMenu` ან ლექსიკონის ვარიანტი) */
   status?: ReactNode
@@ -72,6 +75,7 @@ export function RecordActionBar({
 
   return (
     <div className={cn('flex shrink-0 items-center gap-1', className)} data-testid="record-actions">
+      {before}
       {link && LinkIcon && (
         <a
           href={link.href || undefined}
@@ -92,7 +96,6 @@ export function RecordActionBar({
           {link.label}
         </a>
       )}
-      {before}
       {status}
       {favorite && <FavoriteButton active={favorite.active} pending={favorite.pending} onToggle={favorite.onToggle} />}
       {files && (
@@ -106,26 +109,16 @@ export function RecordActionBar({
         >
           <Paperclip className="size-3.5" />
           {t('actions.files')}
-          {files.count > 0 && (
-            <span className="rounded-md bg-secondary px-1.5 py-0.5 text-xs leading-none tabular-nums text-foreground">
-              {files.count}
-            </span>
-          )}
+          <CountBadge count={files.count} />
         </Button>
       )}
       <Button type="button" variant="edit" size="sm" onClick={onEdit}>
         <SquarePen className="size-3.5" />
         {t('actions.edit')}
       </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="text-destructive"
-        aria-label={t('actions.delete')}
-        onClick={onDelete}
-      >
+      <Button type="button" variant="destructiveOutline" size="sm" aria-label={t('actions.delete')} onClick={onDelete}>
         <Trash2 className="size-3.5" />
+        {t('actions.delete')}
       </Button>
     </div>
   )

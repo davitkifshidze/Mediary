@@ -201,13 +201,13 @@ export function CustomFieldsEditor({
                   {/* ისრები წავიდა: რიგი სახელურითაა (მაუსი და კლავიატურა) */}
                   <SortableHandle />
                   <Button
-                    variant="ghost"
+                    variant="destructiveOutline"
                     size="sm"
-                    className="text-destructive"
                     onClick={() => remove(i)}
                     aria-label={t('actions.delete')}
                   >
                     <Trash2 className="size-3.5" />
+                    {t('actions.delete')}
                   </Button>
                 </span>
               </div>

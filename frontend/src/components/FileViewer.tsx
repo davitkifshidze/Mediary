@@ -145,8 +145,7 @@ export function FileViewer({
       <ModalFooter className="justify-between">
         {onDelete ? (
           <Button
-            variant="ghost"
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            variant="destructiveOutline"
             onClick={onDelete}
           >
             <Trash2 className="size-4" />

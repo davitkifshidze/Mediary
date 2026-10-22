@@ -108,13 +108,14 @@ export function WatchLog({ type, recordId, watched }: { type: MediaType; recordI
               {w.note && <span className="min-w-0 flex-1 truncate text-muted-foreground">{w.note}</span>}
               <Button
                 type="button"
-                variant="ghost"
+                variant="destructiveOutline"
                 size="sm"
                 className="ml-auto"
                 disabled={remove.isPending}
                 onClick={() => askRemove(w.id)}
               >
-                <Trash2 className="size-4" />
+                <Trash2 className="size-3.5" />
+                {t('actions.delete')}
               </Button>
             </li>
           ))}

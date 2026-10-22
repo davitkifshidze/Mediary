@@ -152,8 +152,8 @@ export function ProfilePage() {
               <input type="file" accept="image/*" className="hidden" onChange={pickAvatar} />
             </label>
             {user.avatar_path && (
-              <Button type="button" variant="ghost" size="sm" onClick={removeAvatar} disabled={busy}>
-                <Trash2 className="size-4" />
+              <Button type="button" variant="destructiveOutline" size="sm" onClick={removeAvatar} disabled={busy}>
+                <Trash2 className="size-3.5" />
                 {t('profile.removeAvatar')}
               </Button>
             )}

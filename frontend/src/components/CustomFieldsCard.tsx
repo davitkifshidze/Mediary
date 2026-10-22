@@ -281,14 +281,15 @@ function PendingFileField({
 
           <Button
             type="button"
-            variant="ghost"
+            variant="destructiveOutline"
             size="sm"
-            className="ml-auto text-destructive"
+            className="ml-auto"
             disabled={item.status === 'uploading'}
             onClick={() => draft.files.remove(item.key)}
             aria-label={t('actions.delete')}
           >
             <Trash2 className="size-3.5" />
+            {t('actions.delete')}
           </Button>
         </div>
       ))}
@@ -395,14 +396,15 @@ function FileField({
 
           <Button
             type="button"
-            variant="ghost"
+            variant="destructiveOutline"
             size="sm"
-            className="ml-auto text-destructive"
+            className="ml-auto"
             disabled={busy}
             onClick={() => remove.mutate(file.id)}
             aria-label={t('actions.delete')}
           >
             <Trash2 className="size-3.5" />
+            {t('actions.delete')}
           </Button>
         </div>
       ))}

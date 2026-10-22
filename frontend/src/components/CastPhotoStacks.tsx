@@ -223,9 +223,8 @@ export function CastPhotoStacks({
                   onDelete && photos.some((image) => !image.locked) ? (
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="destructiveOutline"
                       size="sm"
-                      className="h-7 px-2 text-xs text-destructive"
                       onClick={() => onDelete(pick(photos.map((i) => i.id), photos))}
                     >
                       <Trash2 className="size-3.5" />

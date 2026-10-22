@@ -309,9 +309,9 @@ export function AlbumsCut() {
                     <>
                       {group.photos > 0 && !locked && (
                         <Button
-                          variant="ghost"
+                          variant="destructiveOutline"
                           size="sm"
-                          className="h-7 px-2 text-xs text-destructive"
+                          className="h-7 px-2 text-xs"
                           onClick={async () => {
                             const ok = await confirm({
                               title: t('gallery.deleteGroupTitle'),
@@ -363,9 +363,9 @@ export function AlbumsCut() {
                             {t('actions.edit')}
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="destructiveOutline"
                             size="sm"
-                            className="h-7 px-2 text-xs text-destructive"
+                            className="h-7 px-2 text-xs"
                             onClick={async () => {
                               const ok = await confirm({
                                 title: t('gallery.albumDeleteTitle'),

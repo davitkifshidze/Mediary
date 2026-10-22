@@ -548,13 +548,13 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
                         {t('actions.edit')}
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="destructiveOutline"
                         size="sm"
-                        className="text-destructive"
                         aria-label={t('actions.delete')}
                         onClick={() => askDelete(record)}
                       >
                         <Trash2 className="size-3.5" />
+                        {t('actions.delete')}
                       </Button>
                     </div>
                   }

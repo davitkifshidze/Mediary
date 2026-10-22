@@ -179,9 +179,9 @@ export function RolesPage() {
                     მხოლოდ ცრუ იმედს იძლეოდა (backend-ზეც 422-ია) */}
                 {deletable && (
                   <Button
-                    variant="ghost"
+                    variant="destructiveOutline"
                     size="sm"
-                    className="relative -my-1 text-destructive"
+                    className="relative -my-1"
                     disabled={remove.isPending}
                     onClick={async () => {
                       const ok = await confirm({
@@ -193,6 +193,7 @@ export function RolesPage() {
                     }}
                   >
                     <Trash2 className="size-3.5" />
+                    {t('actions.delete')}
                   </Button>
                 )}
               </div>

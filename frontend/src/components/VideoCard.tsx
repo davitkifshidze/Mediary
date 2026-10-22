@@ -264,13 +264,14 @@ export function VideoCard({
               {t('actions.edit')}
             </Button>
             <Button
-              variant="ghost"
+              variant="destructiveOutline"
               size="sm"
-              className="ml-auto text-destructive"
+              className="ml-auto"
               aria-label={t('actions.delete')}
               onClick={onDelete}
             >
               <Trash2 className="size-3.5" />
+              {t('actions.delete')}
             </Button>
           </div>
         </div>

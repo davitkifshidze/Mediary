@@ -102,9 +102,9 @@ export function PersonalAlbumCards({
                           {t('actions.edit')}
                         </Button>
                         <Button
-                          variant="ghost"
+                          variant="destructiveOutline"
                           size="sm"
-                          className="ml-auto h-7 px-2 text-xs text-destructive"
+                          className="ml-auto h-7 px-2 text-xs"
                           onClick={() => setDeleting(album)}
                         >
                           <Trash2 className="size-3.5" />

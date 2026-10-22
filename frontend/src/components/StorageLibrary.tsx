@@ -308,19 +308,17 @@ export function StorageLibrary({
             {onBulkDelete && (
               <>
                 <Button
-                  variant="outline"
+                  variant="destructiveOutline"
                   size="sm"
-                  className="text-destructive"
                   disabled={busy || !picked.length}
                   onClick={() => onBulkDelete({ paths: picked }, picked.length)}
                 >
-                  <Trash2 className="size-4" />
+                  <Trash2 className="size-3.5" />
                   {t('storage.deleteSelected', { count: picked.length })}
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="destructiveOutline"
                   size="sm"
-                  className="text-destructive"
                   disabled={busy}
                   onClick={() => onBulkDelete('all', total ?? files.length)}
                 >
@@ -517,7 +515,7 @@ function Actions({
           disabled={deletingPath === file.path}
           title={t('actions.delete')}
           className={cn(
-            'inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50',
+            'fb-destructive inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-destructive/60 px-2.5 text-xs text-destructive transition-colors hover:border-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50',
             compact && 'size-7 justify-center px-0',
           )}
         >

@@ -161,7 +161,8 @@ describe('CoursesPage row', () => {
     const empty = second.querySelector<HTMLAnchorElement>('[data-testid="link-slot"]')!
     expect(empty.className).toContain('invisible')
     expect(empty.getAttribute('aria-hidden')).toBe('true')
-    expect(second.querySelector('[data-testid="files-button"]')?.textContent?.trim()).toBe(i18n.t('actions.files'))
+    // უფაილოზეც რიცხვი ჩანს (0) — ღილაკი ფაილიანის სიგანისაა
+    expect(second.querySelector('[data-testid="files-button"]')?.textContent?.trim()).toBe(`${i18n.t('actions.files')}0`)
 
     // პლატფორმა ბრენდის სახელით, არა ჰოსტით
     expect(document.body.textContent).toContain('YouTube')

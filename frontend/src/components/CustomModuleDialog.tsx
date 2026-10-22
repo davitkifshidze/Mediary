@@ -323,13 +323,13 @@ export function CustomModuleDialog({
                       </label>
                       <Button
                         type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-9 text-destructive"
+                        variant="destructiveOutline"
+                        size="sm"
                         aria-label={t('actions.delete')}
                         onClick={() => setFields((rows) => rows.filter((r) => r._key !== row._key))}
                       >
-                        <Trash2 className="size-4" />
+                        <Trash2 className="size-3.5" />
+                        {t('actions.delete')}
                       </Button>
                     </li>
                   ))}

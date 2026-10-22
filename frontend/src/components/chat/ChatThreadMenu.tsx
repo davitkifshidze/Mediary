@@ -158,8 +158,7 @@ export function ChatThreadMenu({
         {(!thread.blocked || blockedByMe) && (
           <div className="border-t border-border pt-4">
             <Button
-              variant="ghost"
-              className={blockedByMe ? undefined : 'text-destructive'}
+              variant={blockedByMe ? 'outline' : 'destructiveOutline'}
               disabled={block.isPending}
               onClick={async () => {
                 if (blockedByMe) return block.mutate(false)

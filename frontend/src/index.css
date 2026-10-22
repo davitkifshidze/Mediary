@@ -835,6 +835,15 @@
 .fb-edit .lucide,
 .fb-edit:hover .lucide:not(.transition-transform) { color: currentColor; }
 
+/* **წაშლის ღილაკებში** (`destructive`, `destructiveOutline`) იგივე: ურნა
+   წარწერას მიჰყვება — სავსე წითელზე ღიაა, ჰოვერის შემდეგ წითელი და პირიქით.
+   ზოგადი წესი მას ყოველთვის წითლად ღებავდა და სავსე წითელ ფონზე ქრებოდა.
+   ⚠️ შუა სელექტორი (0,3,0) ზოგადს რიგით სძლევს — ჰოვერებული *წინაპრის*
+   (ბარათი, ბმული) შიგნითაც, როცა თვითონ ღილაკი ჰოვერზე არ არის. */
+.fb-destructive .lucide,
+.fb-destructive .lucide:not(.transition-transform),
+.fb-destructive:hover .lucide:not(.transition-transform) { color: currentColor; }
+
 /* რჩეული — აპის საკუთარი ტოკენი და თბილი შუქი */
 :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-star:not(.transition-transform),
 :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-heart:not(.transition-transform) { color: var(--favorite); filter: drop-shadow(0 0 6px color-mix(in oklab, var(--favorite) 55%, transparent)); }

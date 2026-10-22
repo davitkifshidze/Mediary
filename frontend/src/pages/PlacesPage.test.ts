@@ -176,6 +176,13 @@ describe('PlacesPage row', () => {
 
     const empty = second.querySelector<HTMLAnchorElement>('[data-testid="link-slot"]')!
     expect(empty.className).toContain('invisible')
+
+    // შეფასება (უშეფასებოზე არაფერი) რუკის წინაა — რუკა და სტატუსი ყოველთვის გვერდიგვერდ
+    for (const bar of [first, second]) {
+      const slot = bar.querySelector('[data-testid="link-slot"]')!
+      const status = bar.querySelector(`button[aria-label="${i18n.t('places.status')}"]`)!
+      expect(slot.nextElementSibling === status || slot.nextElementSibling?.contains(status)).toBe(true)
+    }
   })
 
   it('the status dropdown sends the picked status', async () => {

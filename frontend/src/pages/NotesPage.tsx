@@ -428,9 +428,8 @@ export function NotesPage() {
                         {t('actions.edit')}
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="destructiveOutline"
                         size="sm"
-                        className="text-destructive"
                         onClick={async () => {
                           const ok = await confirm({
                             title: t('notes.deleteTitle'),
@@ -439,8 +438,10 @@ export function NotesPage() {
                           })
                           if (ok) remove.mutate(note.id)
                         }}
+                        aria-label={t('actions.delete')}
                       >
                         <Trash2 className="size-3.5" />
+                        {t('actions.delete')}
                       </Button>
                     </span>
                   }

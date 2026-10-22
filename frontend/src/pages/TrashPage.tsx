@@ -382,13 +382,12 @@ export function TrashPage() {
 
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="destructiveOutline"
                             size="sm"
-                            className="text-destructive"
                             disabled={remove.isPending}
                             onClick={() => removeOne(group, item)}
                           >
-                            <Trash2 className="size-4" />
+                            <Trash2 className="size-3.5" />
                             {t('trash.deleteNow')}
                           </Button>
                         </li>

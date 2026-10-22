@@ -93,16 +93,19 @@ export function PosterUploader({
           {isDragActive ? (
             <span className="text-xs font-medium text-white">{t('form.photoDropReplace')}</span>
           ) : (
-            <>
-              <Button type="button" variant="edit" size="sm" className="bg-background" onClick={open}>
+            /* ⚠️ ორი ღილაკი **ერთი სიგანისაა** — `grid`-ის სვეტი უგრძესს
+               („შეცვლა") ერგება, `w-full` მეორესაც იმავემდე წევს; ცალ-ცალკე ისინი
+               თავისი ტექსტის სიგანისა იყო და ერთმანეთის ქვეშ ასიმეტრიულად იდგა. */
+            <div className="grid max-w-full gap-2">
+              <Button type="button" variant="edit" size="sm" className="w-full bg-background" onClick={open}>
                 <ImageUp className="size-3.5" />
                 {t('form.photoChange')}
               </Button>
-              <Button type="button" variant="destructive" size="sm" onClick={onClear} aria-label="remove">
+              <Button type="button" variant="destructive" size="sm" className="w-full" onClick={onClear} aria-label="remove">
                 <Trash2 className="size-3.5" />
                 {t('actions.delete')}
               </Button>
-            </>
+            </div>
           )}
         </div>
       </div>

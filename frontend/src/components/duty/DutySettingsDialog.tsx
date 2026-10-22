@@ -216,11 +216,11 @@ export function DutySettingsDialog({
                       .join(' · ')}
                   </p>
                 </div>
-                <Button variant="edit" size="sm" className="h-8 px-2.5 text-xs" onClick={() => setEditing({ workplace: w })}>
+                <Button variant="edit" size="sm" onClick={() => setEditing({ workplace: w })}>
                   <SquarePen className="size-3.5" />
                   {t('actions.edit')}
                 </Button>
-                <Button variant="ghost" size="sm" className="h-8 px-2.5 text-xs text-destructive" onClick={() => setDeleting(w)}>
+                <Button variant="destructiveOutline" size="sm" onClick={() => setDeleting(w)}>
                   <Trash2 className="size-3.5" />
                   {t('confirm.delete')}
                 </Button>

@@ -273,14 +273,15 @@ function PendingRow({ item, onRemove }: { item: PendingUpload<Kind>; onRemove: (
         <span className="min-w-0 flex-1 truncate">{item.file.name}</span>
         <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{formatBytes(item.file.size)}</span>
         <Button
-          variant="ghost"
-          size="icon"
-          className="shrink-0 text-destructive"
+          variant="destructiveOutline"
+          size="sm"
+          className="shrink-0"
           disabled={item.status === 'uploading'}
           onClick={onRemove}
           aria-label={t('actions.delete')}
         >
-          <Trash2 className="size-4" />
+          <Trash2 className="size-3.5" />
+          {t('actions.delete')}
         </Button>
       </div>
       {item.status === 'error' && (
@@ -421,13 +422,14 @@ function Files({
               <Download className="size-4" />
             </PrivateFileLink>
             <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 text-destructive"
+              variant="destructiveOutline"
+              size="sm"
+              className="shrink-0"
               onClick={() => drop(file.id)}
               aria-label={t('actions.delete')}
             >
-              <Trash2 className="size-4" />
+              <Trash2 className="size-3.5" />
+              {t('actions.delete')}
             </Button>
           </li>
         ))}

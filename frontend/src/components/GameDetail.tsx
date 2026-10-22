@@ -255,16 +255,17 @@ function Videos({ game }: { game: Game }) {
               </span>
               <span className="min-w-0 flex-1 truncate text-sm">{video.title || video.url}</span>
               <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0 text-destructive"
+                variant="destructiveOutline"
+                size="sm"
+                className="shrink-0"
                 onClick={async () => {
                   const ok = await confirm({ title: t('games.videoDeleteTitle'), variant: 'destructive' })
                   if (ok) remove.mutate(video.id)
                 }}
                 aria-label={t('actions.delete')}
               >
-                <Trash2 className="size-4" />
+                <Trash2 className="size-3.5" />
+                {t('actions.delete')}
               </Button>
             </div>
             {/* ⚠️ iframe მხოლოდ allowlist-ის `embed_url`-ს იღებს — ჰოსტი აქაც მოწმდება */}
@@ -409,9 +410,9 @@ function Files({ game }: { game: Game }) {
               <Download className="size-4" />
             </a>
             <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 text-destructive"
+              variant="destructiveOutline"
+              size="sm"
+              className="shrink-0"
               onClick={async () => {
                 const ok = await confirm({
                   title: t('books.fileDeleteTitle'),
@@ -422,7 +423,8 @@ function Files({ game }: { game: Game }) {
               }}
               aria-label={t('actions.delete')}
             >
-              <Trash2 className="size-4" />
+              <Trash2 className="size-3.5" />
+              {t('actions.delete')}
             </Button>
           </li>
         ))}

@@ -443,16 +443,13 @@ export function FilterPanel({
             მოქმედებაა ამ პანელზე, რომელიც **შენს არჩევანს შლის** — „გაფილტვრა"
             ხედს ცვლის, ეს კი ყველა მონიშვნას აქრობს. ნაცრისფერი ღილაკი მას
             ჩვეულებრივ მეორეხარისხოვან ბმულად კითხულობდა. */}
-        {/* ⚠️ **`outline` და არა `ghost`** (შენი მითითება, 2026-09-14): უჩარჩოო
+        {/* ⚠️ **ჩარჩოიანი და არა `ghost`** (შენი მითითება, 2026-09-14): უჩარჩოო
             ღილაკი ზედა „გაფილტვრასთან" შედარებით სხვა — მცირე — ზომისად
             იკითხებოდა, თუმცა სიმაღლე ორივეს ერთი აქვს. ჩარჩო ამ ორ ღილაკს
-            ერთ წყვილად აჩვენებს, ფერი კი მაინც ამბობს, რომ ეს დამშლელია. */}
+            ერთ წყვილად აჩვენებს, წაშლის ოჯახის ფერი (`destructiveOutline`) კი
+            ამბობს, რომ ეს დამშლელია. */}
         {(activeCount > 0 || dirty) && (
-          <Button
-            variant="outline"
-            className="w-full border-destructive/40 text-destructive hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={onClear}
-          >
+          <Button variant="destructiveOutline" className="w-full" onClick={onClear}>
             <X className="size-4" />
             {t('filter.clearAll')}
           </Button>

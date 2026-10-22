@@ -278,14 +278,14 @@ export function PlaylistPage() {
                   <ExternalLink className="size-4" />
                 </a>
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive"
+                  variant="destructiveOutline"
+                  size="sm"
                   disabled={save.isPending}
                   onClick={() => save.mutate(songIds.filter((x) => x !== song.id))}
                   aria-label={t('playlists.removeSong')}
                 >
-                  <X className="size-4" />
+                  <X className="size-3.5" />
+                  {t('playlists.removeSong')}
                 </Button>
               </span>
             </SortableItem>

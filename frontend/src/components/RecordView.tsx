@@ -310,9 +310,10 @@ function TileBody(props: RecordViewProps) {
           )}
           data-testid="record-tile-actions"
         >
-          <div className="pointer-events-none flex flex-col items-center gap-2 group-hover/tile:pointer-events-auto group-focus-within/tile:pointer-events-auto">
+          {/* ⚠️ `grid` — ორივე ღილაკი უგრძესის სიგანისაა (ფოტოს გადაფარვის წესი, `PosterUploader`) */}
+          <div className="pointer-events-none grid max-w-full gap-2 group-hover/tile:pointer-events-auto group-focus-within/tile:pointer-events-auto">
             {onEdit && (
-              <Button type="button" variant="edit" size="sm" className="bg-background" onClick={onEdit}>
+              <Button type="button" variant="edit" size="sm" className="w-full bg-background" onClick={onEdit}>
                 <SquarePen className="size-3.5" />
                 {t('actions.edit')}
               </Button>
@@ -320,7 +321,7 @@ function TileBody(props: RecordViewProps) {
             <RecordActionMenu
               actions={actions}
               trigger={
-                <Button type="button" variant="outline" size="sm" className="bg-background">
+                <Button type="button" variant="outline" size="sm" className="w-full bg-background">
                   <MoreHorizontal className="size-3.5" />
                   {t('actions.more')}
                 </Button>

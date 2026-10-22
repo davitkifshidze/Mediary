@@ -527,13 +527,13 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
                         {t('actions.edit')}
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="destructiveOutline"
                         size="sm"
-                        className="text-destructive"
                         onClick={() => setDeleting(item)}
                         aria-label={t('actions.delete')}
                       >
                         <Trash2 className="size-3.5" />
+                        {t('actions.delete')}
                       </Button>
                     </>
                   )}

@@ -150,8 +150,8 @@ export function GalleryVideoList({
                   <Button
                     type="button"
                     size="sm"
-                    variant="ghost"
-                    className="ml-auto h-6 px-1.5 text-destructive"
+                    variant="destructiveOutline"
+                    className="ml-auto"
                     onClick={async () => {
                       const ok = await confirm({
                         title: t('gallery.videoDeleteTitle'),
@@ -162,7 +162,8 @@ export function GalleryVideoList({
                       if (ok) remove.mutate(video.id)
                     }}
                   >
-                    <Trash2 className="size-3" />
+                    <Trash2 className="size-3.5" />
+                    {t('actions.delete')}
                   </Button>
                 </div>
               </div>

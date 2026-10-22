@@ -5,6 +5,7 @@ import type { UploadKind } from '@/api/account'
 import { acceptFor, uploadProblem, type PendingUpload, type PendingUploads } from '@/lib/pendingUploads'
 import { limitFor, useUploadLimits } from '@/lib/uploadLimits'
 import { formatBytes } from '@/lib/utils'
+import { CountBadge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FormSection } from '@/components/ui/form-layout'
 import { useToast } from '@/components/ui/feedback'
@@ -88,9 +89,7 @@ export function PendingFilesSection<K extends string>({
                 <span className="inline-flex items-center gap-1.5 text-sm font-medium">
                   <Icon className="size-4 text-muted-foreground" />
                   {label}
-                  {items.length > 0 && (
-                    <span className="rounded-md bg-secondary px-1.5 py-0.5 text-xs leading-none tabular-nums">{items.length}</span>
-                  )}
+                  <CountBadge count={items.length} />
                 </span>
                 <PickButton accept={acceptFor(kind, limitOf(entry))} onPicked={(files) => pick(entry, files)} />
               </div>
@@ -158,14 +157,15 @@ function PendingRow<K extends string>({ item, onRemove }: { item: PendingUpload<
         <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{formatBytes(item.file.size)}</span>
         <Button
           type="button"
-          variant="ghost"
+          variant="destructiveOutline"
           size="sm"
-          className="shrink-0 text-destructive"
+          className="shrink-0"
           disabled={item.status === 'uploading'}
           onClick={onRemove}
           aria-label={t('actions.delete')}
         >
           <Trash2 className="size-3.5" />
+          {t('actions.delete')}
         </Button>
       </div>
       {item.status === 'error' && (

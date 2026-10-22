@@ -618,9 +618,8 @@ export function PhotoGrid({
           {remove && (
             <Button
               type="button"
-              variant="outline"
+              variant="destructiveOutline"
               size="sm"
-              className="text-destructive"
               onClick={() => remove(targets)}
             >
               <Trash2 className="size-3.5" />

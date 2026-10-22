@@ -188,7 +188,7 @@ export function BookmarkDetail({
                 <SquarePen className="size-3.5" />
                 {t('actions.edit')}
               </Button>
-              <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={onDelete}>
+              <Button type="button" variant="destructiveOutline" size="sm" onClick={onDelete}>
                 <Trash2 className="size-3.5" />
                 {t('actions.delete')}
               </Button>

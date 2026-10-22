@@ -138,9 +138,9 @@ export function PurgeItemList({
                 {/* ⚠️ ერთეულის წაშლა — მაშინვე, დადასტურებით. სწორედ ეს არის
                     „ერთეულის წაშლა": გეგმა მთელი სიისთვისაა, ეს კი ერთისთვის. */}
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                  variant="destructiveOutline"
+                  size="sm"
+                  className="shrink-0"
                   disabled={disabled || busy}
                   title={t('purge.deleteOne')}
                   onClick={() => onDeleteOne(item)}
@@ -150,6 +150,7 @@ export function PurgeItemList({
                   ) : (
                     <Trash2 className="size-3.5" />
                   )}
+                  {t('actions.delete')}
                 </Button>
 
                 <Button

@@ -5,6 +5,7 @@ import { fetchNoteReminders, type NoteEntry } from '@/api/notes'
 import { NoteReminders } from '@/components/NoteReminders'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { CountBadge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
 import { activeCount } from '@/lib/reminders'
@@ -91,7 +92,8 @@ export function NoteRemindersDialog({
  */
 /**
  * **შემხსენებლის ღილაკი სტრიქონზე და დეტალის ჰეროზე**: `outline` h-9,
- * ზარი + „შემხსენებელი" + რიცხვი ბეჯად; აქტიურზე (ერთი მაინც არსებობს) ქარვისფერი
+ * ზარი + „შემხსენებელი" + რიცხვი (`CountBadge`, 0-იც — ღილაკი ყოველთვის ერთი სიგანისაა);
+ * აქტიურზე (ერთი მაინც არსებობს) ქარვისფერი
  * ჩარჩო/ფონი (`--status-towatch`) — რჩეულის წითელ-ვარდისფერის გვერდით ორი თანაბარი,
  * ფერით გარჩევადი ღილაკი (შენი სიტყვები: „ტექსტი მიუწერე, შესაბამისი ფერით,
  * თანაბარი ზომებით").
@@ -123,11 +125,10 @@ export function NoteRemindersChip({
     >
       <BellRing className={cn('size-3.5', active && 'fill-current')} />
       {t('notes.reminderChip')}
-      {active && (
-        <span className="rounded-md bg-[color-mix(in_oklab,var(--status-towatch)_22%,transparent)] px-1.5 py-0.5 text-xs leading-none tabular-nums">
-          {count}
-        </span>
-      )}
+      <CountBadge
+        count={count}
+        className={cn(active && 'bg-[color-mix(in_oklab,var(--status-towatch)_22%,transparent)] text-current')}
+      />
     </Button>
   )
 }
@@ -159,11 +160,7 @@ export function NoteRemindersLink({
       >
         <BellRing className="size-4" />
         {t('notes.remindersTitle')}
-        {total > 0 && (
-          <span className="rounded-md bg-secondary px-1.5 py-0.5 text-xs leading-none tabular-nums">
-            {total}
-          </span>
-        )}
+        <CountBadge count={total} />
       </Button>
       {/* ⚠️ შეხსენება **შექმნის შემდეგ** რჩება (შენი სიტყვით): მას
           `note_entry_id` სჭირდება. მიზეზი აქამდე `title`-ში იყო — გათიშულ ღილაკზე
@@ -243,11 +240,7 @@ export function NoteRemindersButton({
           </span>
         </span>
 
-        {total > 0 && (
-          <span className="rounded-md bg-secondary px-1.5 py-0.5 text-xs leading-none tabular-nums">
-            {total}
-          </span>
-        )}
+        <CountBadge count={total} />
         <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
       </button>
     </>

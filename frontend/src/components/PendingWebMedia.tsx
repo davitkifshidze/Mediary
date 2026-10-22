@@ -5,6 +5,7 @@ import type { SerpImage, SerpImportTarget } from '@/api/web'
 import type { GalleryParentKind } from '@/api/gallery'
 import type { PendingWeb } from '@/lib/pendingWeb'
 import { formatDuration } from '@/lib/videoDuration'
+import { CountBadge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { WebImageDialog } from '@/components/WebImageDialog'
 import { WebVideoDialog } from '@/components/WebVideoDialog'
@@ -46,7 +47,7 @@ export function PendingWebMedia({
         <span className="inline-flex items-center gap-1.5 text-sm font-medium">
           <Globe className="size-4 text-muted-foreground" />
           {t('gallery.webBadge')}
-          {count > 0 && <span className="rounded-md bg-secondary px-1.5 py-0.5 text-xs leading-none tabular-nums">{count}</span>}
+          <CountBadge count={count} />
         </span>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => setPhotosOpen(true)}>

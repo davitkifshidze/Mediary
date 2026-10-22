@@ -49,3 +49,28 @@ export function Badge({
     </span>
   )
 }
+
+/**
+ * **რიცხვი ღილაკის ან სათაურის შიგნით** — „ფაილები 2", „შეხსენება 4",
+ * ატვირთვის ჯგუფის „ფოტოები 3".
+ *
+ * ⚠️ **ყოველთვის იხატება, 0-იც** (გაუფერულებული): რიცხვი მხოლოდ მაშინ რომ
+ * ჩნდებოდეს, ფაილიანი და უფაილო სტრიქონის ღილაკები სხვადასხვა სიგანისა
+ * იქნებოდა და მარჯვენა ჯგუფი რიგიდან რიგში ინაცვლებდა. `min-w-6` ერთ- და
+ * ორნიშნა რიცხვს ერთ სიგანეზე ტოვებს.
+ * ⚠️ ტონს გამომძახებელი ცვლის `className`-ით (შეხსენების აქტიური ჩიპი).
+ */
+export function CountBadge({ count, className }: { count: number; className?: string }) {
+  return (
+    <span
+      data-testid="count-badge"
+      className={cn(
+        'inline-flex min-w-6 items-center justify-center rounded-md px-1.5 py-0.5 text-xs leading-none tabular-nums',
+        count > 0 ? 'bg-secondary text-foreground' : 'bg-muted text-muted-foreground',
+        className,
+      )}
+    >
+      {count}
+    </span>
+  )
+}

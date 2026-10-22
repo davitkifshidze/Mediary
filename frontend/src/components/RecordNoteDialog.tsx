@@ -136,8 +136,7 @@ export function RecordNoteDialog({
         {/* ---------- მოქმედებები ---------- */}
         <ModalFooter className="justify-start">
           <Button
-            variant="ghost"
-            className="text-destructive"
+            variant="destructiveOutline"
             onClick={async () => {
               const ok = await confirm({
                 title: t('recordNotes.deleteTitle'),
