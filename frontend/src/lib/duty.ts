@@ -165,8 +165,18 @@ export function payMode(workplace: Pick<DutyWorkplace, 'rates' | 'hourly_rate'>)
   return workplace.hourly_rate != null ? 'hour' : null
 }
 
-/** კალენდრის ჩიპი — „A · 24“ (სამსახურის გარეშე — მხოლოდ საათები) */
-export function chipLabel(shift: Pick<DutyShift, 'hours' | 'workplace'>): string {
+/**
+ * საათები — ნაწილობრივზე „10 / 24“ (ნამუშევარი / ტიპის), სხვაგან „24“.
+ */
+export function hoursLabel(shift: Pick<DutyShift, 'hours' | 'status' | 'type'>): string {
+  const planned = shift.type?.hours
+  return shift.status === 'partial' && planned && planned !== shift.hours
+    ? `${formatHours(shift.hours)} / ${formatHours(planned)}`
+    : formatHours(shift.hours)
+}
+
+/** კალენდრის ჩიპი — „A · 24“, ნაწილობრივზე „A · 10 / 24“ (სამსახურის გარეშე — მხოლოდ საათები) */
+export function chipLabel(shift: Pick<DutyShift, 'hours' | 'workplace' | 'status' | 'type'>): string {
   const short = shift.workplace?.short || shift.workplace?.name?.slice(0, 1)
-  return short ? `${short} · ${formatHours(shift.hours)}` : formatHours(shift.hours)
+  return short ? `${short} · ${hoursLabel(shift)}` : hoursLabel(shift)
 }

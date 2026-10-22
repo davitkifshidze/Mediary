@@ -31,6 +31,7 @@ class DutyShiftResource extends JsonResource
             'start_time' => $start,
             'end_time' => $end['time'] ?? null,
             'end_day' => $end['day'] ?? null,
+            'status' => $this->status ?? 'scheduled',
             'hours' => (float) $this->hours,
             'pay' => $this->pay !== null ? (float) $this->pay : null,
             'note' => $this->note,

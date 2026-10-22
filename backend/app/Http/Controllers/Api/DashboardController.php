@@ -196,6 +196,8 @@ class DashboardController extends Controller
         $rules = is_array($stored) ? (($stored[DutySettings::KEY] ?? [])['period'] ?? []) : [];
         $period = DutyPeriod::containing(AppTime::now(), is_array($rules) ? $rules : []);
 
-        return $query->whereBetween('date', [$period['from']->toDateString(), $period['to']->toDateString()]);
+        // გაუქმებული მორიგეობა არ ითვლება
+        return $query->whereBetween('date', [$period['from']->toDateString(), $period['to']->toDateString()])
+            ->where('status', '!=', DutyShift::CANCELLED);
     }
 }

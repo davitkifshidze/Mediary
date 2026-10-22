@@ -375,6 +375,74 @@ class DutyModuleTest extends TestCase
         $this->assertSame('120.00', (string) $shift->pay);
     }
 
+    /* ---------- გაუქმებული და ნაწილობრივი ---------- */
+
+    public function test_a_cancelled_shift_stays_with_no_pay_and_counts_nowhere(): void
+    {
+        $t = $this->types();
+        $a = $this->workplace('112', [$t['h24'] => 250]);
+        $b = $this->workplace('B', [$t['h24'] => 300]);
+
+        $worked = $this->postJson('/api/duty/shifts', ['date' => '2026-10-02', 'workplace_id' => $a->id, 'type_id' => $t['h24']])->json('data.id');
+        $closed = $this->postJson('/api/duty/shifts', ['date' => '2026-10-03', 'workplace_id' => $a->id, 'type_id' => $t['h24']])->json('data.id');
+
+        // გაუქმება — დღე რჩება, თანხა 0 (ცხადი თანხაც კი არ იწერება), საათები ჩვენებისთვის რჩება
+        $this->patchJson("/api/duty/shifts/{$closed}", ['status' => 'cancelled', 'pay' => 250])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'cancelled')
+            ->assertJsonPath('data.pay', 0)
+            ->assertJsonPath('data.hours', 24);
+
+        // ჯამი: გაუქმებული არც მორიგეობაშია, არც საათებში, არც თანხაში — ცალკე რიცხვია
+        $this->getJson('/api/duty/summary')
+            ->assertOk()
+            ->assertJsonPath('totals.shifts', 1)
+            ->assertJsonPath('totals.hours', 24)
+            ->assertJsonPath('totals.pay', 250)
+            ->assertJsonPath('totals.unpaid', 0)
+            ->assertJsonPath('totals.cancelled', 1);
+        $periods = $this->getJson('/api/duty/summary/periods?count=1')->json('data');
+        $this->assertSame(['shifts' => 1, 'hours' => 24, 'pay' => 250, 'unpaid' => 0, 'cancelled' => 1], $periods[0]['totals']);
+
+        $card = collect($this->getJson('/api/dashboard')->json('data'))->firstWhere('key', 'duty');
+        $this->assertSame(1, $card['count'], 'დეშბორდის მთვლელი გაუქმებულს არ ითვლის');
+
+        // მასობრივი შეცვლა გაუქმებულს არ გადაითვლის
+        $this->patchJson('/api/duty/shifts', ['ids' => [$worked, $closed], 'workplace_id' => $b->id])->assertOk();
+        $this->assertSame(300.0, (float) DutyShift::find($worked)->pay);
+        $this->assertSame(0.0, (float) DutyShift::find($closed)->pay);
+
+        // გაუქმების მოხსნა — თანხა ისევ ტარიფიდან
+        $this->patchJson("/api/duty/shifts/{$closed}", ['status' => 'scheduled'])
+            ->assertJsonPath('data.status', 'scheduled')
+            ->assertJsonPath('data.pay', 300);
+
+        $this->patchJson("/api/duty/shifts/{$closed}", ['status' => 'done'])->assertStatus(422);
+    }
+
+    public function test_a_partial_shift_pays_what_was_entered_or_nothing(): void
+    {
+        $t = $this->types();
+        $a = $this->workplace('112', [$t['h24'] => 250]);
+
+        // ხელით ჩაწერილი თანხის გარეშე — 0 და არა 250
+        $id = $this->postJson('/api/duty/shifts', [
+            'date' => '2026-10-02', 'workplace_id' => $a->id, 'type_id' => $t['h24'], 'status' => 'partial', 'hours' => 10,
+        ])->assertCreated()
+            ->assertJsonPath('data.status', 'partial')
+            ->assertJsonPath('data.hours', 10)
+            ->assertJsonPath('data.pay', 0)
+            ->json('data.id');
+
+        $this->patchJson("/api/duty/shifts/{$id}", ['pay' => 100])->assertJsonPath('data.pay', 100);
+        // საათების შესწორება ხელით ჩაწერილ თანხას არ კარგავს
+        $this->patchJson("/api/duty/shifts/{$id}", ['hours' => 11])->assertJsonPath('data.pay', 100)->assertJsonPath('data.hours', 11);
+        // ცხადი `null` — 0
+        $this->patchJson("/api/duty/shifts/{$id}", ['pay' => null])->assertJsonPath('data.pay', 0);
+
+        $this->getJson('/api/duty/summary')->assertJsonPath('totals.shifts', 1)->assertJsonPath('totals.hours', 11);
+    }
+
     /* ---------- რეესტრები ---------- */
 
     public function test_the_dashboard_counts_the_current_period_only(): void

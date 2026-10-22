@@ -220,7 +220,7 @@ final class ExportDomain
             'model' => DutyShift::class,
             'with' => ['workplace', 'type'],
             'fields' => [
-                'id', 'date', 'start_time', 'workplace_name', 'type', 'hours', 'pay',
+                'id', 'date', 'start_time', 'workplace_name', 'type', 'status', 'hours', 'pay',
                 'note', 'is_favorite', 'created_at',
                 'custom_fields',
             ],

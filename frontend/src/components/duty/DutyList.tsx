@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next'
-import { CalendarClock, SquarePen } from 'lucide-react'
+import { Ban, CalendarClock, SquarePen } from 'lucide-react'
 import type { DutySettingsData, DutyShift } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
-import { formatHours, formatMoney, parseDay, shiftRange, typeName, workplaceColor } from '@/lib/duty'
+import { formatMoney, hoursLabel, parseDay, shiftRange, typeName, workplaceColor } from '@/lib/duty'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FavoriteButton } from '@/components/ui/favorite-button'
@@ -48,7 +50,10 @@ export function DutyList({
             <span className="font-medium">{date(shift.date)}</span>
           </span>
 
-          <span className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+          <span
+            className={cn('flex min-w-0 flex-1 items-center gap-2 text-sm', shift.status === 'cancelled' && 'text-destructive line-through')}
+            data-status={shift.status}
+          >
             <span className="size-2.5 shrink-0 rounded-sm" style={{ background: workplaceColor(shift.workplace) }} />
             <span className="truncate font-medium">{shift.workplace?.name ?? t('duty.noWorkplace')}</span>
             <span className="truncate text-muted-foreground">
@@ -58,7 +63,20 @@ export function DutyList({
             </span>
           </span>
 
-          <span className="w-16 text-right text-sm tabular-nums">{t('duty.hoursValue', { hours: formatHours(shift.hours) })}</span>
+          {/* გაუქმებული/ნაწილობრივი — ნიშანი; ნაწილობრივზე საათები „10 / 24“ */}
+          {shift.status !== 'scheduled' && (
+            <Badge
+              className={cn(
+                shift.status === 'cancelled'
+                  ? 'bg-[color-mix(in_oklab,var(--destructive)_16%,transparent)] text-destructive'
+                  : 'bg-[color-mix(in_oklab,var(--icon-warn)_20%,transparent)]',
+              )}
+            >
+              {shift.status === 'cancelled' && <Ban className="size-3" />}
+              {t(`duty.status.${shift.status}`)}
+            </Badge>
+          )}
+          <span className="w-20 text-right text-sm tabular-nums">{t('duty.hoursValue', { hours: hoursLabel(shift) })}</span>
           <span className="w-24 text-right text-sm font-medium tabular-nums">
             {shift.pay != null ? formatMoney(shift.pay, currency, lang) : '—'}
           </span>

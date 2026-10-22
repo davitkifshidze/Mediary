@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2 } from 'lucide-react'
+import { Ban, CalendarCheck, Hourglass, Trash2 } from 'lucide-react'
 import {
   createDutyShift,
   deleteDutyShift,
+  DUTY_STATUSES,
   updateDutyShift,
   type DutySettingsData,
   type DutyShift,
+  type DutyShiftStatus,
   type DutyShiftType,
   type DutyWorkplace,
 } from '@/api/duty'
@@ -35,6 +37,10 @@ import { TimePicker } from '@/components/ui/time-picker'
    („112“ → 24 სთ · 09:00); ცარიელი ნაგულისხმევი არაფერს ცვლის. დაწყების
    ქვეშ დასრულება ჩანს — „09:00 → 09:00 (+1)“ (`shiftEnd()`).
 
+   ⚠️ **სტატუსი** — დაგეგმილი · გაუქმებული · ნაწილობრივი: გაუქმებულზე თანხა
+   0-ზე იკეტება (დღე რჩება წითლად, ჯამში არ ითვლება), ნაწილობრივზე საათები და
+   თანხა ხელით იწერება (ცარიელი — 0, ტარიფიდან არაფერი ივსება).
+
    ⚠️ **თანხა ცხადად იგზავნება** — რაც ველში წერია, ის ინახება (ცარიელი = უცნობი
    თანხა). ⚠️ სანამ თანხას ხელით არ შეეხები, სამსახურის/ტიპის/საათების შეცვლა მას
    ხელახლა ითვლის; შეხების შემდეგ — აღარ (შენს ციფრს ფორმა არ გადაწერს).
@@ -46,6 +52,8 @@ const CUSTOM = 'custom'
 const HOUR_OPTIONS = [4, 5, 6, 7, 8, 10, 12, 16, 18, 24]
 
 const FORM_ID = 'duty-shift-form'
+
+const STATUS_ICONS: Record<DutyShiftStatus, typeof Ban> = { scheduled: CalendarCheck, cancelled: Ban, partial: Hourglass }
 
 export function DutyShiftDialog({
   shift,
@@ -86,13 +94,25 @@ export function DutyShiftDialog({
   const [note, setNote] = useState(shift?.note ?? '')
   const [pay, setPay] = useState<string>(shift?.pay != null ? String(shift.pay) : '')
   const [payTouched, setPayTouched] = useState(!!shift)
+  const [status, setStatus] = useState<DutyShiftStatus>(shift?.status ?? 'scheduled')
 
   const typeId = typeKey === CUSTOM ? null : Number(typeKey)
   const workplace = workplaces.find((w) => w.id === workplaceId) ?? null
 
   // თანხა ტარიფიდან — სანამ ხელით არ შეცვლი
   const suggested = useMemo(() => dutyPay(workplace, typeId, hours), [workplace, typeId, hours])
-  const payValue = payTouched ? pay : suggested != null ? String(suggested) : ''
+  const payValue =
+    status === 'cancelled' ? '0' : status === 'partial' || payTouched ? pay : suggested != null ? String(suggested) : ''
+
+  /** ნაწილობრივზე თანხა თავიდან იწერება (ცარიელი — 0); დაგეგმილზე დაბრუნება ტარიფს აბრუნებს */
+  const pickStatus = (next: DutyShiftStatus) => {
+    if (next === 'partial' && status !== 'partial') {
+      setPay('')
+      setPayTouched(true)
+    }
+    if (next === 'scheduled' && status !== 'scheduled') setPayTouched(false)
+    setStatus(next)
+  }
 
   const pickType = (key: string) => {
     setTypeKey(key)
@@ -119,7 +139,9 @@ export function DutyShiftDialog({
         hours,
         start_time: startTime,
         note: note.trim() || null,
-        pay: payValue.trim() === '' ? null : Number(payValue),
+        status,
+        // ცარიელი: დაგეგმილზე — თანხა უცნობია (`null`), ნაწილობრივზე — 0
+        pay: payValue.trim() === '' ? (status === 'partial' ? 0 : null) : Number(payValue),
       }
 
       return shift ? updateDutyShift(shift.id, input) : createDutyShift(input)
@@ -156,6 +178,19 @@ export function DutyShiftDialog({
         <FormSection>
           <FormField label={t('fields.name.duty.date')} htmlFor="duty-date" required>
             <DatePicker id="duty-date" value={day || null} onChange={(v) => setDay(v ?? '')} />
+          </FormField>
+
+          <FormField label={t('fields.name.duty.status')}>
+            <div className="flex flex-wrap gap-2" data-testid="duty-shift-status">
+              {DUTY_STATUSES.map((key) => {
+                const Icon = STATUS_ICONS[key]
+                return (
+                  <Chip key={key} active={status === key} onClick={() => pickStatus(key)} icon={<Icon className="size-3.5" />}>
+                    {t(`duty.status.${key}`)}
+                  </Chip>
+                )
+              })}
+            </div>
           </FormField>
 
           <FormField label={t('fields.name.duty.workplace')}>
@@ -209,9 +244,13 @@ export function DutyShiftDialog({
             label={`${t('fields.name.duty.pay')} (${currency})`}
             htmlFor="duty-pay"
             hint={
-              !payTouched && suggested == null
-                ? t('duty.shift.noRate')
-                : t('duty.shift.payHint', { hours: formatHours(hours) })
+              status === 'cancelled'
+                ? t('duty.status.cancelledHint')
+                : status === 'partial'
+                  ? t('duty.status.partialHint')
+                  : !payTouched && suggested == null
+                    ? t('duty.shift.noRate')
+                    : t('duty.shift.payHint', { hours: formatHours(hours) })
             }
           >
             <Input
@@ -220,6 +259,8 @@ export function DutyShiftDialog({
               inputMode="decimal"
               min={0}
               step="0.01"
+              placeholder={status === 'partial' ? '0' : undefined}
+              disabled={status === 'cancelled'}
               value={payValue}
               onChange={(e) => {
                 setPayTouched(true)

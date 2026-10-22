@@ -134,10 +134,21 @@ export function DutyTotals({
         ))}
       </div>
 
-      {summary.totals.unpaid > 0 && (
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          {t('duty.totals.unpaid', { count: summary.totals.unpaid })}
-          <InfoHint info={t('duty.totals.unpaidHint')} />
+      {(summary.totals.unpaid > 0 || summary.totals.cancelled > 0) && (
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground" data-testid="duty-totals-aside">
+          {summary.totals.unpaid > 0 && (
+            <span className="inline-flex items-center gap-1.5">
+              {t('duty.totals.unpaid', { count: summary.totals.unpaid })}
+              <InfoHint info={t('duty.totals.unpaidHint')} />
+            </span>
+          )}
+          {/* გაუქმებული ჯამში არ შედის — ცალკე რიცხვია */}
+          {summary.totals.cancelled > 0 && (
+            <span className="inline-flex items-center gap-1.5">
+              {t('duty.totals.cancelled', { count: summary.totals.cancelled })}
+              <InfoHint info={t('duty.totals.cancelledHint')} />
+            </span>
+          )}
         </p>
       )}
 

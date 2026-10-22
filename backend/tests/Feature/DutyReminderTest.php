@@ -59,6 +59,8 @@ class DutyReminderTest extends TestCase
 
         $this->shift('2026-10-04');
         $tomorrow = $this->shift('2026-10-05', ['workplace_id' => $workplace->id, 'start_time' => '08:00']);
+        // გაუქმებულზე შეხსენება არ მიდის
+        $cancelled = $this->shift('2026-10-05', ['status' => 'cancelled']);
         $this->shift('2026-10-06');
         $this->remindAt('20:00');
 
@@ -73,6 +75,7 @@ class DutyReminderTest extends TestCase
 
         $this->assertSame([$tomorrow->id], $claimed->pluck('id')->all());
         $this->assertNotNull($tomorrow->refresh()->reminded_at);
+        $this->assertNull($cancelled->refresh()->reminded_at);
 
         Http::assertSentCount(1);
         Http::assertSent(fn (HttpRequest $request) => str_contains((string) $request['text'], 'კლინიკა')

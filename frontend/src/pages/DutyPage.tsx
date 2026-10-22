@@ -122,9 +122,13 @@ export function DutyPage() {
 
   const totals = useMemo(
     () =>
+      // გაუქმებული არც საათებში ითვლება, არც თანხაში, არც რიცხვში
       shifts.reduce(
-        (sum, s) => ({ hours: sum.hours + s.hours, pay: sum.pay + (s.pay ?? 0) }),
-        { hours: 0, pay: 0 },
+        (sum, s) =>
+          s.status === 'cancelled'
+            ? sum
+            : { count: sum.count + 1, hours: sum.hours + s.hours, pay: sum.pay + (s.pay ?? 0) },
+        { count: 0, hours: 0, pay: 0 },
       ),
     [shifts],
   )
@@ -205,7 +209,7 @@ export function DutyPage() {
         {!!shifts.length && (
           <p className="ml-auto text-sm text-muted-foreground" data-testid="duty-period-totals">
             {t('duty.period.totals', {
-              count: shifts.length,
+              count: totals.count,
               hours: formatHours(totals.hours),
               pay: formatMoney(totals.pay, currency, lang),
             })}

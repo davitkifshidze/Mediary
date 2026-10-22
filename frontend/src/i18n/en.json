@@ -1468,7 +1468,8 @@
         "hours": "Hours",
         "start_time": "Start time",
         "pay": "Pay",
-        "note": "Note"
+        "note": "Note",
+        "status": "Status"
       }
     },
     "desc": {
@@ -4881,7 +4882,9 @@
       "unpaidHint": "They had no rate — they are left out of the total. Enter the pay on the shift or add a rate to the workplace.",
       "byWorkplace": "By workplace",
       "byType": "By type",
-      "byPeriod": "{{metric}} by period"
+      "byPeriod": "{{metric}} by period",
+      "cancelled": "{{count}} cancelled",
+      "cancelledHint": "A cancelled shift counts in neither the number, the hours nor the pay."
     },
     "calc": {
       "range": "Range",
@@ -4897,6 +4900,17 @@
     },
     "reminder": {
       "title": "You have a shift tomorrow"
+    },
+    "status": {
+      "scheduled": "Scheduled",
+      "cancelled": "Cancelled",
+      "partial": "Partial",
+      "cancel": "Cancel shift",
+      "uncancel": "Restore shift",
+      "cancelledDone": "Shift cancelled — pay 0",
+      "restored": "Shift restored",
+      "cancelledHint": "A cancelled day stays, in red: pay is 0 and it counts nowhere — not in totals, the counter or reminders.",
+      "partialHint": "Enter the hours worked and the pay — empty pay is 0, nothing is filled from the rate."
     }
   },
   "actors": {

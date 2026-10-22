@@ -2,7 +2,8 @@ import { useTranslation } from 'react-i18next'
 import { Plus, SquarePen } from 'lucide-react'
 import type { DutySettingsData, DutyShift } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
-import { formatHours, formatMoney, shiftRange, typeName, workplaceColor } from '@/lib/duty'
+import { formatMoney, hoursLabel, shiftRange, typeName, workplaceColor } from '@/lib/duty'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 
@@ -38,14 +39,15 @@ export function DutyDayDialog({
           <li key={shift.id} className="flex items-center gap-3 rounded-md border border-border p-3">
             <span className="h-9 w-1.5 shrink-0 rounded-sm" style={{ background: workplaceColor(shift.workplace) }} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">
+              <p className={cn('truncate text-sm font-medium', shift.status === 'cancelled' && 'text-destructive line-through')}>
                 {shift.workplace?.name ?? t('duty.noWorkplace')}
                 <span className="text-muted-foreground"> · {shift.type ? typeName(shift.type, i18n.language) : t('duty.shift.custom')}</span>
               </p>
               <p className="truncate text-xs text-muted-foreground">
                 {[
+                  shift.status !== 'scheduled' ? t(`duty.status.${shift.status}`) : null,
                   shiftRange(shift),
-                  t('duty.hoursValue', { hours: formatHours(shift.hours) }),
+                  t('duty.hoursValue', { hours: hoursLabel(shift) }),
                   shift.pay != null ? formatMoney(shift.pay, currency, i18n.language) : null,
                   shift.note,
                 ]

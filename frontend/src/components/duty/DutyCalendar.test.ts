@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import type { DutyShift, DutyWorkplace } from '@/api/duty'
 import { DutyCalendar } from '@/components/duty/DutyCalendar'
 import { dutyPay, eachDay, periodLabel, weekdayIndex } from '@/lib/duty'
-import '@/i18n'
+import i18n from '@/i18n'
 
 /* ============================================================
    **მორიგეობის კალენდარი** — ბადე პერიოდით, ჩიპები, და მონიშვნის
@@ -31,6 +31,7 @@ function shift(id: number, date: string, over: Partial<DutyShift> = {}): DutyShi
     start_time: null,
     end_time: null,
     end_day: null,
+    status: 'scheduled',
     hours: 24,
     pay: 220,
     note: null,
@@ -89,6 +90,22 @@ describe('DutyCalendar', () => {
 
     const chips = [...day('2026-10-02').querySelectorAll('[data-testid="duty-chip"]')].map((c) => c.textContent)
     expect(chips).toEqual(['A · 24', 'B · 12'])
+  })
+
+  it('crosses out a cancelled shift and shows a partial one as worked / planned hours', async () => {
+    await render({
+      selecting: false,
+      shifts: [shift(1, '2026-10-03', { status: 'cancelled', pay: 0 }), shift(2, '2026-10-04', { status: 'partial', hours: 10, pay: 100 })],
+    })
+
+    // გაუქმებული — დღე რჩება: წითლად, გადახაზული, ნიშნით
+    const cancelled = day('2026-10-03').querySelector<HTMLElement>('[data-testid="duty-chip"]')!
+    expect(cancelled.dataset.status).toBe('cancelled')
+    expect(cancelled.className).toContain('line-through')
+    expect(cancelled.querySelector('svg')).not.toBeNull()
+    expect(cancelled.title).toContain(i18n.t('duty.status.cancelled'))
+
+    expect(day('2026-10-04').querySelector('[data-testid="duty-chip"]')!.textContent).toBe('A · 10 / 24')
   })
 
   it('opens a day on a click outside the selection mode', async () => {

@@ -30,6 +30,9 @@ use Illuminate\Validation\Rules\Exists;
  * იგივე წესი `type_id`-ზე: ცხადი `null` — ქასთომ საათები (საათები
  * სავალდებულოა), გასაღების არქონა — ნაგულისხმევი ტიპი.
  *
+ * ⚠️ **სტატუსი თანხას წყვეტს** (`resolve()`): გაუქმებული — 0 (ტარიფი არ
+ * იკითხება), ნაწილობრივი — ცხადი თანხა ან 0, დაგეგმილი — ზემოთა წესით.
+ *
  * ⚠️ **მასობრივი მოქმედებები**: `POST /duty/shifts/batch` — ბევრი დღე ერთ
  * ტრანზაქციაში (`batch` `create`-ია — `bulk` `UPDATE_ENDPOINTS`-შია და
  * უფლებას შეცვლიდა); `PATCH /duty/shifts` — მონიშნულების სამსახური/ტიპი
@@ -102,10 +105,12 @@ class DutyShiftController extends Controller
 
         $changes = array_intersect_key($data, array_flip(['date', 'start_time', 'note', 'is_favorite']));
 
-        $classifies = array_intersect_key($input, array_flip(['workplace_id', 'type_id', 'hours'])) !== [];
+        $classifies = array_intersect_key($input, array_flip(['workplace_id', 'type_id', 'hours', 'status'])) !== [];
 
         if ($classifies || array_key_exists('pay', $input)) {
+            $status = array_key_exists('status', $input) ? $data['status'] : $dutyShift->status;
             $merged = [
+                'status' => $status,
                 'workplace_id' => array_key_exists('workplace_id', $input) ? $data['workplace_id'] : $dutyShift->workplace_id,
                 'type_id' => array_key_exists('type_id', $input) ? $data['type_id'] : $dutyShift->type_id,
                 'hours' => array_key_exists('hours', $input)
@@ -115,6 +120,9 @@ class DutyShiftController extends Controller
 
             if (array_key_exists('pay', $input)) {
                 $merged['pay'] = $data['pay'];
+            } elseif ($status === DutyShift::PARTIAL && $dutyShift->status === DutyShift::PARTIAL) {
+                // ნაწილობრივის ხელით ჩაწერილი თანხა საათების შესწორებაზე არ იკარგება
+                $merged['pay'] = $dutyShift->pay;
             }
 
             // ⚠️ `$merged`-ის ყველა გასაღები „ცხადად მოსულია“ — ნაგულისხმევი აქ აღარაფერს ცვლის
@@ -208,9 +216,11 @@ class DutyShiftController extends Controller
     /**
      * **მონიშნულების სამსახური/ტიპი** — `PATCH /duty/shifts`.
      *
-     * ⚠️ აქ თანხა **ყოველთვის ხელახლა ითვლება** ახალი სამსახურის/ტიპის ტარიფით:
-     * მასობრივი შეცვლა ხელახალი კლასიფიკაციაა („ეს დღეები B-ში იყო“), ე.ი. ძველი
-     * სამსახურის თანხა ტყუილი იქნებოდა. ⚠️ ტიპის შეცვლა საათებსაც ტიპისას აძლევს.
+     * ⚠️ დაგეგმილის თანხა **ყოველთვის ხელახლა ითვლება** ახალი სამსახურის/ტიპის
+     * ტარიფით: მასობრივი შეცვლა ხელახალი კლასიფიკაციაა („ეს დღეები B-ში იყო“), ე.ი.
+     * ძველი სამსახურის თანხა ტყუილი იქნებოდა. ⚠️ ტიპის შეცვლა საათებსაც ტიპისას
+     * აძლევს. ⚠️ **გაუქმებული და ნაწილობრივი არ გადაითვლება** — მათი თანხა (0 ან
+     * ხელით) და ნამუშევარი საათები ჩანაწერისაა; მხოლოდ სამსახური/ტიპი იცვლება.
      */
     public function bulkUpdate(Request $request)
     {
@@ -241,13 +251,20 @@ class DutyShiftController extends Controller
                     $shift->setRelation('workplace', $workplace);
                 }
 
+                $scheduled = $shift->status === DutyShift::SCHEDULED;
+
                 if ($type) {
                     $shift->type_id = $type->id;
-                    $shift->hours = $type->hours;
                     $shift->setRelation('type', $type);
+
+                    if ($scheduled) {
+                        $shift->hours = $type->hours;
+                    }
                 }
 
-                $shift->pay = DutyPay::for($shift->workplace, $shift->type, (float) $shift->hours);
+                if ($scheduled) {
+                    $shift->pay = DutyPay::for($shift->workplace, $shift->type, (float) $shift->hours);
+                }
 
                 if ($shift->isDirty()) {
                     $shift->save();
@@ -330,13 +347,20 @@ class DutyShiftController extends Controller
         // ⚠️ ქასთომ მორიგეობას (ტიპის გარეშე) საათები სჭირდება — სხვაგვარად ჯამი არაფერს იტყოდა
         abort_if($hours === null, 422, 'duty_hours_required');
 
+        $status = $data['status'] ?? DutyShift::SCHEDULED;
+        $explicit = array_key_exists('pay', $input);
+
         $resolved = [
+            'status' => $status,
             'workplace_id' => $workplace?->id,
             'type_id' => $type?->id,
             'hours' => $hours,
-            'pay' => array_key_exists('pay', $input)
-                ? ($data['pay'] ?? null)
-                : DutyPay::for($workplace, $type, $hours),
+            // გაუქმებული — 0 (ტარიფი არ იკითხება); ნაწილობრივი — ცხადი ან 0; დაგეგმილი — ცხადი ან ტარიფი
+            'pay' => match ($status) {
+                DutyShift::CANCELLED => 0,
+                DutyShift::PARTIAL => $explicit ? ($data['pay'] ?? 0) : 0,
+                default => $explicit ? ($data['pay'] ?? null) : DutyPay::for($workplace, $type, $hours),
+            },
         ];
 
         foreach (['date', 'start_time', 'note', 'is_favorite'] as $key) {
@@ -396,6 +420,7 @@ class DutyShiftController extends Controller
             'pay' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
             'note' => ['nullable', 'string', 'max:2000'],
             'is_favorite' => ['sometimes', 'boolean'],
+            'status' => ['sometimes', Rule::in(DutyShift::STATUSES)],
         ];
     }
 }

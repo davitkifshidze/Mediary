@@ -26,11 +26,20 @@ use Illuminate\Validation\Rule;
  * იძლევა; თითო სამსახურზე ცალკე query ზუსტად ის შეცდომაა, რასაც დეშბორდმა
  * თავი დააღწია. ⚠️ **თანხის გარეშე მორიგეობა ჯამში 0 არ არის** —
  * ის ცალკე ითვლება (`unpaid`), რომ „₾ 1 200“ ტყუილად სრულ ჯამად არ იკითხებოდეს.
+ * ⚠️ **გაუქმებული არსად ითვლება** — არც მორიგეობებში, არც საათებში, არც
+ * თანხაში; ცალკე რიცხვია (`cancelled`), „უთანხოს" გვერდით.
  */
 class DutyController extends Controller
 {
     /** გრაფიკის ჭერი — ორი წელი */
     public const MAX_PERIODS = 24;
+
+    /** ჯამები გაუქმებულის გარეშე + გაუქმებულის რიცხვი (ორივე დრაივერზე ერთნაირი SQL) */
+    private const SUMS = "sum(case when status = 'cancelled' then 0 else 1 end) as shifts, "
+        ."sum(case when status = 'cancelled' then 0 else hours end) as hours, "
+        ."sum(case when status = 'cancelled' then 0 else pay end) as pay, "
+        ."sum(case when status <> 'cancelled' and pay is null then 1 else 0 end) as unpaid, "
+        ."sum(case when status = 'cancelled' then 1 else 0 end) as cancelled";
 
     public function period(Request $request)
     {
@@ -137,7 +146,7 @@ class DutyController extends Controller
 
         $rows = DutyShift::query()
             ->whereBetween('date', [$periods[0]['from']->toDateString(), end($periods)['to']->toDateString()])
-            ->selectRaw('date, workplace_id, count(*) as shifts, sum(hours) as hours, sum(pay) as pay')
+            ->selectRaw('date, workplace_id, '.self::SUMS)
             ->groupBy('date', 'workplace_id')
             ->get();
 
@@ -184,6 +193,7 @@ class DutyController extends Controller
             DutyShift::query()
                 ->with(['workplace', 'type'])
                 ->where('date', $tomorrow)
+                ->where('status', '!=', DutyShift::CANCELLED)
                 ->whereNotNull('reminded_at')
                 ->orderBy('start_time')
                 ->orderBy('id')
@@ -202,7 +212,7 @@ class DutyController extends Controller
         $rows = DutyShift::query()
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
             ->when($workplaces !== [], fn ($q) => $q->whereIn('workplace_id', $workplaces))
-            ->selectRaw('workplace_id, type_id, count(*) as shifts, sum(hours) as hours, sum(pay) as pay, sum(case when pay is null then 1 else 0 end) as unpaid')
+            ->selectRaw('workplace_id, type_id, '.self::SUMS)
             ->groupBy('workplace_id', 'type_id')
             ->get();
 
@@ -218,7 +228,7 @@ class DutyController extends Controller
         ];
     }
 
-    /** @return array{shifts: int, hours: float, pay: float, unpaid: int} */
+    /** @return array{shifts: int, hours: float, pay: float, unpaid: int, cancelled: int} */
     private function fold(Collection $rows): array
     {
         return [
@@ -226,6 +236,7 @@ class DutyController extends Controller
             'hours' => round((float) $rows->sum('hours'), 1),
             'pay' => round((float) $rows->sum('pay'), 2),
             'unpaid' => (int) $rows->sum(fn ($row) => (int) ($row->unpaid ?? 0)),
+            'cancelled' => (int) $rows->sum(fn ($row) => (int) ($row->cancelled ?? 0)),
         ];
     }
 

@@ -42,6 +42,7 @@ const shift: DutyShift = {
   start_time: null,
   end_time: null,
   end_day: null,
+  status: 'scheduled',
   hours: 24,
   pay: 220,
   note: null,
@@ -57,10 +58,10 @@ const summary: DutySummary = {
   from: '2026-10-01',
   to: '2026-10-31',
   is_period: true,
-  totals: { shifts: 1, hours: 24, pay: 220, unpaid: 0 },
-  workplaces: [{ workplace_id: 1, shifts: 1, hours: 24, pay: 220, unpaid: 0 }],
-  types: [{ type_id: 3, shifts: 1, hours: 24, pay: 220, unpaid: 0 }],
-  previous: { from: '2026-09-01', to: '2026-09-30', shifts: 0, hours: 0, pay: 0, unpaid: 0 },
+  totals: { shifts: 1, hours: 24, pay: 220, unpaid: 0, cancelled: 0 },
+  workplaces: [{ workplace_id: 1, shifts: 1, hours: 24, pay: 220, unpaid: 0, cancelled: 0 }],
+  types: [{ type_id: 3, shifts: 1, hours: 24, pay: 220, unpaid: 0, cancelled: 0 }],
+  previous: { from: '2026-09-01', to: '2026-09-30', shifts: 0, hours: 0, pay: 0, unpaid: 0, cancelled: 0 },
 }
 
 const mocks = vi.hoisted(() => ({
@@ -73,6 +74,7 @@ const mocks = vi.hoisted(() => ({
   fetchDutyPeriods: vi.fn(),
   batchDutyShifts: vi.fn(),
   deleteDutyShift: vi.fn(),
+  updateDutyShift: vi.fn(),
 }))
 
 vi.mock('@/api/duty', async (original) => ({
@@ -124,6 +126,7 @@ function defaults() {
   mocks.fetchDutyPeriods.mockResolvedValue([])
   mocks.batchDutyShifts.mockResolvedValue([])
   mocks.deleteDutyShift.mockResolvedValue(undefined)
+  mocks.updateDutyShift.mockResolvedValue(shift)
 }
 
 async function render(path = '/duty') {
@@ -223,6 +226,34 @@ describe('DutyPage', () => {
     expect(notice.querySelector('button')?.textContent).toBe(i18n.t('duty.settings.open'))
 
     expect(container!.querySelector('[data-testid="duty-list"]')?.textContent).toContain('09:00 → 09:00 (+1)')
+  })
+
+  it('cancels a shift from the menu, keeps the day and leaves it out of the totals', async () => {
+    defaults()
+    mocks.fetchDutyShifts.mockResolvedValue({
+      items: [shift, { ...shift, id: 8, date: '2026-10-03', status: 'cancelled', pay: 0 }],
+      range: { from: '2026-10-01', to: '2026-10-31' },
+    })
+    await render('/duty?view=list')
+
+    // გაუქმებული სიაში რჩება, ჯამში — არა
+    expect(container!.querySelectorAll('[data-testid="duty-list"] li')).toHaveLength(2)
+    expect(container!.querySelector('[data-testid="duty-period-totals"]')!.textContent).toBe(
+      i18n.t('duty.period.totals', { count: 1, hours: '24', pay: '220 ₾' }),
+    )
+    const crossed = container!.querySelector<HTMLElement>('[data-testid="duty-list"] [data-status="cancelled"]')!
+    expect(crossed.className).toContain('line-through')
+
+    const row = container!.querySelector('[data-testid="duty-list"] li')!
+    await act(async () => {
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
+    })
+    await flush()
+
+    const cancel = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((m) => m.textContent?.trim() === i18n.t('duty.status.cancel'))!
+    await act(async () => cancel.click())
+    await flush()
+    expect(mocks.updateDutyShift).toHaveBeenCalledWith(7, { status: 'cancelled' })
   })
 
   it('opens the row context menu in the list view and moves the shift to the trash after confirming', async () => {

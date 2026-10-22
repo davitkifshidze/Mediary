@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Ban } from 'lucide-react'
 import type { DutyShift } from '@/api/duty'
-import { chipLabel, eachDay, formatHours, parseDay, shiftRange, todayIso, weekdayIndex, workplaceColor } from '@/lib/duty'
+import { chipLabel, eachDay, hoursLabel, parseDay, shiftRange, todayIso, weekdayIndex, workplaceColor } from '@/lib/duty'
 import { cn } from '@/lib/utils'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 
@@ -53,7 +54,7 @@ export function DutyCalendar({
   /** ჩიპის მარჯვენა ღილაკის მენიუ (`useDutyShiftActions`) */
   shiftActions?: (shift: DutyShift) => MenuAction[]
 }) {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const locale = i18n.language
   const today = todayIso()
 
@@ -172,15 +173,33 @@ export function DutyCalendar({
               {items.map((shift) => (
                 <RecordContextMenu key={shift.id} actions={shiftActions?.(shift) ?? []} disabled={selecting}>
                 <span
-                  className="truncate rounded-sm border-l-[3px] px-1.5 py-0.5 text-[11px] font-medium leading-tight text-foreground"
-                  style={{
-                    borderLeftColor: workplaceColor(shift.workplace),
-                    background: `color-mix(in oklab, ${workplaceColor(shift.workplace)} 22%, transparent)`,
-                  }}
+                  className={cn(
+                    'truncate rounded-sm border-l-[3px] px-1.5 py-0.5 text-[11px] font-medium leading-tight text-foreground',
+                    // გაუქმებული — დღე რჩება, მაგრამ წითლად და გადახაზული
+                    shift.status === 'cancelled' && 'text-destructive line-through',
+                  )}
+                  style={
+                    shift.status === 'cancelled'
+                      ? { borderLeftColor: 'var(--destructive)', background: 'color-mix(in oklab, var(--destructive) 14%, transparent)' }
+                      : {
+                          borderLeftColor: workplaceColor(shift.workplace),
+                          background: `color-mix(in oklab, ${workplaceColor(shift.workplace)} 22%, transparent)`,
+                        }
+                  }
                   /* უჯრა ვიწროა — ჩიპზე „112 · 24“, დიაპაზონი („09:00 → 09:00 (+1)“) ჰოვერზე */
-                  title={[shift.workplace?.name, shiftRange(shift), `${formatHours(shift.hours)}`, shift.note].filter(Boolean).join(' · ')}
+                  title={[
+                    shift.workplace?.name,
+                    shift.status !== 'scheduled' ? t(`duty.status.${shift.status}`) : null,
+                    shiftRange(shift),
+                    hoursLabel(shift),
+                    shift.note,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                   data-testid="duty-chip"
+                  data-status={shift.status}
                 >
+                  {shift.status === 'cancelled' && <Ban className="mr-0.5 inline size-3 align-[-2px]" aria-label={t('duty.status.cancelled')} />}
                   {chipLabel(shift)}
                 </span>
                 </RecordContextMenu>

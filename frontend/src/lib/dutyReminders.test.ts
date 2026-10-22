@@ -40,6 +40,7 @@ const shift = (id: number, workplace: string): DutyShift => ({
   start_time: '08:00',
   end_time: '08:00',
   end_day: 1,
+  status: 'scheduled',
   hours: 24,
   pay: null,
   note: null,

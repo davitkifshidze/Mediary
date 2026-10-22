@@ -252,6 +252,8 @@ final class FieldCatalog
             ['key' => 'date', 'type' => 'date', 'locked' => true, 'sort_order' => 10],
             ['key' => 'workplace', 'type' => 'select', 'sort_order' => 20],
             ['key' => 'type', 'type' => 'select', 'sort_order' => 30],
+            // დაგეგმილი · გაუქმებული · ნაწილობრივი — თანხასა და ჯამს წყვეტს
+            ['key' => 'status', 'type' => 'select', 'sort_order' => 35],
             ['key' => 'hours', 'type' => 'number', 'locked' => true, 'sort_order' => 40],
             ['key' => 'start_time', 'type' => 'text', 'sort_order' => 50],
             ['key' => 'pay', 'type' => 'number', 'sort_order' => 60],

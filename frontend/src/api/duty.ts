@@ -48,6 +48,14 @@ export interface DutyShiftType {
   [extra: string]: unknown
 }
 
+/**
+ * **მორიგეობის სტატუსი** — დაგეგმილი · გაუქმებული (დღე რჩება წითლად, თანხა 0,
+ * არსად ითვლება) · ნაწილობრივი (საათები და თანხა ხელით, ცარიელი — 0).
+ */
+export const DUTY_STATUSES = ['scheduled', 'cancelled', 'partial'] as const
+
+export type DutyShiftStatus = (typeof DUTY_STATUSES)[number]
+
 export interface DutyShift {
   id: number
   /** `YYYY-MM-DD` — ღამის მორიგეობაზე დაწყების დღე */
@@ -58,6 +66,7 @@ export interface DutyShift {
   end_time: string | null
   /** რამდენი დღით გვიან მთავრდება — 24-საათიანზე 1 */
   end_day: number | null
+  status: DutyShiftStatus
   hours: number
   pay: number | null
   note: string | null
@@ -101,6 +110,8 @@ export interface DutyTotals {
   pay: number
   /** თანხის გარეშე მორიგეობები (ტარიფი არ იყო) — ჯამში არ შედის */
   unpaid: number
+  /** გაუქმებული — არც მორიგეობებში, არც საათებში, არც თანხაში არ ითვლება */
+  cancelled: number
 }
 
 export interface DutySummary extends DutyRange {
@@ -280,6 +291,7 @@ export interface DutyShiftInput {
   pay?: number | null
   note?: string | null
   is_favorite?: boolean
+  status?: DutyShiftStatus
 }
 
 export async function fetchDutyShift(id: number): Promise<DutyShift> {

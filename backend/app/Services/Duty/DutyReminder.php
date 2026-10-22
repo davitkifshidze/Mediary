@@ -97,6 +97,8 @@ class DutyReminder
         $ids = DutyShift::withoutGlobalScope('owner')
             ->where('user_id', $userId)
             ->where('date', $date)
+            // გაუქმებულზე შეხსენება არ მიდის
+            ->where('status', '!=', DutyShift::CANCELLED)
             ->whereNull('reminded_at')
             ->pluck('id')
             ->all();

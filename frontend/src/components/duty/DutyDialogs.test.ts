@@ -15,7 +15,8 @@ import i18n from '@/i18n'
    „საათზე“ (საათობრივი) — შენახვისას მეორე სუფთავდება, რომ ტიპის ტარიფმა
    საათობრივს უჩუმრად არ აჯობოს; სამსახურის არჩევისას მორიგეობის ფორმა მის
    ტიპსა და დაწყებას ავსებს და დასრულებას აჩვენებს („09:00 → 09:00 (+1)“);
-   დასრულება წუთების არითმეტიკითაა (შუაღამის გადაკვეთით).
+   დასრულება წუთების არითმეტიკითაა (შუაღამის გადაკვეთით); გაუქმებულზე თანხა 0-ზე
+   იკეტება, ნაწილობრივზე ხელით იწერება (ცარიელი — 0).
    ============================================================ */
 
 const mocks = vi.hoisted(() => ({
@@ -167,6 +168,43 @@ describe('DutyWorkplaceDialog — per shift or per hour', () => {
       { type_id: 1, pay: null },
       { type_id: 3, pay: 250 },
     ])
+  })
+})
+
+describe('DutyShiftDialog — status', () => {
+  const settings = { currency: '₾', default_workplace_id: 1, default_type_id: 3 } as unknown as DutySettingsData
+  const workplaces = [workplace({ id: 1, name: '112', rates: [{ type_id: 3, pay: 250 }] })]
+  const pick = (label: string) =>
+    [...document.querySelectorAll<HTMLButtonElement>('[data-testid="duty-shift-status"] button')].find((b) => b.textContent?.trim() === label)!
+
+  it('locks the pay at 0 on a cancelled shift', async () => {
+    const { DutyShiftDialog } = await import('@/components/duty/DutyShiftDialog')
+    await mount(h(DutyShiftDialog, { shift: null, date: '2026-10-05', workplaces, types, settings, onClose: () => {} }))
+
+    const pay = () => document.getElementById('duty-pay') as HTMLInputElement
+    expect(pay().value).toBe('250')
+
+    await act(async () => pick(i18n.t('duty.status.cancelled')).click())
+    expect(pay().disabled).toBe(true)
+    expect(pay().value).toBe('0')
+
+    await act(async () => (document.getElementById('duty-shift-form') as HTMLFormElement).requestSubmit())
+    await flush()
+    expect(mocks.createDutyShift).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled', pay: 0, hours: 24 }))
+  })
+
+  it('leaves the pay of a partial shift to the hand — empty is 0, not the rate', async () => {
+    const { DutyShiftDialog } = await import('@/components/duty/DutyShiftDialog')
+    await mount(h(DutyShiftDialog, { shift: null, date: '2026-10-05', workplaces, types, settings, onClose: () => {} }))
+
+    await act(async () => pick(i18n.t('duty.status.partial')).click())
+    const pay = document.getElementById('duty-pay') as HTMLInputElement
+    expect(pay.value).toBe('')
+    expect(pay.placeholder).toBe('0')
+
+    await act(async () => (document.getElementById('duty-shift-form') as HTMLFormElement).requestSubmit())
+    await flush()
+    expect(mocks.createDutyShift).toHaveBeenCalledWith(expect.objectContaining({ status: 'partial', pay: 0 }))
   })
 })
 
