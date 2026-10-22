@@ -11,6 +11,8 @@ import i18n from '@/i18n'
    ⚠️ მოწმდება: აკრძალული (`users`) და ბაზაში არმყოფი ცხრილი ვერ მოინიშნება;
    მონიშვნა საჭიროებებსაც ნიშნავს და ამას ამბობს; ჩანაცვლება მხოლოდ
    აკრეფილი `REPLACE`-ით იხსნება და ზუსტად მონიშნულს აგზავნის.
+   ⚠️ სამი ნაბიჯი: ფაილი (ჩიპად, მოხსნით) → ცხრილები → დადასტურება; მეორე და
+   მესამე მხოლოდ წაკითხული არქივის შემდეგ ჩნდება, ველის წარწერა `REPLACE`-ს ამბობს.
    ============================================================ */
 
 const mocks = vi.hoisted(() => ({
@@ -100,7 +102,31 @@ async function type(el: HTMLInputElement, value: string) {
   })
 }
 
+const steps = (el: HTMLElement) => [...el.querySelectorAll('section section h3')].map((x) => x.textContent?.trim())
+
 describe('DatabaseImportCard', () => {
+  it('reads the archive in three steps and shows the file as a chip', async () => {
+    const el = await mount()
+
+    expect(steps(el)).toEqual([
+      i18n.t('import.stepFile'),
+      i18n.t('transfer.dbImport.stepTables'),
+      i18n.t('transfer.dbImport.stepConfirm'),
+    ])
+    expect(el.querySelector('[data-testid="database-import-file"]')?.textContent).toContain('db.zip')
+    expect(el.textContent).toContain(i18n.t('transfer.dbImport.found', { count: 4, picked: 0 }))
+    expect(el.querySelector('[data-testid="database-import-tables"]')?.className).toContain('max-h-96')
+    expect(el.querySelector('label[for="database-import-confirm"]')?.textContent).toContain('REPLACE')
+
+    // ფაილის მოხსნა არქივსაც აგდებს
+    const clear = el.querySelector<HTMLButtonElement>(`button[aria-label="${i18n.t('transfer.dbImport.clearFile')}"]`)!
+    await act(async () => clear.click())
+    await flush()
+    expect(mocks.discardDatabaseImport).toHaveBeenCalledWith('t'.repeat(40))
+    expect(steps(el)).toEqual([i18n.t('import.stepFile')])
+    expect(el.textContent).toContain(i18n.t('import.noFile'))
+  })
+
   it('replaces exactly the ticked tables, with what they need, after REPLACE is typed', async () => {
     const el = await mount()
 

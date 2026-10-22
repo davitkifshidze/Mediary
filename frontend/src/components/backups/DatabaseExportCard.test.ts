@@ -12,6 +12,8 @@ import i18n from '@/i18n'
    საჭიროებებსაც ნიშნავს და ამას ამბობს; საჭირო ცხრილის მოხსნა გაფრთხილებას
    იძლევა (და არ იბლოკება); საიდუმლო ცხრილი აღნიშნულია; ჩამოტვირთვა ზუსტად
    მონიშნულს და არჩეულ ფორმატს აგზავნის; `mysqldump`-ის გარეშე SQL გამორთულია.
+   ⚠️ ჯგუფები ბარათებია („მონიშნულია / სულ") და სიაში მხოლოდ **არჩეული**
+   ჯგუფის ცხრილებია; ჯგუფის მონიშვნა სიის თავშია, ჩამოტვირთვის რიგი წებოვანია.
    ============================================================ */
 
 const mocks = vi.hoisted(() => ({
@@ -81,38 +83,70 @@ async function mount(sqlAvailable = true) {
   return container
 }
 
-const box = (el: HTMLElement, label: string) => el.querySelector<HTMLButtonElement>(`button[role="checkbox"][aria-label="${label}"]`)!
-const checked = (el: HTMLElement, label: string) => box(el, label).getAttribute('aria-checked') === 'true'
+const box = (el: HTMLElement, label: string) => el.querySelector<HTMLButtonElement>(`button[role="checkbox"][aria-label="${label}"]`)
+const checked = (el: HTMLElement, label: string) => box(el, label)!.getAttribute('aria-checked') === 'true'
+/** ჯგუფის ბარათი (`ScopeCard`) */
+const group = (el: HTMLElement, owner: string) =>
+  el.querySelector<HTMLButtonElement>(`[data-testid="database-groups"] [data-owner="${owner}"] button`)!
+const list = (el: HTMLElement) => el.querySelector<HTMLElement>('[data-testid="database-tables"]')!
 
 describe('DatabaseExportCard', () => {
-  it('groups the tables and ticks what a table needs along with it', async () => {
+  it('groups the tables into cards, lists the open group and ticks what a table needs along with it', async () => {
     const el = await mount()
 
-    const owners = [...el.querySelectorAll<HTMLElement>('fieldset')].map((f) => f.dataset.owner)
+    const owners = [...el.querySelectorAll<HTMLElement>('[data-testid="database-groups"] [data-owner]')].map((f) => f.dataset.owner)
     expect(owners).toEqual(['movie', 'shared:genres', 'system'])
-    expect(el.textContent).toContain('ფილმები')
-    expect(el.textContent).toContain(i18n.t('transfer.db.shared.genres'))
-    expect(el.textContent).toContain(i18n.t('transfer.db.sensitive'))
+    expect(group(el, 'movie').textContent).toContain('ფილმები')
+    expect(group(el, 'shared:genres').textContent).toContain(i18n.t('transfer.db.shared.genres'))
+    expect(group(el, 'movie').getAttribute('aria-pressed')).toBe('true')
 
-    await act(async () => box(el, 'movies').click())
+    // სიაში მხოლოდ არჩეული ჯგუფის ცხრილებია, შემოფარგლულ სქროლში
+    expect(list(el).dataset.owner).toBe('movie')
+    expect(list(el).className).toContain('max-h-96')
+    expect(box(el, 'movies')).not.toBeNull()
+    expect(box(el, 'users')).toBeNull()
+
+    await act(async () => box(el, 'movies')!.click())
     expect(checked(el, 'movies')).toBe(true)
     expect(checked(el, 'movie_translations')).toBe(true)
-    expect(checked(el, 'genreables')).toBe(true)
-    expect(checked(el, 'users')).toBe(false)
     expect(el.querySelector('[data-testid="database-added"]')?.textContent).toBe(
       i18n.t('transfer.db.autoAdded', { tables: 'movie_translations, genreables' }),
     )
+    // სხვა ჯგუფში მონიშნული ბარათზე ჩანს
+    expect(group(el, 'movie').textContent).toContain(i18n.t('transfer.db.groupPicked', { picked: 2, total: 2 }))
+    expect(group(el, 'shared:genres').textContent).toContain(i18n.t('transfer.db.groupPicked', { picked: 1, total: 1 }))
+    expect(group(el, 'system').textContent).toContain(i18n.t('transfer.db.groupPicked', { picked: 0, total: 1 }))
 
     // საჭიროს მოხსნა — დაშვებულია, მაგრამ გაფრთხილებით
-    await act(async () => box(el, 'genreables').click())
+    await act(async () => group(el, 'shared:genres').click())
+    expect(list(el).dataset.owner).toBe('shared:genres')
+    expect(checked(el, 'genreables')).toBe(true)
+    await act(async () => box(el, 'genreables')!.click())
     expect(checked(el, 'genreables')).toBe(false)
     expect(el.querySelector('[data-testid="database-warning"]')?.textContent).toContain('movies')
+
+    // საიდუმლო ცხრილი აღნიშნულია
+    await act(async () => group(el, 'system').click())
+    expect(list(el).textContent).toContain(i18n.t('transfer.db.sensitive'))
+  })
+
+  it('ticks a whole group from the head of its list', async () => {
+    const el = await mount()
+
+    const head = list(el).querySelector<HTMLElement>('label.sticky')!
+    expect(head.textContent).toContain('ფილმები')
+    await act(async () => box(el, 'ფილმები')!.click())
+    expect(checked(el, 'movies')).toBe(true)
+    expect(checked(el, 'movie_translations')).toBe(true)
+    expect(group(el, 'shared:genres').textContent).toContain(i18n.t('transfer.db.groupPicked', { picked: 1, total: 1 }))
   })
 
   it('downloads exactly the ticked tables in the chosen format; SQL needs mysqldump', async () => {
     const el = await mount(false)
 
-    await act(async () => box(el, 'users').click())
+    expect(el.querySelector('[data-testid="database-export-footer"]')?.className).toContain('sticky')
+    await act(async () => group(el, 'system').click())
+    await act(async () => box(el, 'users')!.click())
     const download = [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) =>
       b.textContent?.includes(i18n.t('transfer.db.download', { count: 1 })),
     )!

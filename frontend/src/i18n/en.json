@@ -3576,7 +3576,9 @@
     "autoOn": "Every day at {{at}} · the last {{keep}} are kept",
     "autoOff": "Off — `BACKUP_AUTO` in the backend `.env`",
     "autoLast": "Last automatic one — {{when}}",
-    "autoNever": "No automatic copy has been made yet"
+    "autoNever": "No automatic copy has been made yet",
+    "view": "Contents",
+    "autoHint": "The scheduled backup is an installation setting (`BACKUP_AUTO` in the backend `.env`) and isn't switched on here. “Last” is read from a real backup, not from the run log."
   },
   "secret": {
     "show": "Show",
@@ -3695,7 +3697,8 @@
         "gallery_images": "Gallery photos (shared)",
         "statuses": "Statuses (shared)",
         "locks": "Locks"
-      }
+      },
+      "groupPicked": "{{picked}} / {{total}} tables"
     },
     "archive": {
       "title": "My full export",
@@ -3712,7 +3715,14 @@
       "columns": "In the archive, gone from the database: {{dropped}} · in the database, not in the archive: {{missing}}",
       "warning": "Every row of the ticked tables ({{count}}) is deleted and replaced with the archive's. A safety backup is made first.",
       "replace": "Replace ({{count}})",
-      "done": "Replaced {{count}} tables — safety backup #{{id}}"
+      "done": "Replaced {{count}} tables — safety backup #{{id}}",
+      "stepFileHint": "The ZIP that “Export the whole database” (JSON) above gave you.",
+      "clearFile": "Remove the file",
+      "stepTables": "Tables",
+      "stepTablesHint": "Tick the tables to replace — a module's table brings what it needs along. Blocked tables and tables missing from the database can't be ticked.",
+      "found": "{{count}} tables in the archive · {{picked}} ticked",
+      "stepConfirm": "Confirm",
+      "typeToConfirm": "Type REPLACE to confirm"
     }
   },
   "exportData": {

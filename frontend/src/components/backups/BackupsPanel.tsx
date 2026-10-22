@@ -1,18 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  CalendarClock,
-  Database,
-  Download,
-  Table2,
-  Loader2,
-  Play,
-  RotateCcw,
-  Trash2,
-  TriangleAlert,
-  Upload,
-} from 'lucide-react'
+import { CalendarClock, Database, Download, Table2, Loader2, Play, RotateCcw, TriangleAlert, Upload } from 'lucide-react'
 import {
   createBackup,
   deleteBackup,
@@ -24,8 +13,11 @@ import {
 } from '@/api/backups'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { Badge, type BadgeSize } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
+import { FormField } from '@/components/ui/form-layout'
+import { InfoHint } from '@/components/ui/info-hint'
+import { Pagination } from '@/components/ui/pagination'
 import { BackupViewer } from '@/components/backups/BackupViewer'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -34,6 +26,8 @@ import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
 import { formatBytes } from '@/lib/utils'
 import { isApiCode } from '@/lib/errors'
+import { useClientPages } from '@/lib/paged'
+import { LIST_PAGE_SIZE } from '@/lib/pageSize'
 
 /* ============================================================
    **ბაზის დამპი და აღდგენა.**
@@ -51,9 +45,19 @@ import { isApiCode } from '@/lib/errors'
    „ბაზის" ჩანართია (`/transfer?tab=database`; `/backups` იქ გადამისამართდება),
    შენი სიტყვებით — „ბაზის ასლი და რამეც ცალკე რომ მაქვს — აქ შემოიტანე".
    ღილაკები („ატვირთვა", „ასლის შექმნა") სათაურის ზოლიდან პანელის თავში გადმოვიდა.
+
+   ⚠️ **რიგის ღილაკები აიქონი + ტექსტია** (`h-9`, წაშლა — `destructiveOutline`):
+   ოთხი მხოლოდ-აიქონი `ghost` ღილაკი `title`-ით იკითხებოდა და აღდგენა
+   ჩამოტვირთვას ჰგავდა. ღილაკები და მარჯვენა კლიკის მენიუ **ერთი სიიდან**
+   იხატება (`actions`), ე.ი. ორივეგან ერთი სახელი და ერთი პირობაა. სია
+   გვერდებადაა (`useClientPages`, 10) — ავტომატური ასლი ყოველდღე ემატება.
+   „შენიშვნა" „დამპის აღების" გვერდითაა (ის მხოლოდ ახალ დამპს ეხება),
+   შესავალი კი სათაურის `i`-შია.
    ============================================================ */
 
 const POLL_MS = 4000
+
+const NO_BACKUPS: Backup[] = []
 
 export function BackupsPanel() {
   const { t } = useTranslation()
@@ -124,12 +128,13 @@ export function BackupsPanel() {
     onSuccess: invalidate,
   })
 
+  const meta = list.data?.meta
+  const rows = list.data?.data ?? NO_BACKUPS
+  const { shown, pagination } = useClientPages(rows, LIST_PAGE_SIZE)
+
   if (!isAdmin) {
     return <EmptyState title={t('roles.noAccess')} />
   }
-
-  const meta = list.data?.meta
-  const rows = list.data?.data ?? []
 
   return (
     <section data-testid="backups-panel">
@@ -138,19 +143,14 @@ export function BackupsPanel() {
           <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
             <Database className="size-5 text-muted-foreground" />
             {t('backups.title')}
+            <InfoHint info={t('backups.intro')} />
           </h2>
           {meta && <p className="text-sm text-muted-foreground">{t('backups.subtitle', { database: meta.database })}</p>}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={upload.isPending}>
-            {upload.isPending ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-            {t('backups.import')}
-          </Button>
-          <Button onClick={() => start.mutate()} disabled={start.isPending || meta?.available === false}>
-            {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
-            {t('backups.create')}
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={upload.isPending}>
+          {upload.isPending ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+          {t('backups.import')}
+        </Button>
       </div>
 
       <input
@@ -186,31 +186,45 @@ export function BackupsPanel() {
           ⚠️ **ბოლო გაშვება ნამდვილი ასლიდან იკითხება**: „ტასკი არსებობს"
           და „ასლი გაკეთდა" ორი სხვადასხვა ფაქტია — სწორედ ამ განსხვავებამ
           დატოვა გარე PowerShell-ტასკი ექვსიდან ოთხ დღეს უხმოდ გაუშვებელი. */}
-      {meta && (
-        <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-border bg-card p-4 text-sm">
-          <span className="flex items-center gap-2 font-medium">
-            <CalendarClock className="size-4 text-muted-foreground" />
-            {t('backups.auto')}
-          </span>
-          <span className={meta.auto.enabled ? 'text-muted-foreground' : 'text-destructive'}>
-            {meta.auto.enabled
-              ? t('backups.autoOn', { at: meta.auto.at, keep: meta.auto.keep })
-              : t('backups.autoOff')}
-          </span>
-          <span className="text-muted-foreground">
-            {meta.auto.last_at
-              ? t('backups.autoLast', { when: date(meta.auto.last_at) })
-              : t('backups.autoNever')}
-          </span>
+      {/* ახალი დამპი: შენიშვნა და ღილაკი ერთ რიგში; ქვემოთ — დაგეგმილი ასლის ერთი ხაზი */}
+      <div className="mb-5 rounded-xl border border-border bg-card p-4" data-testid="backups-create">
+        <div className="flex flex-wrap items-end gap-2">
+          <FormField label={t('backups.note')} htmlFor="backup-note" className="min-w-48 flex-1 sm:max-w-md">
+            <Input
+              id="backup-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t('backups.notePlaceholder')}
+              className="h-9"
+            />
+          </FormField>
+          <Button size="sm" onClick={() => start.mutate()} disabled={start.isPending || meta?.available === false}>
+            {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
+            {t('backups.create')}
+          </Button>
         </div>
-      )}
 
-      <div className="mb-5 rounded-xl border border-border bg-card p-4">
-        <p className="mb-3 text-sm leading-relaxed text-muted-foreground">{t('backups.intro')}</p>
-        <label className="block max-w-md">
-          <span className="mb-1 block text-sm font-medium">{t('backups.note')}</span>
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('backups.notePlaceholder')} />
-        </label>
+        {meta && (
+          <p
+            className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border pt-3 text-sm"
+            data-testid="backups-auto"
+          >
+            <CalendarClock className="size-4 shrink-0 text-muted-foreground" />
+            <span className="font-medium">{t('backups.auto')}</span>
+            <InfoHint info={t('backups.autoHint')} />
+            <span className={meta.auto.enabled ? 'text-muted-foreground' : 'text-destructive'}>
+              {meta.auto.enabled
+                ? t('backups.autoOn', { at: meta.auto.at, keep: meta.auto.keep })
+                : t('backups.autoOff')}
+            </span>
+            <span className="text-muted-foreground">
+              ·{' '}
+              {meta.auto.last_at
+                ? t('backups.autoLast', { when: date(meta.auto.last_at) })
+                : t('backups.autoNever')}
+            </span>
+          </p>
+        )}
       </div>
 
       {list.isLoading && <div className="h-32 animate-pulse rounded-xl bg-muted" />}
@@ -219,13 +233,15 @@ export function BackupsPanel() {
         <EmptyState icon={<Database className="size-6" />} title={t('backups.empty')} hint={t('backups.emptyHint')} />
       )}
 
-      <ul className="space-y-2">
-        {rows.map((b) => {
+      <ul className="space-y-2" data-testid="backups-list">
+        {shown.map((b) => {
           const ready = b.status === 'ready'
-          /* მარჯვენა ღილაკი: გადმოწერა · შიგთავსი · აღდგენა · — · წაშლა */
+          /* რიგის ღილაკები და მარჯვენა ღილაკი ერთი სიიდან:
+             გადმოწერა · შიგთავსი · აღდგენა · — · წაშლა */
           const actions: MenuAction[] = [
             { key: 'download', label: t('actions.download'), icon: Download, disabled: !ready, run: () => downloadBackup(b) },
-            { key: 'view', label: t('backups.viewerTitle'), icon: Table2, disabled: !ready, run: () => setViewing(b) },
+            // „რა არის შიგნით"; ცხრილების სია აღდგენას არ მოითხოვს
+            { key: 'view', label: t('backups.view'), icon: Table2, disabled: !ready, run: () => setViewing(b) },
             {
               key: 'restore',
               label: t('backups.restore'),
@@ -269,61 +285,29 @@ export function BackupsPanel() {
               {b.error && <p className="truncate text-xs text-destructive">{b.error}</p>}
             </div>
 
-            <StatusBadge backup={b} />
-
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => downloadBackup(b)}
-                disabled={b.status !== 'ready'}
-                title={t('actions.download')}
-              >
-                <Download className="size-4" />
-              </Button>
-              {/* „რა არის შიგნით"; ცხრილების სია აღდგენას არ მოითხოვს */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setViewing(b)}
-                disabled={b.status !== 'ready'}
-                title={t('backups.viewerTitle')}
-              >
-                <Table2 className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setTyped('')
-                  setRestoring(b)
-                }}
-                disabled={b.status !== 'ready' || meta?.restore_available === false}
-                title={t('backups.restore')}
-              >
-                <RotateCcw className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={async () => {
-                  const ok = await confirm({
-                    title: t('backups.deleteTitle'),
-                    description: t('backups.deleteHint', { name: b.name ?? '' }),
-                    variant: 'destructive',
-                  })
-                  if (ok) remove.mutate(b.id)
-                }}
-                title={t('actions.delete')}
-              >
-                <Trash2 className="size-4" />
-              </Button>
+            {/* სტატუსი რიგის ღილაკების სიმაღლისაა და მათ წინ დგას */}
+            <div className="flex flex-wrap items-center gap-1.5" data-testid="backup-actions">
+              <StatusBadge backup={b} size="row" />
+              {actions.map(({ key, label, icon: Icon, disabled, danger, run }) => (
+                <Button
+                  key={key}
+                  type="button"
+                  variant={danger ? 'destructiveOutline' : 'outline'}
+                  size="sm"
+                  disabled={disabled}
+                  onClick={() => run?.()}
+                >
+                  {Icon && <Icon className="size-4" />}
+                  {label}
+                </Button>
+              ))}
             </div>
           </li>
           </RecordContextMenu>
           )
         })}
       </ul>
+      <Pagination {...pagination} className="mt-3" />
 
       {viewing && <BackupViewer backup={viewing} onClose={() => setViewing(null)} />}
 
@@ -369,16 +353,20 @@ export function BackupsPanel() {
  * ერთნაირად `running`-ია ბაზაში, მაგრამ მომხმარებელს სხვადასხვა რამეს
  * ეუბნება: პირველზე ელოდები, მეორეზე — თავიდან უშვებ.
  */
-function StatusBadge({ backup }: { backup: Backup }) {
+function StatusBadge({ backup, size }: { backup: Backup; size?: BadgeSize }) {
   const { t } = useTranslation()
 
   if (backup.status === 'running' && backup.stale) {
-    return <Badge className="bg-[color-mix(in_oklab,var(--icon-warn)_20%,transparent)]">{t('backups.status.stale')}</Badge>
+    return (
+      <Badge size={size} className="bg-[color-mix(in_oklab,var(--icon-warn)_20%,transparent)]">
+        {t('backups.status.stale')}
+      </Badge>
+    )
   }
 
   if (backup.status === 'running') {
     return (
-      <Badge className="bg-secondary">
+      <Badge size={size} className="bg-secondary">
         <Loader2 className="size-3 animate-spin" />
         {t('backups.status.running')}
       </Badge>
@@ -386,8 +374,16 @@ function StatusBadge({ backup }: { backup: Backup }) {
   }
 
   if (backup.status === 'failed') {
-    return <Badge className="bg-[color-mix(in_oklab,var(--destructive)_16%,transparent)]">{t('backups.status.failed')}</Badge>
+    return (
+      <Badge size={size} className="bg-[color-mix(in_oklab,var(--destructive)_16%,transparent)]">
+        {t('backups.status.failed')}
+      </Badge>
+    )
   }
 
-  return <Badge className="bg-[color-mix(in_oklab,var(--icon-ok)_18%,transparent)]">{t('backups.status.ready')}</Badge>
+  return (
+    <Badge size={size} className="bg-[color-mix(in_oklab,var(--icon-ok)_18%,transparent)]">
+      {t('backups.status.ready')}
+    </Badge>
+  )
 }

@@ -1,15 +1,18 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Download, Loader2, Table2 } from 'lucide-react'
+import { AlertTriangle, CheckCheck, Download, Eraser, Loader2, Settings, Share2, Table2 } from 'lucide-react'
 import { downloadDatabase, fetchDatabaseTables, type DatabaseFormat, type DatabaseTable } from '@/api/database'
 import { errorMessage } from '@/lib/errors'
 import { moduleName, useModules } from '@/lib/modules'
 import { formatBytes } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { InfoHint } from '@/components/ui/info-hint'
+import { ScopeCard, ScopeGroup } from '@/components/ui/scope-card'
+import { ModuleIcon } from '@/components/ModuleIcon'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
@@ -25,6 +28,13 @@ import { useToast } from '@/components/ui/feedback'
    სჭირდება — გაფრთხილება ჩნდება („მის გარეშე ასლი არასრული იქნება").
    ⚠️ ჯგუფები: მოდულები (მათი რიგით) → საერთო ცხრილები → სისტემა; საიდუმლოს
    შემცველი ცხრილი (`users`, `user_credentials`…) ცხადად აღნიშნულია.
+
+   ⚠️ **ჯგუფი ბარათია და არა ჩარჩო** („უფრო თანამედროვე UI/UX"): ჯგუფები
+   `ScopeCard`-ებად მოდულის ფერში დგას („მონიშნულია / სულ"), ქვემოთ კი
+   **არჩეული** ჯგუფის ცხრილები ერთ `max-h-96` სიაშია, ჯგუფის მონიშვნა მის თავში
+   წებოვანია. ძველ ბადეში ყველა ჯგუფის ყველა ცხრილი ერთდროულად ეწყო და
+   გვერდი უსასრულოდ იზრდებოდა. ფორმატი და ჩამოტვირთვა ბარათის ბოლოს წებოვან
+   რიგშია (`ModalFooter`-ის სახე) — გრძელ სიაზე ღილაკი ეკრანს არ სცდება.
    ============================================================ */
 
 export function DatabaseExportCard() {
@@ -37,6 +47,7 @@ export function DatabaseExportCard() {
   const [format, setFormat] = useState<DatabaseFormat>('json')
   const [added, setAdded] = useState<string[]>([])
   const [warning, setWarning] = useState<{ table: string; by: string[] } | null>(null)
+  const [open, setOpen] = useState<string | null>(null)
 
   const tables = useMemo(() => q.data?.data ?? [], [q.data])
   const byName = useMemo(() => new Map(tables.map((row) => [row.table, row])), [tables])
@@ -50,13 +61,29 @@ export function DatabaseExportCard() {
     return order.filter((owner) => map.has(owner)).map((owner) => ({ owner, rows: map.get(owner)! }))
   }, [q.data?.modules, tables])
 
+  // უცნობი/გამქრალი ჯგუფი პირველზე ბრუნდება
+  const current = groups.find((g) => g.owner === open) ?? groups[0]
+
+  const moduleOf = (owner: string) => all.find((x) => x.key === owner)
+
   const label = (owner: string) => {
     if (owner === 'system') return t('transfer.db.system')
     if (owner.startsWith('shared:')) return t(`transfer.db.shared.${owner.slice(7)}`)
-    const m = all.find((x) => x.key === owner)
+    const m = moduleOf(owner)
 
     return m ? moduleName(m, i18n.language) : t(`transfer.db.owner.${owner}`, { defaultValue: owner })
   }
+
+  /** მოდულს თავისი ხატულა აქვს; საერთოს და სისტემას — საერთო ნიშანი მშობლის ფერში */
+  const icon = (owner: string) => {
+    const m = moduleOf(owner)
+    if (m) return <ModuleIcon name={m.icon} className="size-4 text-[var(--mod)]" />
+    const Icon = owner === 'system' ? Settings : Share2
+
+    return <Icon className="size-4 text-[var(--mod)]" />
+  }
+
+  const pickedIn = (rows: DatabaseTable[]) => rows.filter((r) => picked.has(r.table)).length
 
   const toggle = (row: DatabaseTable, on: boolean) => {
     const next = new Set(picked)
@@ -90,7 +117,7 @@ export function DatabaseExportCard() {
 
   return (
     <section className="mb-8 rounded-xl border border-border bg-card p-4" data-testid="database-export">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
           <Table2 className="size-5 text-muted-foreground" />
           {t('transfer.db.title')}
@@ -98,9 +125,11 @@ export function DatabaseExportCard() {
         </h2>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setPicked(new Set(tables.map((r) => r.table)))} disabled={!tables.length}>
+            <CheckCheck className="size-4" />
             {t('transfer.db.all')}
           </Button>
           <Button variant="outline" size="sm" onClick={() => setPicked(new Set())} disabled={!picked.size}>
+            <Eraser className="size-4" />
             {t('transfer.db.none')}
           </Button>
         </div>
@@ -109,40 +138,65 @@ export function DatabaseExportCard() {
       {q.isLoading ? (
         <p className="text-sm text-muted-foreground">{t('api.loading')}</p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="database-groups">
-          {groups.map(({ owner, rows }) => {
-            const allOn = rows.every((r) => picked.has(r.table))
-            return (
-              <fieldset key={owner} className="rounded-lg border border-border p-3" data-owner={owner}>
-                <legend className="px-1">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-                    <Checkbox checked={allOn} onCheckedChange={(v) => setGroup(rows, v === true)} aria-label={label(owner)} />
-                    {label(owner)}
-                  </label>
-                </legend>
-                <ul className="space-y-1">
-                  {rows.map((row) => (
-                    <li key={row.table}>
-                      <label className="flex cursor-pointer items-center gap-2 text-xs">
-                        <Checkbox checked={picked.has(row.table)} onCheckedChange={(v) => toggle(row, v === true)} aria-label={row.table} />
-                        <span className="min-w-0 flex-1 truncate font-mono">{row.table}</span>
-                        {row.sensitive && (
-                          <span className="rounded-md bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive" title={t('transfer.db.sensitiveHint')}>
-                            {t('transfer.db.sensitive')}
-                          </span>
-                        )}
-                        <span className="shrink-0 tabular-nums text-muted-foreground">
-                          {t('transfer.db.rows', { count: row.rows })}
-                          {row.bytes != null && ` · ${formatBytes(row.bytes)}`}
-                        </span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              </fieldset>
-            )
-          })}
-        </div>
+        <>
+          <div data-testid="database-groups">
+            <ScopeGroup>
+              {groups.map(({ owner, rows }) => (
+                <div key={owner} data-owner={owner}>
+                  <ScopeCard
+                    size="sm"
+                    active={current?.owner === owner}
+                    color={moduleOf(owner)?.color ?? null}
+                    icon={icon(owner)}
+                    label={label(owner)}
+                    hint={t('transfer.db.groupPicked', { picked: pickedIn(rows), total: rows.length })}
+                    onClick={() => setOpen(owner)}
+                  />
+                </div>
+              ))}
+            </ScopeGroup>
+          </div>
+
+          {current && (
+            <div
+              className="fb-scroll mt-3 max-h-96 overflow-y-auto rounded-md border border-border"
+              data-testid="database-tables"
+              data-owner={current.owner}
+            >
+              {/* ჯგუფის მონიშვნა სიის თავში წებოვანია */}
+              <label className="sticky top-0 z-10 flex cursor-pointer items-center gap-2.5 border-b border-border bg-card px-3 py-2 text-sm font-medium">
+                <Checkbox
+                  checked={current.rows.every((r) => picked.has(r.table))}
+                  onCheckedChange={(v) => setGroup(current.rows, v === true)}
+                  aria-label={label(current.owner)}
+                />
+                {label(current.owner)}
+                <span className="ml-auto text-xs font-normal tabular-nums text-muted-foreground">
+                  {t('transfer.db.groupPicked', { picked: pickedIn(current.rows), total: current.rows.length })}
+                </span>
+              </label>
+              <ul>
+                {current.rows.map((row) => (
+                  <li key={row.table}>
+                    <label className="flex cursor-pointer items-center gap-2.5 px-3 py-1.5 text-sm">
+                      <Checkbox checked={picked.has(row.table)} onCheckedChange={(v) => toggle(row, v === true)} aria-label={row.table} />
+                      <span className="min-w-0 flex-1 truncate font-mono text-[13px]">{row.table}</span>
+                      {row.sensitive && (
+                        <Badge className="bg-destructive/10 text-destructive" title={t('transfer.db.sensitiveHint')}>
+                          {t('transfer.db.sensitive')}
+                        </Badge>
+                      )}
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {t('transfer.db.rows', { count: row.rows })}
+                        {row.bytes != null && ` · ${formatBytes(row.bytes)}`}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
 
       {added.length > 0 && (
@@ -157,7 +211,11 @@ export function DatabaseExportCard() {
         </p>
       )}
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+      {/* ფორმატი + ჩამოტვირთვა — ბარათის ბოლოს წებოვანი რიგი (დამკვრელის ზოლის ზემოთ) */}
+      <div
+        className="sticky bottom-[var(--player-h,0px)] z-30 -mx-4 -mb-4 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-b-xl border-t border-border bg-card px-4 py-3"
+        data-testid="database-export-footer"
+      >
         <CutTabs
           layout="inline"
           size="sm"
