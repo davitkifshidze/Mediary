@@ -238,8 +238,11 @@ export function patternFromShifts(shifts: DutyShift[]):
   }
 }
 
-/** კალენდრის ჩიპი — „A · 24“, ნაწილობრივზე „A · 10 / 24“ (სამსახურის გარეშე — მხოლოდ საათები) */
-export function chipLabel(shift: Pick<DutyShift, 'hours' | 'workplace' | 'status' | 'type'>): string {
-  const short = shift.workplace?.short || shift.workplace?.name?.slice(0, 1)
-  return short ? `${short} · ${hoursLabel(shift)}` : hoursLabel(shift)
+/**
+ * კალენდრის ჩიპი — „112 09:00 · 24“ (დაწყების გარეშე „112 · 24“), ნაწილობრივზე
+ * „112 · 10 / 24“; სამსახურის გარეშე — დაწყება და საათები.
+ */
+export function chipLabel(shift: Pick<DutyShift, 'hours' | 'workplace' | 'status' | 'type' | 'start_time'>): string {
+  const head = [shift.workplace?.short || shift.workplace?.name?.slice(0, 1), shift.start_time].filter(Boolean).join(' ')
+  return head ? `${head} · ${hoursLabel(shift)}` : hoursLabel(shift)
 }

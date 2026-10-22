@@ -4934,6 +4934,22 @@
       "uneven": "The selected shifts are not evenly spaced — no rhythm could be made.",
       "needTwo": "Select at least two shifts of one workplace for a rhythm.",
       "fromPattern": "From the rhythm"
+    },
+    "dim": {
+      "label": "Emphasis",
+      "hint": "A dark workplace stands out, a light one shows faded in the calendar and the list. It is not a filter: the shifts stay and still count.",
+      "dark": "dark",
+      "light": "light"
+    },
+    "history": {
+      "search": "Search notes",
+      "sort": {
+        "date_desc": "Newest first",
+        "date_asc": "Oldest first"
+      },
+      "noMatch": "No shifts match these filters",
+      "onlyFavorite": "Favourites only",
+      "range": "Date (from — to)"
     }
   },
   "actors": {

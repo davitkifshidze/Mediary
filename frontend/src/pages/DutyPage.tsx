@@ -28,7 +28,9 @@ import { DutyBulkDialog } from '@/components/duty/DutyBulkDialog'
 import { DutyCalculator } from '@/components/duty/DutyCalculator'
 import { DutyCalendar } from '@/components/duty/DutyCalendar'
 import { DutyDayDialog } from '@/components/duty/DutyDayDialog'
-import { DutyList } from '@/components/duty/DutyList'
+import { DutyDimToggles } from '@/components/duty/DutyDimToggles'
+import { DutyHistory } from '@/components/duty/DutyHistory'
+import { useDutyDim } from '@/components/duty/useDutyDim'
 import { DutyPatternDialog } from '@/components/duty/DutyPatternDialog'
 import { useDutyShiftActions } from '@/components/duty/useDutyShiftActions'
 import { DutySettingsDialog } from '@/components/duty/DutySettingsDialog'
@@ -103,6 +105,8 @@ export function DutyPage() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   // კალენდრის ჩიპის მენიუ (სიის სტრიქონი თავის თავს თვითონ აწყობს)
   const { actionsFor, moveDialog } = useDutyShiftActions((shift) => setEditing({ shift }))
+  // „მუქი / ღია" სამსახური — კალენდარსა და სიაში
+  const [dimmed, toggleDim] = useDutyDim()
   const qc = useQueryClient()
   const { toast } = useToast()
 
@@ -245,7 +249,8 @@ export function DutyPage() {
         </div>
       )}
 
-      {/* ---------- პერიოდი ---------- */}
+      {/* ---------- პერიოდი ---------- (სრულ სიას თავისი თარიღის ფილტრი აქვს) */}
+      {view !== 'list' && (
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" disabled={!period} onClick={() => period && setParam('date', period.previous.from)}>
           <ChevronLeft className="size-4" />
@@ -281,8 +286,9 @@ export function DutyPage() {
           </p>
         )}
       </div>
+      )}
 
-      {workplaces.length > 1 && (
+      {view !== 'list' && workplaces.length > 1 && (
         <div className="mb-4">
           <CutTabs
             options={[
@@ -340,7 +346,11 @@ export function DutyPage() {
         </div>
       )}
 
-      {loading || !period || shiftsQ.isLoading ? (
+      {(view === 'calendar' || view === 'list') && <DutyDimToggles workplaces={workplaces} dimmed={dimmed} onToggle={toggleDim} />}
+
+      {view === 'list' ? (
+        <DutyHistory workplaces={workplaces} types={types} settings={settings} dimmed={dimmed} onEdit={(shift) => setEditing({ shift })} />
+      ) : loading || !period || shiftsQ.isLoading ? (
         <div className="grid place-items-center py-16">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
@@ -354,9 +364,9 @@ export function DutyPage() {
           onSelectionChange={setSelected}
           onOpenDay={openDay}
           shiftActions={actionsFor}
+          dimmed={dimmed}
+          currency={currency}
         />
-      ) : view === 'list' ? (
-        <DutyList shifts={shifts} settings={settings} onEdit={(shift) => setEditing({ shift })} />
       ) : view === 'totals' ? (
         <DutyTotals period={period} workplaceFilter={workplaceFilter} workplaces={workplaces} types={types} settings={settings} />
       ) : (

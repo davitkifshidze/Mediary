@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Ban, Repeat } from 'lucide-react'
 import type { DutyShift } from '@/api/duty'
-import { chipLabel, eachDay, hoursLabel, parseDay, shiftRange, todayIso, weekdayIndex, workplaceColor } from '@/lib/duty'
+import { chipLabel, eachDay, formatMoney, hoursLabel, parseDay, shiftRange, todayIso, typeName, weekdayIndex, workplaceColor } from '@/lib/duty'
 import { cn } from '@/lib/utils'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 /* ============================================================
    **მორიგეობის კალენდარი — პერიოდის ბადე.**
@@ -43,6 +44,8 @@ export function DutyCalendar({
   onSelectionChange,
   onOpenDay,
   shiftActions,
+  dimmed,
+  currency,
 }: {
   from: string
   to: string
@@ -53,6 +56,10 @@ export function DutyCalendar({
   onOpenDay: (day: string) => void
   /** ჩიპის მარჯვენა ღილაკის მენიუ (`useDutyShiftActions`) */
   shiftActions?: (shift: DutyShift) => MenuAction[]
+  /** „ღია" სამსახურები — ჩიპი ბაცად (`useDutyDim`) */
+  dimmed?: ReadonlySet<number>
+  /** ჰოვერის თანხისთვის */
+  currency?: string
 }) {
   const { t, i18n } = useTranslation()
   const locale = i18n.language
@@ -131,7 +138,7 @@ export function DutyCalendar({
           const isSelected = selected.has(day)
           const showMonth = day === from || date.getDate() === 1
 
-          return (
+          const cell = (
             <button
               key={day}
               type="button"
@@ -154,7 +161,7 @@ export function DutyCalendar({
                 onOpenDay(day)
               }}
               className={cn(
-                'flex min-h-20 flex-col gap-1 rounded-md border p-1.5 text-left transition-colors',
+                'flex min-h-24 flex-col gap-1 rounded-md border p-1.5 text-left transition-colors',
                 isSelected ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-primary/50',
               )}
             >
@@ -177,6 +184,8 @@ export function DutyCalendar({
                     'truncate rounded-sm border-l-[3px] px-1.5 py-0.5 text-[11px] font-medium leading-tight text-foreground',
                     // გაუქმებული — დღე რჩება, მაგრამ წითლად და გადახაზული
                     shift.status === 'cancelled' && 'text-destructive line-through',
+                    // „ღია" სამსახური — ბაცად, ფერი უცვლელი
+                    shift.workplace_id != null && dimmed?.has(shift.workplace_id) && 'opacity-45',
                   )}
                   style={
                     shift.status === 'cancelled'
@@ -186,16 +195,6 @@ export function DutyCalendar({
                           background: `color-mix(in oklab, ${workplaceColor(shift.workplace)} 22%, transparent)`,
                         }
                   }
-                  /* უჯრა ვიწროა — ჩიპზე „112 · 24“, დიაპაზონი („09:00 → 09:00 (+1)“) ჰოვერზე */
-                  title={[
-                    shift.workplace?.name,
-                    shift.status !== 'scheduled' ? t(`duty.status.${shift.status}`) : null,
-                    shiftRange(shift),
-                    hoursLabel(shift),
-                    shift.note,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
                   data-testid="duty-chip"
                   data-status={shift.status}
                 >
@@ -210,8 +209,51 @@ export function DutyCalendar({
               ))}
             </button>
           )
+
+          /* ⚠️ ჰოვერი — დღის ყველა მორიგეობა (ბრაუზერის `title`-ის ნაცვლად);
+             მონიშვნის რეჟიმში და ცარიელ დღეზე არ ჩნდება */
+          if (!items.length || selecting) return cell
+
+          return (
+            <Tooltip key={day}>
+              <TooltipTrigger asChild>{cell}</TooltipTrigger>
+              <TooltipContent side="top" className="max-w-sm p-0">
+                <DaySummary shifts={items} currency={currency} />
+              </TooltipContent>
+            </Tooltip>
+          )
         })}
       </div>
     </div>
+  )
+}
+
+/** **ჰოვერის შიგთავსი** — სამსახური · ტიპი · დიაპაზონი · საათები · თანხა · სტატუსი · შენიშვნა */
+function DaySummary({ shifts, currency = '₾' }: { shifts: DutyShift[]; currency?: string }) {
+  const { t, i18n } = useTranslation()
+
+  return (
+    <ul className="divide-y divide-border" data-testid="duty-day-summary">
+      {shifts.map((shift) => (
+        <li key={shift.id} className="space-y-0.5 px-3 py-2">
+          <p className={cn('flex items-center gap-1.5 font-medium', shift.status === 'cancelled' && 'text-destructive line-through')}>
+            <span className="size-2.5 shrink-0 rounded-sm" style={{ background: workplaceColor(shift.workplace) }} />
+            {shift.workplace?.name ?? t('duty.noWorkplace')}
+            <span className="font-normal text-muted-foreground">· {shift.type ? typeName(shift.type, i18n.language) : t('duty.shift.custom')}</span>
+          </p>
+          <p className="tabular-nums text-muted-foreground">
+            {[
+              shiftRange(shift),
+              t('duty.hoursValue', { hours: hoursLabel(shift) }),
+              shift.pay != null ? formatMoney(shift.pay, currency, i18n.language) : null,
+              shift.status !== 'scheduled' ? t(`duty.status.${shift.status}`) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+          {shift.note && <p className="text-muted-foreground">{shift.note}</p>}
+        </li>
+      ))}
+    </ul>
   )
 }

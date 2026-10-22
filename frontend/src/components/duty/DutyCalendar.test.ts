@@ -3,6 +3,7 @@ import { act, createElement as h, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { DutyShift, DutyWorkplace } from '@/api/duty'
 import { DutyCalendar } from '@/components/duty/DutyCalendar'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { dutyPay, eachDay, periodLabel, weekdayIndex } from '@/lib/duty'
 import i18n from '@/i18n'
 
@@ -47,18 +48,28 @@ function shift(id: number, date: string, over: Partial<DutyShift> = {}): DutyShi
 }
 
 /** მონიშვნა მშობელში ცოცხლობს — როგორც გვერდზე */
-function Harness({ selecting, onOpenDay, shifts = [] }: { selecting: boolean; onOpenDay: (day: string) => void; shifts?: DutyShift[] }) {
+function Harness({
+  selecting,
+  onOpenDay,
+  shifts = [],
+  dimmed,
+}: {
+  selecting: boolean
+  onOpenDay: (day: string) => void
+  shifts?: DutyShift[]
+  dimmed?: ReadonlySet<number>
+}) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   return h(
-    'div',
+    TooltipProvider,
     null,
     h('output', { 'data-testid': 'selected' }, [...selected].sort().join(',')),
-    h(DutyCalendar, { from: '2026-10-01', to: '2026-10-31', shifts, selecting, selected, onSelectionChange: setSelected, onOpenDay }),
+    h(DutyCalendar, { from: '2026-10-01', to: '2026-10-31', shifts, selecting, selected, onSelectionChange: setSelected, onOpenDay, dimmed, currency: '₾' }),
   )
 }
 
-async function render(props: { selecting: boolean; onOpenDay?: (day: string) => void; shifts?: DutyShift[] }) {
+async function render(props: { selecting: boolean; onOpenDay?: (day: string) => void; shifts?: DutyShift[]; dimmed?: ReadonlySet<number> }) {
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -104,9 +115,34 @@ describe('DutyCalendar', () => {
     expect(cancelled.dataset.status).toBe('cancelled')
     expect(cancelled.className).toContain('line-through')
     expect(cancelled.querySelector('svg')).not.toBeNull()
-    expect(cancelled.title).toContain(i18n.t('duty.status.cancelled'))
 
     expect(day('2026-10-04').querySelector('[data-testid="duty-chip"]')!.textContent).toBe('A · 10 / 24')
+  })
+
+  it('shows the start on the chip and every shift of the day on hover, and fades a light workplace', async () => {
+    await render({
+      selecting: false,
+      dimmed: new Set([2]),
+      shifts: [
+        shift(1, '2026-10-05', { start_time: '09:00', end_time: '09:00', end_day: 1, note: 'ღამე' }),
+        shift(2, '2026-10-05', { workplace_id: 2, workplace: { id: 2, name: 'B', short: 'B', color: null }, status: 'cancelled', pay: 0, hours: 12 }),
+      ],
+    })
+
+    const chips = [...day('2026-10-05').querySelectorAll<HTMLElement>('[data-testid="duty-chip"]')]
+    expect(chips[0].textContent).toBe('A 09:00 · 24')
+    expect(chips[0].title).toBe('')
+    expect(chips[1].className).toContain('opacity-45')
+
+    // ჰოვერი/ფოკუსი — დღის ყველა მორიგეობა
+    await act(async () => day('2026-10-05').focus())
+    const summary = document.querySelector('[data-testid="duty-day-summary"]')!
+    expect(summary.textContent).toContain('კლინიკა')
+    expect(summary.textContent).toContain('09:00 → 09:00 (+1)')
+    expect(summary.textContent).toContain('220 ₾')
+    expect(summary.textContent).toContain('ღამე')
+    expect(summary.textContent).toContain(i18n.t('duty.status.cancelled'))
+    expect(summary.querySelectorAll('li')).toHaveLength(2)
   })
 
   it('opens a day on a click outside the selection mode', async () => {

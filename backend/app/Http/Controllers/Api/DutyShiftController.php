@@ -21,9 +21,11 @@ use Illuminate\Validation\Rules\Exists;
 /**
  * **მორიგეობები** — `/duty/shifts`.
  *
- * ⚠️ **სია თარიღების შუალედით იკითხება და არა გვერდებით**: კალენდარი, სია და
+ * ⚠️ **ორი რეჟიმი**: შუალედით (`from`/`to`, გვერდების გარეშე) — კალენდარი და
  * ჯამები ერთ პერიოდს ხატავს (≤ ~60 რიგი), კალკულატორი — ნებისმიერ შუალედს
- * (ჭერი 3 წელი). შუალედის გარეშე — მიმდინარე პერიოდი (`DutyPeriod`).
+ * (ჭერი 3 წელი), შუალედის გარეშე — მიმდინარე პერიოდი (`DutyPeriod`); და
+ * **გვერდებით** (`page` — სრული სია, `history()`): ყველა მორიგეობა, თარიღით
+ * კლებადი, ფილტრებით — სამი წლის სია ერთ პასუხად აღარ მოდის.
  *
  * ⚠️ **თანხა: გასაღების არსებობა ნიშნავს გადაწერას.** `pay` მოთხოვნაში არის
  * (თუნდაც `null`) — ჩაიწერება ის; არ არის — ტარიფიდან ითვლება (`DutyPay`).
@@ -48,6 +50,10 @@ class DutyShiftController extends Controller
 
     public function index(Request $request)
     {
+        if ($request->has('page')) {
+            return $this->history($request);
+        }
+
         $data = $request->validate([
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
@@ -74,6 +80,45 @@ class DutyShiftController extends Controller
         return DutyShiftResource::collection($shifts)->additional([
             'range' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
         ]);
+    }
+
+    /**
+     * **სრული სია — გვერდებით.** სამსახური/ტიპი/სტატუსი — სიები (რამდენიმე
+     * ერთად), რჩეული, ძებნა შენიშვნაში, თარიღის შუალედი; რიგი თარიღით
+     * (`sort=date_desc` ნაგულისხმევი — ჯერ მომავალი და ახლანდელი, მერე წარსული).
+     */
+    private function history(Request $request)
+    {
+        $data = $request->validate([
+            'workplace_id' => ['nullable', 'array'],
+            'workplace_id.*' => ['integer'],
+            'type_id' => ['nullable', 'array'],
+            'type_id.*' => ['integer'],
+            'status' => ['nullable', 'array'],
+            'status.*' => [Rule::in(DutyShift::STATUSES)],
+            'favorite' => ['nullable', 'boolean'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d'],
+            'sort' => ['nullable', 'in:date_desc,date_asc'],
+        ]);
+
+        $direction = ($data['sort'] ?? 'date_desc') === 'date_asc' ? 'asc' : 'desc';
+
+        $query = DutyShift::query()
+            ->with(['workplace', 'type'])
+            ->when(! empty($data['workplace_id']), fn ($q) => $q->whereIn('workplace_id', array_map('intval', $data['workplace_id'])))
+            ->when(! empty($data['type_id']), fn ($q) => $q->whereIn('type_id', array_map('intval', $data['type_id'])))
+            ->when(! empty($data['status']), fn ($q) => $q->whereIn('status', $data['status']))
+            ->when(! empty($data['favorite']), fn ($q) => $q->where('is_favorite', true))
+            ->when(isset($data['from']), fn ($q) => $q->where('date', '>=', $data['from']))
+            ->when(isset($data['to']), fn ($q) => $q->where('date', '<=', $data['to']))
+            ->when(isset($data['q']) && trim((string) $data['q']) !== '', fn ($q) => $q->where('note', 'like', Like::contains(trim((string) $data['q']))))
+            ->orderBy('date', $direction)
+            ->orderBy('start_time', $direction)
+            ->orderBy('id', $direction);
+
+        return DutyShiftResource::collection($this->paginated($request, $query));
     }
 
     public function store(Request $request)

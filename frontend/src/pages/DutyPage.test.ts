@@ -78,6 +78,13 @@ const mocks = vi.hoisted(() => ({
   updateDutyShift: vi.fn(),
   fetchDutyPatterns: vi.fn(),
   continueDutyPattern: vi.fn(),
+  fetchDutyShiftPage: vi.fn(),
+}))
+
+const account = vi.hoisted(() => ({ updateModuleSettings: vi.fn(async () => {}) }))
+vi.mock('@/api/account', async (original) => ({
+  ...(await original<typeof import('@/api/account')>()),
+  updateModuleSettings: account.updateModuleSettings,
 }))
 
 vi.mock('@/api/duty', async (original) => ({
@@ -132,6 +139,7 @@ function defaults() {
   mocks.updateDutyShift.mockResolvedValue(shift)
   mocks.fetchDutyPatterns.mockResolvedValue([])
   mocks.continueDutyPattern.mockResolvedValue({ created: 8, skipped: 1, generated_until: '2026-10-31' })
+  mocks.fetchDutyShiftPage.mockResolvedValue({ items: [shift], total: 1, lastPage: 1 })
 }
 
 async function render(path = '/duty') {
@@ -218,10 +226,7 @@ describe('DutyPage', () => {
       ...workplaces,
       { ...workplaces[1], id: 3, name: 'სამსახური', rates: [], hourly_rate: null, shifts_count: 14 },
     ])
-    mocks.fetchDutyShifts.mockResolvedValue({
-      items: [{ ...shift, start_time: '09:00', end_time: '09:00', end_day: 1 }],
-      range: { from: '2026-10-01', to: '2026-10-31' },
-    })
+    mocks.fetchDutyShiftPage.mockResolvedValue({ items: [{ ...shift, start_time: '09:00', end_time: '09:00', end_day: 1 }], total: 1, lastPage: 1 })
     await render('/duty?view=list')
 
     // ტარიფის გარეშე სამსახური — გვერდი ამბობს და პარამეტრებს ხსნის
@@ -239,19 +244,17 @@ describe('DutyPage', () => {
       items: [shift, { ...shift, id: 8, date: '2026-10-03', status: 'cancelled', pay: 0 }],
       range: { from: '2026-10-01', to: '2026-10-31' },
     })
-    await render('/duty?view=list')
+    await render()
 
-    // გაუქმებული სიაში რჩება, ჯამში — არა
-    expect(container!.querySelectorAll('[data-testid="duty-list"] li')).toHaveLength(2)
+    // გაუქმებული კალენდარზე რჩება, ჯამში — არა
+    expect(container!.querySelector('[data-day="2026-10-03"] [data-status="cancelled"]')).not.toBeNull()
     expect(container!.querySelector('[data-testid="duty-period-totals"]')!.textContent).toBe(
       i18n.t('duty.period.totals', { count: 1, hours: '24', pay: '220 ₾' }),
     )
-    const crossed = container!.querySelector<HTMLElement>('[data-testid="duty-list"] [data-status="cancelled"]')!
-    expect(crossed.className).toContain('line-through')
 
-    const row = container!.querySelector('[data-testid="duty-list"] li')!
+    const chip = container!.querySelector('[data-day="2026-10-02"] [data-testid="duty-chip"]')!
     await act(async () => {
-      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
+      chip.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
     })
     await flush()
 
@@ -292,7 +295,7 @@ describe('DutyPage', () => {
     defaults()
     await render('/duty?view=list')
 
-    const row = container!.querySelector('[data-testid="duty-list"] li')!
+    const row = container!.querySelector('[data-testid="duty-row"]')!
     await act(async () => {
       row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
     })
@@ -304,11 +307,48 @@ describe('DutyPage', () => {
     expect(document.getElementById('duty-move-form')).toBeTruthy()
   })
 
+  it('lists every shift by month, newest first, with the filters from the address', async () => {
+    defaults()
+    mocks.fetchDutyShiftPage.mockResolvedValue({
+      items: [shift, { ...shift, id: 9, date: '2026-09-28', status: 'cancelled', pay: 0 }],
+      total: 2,
+      lastPage: 1,
+    })
+    await render('/duty?view=list&fw=2&fs=cancelled&from=2026-09-01')
+
+    expect(mocks.fetchDutyShiftPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, workplace_id: [2], status: ['cancelled'], from: '2026-09-01', sort: 'date_desc' }),
+    )
+    // თვის სათაურები — ოქტომბერი, მერე სექტემბერი; პერიოდის ზოლი სრულ სიაში არ არის
+    expect(container!.querySelectorAll('[data-testid="duty-month"]')).toHaveLength(2)
+    expect(container!.querySelector('[data-testid="duty-period-label"]')).toBeNull()
+    expect(container!.querySelector<HTMLElement>('[data-testid="duty-list"] [data-status="cancelled"]')!.className).toContain('line-through')
+
+    // რედაქტირება — `h-9`
+    const edit = [...container!.querySelectorAll<HTMLButtonElement>('[data-testid="duty-row"] button')].find(
+      (b) => b.textContent?.trim() === i18n.t('actions.edit'),
+    )!
+    expect(edit.className).toContain('h-9')
+  })
+
+  it('fades a light workplace and remembers it on the module', async () => {
+    defaults()
+    await render('/duty?view=list')
+
+    const chip = [...container!.querySelectorAll<HTMLButtonElement>('[data-testid="duty-dim"] button')].find((b) =>
+      b.textContent?.includes('საავადმყოფო'),
+    )!
+    expect(chip.textContent).toContain(i18n.t('duty.dim.dark'))
+    await act(async () => chip.click())
+    expect(chip.textContent).toContain(i18n.t('duty.dim.light'))
+    expect(account.updateModuleSettings).toHaveBeenCalledWith('duty', { dim: [2] })
+  })
+
   it('opens the row context menu in the list view and moves the shift to the trash after confirming', async () => {
     defaults()
     await render('/duty?view=list')
 
-    const row = container!.querySelector('[data-testid="duty-list"] li')!
+    const row = container!.querySelector('[data-testid="duty-row"]')!
     await act(async () => {
       row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
     })

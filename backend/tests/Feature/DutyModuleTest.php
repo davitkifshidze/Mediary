@@ -326,6 +326,35 @@ class DutyModuleTest extends TestCase
         $this->assertSame(3, $periods[1]['totals']['shifts']);
     }
 
+    public function test_the_full_list_pages_newest_first_and_filters(): void
+    {
+        $t = $this->types();
+        $a = $this->workplace('112', [$t['h24'] => 250]);
+        $b = $this->workplace('კლინიკა', hourly: 15);
+
+        foreach (['2026-08-01', '2026-09-01', '2026-10-01', '2026-11-01'] as $date) {
+            $this->postJson('/api/duty/shifts', ['date' => $date, 'workplace_id' => $a->id, 'type_id' => $t['h24']])->assertCreated();
+        }
+        $this->postJson('/api/duty/shifts', ['date' => '2026-10-02', 'workplace_id' => $b->id, 'type_id' => null, 'hours' => 4, 'note' => 'ღამე'])->assertCreated();
+        $cancelled = $this->postJson('/api/duty/shifts', ['date' => '2026-10-03', 'workplace_id' => $a->id, 'type_id' => $t['h24'], 'status' => 'cancelled'])->json('data.id');
+
+        // გვერდები — სამი წლის სია ერთ პასუხად აღარ მოდის; ჯერ ყველაზე ახალი
+        $page = $this->getJson('/api/duty/shifts?page=1&per_page=2')->assertOk();
+        $this->assertSame(['2026-11-01', '2026-10-03'], collect($page->json('data'))->pluck('date')->all());
+        $this->assertSame(6, $page->json('meta.total'));
+        $this->assertSame(['2026-10-02', '2026-10-01'], collect($this->getJson('/api/duty/shifts?page=2&per_page=2')->json('data'))->pluck('date')->all());
+
+        $dates = fn (string $query) => collect($this->getJson("/api/duty/shifts?page=1&per_page=50&{$query}")->assertOk()->json('data'))->pluck('date')->all();
+
+        $this->assertSame(['2026-10-02'], $dates("workplace_id[]={$b->id}"));
+        $this->assertCount(6, $dates("workplace_id[]={$a->id}&workplace_id[]={$b->id}"));
+        $this->assertSame([$cancelled], collect($this->getJson('/api/duty/shifts?page=1&status[]=cancelled')->json('data'))->pluck('id')->all());
+        $this->assertSame(['2026-10-02'], $dates('q='.urlencode('ღამ')));
+        $this->assertSame(['2026-10-03', '2026-10-02', '2026-10-01'], $dates('from=2026-10-01&to=2026-10-31'));
+        $this->assertSame(['2026-08-01', '2026-09-01'], array_slice($dates('sort=date_asc'), 0, 2));
+        $this->getJson('/api/duty/shifts?page=1&status[]=done')->assertStatus(422);
+    }
+
     public function test_the_list_reads_the_current_period_by_default(): void
     {
         $this->types();

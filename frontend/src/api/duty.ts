@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { readPage, type Page } from '@/lib/paged'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
@@ -294,6 +295,29 @@ export interface DutyShiftInput {
   note?: string | null
   is_favorite?: boolean
   status?: DutyShiftStatus
+}
+
+/** **სრული სია** — გვერდებით, თარიღით კლებადი; სამსახური/ტიპი/სტატუსი — რამდენიმე ერთად */
+export interface DutyHistoryParams {
+  page: number
+  per_page: number
+  workplace_id?: number[]
+  type_id?: number[]
+  status?: DutyShiftStatus[]
+  favorite?: boolean
+  q?: string
+  from?: string
+  to?: string
+  sort?: 'date_desc' | 'date_asc'
+}
+
+export async function fetchDutyShiftPage(params: DutyHistoryParams): Promise<Page<DutyShift>> {
+  const { data } = await api.get('/duty/shifts', {
+    params: { ...params, favorite: params.favorite ? 1 : undefined },
+    // ⚠️ სიები `workplace_id[]=1&workplace_id[]=2`-ად — Laravel-ის მასივი
+    paramsSerializer: { indexes: false },
+  })
+  return readPage<DutyShift>(data)
 }
 
 export async function fetchDutyShift(id: number): Promise<DutyShift> {
