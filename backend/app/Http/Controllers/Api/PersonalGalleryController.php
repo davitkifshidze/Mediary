@@ -8,21 +8,22 @@ use App\Models\PersonalAlbum;
 use App\Models\PersonalMedia;
 use App\Services\Personal\PersonalGallery;
 use App\Services\Storage\StorageMeter;
-use App\Support\AppTime;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 /**
  * **პირადი გალერეის შეჯამება და ჯგუფები.**
  *
- * „ფოტო & ვიდეო" ჩანართი ყველაფერს ერთად აჩვენებს, დაჯგუფებით — **ადამიანით ·
- * ალბომით · თვეებით · უჯგუფო**. ⚠️ ჯგუფი სერვერზე ითვლება და არა SPA-ში:
- * ათასობით ფოტოს ჩამოტანა მხოლოდ იმისთვის, რომ თვეებად დაიყოს, სწორედ ის
- * შეცდომაა, რომელსაც სიების გვერდებად დაყოფა ასწორებდა (`LibraryStats`-ის წესი).
+ * „ფოტო & ვიდეო" ჩანართი ყველაფერს ერთად აჩვენებს, დაჯგუფებით — **პიროვნებით ·
+ * ალბომით** (და „დაუჯგუფებელი" — `GET /personal/media?ungrouped=1`). ⚠️ ჯგუფი
+ * სერვერზე ითვლება და არა SPA-ში: ათასობით ფოტოს ჩამოტანა მხოლოდ იმისთვის,
+ * რომ ჯგუფებად დაიყოს, სწორედ ის შეცდომაა, რომელსაც სიების გვერდებად დაყოფა
+ * ასწორებდა (`LibraryStats`-ის წესი).
+ *
+ * ⚠️ **თვეებით დაჯგუფება აღარ არის** — გადაღების თარიღი მხოლოდ სორტირებაა.
  */
 class PersonalGalleryController extends Controller
 {
-    public const GROUP_BY = ['person', 'album', 'month'];
+    public const GROUP_BY = ['person', 'album'];
 
     public function __construct(
         private PersonalGallery $gallery,
@@ -47,10 +48,10 @@ class PersonalGalleryController extends Controller
     }
 
     /**
-     * ჯგუფები — `?by=person|album|month`, თითოს რიცხვი და 4 ესკიზი.
+     * ჯგუფები — `?by=person|album`, თითოს რიცხვი და 4 ესკიზი.
      *
-     * ⚠️ **„უჯგუფო" თავისი ბარათია** (ადამიანის/ალბომის/თარიღის გარეშე), და
-     * ის ბოლოშია — ცარიელი ჯგუფი საერთოდ არ ჩანს.
+     * ⚠️ **„პიროვნების/ალბომის გარეშე" თავისი ბარათია** და ის ბოლოშია —
+     * ცარიელი ჯგუფი საერთოდ არ ჩანს.
      */
     public function groups(Request $request)
     {
@@ -67,7 +68,6 @@ class PersonalGalleryController extends Controller
         $groups = match ($data['by']) {
             'person' => $this->byPerson($base),
             'album' => $this->byAlbum($base),
-            'month' => $this->byMonth($base),
         };
 
         return response()->json(['data' => $groups]);
@@ -120,58 +120,6 @@ class PersonalGalleryController extends Controller
         $out[] = $this->group('album:none', null, ['no_album' => true], $counts->get(''), $previews[''] ?? []);
 
         return array_values(array_filter($out, fn (array $g) => $g['total'] > 0));
-    }
-
-    /**
-     * თვეები — უახლესი ზემოთ; თარიღის გარეშე — ბოლოს.
-     *
-     * ⚠️ **დაჯგუფება PHP-შია და არა SQL-ში**: თვის გამოსახულება ორ დრაივერზე
-     * სხვადასხვაა (`SqlDate`), აქ კი მხოლოდ ერთი სვეტი იკითხება (`taken_at`) —
-     * ათასობით თარიღის ჩამოტანა იაფია, ფოტოების კი არა.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function byMonth($base): array
-    {
-        $rows = (clone $base)->get(['id', 'kind', 'taken_at']);
-
-        $buckets = $rows->groupBy(fn (PersonalMedia $m) => $m->taken_at ? AppTime::at($m->taken_at)->format('Y-m') : 'undated');
-
-        $keys = $buckets->keys()->sort(fn ($a, $b) => match (true) {
-            $a === 'undated' => 1,
-            $b === 'undated' => -1,
-            default => strcmp((string) $b, (string) $a),
-        })->values();
-
-        $out = [];
-
-        foreach ($keys as $key) {
-            $items = $buckets->get($key);
-            $counts = collect([
-                (object) ['kind' => 'photo', 'total' => $items->where('kind', 'photo')->count()],
-                (object) ['kind' => 'video', 'total' => $items->where('kind', 'video')->count()],
-            ]);
-
-            $previews = (clone $base)
-                ->when($key === 'undated', fn ($q) => $q->whereNull('taken_at'), function ($q) use ($key) {
-                    $from = Carbon::createFromFormat('Y-m-d H:i:s', $key.'-01 00:00:00', AppTime::zone());
-
-                    $q->where('taken_at', '>=', $from)->where('taken_at', '<', $from->copy()->addMonth());
-                })
-                ->whereNotNull('thumb_path')
-                ->orderByDesc('taken_at')
-                ->orderByDesc('id')
-                ->limit(4)
-                ->get()
-                ->map(fn (PersonalMedia $m) => $m->thumbUrl())
-                ->filter()
-                ->values()
-                ->all();
-
-            $out[] = $this->group('month:'.$key, $key === 'undated' ? null : $key, ['month' => $key], $counts, $previews);
-        }
-
-        return $out;
     }
 
     /**

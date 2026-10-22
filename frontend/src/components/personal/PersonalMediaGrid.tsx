@@ -29,13 +29,16 @@ import { PersonalMoveDialog } from '@/components/personal/PersonalMoveDialog'
 
 /* ============================================================
    **ფოტოებისა და ვიდეოების ბადე** — ერთი კომპონენტი
-   ყველა ადგილისთვის: „ფოტო & ვიდეო", ადამიანის ჩანართები, ალბომი, ჯგუფი.
+   ყველა ადგილისთვის: „ფოტო & ვიდეო", პიროვნების ჩანართები, ალბომი, ჯგუფი.
 
    ⚠️ **`PhotoGrid`-ზე დგას** (გალერეის ბადე): მონიშვნა, ლაითბოქსი, ჩამოტვირთვა,
    კონტექსტური მენიუ — და პირადი გალერეის დამატებები: ვიდეო ლაითბოქსში, რჩეული,
-   გადატანა ადამიანში/ალბომში, „მთავარად დაყენება" ადამიანზე/ალბომზე,
+   გადატანა პიროვნებაში/ალბომში, „მთავარად დაყენება" პიროვნებაზე/ალბომზე,
    წარწერა. მესამე ბადის დაწერა ზუსტად ის ასლი იქნებოდა, რომელიც სხვაგვარად
    მოიქცეოდა.
+
+   ⚠️ **„წარწერა" ფილის ღილაკიცაა** (`quick` — „რჩეული · წარწერა · წაშლა" + ⋯)
+   და გახსნილ ფოტოზე ლაითბოქსის ზოლშიც — მენიუში დამალული აღარ არის.
 
    ⚠️ **გვერდები სერვერისაა** (ნომრები + „მეტის ჩვენება", `usePages`), ბადე კი
    მიღებულს ერთად ხატავს. ⚠️ გვერდზე ფოტოს ბადის ნაგულისხმევი 20-ია და არა სიის 10 —
@@ -51,7 +54,7 @@ export function PersonalMediaGrid({
   extraTools,
 }: {
   filters: PersonalMediaFilters
-  /** ადამიანის/ალბომის მთავარი ფოტო — „მთავარად დაყენება" და ვარსკვლავის ნიშანი */
+  /** პიროვნების/ალბომის მთავარი ფოტო — „მთავარად დაყენება" და ვარსკვლავის ნიშანი */
   primary?: { id: number | null; set: (mediaId: number) => void }
   emptyText?: string
   emptyHint?: ReactNode
@@ -102,6 +105,8 @@ export function PersonalMediaGrid({
     }
   }
 
+  const caption = (id: number) => setCaptioning(media.find((m) => m.id === id) ?? null)
+
   if (mediaQ.isLoading) return <GalleryStackSkeleton />
 
   return (
@@ -121,13 +126,28 @@ export function PersonalMediaGrid({
             ? [
                 {
                   key: 'caption',
-                  label: t('personal.media.caption'),
+                  label: t('personal.media.captionLabel'),
                   icon: PenLine,
-                  run: () => setCaptioning(media.find((m) => m.id === item.id) ?? null),
+                  run: () => caption(item.id),
+                  quick: true,
                 },
               ]
             : []
         }
+        lightboxExtra={(item, close) => (
+          <button
+            type="button"
+            className="yarl__button flex items-center gap-1.5 text-sm"
+            data-testid="lightbox-caption"
+            onClick={() => {
+              close()
+              caption(item.id)
+            }}
+          >
+            <PenLine className="size-4" />
+            {t('personal.media.captionLabel')}
+          </button>
+        )}
         extraTools={extraTools}
         emptyText={emptyText ?? t('personal.media.empty')}
         emptyIcon={<ImagePlus className="size-6" />}

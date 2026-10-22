@@ -13,12 +13,15 @@ import i18n from '@/i18n'
 /* ============================================================
    **პირადი გალერეა.**
 
-   მოწმდება: ადამიანების ბარათები მთვლელებით; „ფოტო & ვიდეო"-ს დაჯგუფება
-   სერვერის ჯგუფებს ითხოვს და თვის სახელს ხატავს; ატვირთვა **სათითაოდ** მიდის,
-   ადამიანის კონტექსტით, ზედმეტად დიდი კი სერვერამდე არ მიდის; ბადის უჯრა —
-   ესკიზი ბადეში, სრული ფოტო ლაითბოქსში, ვიდეო პირდაპირი მისამართით.
+   მოწმდება: პიროვნებების ბარათები მთვლელებით; ჭრილები ბარათ-ტაბებია რიცხვებით;
+   „ფოტო & ვიდეო"-ს დაჯგუფება (ყველა · პიროვნებით · ალბომით · დაუჯგუფებელი,
+   თვეების გარეშე) სერვერის ჯგუფებს ითხოვს, ქვე-ფილტრი (ყველა · ფოტოები ·
+   ვიდეოები · რჩეული) ერთი რიგია, ძებნა ჯგუფურ ხედშიც ჩანს და „ყველაზე"
+   გადადის; „წარწერა" ფილის ღილაკიცაა და ლაითბოქსშიც; ატვირთვა **სათითაოდ**
+   მიდის, პიროვნების კონტექსტით, ზედმეტად დიდი კი სერვერამდე არ მიდის; ბადის
+   უჯრა — ესკიზი ბადეში, სრული ფოტო ლაითბოქსში, ვიდეო პირდაპირი მისამართით.
 
-   ჩაკეტილი ადამიანი ბოქლომიანი ბარათია: დაჭერა პაროლს ითხოვს და არა
+   ჩაკეტილი პიროვნება ბოქლომიანი ბარათია: დაჭერა პაროლს ითხოვს და არა
    გვერდს ხსნის, გვერდი კი მხოლოდ ბოქლომს ხატავს (ბადე საერთოდ არ ითხოვება).
    საჯარო ალბომის ყდა საჯარო ფაილის მარშრუტიდან მოდის.
    ============================================================ */
@@ -222,32 +225,114 @@ describe('PersonalPage', () => {
     expect(container!.textContent).toContain(i18n.t('personal.people.empty'))
   })
 
-  it('groups photos by month through the server and names the month', async () => {
+  it('shows the three cuts as cards with their counts and opens one', async () => {
     defaults()
-    mocks.fetchPersonalGroups.mockResolvedValue([
-      {
-        key: 'month:2024-07', title: '2024-07', subtitle: null, filter: { month: '2024-07' },
-        photos: 3, videos: 0, total: 3, previews: [],
-      },
-      {
-        key: 'month:undated', title: null, subtitle: null, filter: { month: 'undated' },
-        photos: 1, videos: 0, total: 1, previews: [],
-      },
+    const { PersonalPage } = await import('@/pages/PersonalPage')
+    await render(
+      h(
+        Routes,
+        null,
+        h(Route, { path: '/personal', element: h(PersonalPage, { cut: 'people' }) }),
+        h(Route, { path: '/personal/albums', element: h('p', { 'data-testid': 'where' }, 'albums') }),
+      ),
+    )
+
+    const cards = [...container!.querySelectorAll<HTMLButtonElement>('nav button[aria-pressed]')]
+    expect(cards.map((b) => b.textContent)).toEqual([
+      `${i18n.t('personal.cut.people')}2`,
+      `${i18n.t('personal.cut.albums')}0`,
+      // ფოტო & ვიდეო = ფოტო + ვიდეო
+      `${i18n.t('personal.cut.media')}6`,
     ])
+    expect(cards[0].getAttribute('aria-pressed')).toBe('true')
+    // ხაზგასმული ბმულები აღარ არის
+    expect(container!.querySelector('nav a')).toBeNull()
+
+    await act(async () => cards[1].click())
+    expect(container!.querySelector('[data-testid="where"]')).not.toBeNull()
+  })
+})
+
+describe('PersonalMediaCut', () => {
+  const summary = () =>
+    mocks.fetchPersonalSummary.mockResolvedValue({
+      people: 2, albums: 1, photos: 4, videos: 2, favorites: 1, ungrouped: 3, bytes: 2048,
+      storage: { used: 0, quota: 1, remaining: 1, percent: 0, warn_at: 80, critical_at: 95 },
+    })
+  const cards = (testid: string) =>
+    [...container!.querySelectorAll<HTMLButtonElement>(`[data-testid="${testid}"] button[aria-pressed]`)]
+
+  async function type(el: HTMLInputElement, value: string) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+    await act(async () => {
+      setter.call(el, value)
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+  }
+
+  it('groups by person, album or ungrouped — no months — and filters in one row of cards', async () => {
+    defaults()
+    summary()
+    // ⚠️ დიდი სია — „გვერდზე რამდენი" პატარაზე არ იხატება
+    mocks.fetchPersonalMedia.mockResolvedValue({ items: [media(1)], total: 40 })
     const { PersonalPage } = await import('@/pages/PersonalPage')
     await render(h(PersonalPage, { cut: 'media' }), '/personal/media')
 
-    expect(mocks.fetchPersonalMedia).toHaveBeenCalled()
+    expect(cards('personal-media-groupings').map((b) => b.textContent)).toEqual([
+      `${i18n.t('personal.groups.all')}6`,
+      `${i18n.t('personal.groups.person')}2`,
+      `${i18n.t('personal.groups.album')}1`,
+      `${i18n.t('personal.groups.ungrouped')}3`,
+    ])
+    // რჩეული — მეოთხე ბარათი იმავე რიგში და არა ცალკე ღილაკი
+    expect(cards('personal-media-toolbar').map((b) => b.textContent)).toEqual([
+      `${i18n.t('personal.kind.all')}6`,
+      `${i18n.t('personal.kind.photo')}4`,
+      `${i18n.t('personal.kind.video')}2`,
+      `${i18n.t('filter.favorite')}1`,
+    ])
+    // გვერდზე რამდენი — ერთი ამრჩევი
+    expect(container!.querySelectorAll('[data-testid="page-size-pick"]')).toHaveLength(1)
 
-    const byMonth = [...container!.querySelectorAll('button')].find((b) => b.textContent?.includes(i18n.t('personal.groups.month')))
-    expect(byMonth).toBeTruthy()
-    await act(async () => byMonth!.click())
+    await act(async () => cards('personal-media-groupings')[1].click())
     await flush()
+    expect(mocks.fetchPersonalGroups).toHaveBeenLastCalledWith('person', { kind: undefined, favorite: undefined })
 
-    expect(mocks.fetchPersonalGroups).toHaveBeenCalledWith('month', expect.anything())
-    const text = container!.textContent ?? ''
-    expect(text).toContain('2024')
-    expect(text).toContain(i18n.t('personal.groups.undated'))
+    await act(async () => cards('personal-media-toolbar')[3].click())
+    await flush()
+    expect(mocks.fetchPersonalGroups).toHaveBeenLastCalledWith('person', { kind: undefined, favorite: true })
+
+    // ძებნა ჯგუფურ ხედშიც ჩანს — აკრეფა „ყველაზე" გადადის
+    const search = container!.querySelector<HTMLInputElement>(`input[placeholder="${i18n.t('personal.media.search')}"]`)!
+    await type(search, 'ზღვა')
+    await flush()
+    expect(cards('personal-media-groupings')[0].getAttribute('aria-pressed')).toBe('true')
+    expect(mocks.fetchPersonalMedia).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'ზღვა', favorite: true }))
+  })
+
+  it('puts the caption on the tile and in the lightbox', async () => {
+    defaults()
+    summary()
+    const { PersonalPage } = await import('@/pages/PersonalPage')
+    await render(h(PersonalPage, { cut: 'media' }), '/personal/media')
+
+    const bar = container!.querySelector('[data-testid="photo-actions"]')!
+    expect([...bar.querySelectorAll('button')].map((b) => b.textContent?.trim())).toEqual([
+      i18n.t('filter.favorite'),
+      i18n.t('personal.media.captionLabel'),
+      i18n.t('confirm.delete'),
+      '',
+    ])
+
+    // ლაითბოქსი: „წარწერა" მას ხურავს და ფანჯარას ხსნის
+    await act(async () => container!.querySelector<HTMLButtonElement>('ul > li button[aria-label]')!.click())
+    await flush()
+    const inLightbox = document.querySelector<HTMLButtonElement>('[data-testid="lightbox-caption"]')!
+    expect(inLightbox.textContent).toBe(i18n.t('personal.media.captionLabel'))
+    await act(async () => inLightbox.click())
+    await flush()
+    expect(document.querySelector('[data-testid="lightbox-caption"]')).toBeNull()
+    expect(document.querySelector('#personal-caption')).not.toBeNull()
   })
 })
 

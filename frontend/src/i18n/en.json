@@ -4312,11 +4312,9 @@
       "all": "All",
       "person": "By person",
       "album": "By album",
-      "month": "By month",
       "ungrouped": "Ungrouped",
       "noPerson": "Without a person",
-      "noAlbum": "Without an album",
-      "undated": "Undated"
+      "noAlbum": "Without an album"
     },
     "info": {
       "file": "File",
@@ -4418,7 +4416,8 @@
       "hintPerson": "A locked person's photos, videos, albums, note and extra fields no longer leave the server — the grid shows only the name and count, with a padlock. Search and totals skip them too. Unlocking lasts for this session — signing out locks it again.",
       "hintAlbum": "A locked album's photos and videos no longer leave the server — the grid shows only the name and count, with a padlock. A locked album can't be public. Unlocking lasts for this session — signing out locks it again.",
       "notPublic": "A locked album can't be public — remove the lock first."
-    }
+    },
+    "cutsLabel": "Personal gallery sections"
   },
   "courseCategories": {
     "title": "Course categories",

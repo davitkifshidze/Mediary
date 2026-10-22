@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Upload } from 'lucide-react'
 import { fetchPersonalSummary, PERSONAL_KEY } from '@/api/personal'
+import { useModules } from '@/lib/modules'
 import { PERSONAL_CUTS, type PersonalCut } from '@/lib/personalCuts'
-import { cn, formatBytes } from '@/lib/utils'
+import { formatBytes } from '@/lib/utils'
 import { StorageBar } from '@/components/StorageBar'
 import { Button } from '@/components/ui/button'
+import { CutTabs } from '@/components/ui/cut-tabs'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { AddAlbumButton, PersonalAlbumsCut } from '@/components/personal/PersonalAlbumsCut'
@@ -23,8 +25,12 @@ import { PersonalUploadDialog } from '@/components/personal/PersonalUploadDialog
    იყოს ჯგუფები — პიროვნებებით, ალბომებით ან როგორც იქნება შინაარსობრივად".
 
    ⚠️ **გალერეის გვერდის ფორმა** (`GalleryPage`): მთვლელები და ადგილი ზემოთ,
-   ქვე-ნავიგაცია სეგმენტებად (იგივე ჭრილები საიდბარშიც — `PERSONAL_CUTS`),
+   ქვე-ნავიგაცია ბარათ-ტაბებად (იგივე ჭრილები საიდბარშიც — `PERSONAL_CUTS`),
    ქვემოთ ჭრილი. „ატვირთვა" სათაურშია და ყველა ჭრილიდან ხელმისაწვდომია.
+
+   ⚠️ **ტაბი ბარათია და არა ხაზგასმული ბმული** („ქარდების სტილად") — მოდულის
+   ფერში, აიქონითა და რიცხვით (`summary`: პიროვნებები · ალბომები · ფოტო+ვიდეო);
+   არჩევა მისამართზე გადადის, ე.ი. მარშრუტები და საიდბარი იგივეა.
 
    ⚠️ **ფაილები პირად დისკზეა** — `/storage/*` მათ ვერ ხედავს; ბადე ესკიზს
    blob-ად კითხულობს, ვიდეო Range-ით უკრავს (`api/personal.ts`).
@@ -32,10 +38,22 @@ import { PersonalUploadDialog } from '@/components/personal/PersonalUploadDialog
 
 export function PersonalPage({ cut = 'people' }: { cut?: PersonalCut }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { all } = useModules()
   const [uploading, setUploading] = useState(false)
 
   const summaryQ = useQuery({ queryKey: [PERSONAL_KEY, 'summary'], queryFn: fetchPersonalSummary })
   const summary = summaryQ.data
+  const color = all.find((m) => m.key === 'personal')?.color ?? null
+
+  /** ჭრილის რიცხვი — „ფოტო & ვიდეო" ფოტოსა და ვიდეოს ჯამია */
+  const countOf = (key: PersonalCut) => {
+    if (!summary) return undefined
+    if (key === 'people') return summary.people
+    if (key === 'albums') return summary.albums
+
+    return summary.photos + summary.videos
+  }
 
   return (
     <PageContainer>
@@ -70,24 +88,19 @@ export function PersonalPage({ cut = 'people' }: { cut?: PersonalCut }) {
         </section>
       )}
 
-      {/* ---------- ქვე-ნავიგაცია ---------- */}
-      <nav className="fb-scroll mb-5 flex gap-1 overflow-x-auto border-b border-border pb-px">
-        {PERSONAL_CUTS.map(({ key, path, icon: Icon }) => (
-          <NavLink
-            key={key}
-            to={path}
-            end={key === 'people'}
-            className={({ isActive }) =>
-              cn(
-                '-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors',
-                isActive ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
-              )
-            }
-          >
-            <Icon className="size-4" />
-            {t(`personal.cut.${key}`)}
-          </NavLink>
-        ))}
+      {/* ---------- ქვე-ნავიგაცია — ბარათ-ტაბები ---------- */}
+      <nav className="mb-5" aria-label={t('personal.cutsLabel')}>
+        <CutTabs
+          value={cut}
+          onChange={(key) => navigate(PERSONAL_CUTS.find((c) => c.key === key)?.path ?? '/personal')}
+          options={PERSONAL_CUTS.map(({ key, icon }) => ({
+            key,
+            label: t(`personal.cut.${key}`),
+            icon,
+            color,
+            count: countOf(key),
+          }))}
+        />
       </nav>
 
       {cut === 'people' && <PersonalPeopleCut />}

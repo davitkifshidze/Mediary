@@ -383,8 +383,6 @@ class PersonalGalleryTest extends TestCase
         $this->assertSame(2, $count('ungrouped=1'));
         $this->assertSame(1, $count('kind=video'));
         $this->assertSame(1, $count('favorite=1'));
-        $this->assertSame(1, $count('month=2024-07'));
-        $this->assertSame(1, $count('month=undated'));
         $this->assertSame(1, $count('q='.urlencode('ზღვ')));
 
         // გადაღების თარიღით — უახლესი პირველი, თარიღის გარეშე ბოლოს
@@ -408,10 +406,8 @@ class PersonalGalleryTest extends TestCase
         $byAlbum = collect($this->getJson('/api/personal/media/groups?by=album')->json('data'))->keyBy('key');
         $this->assertSame(['album_id' => $album->id], $byAlbum["album:{$album->id}"]['filter']);
 
-        $byMonth = collect($this->getJson('/api/personal/media/groups?by=month')->json('data'));
-        $this->assertSame(['month:2024-07', 'month:undated'], $byMonth->pluck('key')->all());
-        $this->assertSame(2, $byMonth[0]['photos']);
-        $this->assertCount(2, $byMonth[0]['previews']);
+        // თვეებით დაჯგუფება აღარ არსებობს
+        $this->getJson('/api/personal/media/groups?by=month')->assertUnprocessable();
 
         $this->getJson('/api/personal/summary')
             ->assertOk()

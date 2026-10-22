@@ -270,8 +270,13 @@ export function PhotoGrid({
   emptyIcon?: ReactNode
   emptyHint?: ReactNode
   emptyActions?: ReactNode
-  /** გახსნილ ფოტოზე დამატებითი კონტროლი (გალერეის თემის select) */
-  lightboxExtra?: (item: PhotoItem) => ReactNode
+  /**
+   * გახსნილ ფოტოზე დამატებითი კონტროლი (მაგ. პირადი გალერეის „წარწერა").
+   *
+   * ⚠️ `close` ლაითბოქსს ხურავს: ლაითბოქსი (`--yarl__portal_zindex: 80`) მოდალზე
+   * (60/61) მაღლაა, ე.ი. მისგან გახსნილი ფანჯარა მის ქვეშ დარჩებოდა.
+   */
+  lightboxExtra?: (item: PhotoItem, close: () => void) => ReactNode
   className?: string
   /**
    * „რამდენი გამოჩნდეს" — **ორი რეჟიმი**:
@@ -672,7 +677,7 @@ export function PhotoGrid({
           toolbar={{
             buttons: [
               ...(lightboxExtra && viewable[open]
-                ? [<span key="extra">{lightboxExtra(viewable[open])}</span>]
+                ? [<span key="extra">{lightboxExtra(viewable[open], () => setOpen(null))}</span>]
                 : []),
               'close',
             ],

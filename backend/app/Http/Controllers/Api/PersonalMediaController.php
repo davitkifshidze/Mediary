@@ -61,8 +61,6 @@ class PersonalMediaController extends Controller
             'no_album' => ['nullable', 'boolean'],
             'kind' => ['nullable', 'in:'.implode(',', PersonalMedia::KINDS)],
             'favorite' => ['nullable', 'boolean'],
-            // `YYYY-MM` ან `undated`
-            'month' => ['nullable', 'string', 'regex:/^(\d{4}-\d{2}|undated)$/'],
             'q' => ['nullable', 'string', 'max:200'],
             'sort' => ['nullable', 'in:'.implode(',', self::SORTS)],
         ]);
@@ -284,15 +282,6 @@ class PersonalMediaController extends Controller
             ->when(! empty($data['no_album']), fn ($q) => $q->whereNull('album_id'))
             ->when(isset($data['kind']), fn ($q) => $q->where('kind', $data['kind']))
             ->when(! empty($data['favorite']), fn ($q) => $q->where('is_favorite', true))
-            ->when(isset($data['month']), function ($q) use ($data) {
-                if ($data['month'] === 'undated') {
-                    return $q->whereNull('taken_at');
-                }
-
-                $from = Carbon::createFromFormat('Y-m-d H:i:s', $data['month'].'-01 00:00:00', AppTime::zone());
-
-                return $q->where('taken_at', '>=', $from)->where('taken_at', '<', $from->copy()->addMonth());
-            })
             ->when(isset($data['q']) && trim((string) $data['q']) !== '', function ($q) use ($data) {
                 $like = Like::contains(trim((string) $data['q']));
 

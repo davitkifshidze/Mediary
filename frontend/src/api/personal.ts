@@ -6,13 +6,13 @@ import type { Visibility } from '@/api/publicProfile'
 /* ============================================================
    **პირადი გალერეა — მოდული `personal`.**
 
-   ადამიანები · ალბომები („გარეთ" ან ადამიანის შიგნით) · ფოტო და ვიდეო
+   პიროვნებები · ალბომები („გარეთ" ან პიროვნების შიგნით) · ფოტო და ვიდეო
    მოწყობილობიდან. ⚠️ **ყველა ფაილი პირად დისკზეა**: `url`/`thumb` API-ის
    გზებია და არა `/storage/*` — ესკიზი blob-ად იკითხება (`usePrivateFileUrl`),
    ვიდეო კი `<video src>`-ით უკრავს (`personalFileUrl()`, Range-ით).
 
-   ⚠️ **ინვარიანტი სერვერისაა**: ადამიანის ალბომში ჩაგდებული ფოტო მისი
-   ადამიანი ხდება, სხვა ადამიანზე გადატანილი კი წინა ადამიანის ალბომს
+   ⚠️ **ინვარიანტი სერვერისაა**: პიროვნების ალბომში ჩაგდებული ფოტო მისი
+   პიროვნება ხდება, სხვა პიროვნებაზე გადატანილი კი წინა პიროვნების ალბომს
    ტოვებს — SPA ამას არ იმეორებს, მხოლოდ პასუხს ხატავს.
    ============================================================ */
 
@@ -25,8 +25,8 @@ export const PERSONAL_SORTS = ['taken', 'added', 'manual'] as const
 
 export type PersonalSort = (typeof PERSONAL_SORTS)[number]
 
-/** „ფოტო & ვიდეო"-ს დაჯგუფება */
-const PERSONAL_GROUPINGS = ['person', 'album', 'month'] as const
+/** „ფოტო & ვიდეო"-ს სერვერული დაჯგუფება („დაუჯგუფებელი" — ფილტრია, `ungrouped`) */
+const PERSONAL_GROUPINGS = ['person', 'album'] as const
 
 export type PersonalGrouping = (typeof PERSONAL_GROUPINGS)[number]
 
@@ -111,19 +111,17 @@ export interface PersonalMediaFilters extends ListParams {
   no_album?: boolean
   kind?: PersonalKind
   favorite?: boolean
-  /** `YYYY-MM` ან `undated` */
-  month?: string
   q?: string
   sort?: PersonalSort
 }
 
 export interface PersonalGroup {
-  /** `person:5` · `person:none` · `album:3` · `month:2024-07` · `month:undated` */
+  /** `person:5` · `person:none` · `album:3` · `album:none` */
   key: string
-  /** `null` — „უჯგუფო" (ადამიანის/ალბომის/თარიღის გარეშე) */
+  /** `null` — პიროვნების/ალბომის გარეშე */
   title: string | null
   subtitle: string | null
-  filter: Partial<Pick<PersonalMediaFilters, 'person_id' | 'album_id' | 'no_person' | 'no_album' | 'month'>>
+  filter: Partial<Pick<PersonalMediaFilters, 'person_id' | 'album_id' | 'no_person' | 'no_album'>>
   photos: number
   videos: number
   total: number
