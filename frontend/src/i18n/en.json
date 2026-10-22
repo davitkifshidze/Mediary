@@ -3186,7 +3186,7 @@
     "playInPlayer": "Play in the player",
     "popOut": "Pop out",
     "popIn": "Back to the window",
-    "inFrame": "Playing in the floating frame — bring it back here",
+    "back": "Back",
     "moveFrame": "Move the frame",
     "resizeFrame": "Resize the frame",
     "toBubble": "Collapse to a bubble",

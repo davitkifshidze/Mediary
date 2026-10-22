@@ -163,7 +163,7 @@ describe('VideoDetail — დაკვრა დამკვრელშია',
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('ამ ფანჯარაში მყოფი ვიდეო ესკიზზე ჯდება; „გატანა" და „აქ დაბრუნება"', async () => {
+  it('ამ ფანჯარაში მყოფი ვიდეო ესკიზზე ჯდება; „გატანა" ფანჯარას ხურავს, ხელახლა გახსნილში — „ფანჯარაში დაბრუნება"', async () => {
     const onClose = vi.fn()
     await mount(video(), { onPlay: vi.fn(), onClose }, true)
 
@@ -173,17 +173,20 @@ describe('VideoDetail — დაკვრა დამკვრელშია',
 
     await act(async () => buttonWith('playback.popOut')!.click())
     await flush()
+    // „გატანა" ფანჯარას ხურავს (`PlayerWindowScope`), ვიდეო კი ჩარჩოში რჩება —
     // jsdom-ს `matchMedia` არ აქვს → ვიწრო ეკრანი → მოტივტივე ჩარჩოს ნაცვლად ზოლი
+    expect(onClose).toHaveBeenCalledTimes(1)
     expect(api!.popped).toBe(true)
     expect(api!.layout).toBe('bar')
-    expect(spotButton()?.textContent).toContain(i18n.t('playback.inFrame'))
-    expect(buttonWith('playback.popOut')).toBeUndefined()
+    expect(api!.playing).toBe(true)
 
+    // (ტესტში `onClose` ფანჯარას არ აქრობს — ეს ხელახლა გახსნილი ფანჯარაა) — დაბრუნება აქ
+    expect(spotButton()?.textContent).toContain(i18n.t('playback.popIn'))
+    expect(buttonWith('playback.popOut')).toBeUndefined()
     await act(async () => spotButton()!.click())
     await flush()
     expect(api!.layout).toBe('inline')
     expect(api!.playing).toBe(true)
-    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('სათაურის ქვეშ სამი ბეჯია და „რედაქტირება" გვერდს გადასცემს', async () => {

@@ -7,6 +7,7 @@ import {
   COURSE_STATUSES,
   createCourse,
   deleteCourse,
+  fetchCourse,
   fetchCourseCategories,
   fetchCourseMetadata,
   fetchCourses,
@@ -98,7 +99,7 @@ export function CoursesPage() {
   const { toast } = useToast()
   const confirm = useConfirm()
   const navigate = useNavigate()
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
   const [layout, setLayout] = useRecordLayout('course', 'rows')
   const [pageSize, setPageSize, columns] = usePageSize('course', layout)
@@ -130,6 +131,19 @@ export function CoursesPage() {
     const timer = setTimeout(() => setTerm(q.trim()), 350)
     return () => clearTimeout(timer)
   }, [q])
+
+  /* `?open=<id>` — კურსის ფანჯარა (მოტივტივე ჩარჩოს „ფანჯარაში დაბრუნება" აქ მოდის,
+     ვიდეოების `?open=`-ის წესით); პარამეტრი მაშინვე იშლება, რომ „უკან" ხელახლა არ გახსნას */
+  useEffect(() => {
+    const open = Number(params.get('open'))
+    if (!open) return
+    const next = new URLSearchParams(params)
+    next.delete('open')
+    setParams(next, { replace: true })
+    fetchCourse(open)
+      .then(setDetail)
+      .catch((e) => toast({ title: errorMessage(e), variant: 'error' }))
+  }, [params, setParams, toast])
 
   const drill = useDrillParams()
   const filters: CourseFilters = {

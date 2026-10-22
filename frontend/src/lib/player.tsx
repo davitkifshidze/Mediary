@@ -3,11 +3,14 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactNode,
+  type RefObject,
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { CustomRecord } from '@/api/customRecords'
@@ -40,8 +43,12 @@ import { safeGet, safeRemove, safeSet } from '@/lib/storage'
    **ვიდეო და სიმღერა სხვადასხვაგვარად დგას:**
    - **ვიდეო** (`video`/`link`) მარჯვენა პანელს აღარ იყენებს: ფანჯარაში
      (`inline`) უკრავს — დამკვრელი ფანჯრის ესკიზზე ჯდება (`usePlayerAnchor`);
-     „გატანა" (ან ფანჯრის დახურვა/ჩანართის შეცვლა) — **მოტივტივე ჩარჩო**
-     (`float`); ვიწრო ეკრანზე მოტივტივე ჩარჩოს ნაცვლად ქვედა ზოლი.
+     **„გატანა" ვიდეოს მოტივტივე ჩარჩოში ამაგრებს და ფანჯარას ხურავს**
+     (`float`; ვიწრო ეკრანზე ქვედა ზოლი) — ის რჩება, სანამ თვითონ არ დახურავ.
+     **ფანჯრის დახურვა გაუტანელ ვიდეოსაც ხურავს** — ფანჯარა (`ModalShell` →
+     `PlayerWindowScope`) იმ რიგის „მფლობელია", რომლის ვიდეოც მასში უკრავდა
+     (რიგი შემდეგზე გადასულიც). ჩანართის შეცვლაზე ფანჯარა ღიაა — ვიდეო
+     დროებით ჩარჩოშია და ფანჯრის დახურვისას მასთან ერთად იხურება.
    - **სიმღერა** — პანელი/ზოლი, როგორც აქამდე, + „ჩაკეცვა" ბუშტად (`bubble`).
    ⚠️ ყველა გადასვლაში ფრეიმი იგივე DOM-კვანძია — დაკვრა არ წყდება.
    ============================================================ */
@@ -92,11 +99,27 @@ export function itemKey(item: Pick<PlayerItem, 'kind' | 'id'>): string {
   return `${item.kind}-${item.id}`
 }
 
-/** ფანჯრის ესკიზი, რომელზეც ვიდეო ჯდება */
+/** ფანჯრის ესკიზი, რომელზეც ვიდეო ჯდება; `window` — რომელ ფანჯარაშია (`null` — გვერდზე) */
 interface PlayerAnchor {
   key: string
   el: HTMLElement
+  window: PlayerWindow | null
 }
+
+/**
+ * **ფანჯარა** (`ModalShell`), რომელშიც ვიდეოს ადგილი დგას. `popOut` — მისი
+ * დახურვა (ref, რომ `onClose`-ის ყოველ ახალ იდენტობაზე ესკიზი ხელახლა არ
+ * დარეგისტრირდეს).
+ */
+interface PlayerWindow {
+  id: string
+  popOut: RefObject<(() => void) | null>
+}
+
+const PlayerWindowContext = createContext<PlayerWindow | null>(null)
+
+/** ფანჯრის დახურვის შეტყობინება — ცალკე, სტაბილური კონტექსტი (`PlayerApi` ყოველ ცვლილებაზე ახლდება) */
+const PlayerWindowsContext = createContext<{ release: (id: string) => void } | null>(null)
 
 /** ვიწრო (მობილური) ეკრანი — მოტივტივე ჩარჩო იქ ქვედა ზოლია */
 const NARROW_QUERY = '(min-width: 640px)'
@@ -225,8 +248,10 @@ interface PlayerApi {
   /** მიმდინარე ვიდეოს ფანჯრის ესკიზი (`inline`-ის ადგილი) */
   anchor: HTMLElement | null
   /** ფანჯრის ესკიზის რეგისტრაცია (`usePlayerAnchor`) */
-  registerAnchor: (key: string, el: HTMLElement | null) => void
-  /** „გატანა": ვიდეო ფანჯრიდან მოტივტივე ჩარჩოში */
+  registerAnchor: (key: string, el: HTMLElement | null, window?: PlayerWindow | null) => void
+  /** ვინ გაუშვა რიგი (`play`-ის მეოთხე არგუმენტი — კურსი, გალერეის სია); ფანჯრის ადგილი მას ცნობს */
+  origin: string | null
+  /** „გატანა": ვიდეო ფანჯრიდან მოტივტივე ჩარჩოში — ფანჯარა იხურება */
   popped: boolean
   popOut: () => void
   /** ფანჯარაში დაბრუნება (ფანჯარა ღია თუ არაა, `Player` მას `href`-ით ხსნის) */
@@ -246,7 +271,7 @@ interface PlayerApi {
   panelWidth: string
   /** გადათრევა მიმდინარეობს — სცენაზე გამჭვირვალე ფენა, რომ iframe-მა მაუსი არ „შეჭამოს" */
   resizing: boolean
-  play: (items: PlayerItem[], startAt?: number, source?: string | null) => void
+  play: (items: PlayerItem[], startAt?: number, source?: string | null, origin?: string | null) => void
   toggle: () => void
   next: () => void
   prev: () => void
@@ -348,6 +373,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [anchor, setAnchor] = useState<PlayerAnchor | null>(null)
   const [popped, setPopped] = useState(false)
   const [bubbled, setBubbled] = useState(false)
+  const [origin, setOrigin] = useState<string | null>(null)
+  /* ⚠️ ref-ები, რომ ფანჯრის დახურვამ (დემონტაჟი) **იმავე წამის** მდგომარეობა წაიკითხოს:
+     „გატანა" ჯერ `popped`-ს წერს, მერე ფანჯარას ხურავს — state ჯერ არ განახლებულა */
+  const poppedRef = useRef(false)
+  /** რომელ ფანჯარაში უკრავდა მიმდინარე რიგის ვიდეო ბოლოს (`inline`) — ის არის „მფლობელი" */
+  const ownerRef = useRef<string | null>(null)
+  const anchorRef = useRef<PlayerAnchor | null>(null)
+  anchorRef.current = anchor
   const narrow = !useMediaQuery(NARROW_QUERY)
   const maxWidth = panelCeiling(useSettings().settings.playerMaxWidth)
   const panelWidth = panelWidthValue(width, maxWidth)
@@ -401,6 +434,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           ? 'side'
           : 'bar'
 
+  /* ფანჯრის ესკიზზე ჩამჯდარი ვიდეო ამ ფანჯარას ეკუთვნის (იხ. `release`) */
+  useEffect(() => {
+    if (layout === 'inline' && anchor?.window) ownerRef.current = anchor.window.id
+  }, [layout, anchor])
+
   const start = useCallback((uid: number) => {
     setCurrentUid(uid)
     setPlaying(true)
@@ -411,12 +449,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /* ⚠️ ახალი რიგი „გატანას" აუქმებს: ბარათის „დაკვრა" ფანჯარას ხსნის და ვიდეო
      იქ უნდა ჩაჯდეს — წინა ვიდეოს „გატანა" ახალზე არ ვრცელდება. */
   const play = useCallback(
-    (items: PlayerItem[], startAt = 0, label: string | null = null) => {
+    (items: PlayerItem[], startAt = 0, label: string | null = null, from: string | null = null) => {
       if (!items.length) return
       const entries = items.map((item) => ({ ...item, uid: nextUid++ }))
       setQueue(entries)
       setSource(label)
+      setOrigin(from)
       setPopped(false)
+      poppedRef.current = false
+      // ახალ რიგს მფლობელი ჯერ არ ჰყავს — ის ფანჯარაა, სადაც პირველად ჩაჯდება (`inline`)
+      ownerRef.current = null
       start(entries[Math.min(Math.max(startAt, 0), entries.length - 1)].uid)
     },
     [start],
@@ -425,12 +467,29 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /* ⚠️ ref-callback-იდან მოდის: ესკიზი მონტაჟზე ირეგისტრირებს, დემონტაჟზე —
      მხოლოდ **საკუთარ** რეგისტრაციას შლის (ახალი ფანჯარა ძველზე ადრე შეიძლება
      დამონტაჟდეს, და მაშინ ძველის `null` ახალს წაშლიდა). */
-  const registerAnchor = useCallback((key: string, el: HTMLElement | null) => {
-    setAnchor((prev) => (el ? (prev?.el === el && prev.key === key ? prev : { key, el }) : prev?.key === key ? null : prev))
+  const registerAnchor = useCallback((key: string, el: HTMLElement | null, win: PlayerWindow | null = null) => {
+    setAnchor((prev) =>
+      el
+        ? prev?.el === el && prev.key === key && prev.window === win
+          ? prev
+          : { key, el, window: win }
+        : prev?.key === key
+          ? null
+          : prev,
+    )
   }, [])
 
-  const popOut = useCallback(() => setPopped(true), [])
-  const popIn = useCallback(() => setPopped(false), [])
+  /* „გატანა" — ჩარჩოში მაგრდება და ფანჯარას ხურავს (`PlayerWindowScope`-ის `onClose`);
+     ⚠️ ჯერ ref, მერე დახურვა: ფანჯრის დემონტაჟი (`release`) უკვე გატანილს ხედავს */
+  const popOut = useCallback(() => {
+    poppedRef.current = true
+    setPopped(true)
+    anchorRef.current?.window?.popOut.current?.()
+  }, [])
+  const popIn = useCallback(() => {
+    poppedRef.current = false
+    setPopped(false)
+  }, [])
 
   const jumpTo = useCallback(
     (to: number) => {
@@ -466,10 +525,25 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setPlaying(false)
     setExpanded(false)
     setSource(null)
+    setOrigin(null)
     setPopped(false)
     setBubbled(false)
+    poppedRef.current = false
+    ownerRef.current = null
     reportProgress(null)
   }, [])
+
+  /* ფანჯარა დაიხურა: თუ მიმდინარე რიგის ვიდეო მასში უკრავდა და გატანილი არაა —
+     დამკვრელიც იხურება (რიგი შემდეგზე გადასულიც); გატანილი რჩება */
+  const release = useCallback(
+    (id: string) => {
+      if (ownerRef.current !== id) return
+      ownerRef.current = null
+      if (!poppedRef.current) close()
+    },
+    [close],
+  )
+  const windows = useMemo(() => ({ release }), [release])
 
   const remove = useCallback(
     (uid: number) => {
@@ -569,6 +643,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       layout,
       anchor: here ? (anchor?.el ?? null) : null,
       registerAnchor,
+      origin,
       popped,
       popOut,
       popIn,
@@ -606,6 +681,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       here,
       anchor,
       registerAnchor,
+      origin,
       popped,
       popOut,
       popIn,
@@ -631,7 +707,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     ],
   )
 
-  return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
+  return (
+    <PlayerContext.Provider value={value}>
+      <PlayerWindowsContext.Provider value={windows}>{children}</PlayerWindowsContext.Provider>
+    </PlayerContext.Provider>
+  )
 }
 
 export function usePlayer(): PlayerApi {
@@ -644,11 +724,34 @@ export function usePlayer(): PlayerApi {
  * **ფანჯრის ესკიზი, რომელზეც ვიდეო ჯდება** (ref-callback).
  *
  * ესკიზი ყოველთვის ირეგისტრირებს — „დაკვრაზე" ვიდეო მაშინვე იქ ჯდება;
- * ფანჯრის დახურვაზე ან ჩანართის შეცვლაზე რეგისტრაცია ქრება და ვიდეო
- * მოტივტივე ჩარჩოში გადადის (YouTube-ის მინი-დამკვრელის წესი) — არ ჩერდება.
+ * ჩანართის შეცვლაზე რეგისტრაცია ქრება და ვიდეო მოტივტივე ჩარჩოში გადადის.
+ * ესკიზი თავის ფანჯარას (`PlayerWindowScope`) იცნობს: „გატანა" მას ხურავს,
+ * დახურვა კი გაუტანელ ვიდეოს. `null` — ესკიზი ცარიელია (არაფერი მისი არ უკრავს).
  */
-export function usePlayerAnchor(item: Pick<PlayerItem, 'kind' | 'id'>) {
+export function usePlayerAnchor(item: Pick<PlayerItem, 'kind' | 'id'> | null) {
   const { registerAnchor } = usePlayer()
-  const key = itemKey(item)
-  return useCallback((el: HTMLElement | null) => registerAnchor(key, el), [registerAnchor, key])
+  const win = useContext(PlayerWindowContext)
+  const fallback = useId()
+  const key = item ? itemKey(item) : `idle:${fallback}`
+  return useCallback((el: HTMLElement | null) => registerAnchor(key, el, win), [registerAnchor, key, win])
+}
+
+/**
+ * **ფანჯრის საზღვარი დამკვრელისთვის** — `ModalShell` ახვევს თავის შიგთავსს.
+ * ⚠️ `PlayerProvider`-ის გარეთ (ტესტები, საჯარო გვერდი) უბრალოდ შიგთავსს ხატავს.
+ * ⚠️ დახურვა = დემონტაჟი და არა `onClose`: ფორმის „შეუნახავია, დავხურო?" კითხვაზე
+ * უარი ფანჯარას ღიას ტოვებს და დამკვრელიც არ უნდა დაიხუროს.
+ */
+export function PlayerWindowScope({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+  const windows = useContext(PlayerWindowsContext)
+  const id = useId()
+  const popOut = useRef<(() => void) | null>(onClose)
+  useLayoutEffect(() => {
+    popOut.current = onClose
+  }, [onClose])
+  const value = useMemo<PlayerWindow>(() => ({ id, popOut }), [id])
+
+  useEffect(() => () => windows?.release(id), [windows, id])
+
+  return <PlayerWindowContext.Provider value={value}>{children}</PlayerWindowContext.Provider>
 }

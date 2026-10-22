@@ -44,7 +44,7 @@ import {
 import { formatDuration } from '@/lib/videoDuration'
 import { PlayerQueue } from '@/components/PlayerQueue'
 import { PlayerStage } from '@/components/PlayerStage'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -84,7 +84,8 @@ const LAYOUT: Record<PlayerLayout, string> = {
   // ⚠️ კოორდინატებს `useInlinePlacement` წერს CSS-ცვლადებად — ჩასვლამდე უხილავია
   inline:
     'group left-[var(--ix,0px)] top-[var(--iy,0px)] h-[var(--ih,0px)] w-[var(--iw,0px)] overflow-hidden rounded-lg bg-black [clip-path:var(--iclip,none)] [visibility:var(--ivis,hidden)]',
-  float: 'group flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl',
+  // `@container` — ზოლის წარწერები ჩარჩოს სიგანეს მიჰყვება (`@min-[24rem]`)
+  float: 'group @container flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl ring-1 ring-black/5',
   bubble: '',
 }
 
@@ -448,15 +449,36 @@ function PanelControls({
  * ⚠️ ცალკე კომპონენტია: `useNavigate` როუტერს ითხოვს, ბმულის გარეშე ჩანაწერს
  * (გალერეის ვიდეო) კი ღილაკი საერთოდ არ აქვს.
  */
-function ReturnButton({ className }: { className: string }) {
+function ReturnButton({ className, text }: { className: string; text?: ReactNode }) {
   const { t } = useTranslation()
   const player = usePlayer()
   const href = player.current?.href
   if (!player.anchor && !href) return null
-  return <ReturnLink href={player.anchor ? null : (href ?? null)} className={className} label={t('playback.popIn')} onReturn={player.popIn} />
+  return (
+    <ReturnLink
+      href={player.anchor ? null : (href ?? null)}
+      className={className}
+      label={t('playback.popIn')}
+      text={text}
+      onReturn={player.popIn}
+    />
+  )
 }
 
-function ReturnLink({ href, className, label, onReturn }: { href: string | null; className: string; label: string; onReturn: () => void }) {
+/** `text` — ხილული წარწერა (მოტივტივე ჩარჩო); მის გარეშე — აიქონი, სახელი `aria-label`-ში */
+function ReturnLink({
+  href,
+  className,
+  label,
+  text,
+  onReturn,
+}: {
+  href: string | null
+  className: string
+  label: string
+  text?: ReactNode
+  onReturn: () => void
+}) {
   const navigate = useNavigate()
   return (
     <button
@@ -469,7 +491,8 @@ function ReturnLink({ href, className, label, onReturn }: { href: string | null;
       title={label}
       className={cn('cursor-pointer', className)}
     >
-      <AppWindow className="size-4" />
+      <AppWindow className={text ? 'size-3.5' : 'size-4'} />
+      {text}
     </button>
   )
 }
@@ -478,7 +501,11 @@ function ReturnLink({ href, className, label, onReturn }: { href: string | null;
    მოტივტივე ჩარჩო
    ============================================================ */
 
-/** ჩარჩოს ზოლის ღილაკი — 32 px, რომ 240 px-იან ჩარჩოშიც დაეტიოს */
+/**
+ * ჩარჩოს ტრანსპორტის ღილაკი (წინა · დაკვრა · შემდეგი) — `h-9`, აიქონი თულთიპით.
+ * ⚠️ აიქონ-მხოლოდ განზრახ: ეს დამკვრელის მართვაა და არა ჩანაწერის მოქმედება,
+ * ტექსტი კი 320px-იან ჩარჩოში არ ეტევა; ჰოვერი — მხოლოდ ფერი (ფონის გარეშე).
+ */
 function BarButton({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: ReactNode }) {
   return (
     <button
@@ -487,7 +514,7 @@ function BarButton({ label, onClick, disabled, children }: { label: string; onCl
       disabled={disabled}
       aria-label={label}
       title={label}
-      className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+      className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
     </button>
@@ -552,52 +579,73 @@ function FloatBar({ frame, onFrame }: { frame: FrameBox; onFrame: (box: FrameBox
       onPointerDown={resize}
       data-frame-resize
       className={cn(
-        'grid size-8 shrink-0 touch-none place-items-center rounded-md text-muted-foreground hover:text-foreground',
+        'grid size-9 shrink-0 touch-none place-items-center rounded-md text-muted-foreground hover:text-foreground',
         fromLeft ? 'cursor-nesw-resize' : 'cursor-nwse-resize',
       )}
     >
-      <MoveDiagonal2 className={cn('size-3.5', fromLeft && '-scale-x-100')} />
+      <MoveDiagonal2 className={cn('size-4', fromLeft && '-scale-x-100')} />
     </button>
   )
 
+  /* წარწერა ჩარჩოს სიგანიდან (`@container`): 24rem-იდან ჩანს, ვიწროში — აიქონი თულთიპით */
+  const label = (text: string) => <span className="hidden @min-[24rem]:inline">{text}</span>
+
+  /* ⚠️ ორი რიგი (`FRAME_BAR` — `lib/playerFrame.ts`): ზემოთ რა უკრავს (სათაურით
+     გადაითრევა) · წყარო · ზომა; ქვემოთ წინა/დაკვრა/შემდეგი · დაბრუნება · დახურვა.
+     ერთ რიგში 320px-იან ჩარჩოში ვერ ეტეოდა და `size-8` აიქონები ერთმანეთს ეკვროდა. */
   return (
-    <div className="flex h-10 shrink-0 items-center gap-0.5 border-t border-border px-1">
-      {fromLeft && grip}
-      <div
-        onPointerDown={move}
-        data-frame-move
-        title={t('playback.moveFrame')}
-        className="flex min-w-0 flex-1 cursor-grab touch-none select-none items-center gap-1 px-1 active:cursor-grabbing"
-      >
-        <GripVertical className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="truncate text-xs font-medium" title={current.title}>
-          {current.title}
+    <div className="flex shrink-0 flex-col gap-1 border-t border-border p-2" data-frame-bar>
+      <div className="flex h-9 items-center gap-1">
+        {fromLeft && grip}
+        <div
+          onPointerDown={move}
+          data-frame-move
+          title={t('playback.moveFrame')}
+          className="flex h-full min-w-0 flex-1 cursor-grab touch-none select-none items-center gap-1.5 px-1 active:cursor-grabbing"
+        >
+          <GripVertical className="size-4 shrink-0 text-muted-foreground" />
+          <span className="truncate text-sm font-medium" title={current.title}>
+            {current.title}
+          </span>
+        </div>
+        <a
+          href={current.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={t('playback.openSource')}
+          title={t('playback.openSource')}
+          className="grid size-9 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ExternalLink className="size-4" />
+        </a>
+        {!fromLeft && grip}
+      </div>
+
+      <div className="flex h-9 items-center gap-1">
+        <BarButton label={t('playback.prev')} onClick={player.prev} disabled={index <= 0}>
+          <SkipBack className="size-4" />
+        </BarButton>
+        <BarButton label={t(playing ? 'playback.pause' : 'playback.play')} onClick={player.toggle}>
+          {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+        </BarButton>
+        <BarButton label={t('playback.next')} onClick={player.next} disabled={index >= queue.length - 1}>
+          <SkipForward className="size-4" />
+        </BarButton>
+        <span className="ml-auto flex items-center gap-1.5">
+          <ReturnButton className={buttonVariants({ variant: 'outline', size: 'sm' })} text={label(t('playback.back'))} />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={player.close}
+            aria-label={t('playback.close')}
+            title={t('playback.close')}
+          >
+            <X className="size-3.5" />
+            {label(t('actions.close'))}
+          </Button>
         </span>
       </div>
-      <BarButton label={t('playback.prev')} onClick={player.prev} disabled={index <= 0}>
-        <SkipBack className="size-4" />
-      </BarButton>
-      <BarButton label={t(playing ? 'playback.pause' : 'playback.play')} onClick={player.toggle}>
-        {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
-      </BarButton>
-      <BarButton label={t('playback.next')} onClick={player.next} disabled={index >= queue.length - 1}>
-        <SkipForward className="size-4" />
-      </BarButton>
-      <ReturnButton className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground" />
-      <a
-        href={current.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={t('playback.openSource')}
-        title={t('playback.openSource')}
-        className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ExternalLink className="size-4" />
-      </a>
-      <BarButton label={t('playback.close')} onClick={player.close}>
-        <X className="size-4" />
-      </BarButton>
-      {!fromLeft && grip}
     </div>
   )
 }

@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Pagination } from '@/components/ui/pagination'
 import { useToast } from '@/components/ui/feedback'
 import { DetailSection } from '@/components/DetailHero'
+import { PlayerSpot } from '@/components/PlayerSpot'
 
 /* ============================================================
    **კურსის ფანჯარა — „ვიდეოები (N)"**.
@@ -25,25 +26,28 @@ import { DetailSection } from '@/components/DetailHero'
    ⚠️ **ვიდეო ჩანაწერი არ არის** — არც მონიშვნა აქვს და არც პროგრესი:
    „გაკვეთილები" დახურული გადაწყვეტილებაა (`CLAUDE.md`). ეს ჩვენებაა.
 
-   ⚠️ **დაჭერა — დაკვრა რიგად** (მოტივტივე ჩარჩოში, აქედან ბოლომდე;
-   კურსის ფანჯარა ვიდეოს ფანჯარა არ არის, ე.ი. ადგილზე დაკვრის ადგილი
-   არ აქვს); გვერდითა ისარი — YouTube-ზე გახსნა.
+   ⚠️ **ვიდეო კურსის ფანჯარაში უკრავს** — ვიდეოების ფანჯრის წესით: სიის ზემოთ
+   16:9 ადგილი (`PlayerSpot`), დაჭერა რიგს აქედან ბოლომდე უშვებს; „გატანა"
+   ჩარჩოში ამაგრებს და ფანჯარას ხურავს, ფანჯრის დახურვა გაუტანელ ვიდეოს
+   ხურავს. რიგის `origin` — `course-{id}` (პოზიციები სხვა კურსს ემთხვევა),
+   `href` — `/courses?open={id}` (ჩარჩოს „ფანჯარაში დაბრუნება"). გვერდითა
+   ისარი — YouTube-ზე გახსნა.
    ⚠️ რიგის ერთეული `link`-ია (მრიცხველი არ არსებობს) და id
    **უარყოფითია**: ბაზის ჩანაწერის id-ს (`link-12`) ვერასდროს დაემთხვევა.
    ============================================================ */
 
-function playerItem(item: CoursePlaylistItem, list: CoursePlaylist, fallback: string): PlayerItem {
+function playerItem(item: CoursePlaylistItem, list: CoursePlaylist, course: Course): PlayerItem {
   return {
     kind: 'link',
     id: -item.position,
     title: item.title ?? `#${item.position}`,
-    subtitle: list.title ?? fallback,
+    subtitle: list.title ?? course.title,
     url: item.url,
     embedUrl: item.embed_url,
     platform: 'youtube',
     thumbnail: item.thumbnail,
     duration: item.duration,
-    href: null,
+    href: `/courses?open=${course.id}`,
   }
 }
 
@@ -79,8 +83,18 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
   // სერვერმა თქვა „ფლეილისტი არ არის" — სექცია არ იხატება
   if (q.isSuccess && !list) return null
 
-  const playing = player.current?.kind === 'link' ? player.current.url : null
+  /* ეს კურსი უკრავს? — `origin`-ით (იხ. ზემოთ) */
+  const origin = `course-${course.id}`
+  const live = player.origin === origin && player.current?.kind === 'link'
+  const playing = live ? player.current!.url : null
   const total = formatDuration(list?.total_duration)
+  const playFrom = (at: number) =>
+    player.play(
+      items.map((it) => playerItem(it, list!, course)),
+      at,
+      list?.title ?? course.title,
+      origin,
+    )
 
   return (
     <DetailSection
@@ -109,6 +123,12 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
         <EmptyState className="py-6" icon={<ListVideo className="size-5" />} title={t('courses.playlist.empty')} />
       ) : (
         <>
+          <PlayerSpot
+            className="mb-3"
+            thumbnail={live ? player.current!.thumbnail : items[0]?.thumbnail}
+            live={live}
+            onPlay={() => playFrom(0)}
+          />
           <ol className="space-y-1" data-testid="playlist-items">
             {shown.map((item) => {
               const current = playing === item.url
@@ -116,7 +136,7 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
                 <li key={item.position} className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => player.play(items.map((it) => playerItem(it, list!, course.title)), item.position - 1, `course-${course.id}`)}
+                    onClick={() => playFrom(item.position - 1)}
                     aria-current={current || undefined}
                     className={cn(
                       'flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted',

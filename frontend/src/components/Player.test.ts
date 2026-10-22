@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Player } from '@/components/Player'
-import { PANEL_WIDTH, PlayerProvider, usePlayer, usePlayerAnchor, type PlayerItem } from '@/lib/player'
+import { PANEL_WIDTH, PlayerProvider, PlayerWindowScope, usePlayer, usePlayerAnchor, type PlayerItem } from '@/lib/player'
 import i18n from '@/i18n'
 
 /* ============================================================
@@ -453,10 +453,27 @@ describe('Player — ფანჯარაში · მოტივტივე 
     const ref = usePlayerAnchor({ kind: 'video', id })
     return h('div', { ref, 'data-spot': id })
   }
+  /** ესკიზი **გვერდზე** (ფანჯრის გარეშე — ფილმის/მსახიობის გვერდის გალერეა) */
   function Window() {
     const [open, set] = useState(true)
     setOpen = set
     return open ? h(Spot, { id: 11 }) : null
+  }
+
+  let onWindowClose = vi.fn()
+  /** ესკიზი **ფანჯარაში** (`ModalShell`-ის `PlayerWindowScope`) — `onClose` ფანჯარას ხურავს */
+  function Modal() {
+    const [open, set] = useState(true)
+    setOpen = set
+    return open
+      ? h(PlayerWindowScope, {
+          onClose: () => {
+            onWindowClose()
+            set(false)
+          },
+          children: h(Spot, { id: 11 }),
+        })
+      : null
   }
   function Where() {
     const at = useLocation()
@@ -553,7 +570,7 @@ describe('Player — ფანჯარაში · მოტივტივე 
     expect(frame()).toBe(before)
     expect(prop('--ix')).toBe('')
     // ნაგულისხმევი — მარჯვნივ, ვერტიკალურად შუაში (jsdom: 1024 × 768)
-    expect([aside()!.style.left, aside()!.style.top, aside()!.style.width]).toEqual(['640px', '263px', '360px'])
+    expect([aside()!.style.left, aside()!.style.top, aside()!.style.width]).toEqual(['520px', '203px', '480px'])
 
     await click(byLabel('playback.popIn'))
     expect(aside()?.dataset.layout).toBe('inline')
@@ -561,7 +578,7 @@ describe('Player — ფანჯარაში · მოტივტივე 
     expect(location).toBe('/')
   })
 
-  it('ფანჯრის დახურვაზე ვიდეო მოტივტივე ჩარჩოში გადადის და არ ჩერდება', async () => {
+  it('გვერდზე (ფანჯრის გარეშე) ესკიზის გაქრობაზე ვიდეო მოტივტივე ჩარჩოში გადადის და არ ჩერდება', async () => {
     await mountWith(h(Window))
     placeSpot(100, 50, 640, 360)
     await play(VIDEOS)
@@ -573,6 +590,57 @@ describe('Player — ფანჯარაში · მოტივტივე 
     expect(aside()?.dataset.layout).toBe('float')
     expect(frame()).toBe(before)
     expect(api!.playing).toBe(true)
+  })
+
+  it('ფანჯარაში: „გატანა" ვიდეოს ჩარჩოში ამაგრებს და ფანჯარას ხურავს — ვიდეო რჩება', async () => {
+    onWindowClose = vi.fn()
+    await mountWith(h(Modal))
+    placeSpot(100, 50, 640, 360)
+    await play(VIDEOS)
+    await frames()
+    expect(aside()?.dataset.layout).toBe('inline')
+    const before = frame()
+
+    await click(byLabel('playback.popOut'))
+    expect(onWindowClose).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('[data-spot]')).toBeNull()
+    expect(aside()?.dataset.layout).toBe('float')
+    expect(frame()).toBe(before)
+    expect(api!.playing).toBe(true)
+  })
+
+  it('ფანჯრის დახურვა გაუტანელ ვიდეოს ხურავს', async () => {
+    await mountWith(h(Modal))
+    await play(VIDEOS)
+    expect(aside()?.dataset.layout).toBe('inline')
+
+    await act(async () => setOpen!(false))
+    await flush()
+    expect(api!.current).toBeNull()
+    expect(aside()).toBeNull()
+  })
+
+  it('ფანჯრის დახურვა იმ რიგსაც ხურავს, რომელიც შემდეგ ვიდეოზე გადავიდა (ჩარჩოში)', async () => {
+    await mountWith(h(Modal))
+    await play(VIDEOS)
+    await act(async () => api!.next())
+    await flush()
+    expect(aside()?.dataset.layout).toBe('float')
+
+    await act(async () => setOpen!(false))
+    await flush()
+    expect(api!.current).toBeNull()
+  })
+
+  it('ფანჯრის გარეთ დაწყებულ რიგს (სიიდან) სხვა ფანჯრის დახურვა არ ეხება', async () => {
+    await mountWith(h(Modal))
+    // ფანჯარა 11-ისაა, უკრავს მხოლოდ 12 — ის ფანჯარაში არ ჩამჯდარა
+    await play([clip(12, 'two')])
+    expect(aside()?.dataset.layout).toBe('float')
+
+    await act(async () => setOpen!(false))
+    await flush()
+    expect(api!.current?.id).toBe(12)
   })
 
   it('რიგში შემდეგი ვიდეო — ფანჯარა წინას აჩვენებს — მოტივტივე ჩარჩოში უკრავს', async () => {
@@ -592,14 +660,14 @@ describe('Player — ფანჯარაში · მოტივტივე 
     expect(aside()?.dataset.layout).toBe('float')
 
     await pointer(document.querySelector('[data-frame-move]')!, [700, 300], [1500, 2000])
-    // 1024 − 360 − 12 = 652; 768 − (203 + 40) − 12 = 513
-    expect([aside()!.style.left, aside()!.style.top]).toEqual(['652px', '513px'])
-    expect(JSON.parse(localStorage.getItem('player.frame')!)).toEqual({ x: 652, y: 513, w: 360 })
+    // 1024 − 480 − 12 = 532; 768 − (270 + 92) − 12 = 394
+    expect([aside()!.style.left, aside()!.style.top]).toEqual(['532px', '394px'])
+    expect(JSON.parse(localStorage.getItem('player.frame')!)).toEqual({ x: 532, y: 394, w: 480 })
 
     act(() => root?.unmount())
     await mountWith()
     await play(VIDEOS)
-    expect([aside()!.style.left, aside()!.style.top]).toEqual(['652px', '513px'])
+    expect([aside()!.style.left, aside()!.style.top]).toEqual(['532px', '394px'])
   })
 
   it('ზომა კუთხით იცვლება — მარჯვნივ მდგარს სახელური მარცხნივ აქვს და მარჯვენა კიდე ადგილზე რჩება', async () => {
@@ -609,9 +677,9 @@ describe('Player — ფანჯარაში · მოტივტივე 
     // მარცხენა სახელური ზოლში პირველია
     expect(grip.parentElement?.firstElementChild).toBe(grip)
 
-    await pointer(grip, [640, 500], [540, 500])
-    expect([aside()!.style.left, aside()!.style.width]).toEqual(['540px', '460px'])
-    expect(JSON.parse(localStorage.getItem('player.frame')!)).toEqual({ x: 540, y: 263, w: 460 })
+    await pointer(grip, [520, 500], [420, 500])
+    expect([aside()!.style.left, aside()!.style.width]).toEqual(['420px', '580px'])
+    expect(JSON.parse(localStorage.getItem('player.frame')!)).toEqual({ x: 420, y: 203, w: 580 })
   })
 
   it('ვიწრო ეკრანზე ვიდეო მოტივტივე ჩარჩოს ნაცვლად ქვედა ზოლად უკრავს', async () => {
@@ -628,8 +696,8 @@ describe('Player — ფანჯარაში · მოტივტივე 
     expect(cssVar('--player-lift')).toBe('')
 
     await pointer(document.querySelector('[data-frame-move]')!, [700, 300], [1500, 2000])
-    // 768 − 513 + 8 − 24
-    expect(cssVar('--player-lift')).toBe('239px')
+    // 768 − 394 + 8 − 24
+    expect(cssVar('--player-lift')).toBe('358px')
 
     await click(byLabel('playback.close'))
     expect(cssVar('--player-lift')).toBe('')

@@ -24,7 +24,8 @@ import { isAllowedEmbed } from '@/lib/embed'
 import { errorMessage, translateCode } from '@/lib/errors'
 import { cn, formatBytes } from '@/lib/utils'
 import { LocalVideoPlayer } from '@/components/LocalVideoPlayer'
-import { usePlayer, usePlayerAnchor } from '@/lib/player'
+import { usePlayer } from '@/lib/player'
+import { PlayerSpot } from '@/components/PlayerSpot'
 import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -52,9 +53,10 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 
    ⚠️ **ვიდეო ფანჯარაშივე უკრავს**: ვიდეოს ჩანართის ესკიზი
    აპის დამკვრელის ადგილია (`PlayerSpot`) — „დაკვრაზე" დამკვრელი მასზე
-   ჯდება და ფანჯარა **აღარ იხურება** (ერთი ფრეიმი, თავიდან ჩატვირთვის
-   გარეშე). „გატანა" (ესკიზის კუთხეში და აქ, მოქმედებების რიგში) ვიდეოს
-   მოტივტივე ჩარჩოში გადაიტანს; ფანჯრის დახურვაზეც იქ გადადის და არ ჩერდება.
+   ჯდება (ერთი ფრეიმი, თავიდან ჩატვირთვის გარეშე). **„გატანა"** (ესკიზის
+   კუთხეში და აქ, მოქმედებების რიგში) ვიდეოს მოტივტივე ჩარჩოში ამაგრებს და
+   **ფანჯარას ხურავს**; ფანჯრის დახურვა გაუტანელ ვიდეოსაც ხურავს — ის
+   ამ ფანჯრისაა (`ModalShell` → `PlayerWindowScope`).
    ============================================================ */
 
 type Tab = 'video' | 'images' | 'notes' | 'docs' | 'local'
@@ -210,7 +212,7 @@ export function VideoDetail({
 
         {tab === 'video' && (
           <>
-            <PlayerSpot video={video} onPlay={() => onPlay(video)} />
+            <VideoSpot video={video} onPlay={() => onPlay(video)} />
             {/* ვინ ატვირთა და როდის (ვებძებნიდან ან ბმულის ჩასმისას) */}
             {(video.channel || video.published_at) && (
               <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -352,52 +354,21 @@ export function VideoDetail({
 /* ---------- ვიდეო ფანჯარაშივე ---------- */
 
 /**
- * ვიდეოს ადგილი ფანჯარაში — **ესკიზი, რომელზეც აპის დამკვრელი ჯდება**.
- *
- * ⚠️ ესკიზი ყოველთვის ირეგისტრირებს (`usePlayerAnchor`): როცა ეს ვიდეო
- * უკრავს და „გატანილი" არაა, დამკვრელი მის კოორდინატებზე იხატება
- * (`Player` → `inline`), აქ კი მხოლოდ შავი ადგილი რჩება.
- * - არ უკრავს → ესკიზი და „დაკვრა" (რიგს გვერდი წყვეტს — `onPlay`);
- * - „გატანილია" (მოტივტივე ჩარჩო, ვიწროზე ზოლი) → ესკიზი და „აქ დაბრუნება".
- *
+ * ვიდეოს ადგილი ფანჯარაში — საერთო `PlayerSpot`; „მისი" = ეს ვიდეო.
  * ⚠️ ჩაუშენებელი წყარო (`platform = other`) ძველებურად ბმულია —
  * `VideoEmbed`-ის მესამე შტო ფრეიმს არ ხატავს, ე.ი. მეორე ხმა არ ჩნდება.
  */
-function PlayerSpot({ video, onPlay }: { video: Video; onPlay: () => void }) {
-  const { t } = useTranslation()
+function VideoSpot({ video, onPlay }: { video: Video; onPlay: () => void }) {
   const player = usePlayer()
-  const anchor = usePlayerAnchor({ kind: 'video', id: video.id })
 
   if (video.platform !== 'file' && !isAllowedEmbed(video.embed_url)) return <VideoEmbed video={video} />
 
-  const thumb = storageUrl(video.thumbnail)
-  const here = player.current?.kind === 'video' && player.current.id === video.id
-  const inline = here && player.layout === 'inline'
-
   return (
-    <div ref={anchor} data-player-spot className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
-      {!inline && (
-        <button
-          type="button"
-          onClick={here ? player.popIn : onPlay}
-          className="group absolute inset-0 block cursor-pointer"
-        >
-          {thumb && (
-            <img src={thumb} alt="" className="size-full object-cover opacity-80 transition-opacity group-hover:opacity-100" />
-          )}
-          <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/30 text-white">
-            {here ? (
-              <PictureInPicture2 className="size-12 drop-shadow" />
-            ) : (
-              <Play className="size-12 fill-current drop-shadow" />
-            )}
-            <span className="rounded-md bg-black/60 px-3 py-1.5 text-sm font-medium">
-              {here ? t('playback.inFrame') : t('playback.play')}
-            </span>
-          </span>
-        </button>
-      )}
-    </div>
+    <PlayerSpot
+      thumbnail={storageUrl(video.thumbnail)}
+      live={player.current?.kind === 'video' && player.current.id === video.id}
+      onPlay={onPlay}
+    />
   )
 }
 

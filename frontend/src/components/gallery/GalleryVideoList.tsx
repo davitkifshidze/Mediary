@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ExternalLink, Play, Trash2 } from 'lucide-react'
@@ -9,6 +10,7 @@ import { formatDuration } from '@/lib/videoDuration'
 import { Button } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { PlayerSpot } from '@/components/PlayerSpot'
 import type { VideoPlatform } from '@/api/videos'
 
 /* ============================================================
@@ -20,6 +22,11 @@ import type { VideoPlatform } from '@/api/videos'
 
    ⚠️ **დაკვრა საერთო დამკვრელშია** — გვერდის გადართვა დაკვრას არ
    წყვეტს. ჩაუშენებელი პლატფორმა ბმულით იხსნება და ამას ცხადად ამბობს.
+
+   ⚠️ **ვიდეო ფანჯარაშივე უკრავს** — სიის ზემოთ 16:9 ადგილი (`PlayerSpot`),
+   ვიდეოების ფანჯრის წესებით: „გატანა" ჩარჩოში ამაგრებს და ფანჯარას ხურავს,
+   ფანჯრის დახურვა გაუტანელ ვიდეოს ხურავს. სია „მისას" რიგის `origin`-ით
+   ცნობს (გალერეის id-ები სხვა `link`-ს ემთხვევა) — ეს სიის ეგზემპლარია.
    ============================================================ */
 
 export function GalleryVideoList({
@@ -34,6 +41,7 @@ export function GalleryVideoList({
   const confirm = useConfirm()
   const { toast } = useToast()
   const player = usePlayer()
+  const origin = `gallery-videos:${useId()}`
 
   const remove = useMutation({
     mutationFn: (id: number) => deleteGalleryVideo(id),
@@ -60,12 +68,25 @@ export function GalleryVideoList({
     duration: video.duration,
   })
 
+  const playFrom = (index: number) => player.play(videos.map(toItem), index, t('gallery.videosTitle'), origin)
+  const live = player.origin === origin
+  const first = videos.findIndex((video) => isAllowedEmbed(video.embed_url))
+
   return (
     <section className="mt-6 border-t border-border pt-5">
       <h3 className="mb-3 font-mono text-sm uppercase tracking-wider text-muted-foreground">
         {t('gallery.videosTitle')}
         <span className="ml-2 normal-case tracking-normal">{videos.length}</span>
       </h3>
+
+      {first >= 0 && (
+        <PlayerSpot
+          className="mb-3"
+          thumbnail={live ? player.current?.thumbnail : videos[first].thumbnail_url}
+          live={live}
+          onPlay={() => playFrom(first)}
+        />
+      )}
 
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {videos.map((video, index) => {
@@ -78,7 +99,7 @@ export function GalleryVideoList({
               icon: MENU_ICONS.play,
               run: () =>
                 playable
-                  ? player.play(videos.map(toItem), index, t('gallery.videosTitle'))
+                  ? playFrom(index)
                   : window.open(video.url, '_blank', 'noreferrer'),
             },
             { key: 'source', label: t('photos.infoOpen'), icon: MENU_ICONS.link, run: () => window.open(video.url, '_blank', 'noreferrer') },
@@ -110,7 +131,7 @@ export function GalleryVideoList({
                 aria-label={video.title ?? video.url}
                 onClick={() =>
                   playable
-                    ? player.play(videos.map(toItem), index, t('gallery.videosTitle'))
+                    ? playFrom(index)
                     : window.open(video.url, '_blank', 'noreferrer')
                 }
                 className="relative h-16 w-24 shrink-0 cursor-pointer overflow-hidden rounded-lg bg-muted"

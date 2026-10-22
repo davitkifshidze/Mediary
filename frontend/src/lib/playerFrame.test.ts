@@ -32,16 +32,21 @@ beforeEach(() => localStorage.clear())
 describe('მოტივტივე ჩარჩო', () => {
   it('ნაგულისხმევად მარჯვნივ და ვერტიკალურად შუაშია', () => {
     const box = defaultFrame(VP)
-    expect(box.w).toBe(360)
+    expect(box.w).toBe(480)
     expect(box.x + box.w).toBe(VP.w - 24)
-    expect(box.y).toBe(Math.round((VP.h - frameHeight(360)) / 2))
+    expect(box.y).toBe(Math.round((VP.h - frameHeight(480)) / 2))
+    // ზოლი ორი `h-9` რიგია: 16:9 + 92
+    expect(frameHeight(480)).toBe(270 + 92)
   })
 
   it('ეკრანიდან ვერ გადის — პატარა ეკრანზე სიგანეც იკუმშება', () => {
     expect(clampFrame({ x: -50, y: 5000, w: 360 }, VP)).toEqual({ x: 12, y: VP.h - frameHeight(360) - 12, w: 360 })
     expect(clampFrame({ x: 0, y: 0, w: 2000 }, VP).w).toBe(720)
-    expect(clampFrame({ x: 0, y: 0, w: 10 }, VP).w).toBe(240)
-    expect(clampFrame({ x: 0, y: 0, w: 500 }, { w: 320, h: 600 }).w).toBe(296)
+    // ძველი 240-იანი ჩარჩო 320-მდე იზრდება — ღილაკები ვიწროში ვეღარ ეტევა
+    expect(clampFrame({ x: 0, y: 0, w: 10 }, VP).w).toBe(320)
+    expect(clampFrame({ x: 0, y: 0, w: 240 }, VP).w).toBe(320)
+    // ⚠️ 640px-ზე ვიწროზე მოტივტივე ჩარჩოს ნაცვლად ქვედა ზოლია — ჩარჩო 320-ზე არ ვიწროვდება
+    expect(clampFrame({ x: 0, y: 0, w: 500 }, { w: 320, h: 600 }).w).toBe(320)
   })
 
   it('ზომა იცვლება და მოპირდაპირე კიდე ადგილზე რჩება', () => {
@@ -61,7 +66,7 @@ describe('მოტივტივე ჩარჩო', () => {
     saveFrame({ x: 100, y: 120, w: 400 })
     expect(readFrame(VP)).toEqual({ x: 100, y: 120, w: 400 })
     // სხვა (პატარა) ეკრანზე შენახული ადგილი ეკრანში ჩაეტევა
-    expect(readFrame({ w: 500, h: 300 })).toEqual({ x: 88, y: 23, w: 400 })
+    expect(readFrame({ w: 500, h: 300 })).toEqual({ x: 88, y: 12, w: 400 })
 
     localStorage.setItem('player.frame', '{oops')
     expect(readFrame(VP)).toEqual(defaultFrame(VP))

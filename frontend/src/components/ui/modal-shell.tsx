@@ -4,6 +4,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { ArrowLeft, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isPlayerTarget } from '@/lib/playerFrame'
+import { PlayerWindowScope } from '@/lib/player'
 import { AutoHeight } from '@/components/ui/auto-height'
 import { InfoHint } from '@/components/ui/info-hint'
 
@@ -294,13 +295,17 @@ export function ModalShell({
               და ცვლილებისას რბილად იზრდება ან პატარავდება. პადინგი,
               ზოლის მუდმივი ადგილი და ზრდისას ზოლის დამალვა `index.css`-შია
               (`.fb-modal-body`, `.fb-modal-pad`). */}
-          {fill ? (
-            <div className="fb-modal-pad flex min-h-0 flex-1 flex-col">{children}</div>
-          ) : (
-            <AutoHeight scroll className="fb-modal-body" innerClassName="fb-modal-pad">
-              {children}
-            </AutoHeight>
-          )}
+          {/* ⚠️ ფანჯარა დამკვრელის „ფანჯარაა": მასში ჩამჯდარი ვიდეო „გატანაზე" მას ხურავს,
+              მისი დახურვა კი გაუტანელ ვიდეოს (`PlayerWindowScope`, `lib/player.tsx`) */}
+          <PlayerWindowScope onClose={onClose}>
+            {fill ? (
+              <div className="fb-modal-pad flex min-h-0 flex-1 flex-col">{children}</div>
+            ) : (
+              <AutoHeight scroll className="fb-modal-body" innerClassName="fb-modal-pad">
+                {children}
+              </AutoHeight>
+            )}
+          </PlayerWindowScope>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

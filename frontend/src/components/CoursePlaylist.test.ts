@@ -19,7 +19,13 @@ import i18n from '@/i18n'
 const mocks = vi.hoisted(() => ({
   fetchCoursePlaylist: vi.fn(),
   play: vi.fn(),
-  player: { current: null as unknown, play: (...args: unknown[]) => mocks.play(...args) },
+  player: {
+    current: null as unknown,
+    origin: null as string | null,
+    layout: null as string | null,
+    popIn: () => {},
+    play: (...args: unknown[]) => mocks.play(...args),
+  },
 }))
 
 vi.mock('@/api/courses', async (original) => ({
@@ -30,6 +36,8 @@ vi.mock('@/api/courses', async (original) => ({
 vi.mock('@/lib/player', async (original) => ({
   ...(await original<typeof import('@/lib/player')>()),
   usePlayer: () => mocks.player,
+  // ⚠️ ესკიზის რეგისტრაცია დამკვრელს სჭირდება — აქ მხოლოდ ref-ია
+  usePlayerAnchor: () => () => {},
 }))
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -112,9 +120,12 @@ describe('CoursePlaylistSection', () => {
 
     await act(async () => rows(el)[1].querySelector('button')!.click())
 
-    const [queue, startAt] = mocks.play.mock.calls[0]
+    const [queue, startAt, label, origin] = mocks.play.mock.calls[0]
     expect(startAt).toBe(1)
     expect(queue).toHaveLength(3)
+    // რიგის სახელი — კურსის სათაური; `origin` — კურსი (ფანჯრის ადგილი მას ცნობს)
+    expect(label).toBe('Laravel from scratch')
+    expect(origin).toBe('course-7')
     expect(queue[1]).toMatchObject({
       kind: 'link',
       title: 'Two',
@@ -122,9 +133,25 @@ describe('CoursePlaylistSection', () => {
       embedUrl: 'https://www.youtube-nocookie.com/embed/vid2aaaaaa',
       platform: 'youtube',
       duration: 3723,
+      // ჩარჩოს „ფანჯარაში დაბრუნება" კურსის ფანჯარას ხსნის
+      href: '/courses?open=7',
     })
     // ⚠️ უარყოფითი id — ბაზის ჩანაწერს ვერ დაემთხვევა
     expect(queue.every((q: { id: number }) => q.id < 0)).toBe(true)
+  })
+
+  it('the course window has its own video spot above the list — it starts the course from the first video', async () => {
+    mocks.fetchCoursePlaylist.mockResolvedValue(playlist)
+    mocks.play.mockClear()
+    const el = await mount()
+
+    const spot = el.querySelector<HTMLButtonElement>('[data-testid="player-spot"]')!
+    expect(spot.textContent).toContain(i18n.t('playback.play'))
+    await act(async () => spot.click())
+    const [queue, startAt, , origin] = mocks.play.mock.calls[0]
+    expect(queue).toHaveLength(3)
+    expect(startAt).toBe(0)
+    expect(origin).toBe('course-7')
   })
 
   it('refresh asks the server to skip its cache', async () => {
