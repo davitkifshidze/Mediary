@@ -7,7 +7,10 @@ use App\Services\Video\VideoDownloader;
 use Illuminate\Console\Command;
 
 /**
- * **`php artisan videos:download {video}` — ვიდეოს ჩამოტვირთვა.**
+ * **`php artisan videos:download {video*}` — ვიდეოს (ან რიგის) ჩამოტვირთვა.**
+ *
+ * რამდენიმე id — კურსის ჯგუფური ჩამოტვირთვა: რიგრიგობით, ერთი `yt-dlp`
+ * ერთდროულად (`VideoDownloader::runQueue()`).
  *
  * ⚠️ ეს ბრძანება **ორივე გზაზეა**: მას SPA-ც უშვებს (ფონურად,
  * `VideoDownloader::start()`-იდან) და ხელითაც შეიძლება გაეშვას. ერთი
@@ -19,31 +22,34 @@ use Illuminate\Console\Command;
  */
 class DownloadVideoCommand extends Command
 {
-    protected $signature = 'videos:download {video : ვიდეოს id}';
+    protected $signature = 'videos:download {video* : ვიდეოს id (რამდენიმე — რიგრიგობით)}';
 
     protected $description = 'ვიდეოს ლოკალურად ჩამოწერა yt-dlp-ით';
 
     public function handle(VideoDownloader $downloader): int
     {
-        $video = Video::find((int) $this->argument('video'));
+        $ids = array_map('intval', (array) $this->argument('video'));
 
-        if (! $video) {
+        if (count($ids) === 1 && ! Video::find($ids[0])) {
             $this->error('ასეთი ვიდეო არ არსებობს.');
 
             return self::FAILURE;
         }
 
-        $this->info("ჩამოწერა: {$video->title}");
+        $failed = 0;
 
-        if (! $downloader->run($video)) {
+        $downloader->runQueue($ids, function (Video $video, bool $ok) use (&$failed) {
+            if ($ok) {
+                $this->info("მზადაა: {$video->title} · ".($video->fresh()?->download_format ?? ''));
+
+                return;
+            }
+
+            $failed++;
             // მიზეზი ჩანაწერშია — ფონურ გაშვებაზე კონსოლს ვერავინ კითხულობს
-            $this->error($video->fresh()?->download_error ?? 'ჩამოწერა ჩავარდა.');
+            $this->error("{$video->title}: ".($video->fresh()?->download_error ?? 'ჩამოწერა ჩავარდა.'));
+        });
 
-            return self::FAILURE;
-        }
-
-        $this->info('მზადაა: '.($video->fresh()?->download_format ?? ''));
-
-        return self::SUCCESS;
+        return $failed > 0 ? self::FAILURE : self::SUCCESS;
     }
 }

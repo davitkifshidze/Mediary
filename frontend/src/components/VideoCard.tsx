@@ -9,7 +9,7 @@ import {
   Play,
   TriangleAlert,
 } from 'lucide-react'
-import type { Video } from '@/api/videos'
+import { downloadBusy, type Video } from '@/api/videos'
 import { storageUrl } from '@/lib/api'
 import { useDateFormat } from '@/lib/dates'
 import { cn, formatBytes } from '@/lib/utils'
@@ -69,7 +69,8 @@ export function VideoCard({
   const { t } = useTranslation()
   const fmt = useDateFormat()
   const thumb = storageUrl(v.thumbnail)
-  const running = v.download_status === 'running' && !v.download_stale
+  // რიგში მდგომიც „მიმდინარეა" — ორივეზე ლოდინია
+  const running = downloadBusy(v)
 
   return (
     <RecordContextMenu actions={actions}>
@@ -109,7 +110,7 @@ export function VideoCard({
                 'absolute left-2 top-2 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-white',
                 v.download_status === 'ready' && 'bg-[var(--status-watched)]',
                 running && 'bg-black/75',
-                v.download_status === 'running' && v.download_stale && 'bg-[var(--status-towatch)]',
+                v.download_stale && 'bg-[var(--status-towatch)]',
                 v.download_status === 'failed' && 'bg-destructive',
               )}
             >

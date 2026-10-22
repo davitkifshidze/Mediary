@@ -482,7 +482,9 @@ function LocalCopyTab({ video, onPlay }: { video: Video; onPlay: () => void }) {
       ? t('videos.local.failed')
       : video.download_stale
         ? t('videos.local.stalled')
-        : t('videos.local.running')
+        : video.download_status === 'queued'
+          ? t('videos.local.queued')
+          : t('videos.local.running')
 
   return (
     <div className="space-y-4">

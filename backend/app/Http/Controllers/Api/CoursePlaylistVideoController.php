@@ -6,13 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Status;
 use App\Models\Video;
+use App\Services\Storage\StorageMeter;
+use App\Services\Video\VideoDownloader;
 use App\Services\Video\YouTubePlaylist;
+use App\Services\Video\YtDlp;
 use App\Support\CredentialProviders;
 use App\Support\DuplicateLink;
 use App\Support\MissingCredential;
+use App\Support\StorageFolder;
 use App\Support\VideoUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 /**
@@ -31,12 +36,18 @@ use Illuminate\Validation\Rule;
  * ⚠️ ვიდეოების მოდული და მისი `create` უფლება აქ ცალკე მოწმდება: მარშრუტი
  * კურსის ჯგუფშია (`module:course`, `permission:course`) და ჩუმი 404-ის
  * ნაცვლად ცხადი კოდი ბრუნდება.
+ *
+ * `download` — ლოკალური ასლიც: ერთ ფონურ პროცესად, რიგრიგობით
+ * (`VideoDownloader::startBatch()`); წინასწარ — გეგმა (`plan()`).
  */
 class CoursePlaylistVideoController extends Controller
 {
-    public function store(Request $request, Course $course, YouTubePlaylist $playlists): JsonResponse
+    /** გეგმისთვის რამდენი ვიდეოს ზომა იზომება (`yt-dlp` თითოზე რამდენიმე წამია) */
+    private const PLAN_SAMPLES = 3;
+
+    public function store(Request $request, Course $course, YouTubePlaylist $playlists, VideoDownloader $downloader, YtDlp $ytdlp): JsonResponse
     {
-        if ($denied = $this->videoAccess($request)) {
+        if ($denied = $this->videoAccess($request, $request->boolean('download'))) {
             return $denied;
         }
 
@@ -50,7 +61,14 @@ class CoursePlaylistVideoController extends Controller
                 Rule::exists('video_types', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
             'status' => ['required', 'string', Status::rule('video')],
+            // ლოკალური ასლიც — ერთ ფონურ რიგად
+            'download' => ['nullable', 'boolean'],
         ]);
+
+        // ⚠️ ჩამოტვირთვის პროგრამა ჯერ — ჩანაწერები ისე არ შეიქმნას, რომ მერე 503 დაბრუნდეს
+        if (! empty($data['download']) && ! $ytdlp->available()) {
+            return response()->json(['message' => 'ytdlp_unavailable'], 503);
+        }
 
         $list = $this->playlist($course, $playlists);
         if ($list instanceof JsonResponse) {
@@ -62,7 +80,9 @@ class CoursePlaylistVideoController extends Controller
         $urls = array_map(fn (string $id) => self::url($id), $picked);
         $found = DuplicateLink::findMany(Video::class, $urls);
 
-        $result = ['created' => [], 'existing' => [], 'failed' => []];
+        $result = ['created' => [], 'existing' => [], 'failed' => [], 'started' => []];
+        /** @var list<Video> $videos ჩამოსატვირთი — ახალიც და არსებულიც */
+        $videos = [];
 
         foreach ($picked as $id) {
             $item = $items->get($id);
@@ -80,15 +100,86 @@ class CoursePlaylistVideoController extends Controller
                 if ($video && $video->course_id === null) {
                     $video->forceFill(['course_id' => $course->id, 'sort_order' => (int) $item['position']])->save();
                 }
+                if ($video) {
+                    $videos[] = $video;
+                }
                 $result['existing'][] = (int) $duplicate['id'];
 
                 continue;
             }
 
-            $result['created'][] = $this->create($course, $item, $list, $data)->id;
+            $video = $this->create($course, $item, $list, $data);
+            $videos[] = $video;
+            $result['created'][] = $video->id;
+        }
+
+        if (! empty($data['download'])) {
+            $result['started'] = $downloader->startBatch($videos);
         }
 
         return response()->json($result + ['course_id' => $course->id]);
+    }
+
+    /**
+     * **გეგმა ჩამოტვირთვამდე** — „N ვიდეო · ~X GB · თავისუფალია Y".
+     *
+     * ⚠️ ზომა **სავარაუდოა**: `yt-dlp` თითო ვიდეოზე რამდენიმე წამს ხარჯავს,
+     * ამიტომ პირველი `PLAN_SAMPLES` ხანგრძლივობიანი ვიდეო იზომება (24 სთ ქეშით)
+     * და წამის ფასი მთელ ხანგრძლივობაზე ვრცელდება. მის გარეშე ნახევარი კურსი
+     * კვოტაზე უჩუმრად `failed` გახდებოდა — აქ ეს დადასტურებამდე ჩანს.
+     */
+    public function plan(Request $request, Course $course, YouTubePlaylist $playlists, YtDlp $ytdlp, StorageMeter $meter): JsonResponse
+    {
+        if ($denied = $this->videoAccess($request, true)) {
+            return $denied;
+        }
+
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:'.YouTubePlaylist::MAX_ITEMS],
+            'ids.*' => ['string', 'max:20'],
+        ]);
+
+        if (! $ytdlp->available()) {
+            return response()->json(['message' => 'ytdlp_unavailable'], 503);
+        }
+
+        $list = $this->playlist($course, $playlists);
+        if ($list instanceof JsonResponse) {
+            return $list;
+        }
+
+        $items = collect($list['items'])->whereIn('video_id', array_unique($data['ids']))->values();
+        $duration = (int) $items->sum(fn (array $item) => (int) ($item['duration'] ?? 0));
+
+        [$bytes, $seconds, $sampled] = [0, 0, 0];
+        foreach ($items->filter(fn (array $item) => (int) ($item['duration'] ?? 0) > 0)->take(self::PLAN_SAMPLES) as $item) {
+            $size = Cache::remember(
+                'course-plan-size:'.$item['video_id'],
+                now()->addHours(YouTubePlaylist::CACHE_HOURS),
+                fn () => (int) ($ytdlp->probe(self::url((string) $item['video_id']))['filesize'] ?? 0),
+            );
+            if ($size > 0) {
+                $bytes += $size;
+                $seconds += (int) $item['duration'];
+                $sampled++;
+            }
+        }
+
+        // ხანგრძლივობის გარეშე ელემენტი — საშუალო ზომით
+        $unknown = $items->filter(fn (array $item) => (int) ($item['duration'] ?? 0) === 0)->count();
+        $estimate = $seconds > 0
+            ? (int) round($bytes / $seconds * $duration + ($unknown > 0 ? $bytes / $sampled * $unknown : 0))
+            : null;
+        $free = $meter->freeFor($request->user(), StorageFolder::VIDEO_DOWNLOADS);
+
+        return response()->json([
+            'count' => $items->count(),
+            'duration' => $duration,
+            'estimate_bytes' => $estimate,
+            'sampled' => $sampled,
+            'free_bytes' => $free,
+            'fits' => $estimate === null ? null : $estimate <= $free,
+        ]);
     }
 
     /* ---------- დამხმარეები ---------- */
@@ -149,16 +240,23 @@ class CoursePlaylistVideoController extends Controller
         return $playlists->fetch($id) ?? response()->json(['message' => 'youtube_unavailable'], 503);
     }
 
-    /** ვიდეოების მოდული ჩართულია და შექმნა შეგიძლია? — თორემ ცხადი 403 */
-    private function videoAccess(Request $request): ?JsonResponse
+    /**
+     * ვიდეოების მოდული ჩართულია და შექმნა (ჩამოტვირთვისას — რედაქტირებაც)
+     * შეგიძლია? — თორემ ცხადი 403. ⚠️ ჩამოტვირთვა ვიდეოს `update`-ია
+     * (`POST /videos/{id}/download`-ის იგივე წესი).
+     */
+    private function videoAccess(Request $request, bool $download = false): ?JsonResponse
     {
         $user = $request->user();
 
         if (! $user->hasModule('video')) {
             return response()->json(['message' => 'module_not_enabled', 'module' => 'video'], 403);
         }
-        if (! $user->hasPermission('video', 'create')) {
-            return response()->json(['message' => 'forbidden_permission', 'permission' => 'video.create'], 403);
+
+        foreach ($download ? ['create', 'update'] : ['create'] as $action) {
+            if (! $user->hasPermission('video', $action)) {
+                return response()->json(['message' => 'forbidden_permission', 'permission' => "video.{$action}"], 403);
+            }
         }
 
         return null;

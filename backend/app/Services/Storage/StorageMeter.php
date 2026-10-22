@@ -1804,6 +1804,19 @@ class StorageMeter
         return max(0, (int) $user->storage_quota_bytes - (int) $user->storage_used_bytes);
     }
 
+    /**
+     * **დარჩენილი ადგილი ამ საქაღალდისთვის** — ანგარიშისა და მოდულის ლიმიტიდან
+     * ნაკლები (`guard()`-ის იგივე ორი ზღვარი); ჩამოტვირთვამდე გეგმისთვის.
+     */
+    public function freeFor(User $user, string $folder): int
+    {
+        $free = $this->remaining($user);
+        $module = StorageFolder::moduleFor($folder);
+        $limit = $module !== null ? ($this->allocations($user)[$module] ?? null) : null;
+
+        return $limit === null ? $free : min($free, max(0, $limit - $this->usedByModule($user, $module)));
+    }
+
     public function fits(User $user, int $bytes): bool
     {
         return $bytes <= $this->remaining($user);

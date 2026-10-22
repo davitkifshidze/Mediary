@@ -558,4 +558,101 @@ class VideoDownloadTest extends TestCase
         $this->assertCount(1, $launched);
         $this->assertContains('videos:download', $launched[0]);
     }
+
+    /* ============================================================
+       ჯგუფური ჩამოტვირთვა — ერთი ფონური პროცესი, რიგრიგობით
+       ============================================================ */
+
+    private function launches(): \ArrayObject
+    {
+        $launched = new \ArrayObject;
+        $this->app->bind(BackgroundProcess::class, fn () => new class($launched) extends BackgroundProcess
+        {
+            public function __construct(private \ArrayObject $seen) {}
+
+            public function dispatch(array $command): bool
+            {
+                $this->seen->append($command);
+
+                return true;
+            }
+        });
+
+        return $launched;
+    }
+
+    /**
+     * რიგი: ყველა მაშინვე `queued`, **ერთი** ბრძანება ყველა id-ით; მზა და
+     * ცოცხლად მიმდინარე გამოტოვდება; რიგში მდგომზე მეორე ცალკე გაშვება 409-ია.
+     */
+    public function test_a_batch_queues_every_video_and_launches_one_command(): void
+    {
+        $this->fakeYtDlp();
+        $launched = $this->launches();
+        [$a, $b, $ready, $busy] = [$this->makeVideo($this->user), $this->makeVideo($this->user), $this->makeVideo($this->user), $this->makeVideo($this->user)];
+        $ready->forceFill(['download_status' => Video::DOWNLOAD_READY, 'download_path' => 'videos/downloads/x.mp4'])->save();
+        $busy->forceFill(['download_status' => Video::DOWNLOAD_RUNNING, 'download_started_at' => now()])->save();
+
+        $this->actingAs($this->user);
+        $started = app(VideoDownloader::class)->startBatch([$a, $b, $ready, $busy]);
+
+        $this->assertSame([$a->id, $b->id], $started);
+        $this->assertSame(Video::DOWNLOAD_QUEUED, $a->fresh()->download_status);
+        $this->assertCount(1, $launched);
+        $this->assertSame([(string) $a->id, (string) $b->id], array_slice($launched[0], -2));
+
+        $this->postJson("/api/videos/{$b->id}/download")->assertStatus(409)->assertJson(['message' => 'download_already_running']);
+        // „ჩამოტვირთული" სექცია რიგში მდგომსაც აჩვენებს
+        $this->getJson('/api/videos?downloaded=1')->assertOk()->assertJsonCount(4, 'data');
+    }
+
+    /**
+     * რიგის დამუშავება: რიგრიგობით, რიგიდან მოხსნილი გამოტოვდება, ყოველი
+     * ვიდეოს დასაწყისში დარჩენილებს „გულისცემა" ეხებათ — გრძელი რიგი
+     * გაჭედილად არ ითვლება.
+     */
+    public function test_the_queue_runs_in_order_skips_cancelled_and_keeps_the_rest_alive(): void
+    {
+        $this->fakeYtDlp();
+        $old = now()->subHours(3);
+        [$a, $cancelled, $c] = [$this->makeVideo($this->user), $this->makeVideo($this->user), $this->makeVideo($this->user)];
+        foreach ([$a, $c] as $video) {
+            $video->forceFill(['download_status' => Video::DOWNLOAD_QUEUED, 'download_started_at' => $old])->save();
+        }
+        $this->assertTrue($c->fresh()->downloadStale());
+
+        $seen = [];
+        app(VideoDownloader::class)->runQueue([$a->id, $cancelled->id, $c->id], function (Video $video, bool $ok) use (&$seen, $c) {
+            $seen[] = [$video->id, $ok];
+            if (count($seen) === 1) {
+                // პირველის დასრულებისას მესამე ჯერ რიგშია — და ცოცხალია
+                $this->assertSame(Video::DOWNLOAD_QUEUED, $c->fresh()->download_status);
+                $this->assertFalse($c->fresh()->downloadStale());
+            }
+        });
+
+        $this->assertSame([[$a->id, true], [$c->id, true]], $seen);
+        $this->assertSame(Video::DOWNLOAD_READY, $a->fresh()->download_status);
+        $this->assertSame(Video::DOWNLOAD_READY, $c->fresh()->download_status);
+        $this->assertNull($cancelled->fresh()->download_status);
+    }
+
+    /** სავსე კვოტაზე ვიდეო ჩამოწერამდე ვარდება — გიგაბაიტი ტყუილად აღარ მოდის */
+    public function test_a_full_quota_fails_the_video_before_downloading(): void
+    {
+        $this->app->bind(YtDlp::class, fn () => new class extends YtDlp
+        {
+            public function download(string $url, string $targetDir): array
+            {
+                throw new \RuntimeException('must not download');
+            }
+        });
+        $this->user->forceFill(['storage_quota_bytes' => 100, 'storage_used_bytes' => 100])->save();
+        $video = $this->makeVideo($this->user);
+        $video->forceFill(['download_status' => Video::DOWNLOAD_QUEUED, 'download_started_at' => now()])->save();
+
+        $this->assertFalse(app(VideoDownloader::class)->run($video->fresh()));
+        $this->assertSame(Video::DOWNLOAD_FAILED, $video->fresh()->download_status);
+        $this->assertSame('storage_quota_exceeded', $video->fresh()->download_error);
+    }
 }

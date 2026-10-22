@@ -213,7 +213,8 @@
       "removeHint": "The downloaded file for “{{name}}” will be deleted and {{size}} freed. The record and its link stay.",
       "unavailable": "Downloading is off on this server — yt-dlp is not installed.",
       "noFfmpeg": "no ffmpeg — quality is limited",
-      "stalled": "Stopped — try again"
+      "stalled": "Stopped — try again",
+      "queued": "Queued"
     },
     "noCourse": "No course"
   },
@@ -4110,8 +4111,13 @@
       "pickAll": "Pick all ({{count}})",
       "pick": "Pick",
       "inVideos": "In videos",
-      "local": "Local",
-      "inVideosCount": "In videos {{count}} · local {{local}}"
+      "inVideosCount": "In videos {{count}} · local {{local}}",
+      "download": "Download",
+      "queued": "{{count}} queued for download",
+      "planLoading": "Measuring the size…",
+      "plan": "About ~{{size}} · {{free}} free",
+      "planUnknown": "The size could not be measured · {{free}} free",
+      "planTooBig": "Not all of it fits — the videos past the quota will fail."
     }
   },
   "places": {

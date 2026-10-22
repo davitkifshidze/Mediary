@@ -11,6 +11,7 @@ use App\Models\Video;
 use App\Models\VideoType;
 use App\Services\Links\LinkResolver;
 use App\Services\Video\YtDlp;
+use App\Support\BackgroundProcess;
 use App\Support\CredentialProviders;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -332,5 +333,97 @@ class CoursePlaylistTest extends TestCase
             ->assertStatus(403)
             ->assertJsonPath('message', 'module_not_enabled')
             ->assertJsonPath('module', 'video');
+    }
+
+    /** `yt-dlp` არის; ზომა — 1000 ბაიტი წუთზე; ფონური გაშვებები ჩაიწერება */
+    private function downloadsWork(): \ArrayObject
+    {
+        $this->app->instance(YtDlp::class, new class extends YtDlp
+        {
+            public function available(): bool
+            {
+                return true;
+            }
+
+            public function probe(string $url): array
+            {
+                // aaaaaaaaaa1 — 10 წთ, aaaaaaaaaa2 — 62 წთ
+                return ['title' => null, 'duration' => null, 'filesize' => str_contains($url, 'aaaaaaaaaa1') ? 10_000 : 62_050];
+            }
+        });
+
+        $launched = new \ArrayObject;
+        $this->app->instance(BackgroundProcess::class, new class($launched) extends BackgroundProcess
+        {
+            public function __construct(private \ArrayObject $seen) {}
+
+            public function dispatch(array $command): bool
+            {
+                $this->seen->append($command);
+
+                return true;
+            }
+        });
+
+        return $launched;
+    }
+
+    /**
+     * გეგმა: ზომა ნიმუშებიდან (წამის ფასი × ხანგრძლივობა), ხანგრძლივობის
+     * გარეშე ელემენტი — საშუალოთი; თავისუფალი ადგილი და „ეტევა?".
+     */
+    public function test_the_plan_estimates_the_size_against_the_free_space(): void
+    {
+        $this->giveKey();
+        $this->downloadsWork();
+        $course = $this->course('https://www.youtube.com/playlist?list='.self::LIST);
+        $this->user->forceFill(['storage_quota_bytes' => 50_000, 'storage_used_bytes' => 0])->save();
+
+        $plan = $this->getJson("/api/courses/{$course->id}/playlist/plan?".http_build_query(['ids' => ['aaaaaaaaaa1', 'aaaaaaaaaa2']]))
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(2, $plan['count']);
+        $this->assertSame(600 + 3723, $plan['duration']);
+        $this->assertSame(2, $plan['sampled']);
+        $this->assertSame(72_050, $plan['estimate_bytes']);
+        $this->assertSame(50_000, $plan['free_bytes']);
+        $this->assertFalse($plan['fits']);
+    }
+
+    /** `download` — ჩანაწერები + ერთი რიგი; პროგრამის გარეშე ჩანაწერიც არ იქმნება */
+    public function test_download_adds_the_videos_and_queues_them_in_one_run(): void
+    {
+        $this->giveKey();
+        $launched = $this->downloadsWork();
+        $course = $this->course('https://www.youtube.com/playlist?list='.self::LIST);
+        $type = $this->videoType();
+
+        $res = $this->postJson("/api/courses/{$course->id}/playlist/videos", [
+            'video_ids' => ['aaaaaaaaaa1', 'aaaaaaaaaa3'],
+            'type_id' => $type,
+            'status' => 'to_watch',
+            'download' => true,
+        ])->assertOk();
+
+        $this->assertSame($res->json('created'), $res->json('started'));
+        $this->assertSame([Video::DOWNLOAD_QUEUED, Video::DOWNLOAD_QUEUED], Video::orderBy('id')->pluck('download_status')->all());
+        $this->assertCount(1, $launched);
+
+        // ფანჯარაში ელემენტი „რიგში"-ს ამბობს
+        $items = $this->getJson("/api/courses/{$course->id}/playlist")->json('playlist.items');
+        $this->assertSame(Video::DOWNLOAD_QUEUED, $items[0]['video']['download_status']);
+
+        $this->app->instance(YtDlp::class, new class extends YtDlp
+        {
+            public function available(): bool
+            {
+                return false;
+            }
+        });
+        $this->postJson("/api/courses/{$course->id}/playlist/videos", [
+            'video_ids' => ['aaaaaaaaaa2'], 'type_id' => $type, 'status' => 'to_watch', 'download' => true,
+        ])->assertStatus(503)->assertJsonPath('message', 'ytdlp_unavailable');
+        $this->assertSame(2, Video::count());
     }
 }

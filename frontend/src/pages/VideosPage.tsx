@@ -32,6 +32,7 @@ import {
   pickRandomVideos,
   setVideoStatus,
   deleteVideoDownload,
+  downloadBusy,
   fetchVideoDownloadStatus,
   fetchVideo,
   fetchVideoMetadata,
@@ -334,7 +335,7 @@ export function VideosPage() {
   /* ⚠️ **გაჭედილი გაშვება polling-ს არ იმსახურებს**: მკვდარი
      ფონური პროცესის სტატუსი თვითონ ვერასდროს შეიცვლება, ე.ი. ტაიმერი
      სამუდამოდ ურეკავდა სერვერს ყოველ 4 წამში და პასუხი არასდროს იცვლებოდა. */
-  const running = videos.some((v) => v.download_status === 'running' && !v.download_stale)
+  const running = videos.some(downloadBusy)
   useEffect(() => {
     if (!running) return
     const timer = setInterval(() => void qc.invalidateQueries({ queryKey: ['videos'] }), 4000)
@@ -371,8 +372,8 @@ export function VideosPage() {
     }
     // ⚠️ „მიმდინარეობს" და „გაჩერდა" ორი სხვადასხვა ფაქტია: პირველზე ლოდინია
     // საჭირო, მეორეზე — ხელახლა გაშვება. ერთი წარწერა ადამიანს ატყუებდა.
-    if (v.download_status === 'running') {
-      return v.download_stale ? t('videos.local.stalled') : t('videos.local.running')
+    if (v.download_status === 'running' || v.download_status === 'queued') {
+      return v.download_stale ? t('videos.local.stalled') : t(`videos.local.${v.download_status}`)
     }
     /* `download_error` ან ჩვენი მანქანური კოდია, ან yt-dlp-ის
        საკუთარი stderr; `translateCode()` პირველს თარგმნის და მეორეს ტოვებს. */

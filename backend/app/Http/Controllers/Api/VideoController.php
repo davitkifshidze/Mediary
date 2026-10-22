@@ -58,7 +58,7 @@ class VideoController extends Controller
            ჩამოწერას ჯერ გზა არ აქვს, სექციაში კი უნდა ჩანდეს — თორემ ღილაკზე
            დაჭერის შემდეგ ვიდეო სიიდან ქრებოდა და „სად წავიდა" ისმებოდა. */
         if ($request->boolean('downloaded')) {
-            $query->whereIn('download_status', [Video::DOWNLOAD_READY, Video::DOWNLOAD_RUNNING]);
+            $query->whereIn('download_status', [Video::DOWNLOAD_READY, Video::DOWNLOAD_RUNNING, Video::DOWNLOAD_QUEUED]);
         }
         // ტეგები — მძიმით გამოყოფილი სია; თითოეული ცალკე პირობაა, ე.ი. ფილტრი ვიწროვდება
         foreach ($this->slugList($request->string('tag')->toString()) as $tag) {

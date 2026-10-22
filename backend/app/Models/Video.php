@@ -43,6 +43,14 @@ class Video extends Model
 
     public const DOWNLOAD_FAILED = 'failed';
 
+    /**
+     * რიგში დგას — ჯგუფური ჩამოტვირთვის (`VideoDownloader::startBatch()`) მომლოდინე.
+     * ⚠️ `download_started_at` აქ „გულისცემაა": ფონური ბრძანება მას რიგში
+     * დარჩენილებს ყოველი ვიდეოს დასაწყისში უახლებს, ე.ი. გრძელი რიგი
+     * „გაჭედილად" არ ჩაითვლება — მხოლოდ მკვდარი პროცესი.
+     */
+    public const DOWNLOAD_QUEUED = 'queued';
+
     protected $casts = [
         'tags' => 'array',
         'duration' => 'integer',
@@ -189,7 +197,7 @@ class Video extends Model
      */
     public function downloadStale(): bool
     {
-        if ($this->download_status !== self::DOWNLOAD_RUNNING) {
+        if (! in_array($this->download_status, [self::DOWNLOAD_RUNNING, self::DOWNLOAD_QUEUED], true)) {
             return false;
         }
 

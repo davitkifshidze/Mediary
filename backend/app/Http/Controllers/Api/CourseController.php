@@ -139,7 +139,7 @@ class CourseController extends Controller
         $videos = Video::query()
             ->where('platform', 'youtube')
             ->whereIn('external_id', array_column($items, 'video_id'))
-            ->get(['id', 'external_id', 'download_status', 'download_started_at'])
+            ->get(['id', 'external_id', 'download_status', 'download_error', 'download_started_at'])
             ->keyBy('external_id');
 
         return array_map(function (array $item) use ($videos) {
@@ -148,6 +148,8 @@ class CourseController extends Controller
             return [...$item, 'video' => $video ? [
                 'id' => $video->id,
                 'download_status' => $video->download_status,
+                // ჩავარდნის მიზეზი (მაგ. კვოტა) — კურსის ფანჯარაშიც ჩანს
+                'download_error' => $video->download_error,
                 'download_stale' => $video->downloadStale(),
             ] : null];
         }, $items);

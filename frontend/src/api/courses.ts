@@ -2,6 +2,7 @@ import { api } from '@/lib/api'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 import type { LinkMetadata } from '@/api/bookmarks'
+import type { VideoDownloadState } from '@/api/videos'
 
 /* ============================================================
    კურსების მოდული (`course`).
@@ -194,7 +195,9 @@ export interface CoursePlaylistItem {
 
 export interface CoursePlaylistVideo {
   id: number
-  download_status: 'running' | 'ready' | 'failed' | null
+  download_status: VideoDownloadState | null
+  /** ჩავარდნის მიზეზი (მაგ. `storage_quota_exceeded`) */
+  download_error: string | null
   download_stale: boolean
 }
 
@@ -204,6 +207,23 @@ export interface PlaylistImportResult {
   created: number[]
   existing: number[]
   failed: string[]
+  /** ჩამოტვირთვის რიგში ჩაყენებული (`download`) */
+  started: number[]
+}
+
+/** გეგმა ჩამოტვირთვამდე — ზომა სავარაუდოა (`null` — ვერ გაიზომა) */
+export interface PlaylistPlan {
+  count: number
+  duration: number
+  estimate_bytes: number | null
+  sampled: number
+  free_bytes: number
+  fits: boolean | null
+}
+
+export async function fetchPlaylistPlan(courseId: number, ids: string[]): Promise<PlaylistPlan> {
+  const { data } = await api.get(`/courses/${courseId}/playlist/plan`, { params: { ids } })
+  return data
 }
 
 export interface CoursePlaylist {
@@ -242,7 +262,7 @@ export function isYoutubePlaylist(url: string | null | undefined): boolean {
  */
 export async function addPlaylistVideos(
   courseId: number,
-  input: { video_ids: string[]; type_id: number; status: string },
+  input: { video_ids: string[]; type_id: number; status: string; download?: boolean },
 ): Promise<PlaylistImportResult> {
   const { data } = await api.post(`/courses/${courseId}/playlist/videos`, input)
   return data

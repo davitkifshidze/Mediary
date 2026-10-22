@@ -898,6 +898,8 @@ Route::middleware('auth:sanctum')->group(function () {
         /* არჩეული ფლეილისტის ვიდეოები → ვიდეოების მოდული (კურსის „საქაღალდე").
            POST → `course.create`; ვიდეოს მოდული და `video.create` კონტროლერში მოწმდება */
         Route::post('/courses/{course}/playlist/videos', [CoursePlaylistVideoController::class, 'store']);
+        // ჩამოტვირთვამდე: არჩეულის სავარაუდო ზომა და თავისუფალი ადგილი
+        Route::get('/courses/{course}/playlist/plan', [CoursePlaylistVideoController::class, 'plan']);
 
         /* ფაილები — ეკრანის ასლი, კონსპექტი (სერტიფიკატი მოიხსნა) */
         Route::get('/courses/{course}/files', [CourseFileController::class, 'index']);

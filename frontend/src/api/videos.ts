@@ -11,6 +11,17 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
 
 export type VideoPlatform = 'youtube' | 'vimeo' | 'dailymotion' | 'file' | 'other'
 
+/**
+ * ლოკალური ასლის მდგომარეობა; `queued` — კურსის ჯგუფურ რიგში ელოდება
+ * (ერთი ფონური პროცესი, რიგრიგობით)
+ */
+export type VideoDownloadState = 'queued' | 'running' | 'ready' | 'failed'
+
+/** ჩამოტვირთვა მიმდინარეობს ან რიგშია? — ორივეზე ლოდინია და polling */
+export function downloadBusy(v: { download_status: VideoDownloadState | null; download_stale: boolean }): boolean {
+  return (v.download_status === 'running' || v.download_status === 'queued') && !v.download_stale
+}
+
 export interface Video {
   id: number
   title: string
@@ -50,7 +61,7 @@ export interface Video {
    * და ვერ გამოვიდა · `ready` — ფაილი გვაქვს. ⚠️ **გზა აქ არ მოდის**: ფაილი
    * პრივატულ დისკზეა და მხოლოდ `videoDownloadUrl()`-ით იხსნება.
    */
-  download_status: 'running' | 'ready' | 'failed' | null
+  download_status: VideoDownloadState | null
   download_size: number
   download_format: string | null
   download_name: string | null

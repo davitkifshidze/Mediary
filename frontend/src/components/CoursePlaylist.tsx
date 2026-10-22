@@ -2,15 +2,19 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, FolderOpen, FolderPlus, ListVideo, Loader2, Play, RefreshCw } from 'lucide-react'
+import { Download, ExternalLink, FolderOpen, FolderPlus, ListVideo, Loader2, Play, RefreshCw, TriangleAlert } from 'lucide-react'
 import {
   addPlaylistVideos,
   fetchCoursePlaylist,
+  fetchPlaylistPlan,
   type Course,
   type CoursePlaylist,
   type CoursePlaylistItem,
+  type CoursePlaylistVideo,
 } from '@/api/courses'
-import { errorMessage } from '@/lib/errors'
+import { downloadBusy } from '@/api/videos'
+import { errorMessage, translateCode } from '@/lib/errors'
+import { formatBytes } from '@/lib/utils'
 import { useModules } from '@/lib/modules'
 import { LIST_PAGE_SIZE, useClientPages } from '@/lib/paged'
 import { usePlayer, type PlayerItem } from '@/lib/player'
@@ -38,7 +42,10 @@ import { PlaylistImportDialog, type PlaylistImportChoice } from '@/components/Pl
    („გაკვეთილები" დახურული გადაწყვეტილებაა). ჩექბოქსით არჩეული კი ვიდეოების
    მოდულში ემატება — კურსი იქ „საქაღალდეა" (`POST /courses/{id}/playlist/videos`,
    ტიპი და სტატუსი ერთხელ — `PlaylistImportDialog`); უკვე დამატებულს ჩექბოქსის
-   ნაცვლად ბეჯი აქვს. „ყველას მონიშვნა" **ყველა** ელემენტს ეხება და არა გვერდს.
+   გვერდით ბეჯი აქვს. „ყველას მონიშვნა" **ყველა** ელემენტს ეხება და არა გვერდს.
+   „ჩამოტვირთვა" — ჩანაწერები + ლოკალური ასლი ერთ ფონურ რიგად; დადასტურებამდე
+   გეგმა („N ვიდეო · ~X GB · თავისუფალია Y"), სანამ რიგი მუშაობს — სია
+   თვითონ ახლდება, ჩავარდნილი (მაგ. კვოტაზე) მიზეზით ჩანს.
 
    ⚠️ **ვიდეო კურსის ფანჯარაში უკრავს** — ვიდეოების ფანჯრის წესით: სიის ზემოთ
    16:9 ადგილი (`PlayerSpot`), დაჭერა რიგს აქედან ბოლომდე უშვებს; „გატანა"
@@ -49,6 +56,27 @@ import { PlaylistImportDialog, type PlaylistImportChoice } from '@/components/Pl
    ⚠️ რიგის ერთეული `link`-ია (მრიცხველი არ არსებობს) და id
    **უარყოფითია**: ბაზის ჩანაწერის id-ს (`link-12`) ვერასდროს დაემთხვევა.
    ============================================================ */
+
+/** ვიდეოებში მყოფი ელემენტის ბეჯი — ლოკალური / მიმდინარე / რიგში / ჩავარდნილი / უბრალოდ ვიდეოებშია */
+function videoBadge(video: CoursePlaylistVideo, t: (key: string) => string): { label: string; className?: string; title?: string } {
+  if (video.download_stale) return { label: t('videos.local.stalled'), className: 'bg-[var(--status-towatch)]/15 text-[var(--status-towatch)]' }
+  switch (video.download_status) {
+    case 'ready':
+      return { label: t('videos.local.ready'), className: 'bg-[var(--status-watched)]/15 text-[var(--status-watched)]' }
+    case 'running':
+    case 'queued':
+      return { label: t(`videos.local.${video.download_status}`), className: 'bg-muted text-muted-foreground' }
+    case 'failed':
+      return {
+        label: t('videos.local.failed'),
+        className: 'bg-destructive/10 text-destructive',
+        // ⚠️ მიზეზი (მაგ. კვოტა) — ჩვენი კოდი ითარგმნება, yt-dlp-ის ტექსტი რჩება
+        title: translateCode(video.download_error) || undefined,
+      }
+    default:
+      return { label: t('courses.playlist.inVideos'), className: 'bg-muted text-muted-foreground' }
+  }
+}
 
 function playerItem(item: CoursePlaylistItem, list: CoursePlaylist, course: Course): PlayerItem {
   return {
@@ -76,7 +104,8 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
   const canImport = has('video')
   /** არჩეული ელემენტები (YouTube-ის id) */
   const [picked, setPicked] = useState<string[]>([])
-  const [importing, setImporting] = useState(false)
+  /** დიალოგი: `add` — მხოლოდ ჩანაწერები, `download` — ლოკალური ასლითაც */
+  const [importing, setImporting] = useState<'add' | 'download' | null>(null)
 
   const key = ['course-playlist', course.id, course.url]
   const q = useQuery({
@@ -84,6 +113,9 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
     queryFn: () => fetchCoursePlaylist(course.id),
     staleTime: 5 * 60 * 1000,
     retry: false,
+    // რიგი მუშაობს — ბეჯები თვითონ ახლდება (ფონურ პროცესს შეტყობინება არ აქვს)
+    refetchInterval: (query) =>
+      query.state.data?.items.some((it) => it.video && downloadBusy(it.video)) ? 5000 : false,
   })
   const list = q.data ?? null
   const items = list?.items ?? []
@@ -101,14 +133,20 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
   }
 
   const add = useMutation({
-    mutationFn: (choice: PlaylistImportChoice) => addPlaylistVideos(course.id, { video_ids: picked, ...choice }),
+    mutationFn: (choice: PlaylistImportChoice) =>
+      addPlaylistVideos(course.id, { video_ids: picked, ...choice, download: importing === 'download' }),
     onSuccess: (res) => {
       toast({
-        title: t('courses.playlist.added', { created: res.created.length, existing: res.existing.length }),
+        title: [
+          t('courses.playlist.added', { created: res.created.length, existing: res.existing.length }),
+          importing === 'download' ? t('courses.playlist.queued', { count: res.started.length }) : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
         variant: 'success',
       })
       setPicked([])
-      setImporting(false)
+      setImporting(null)
       void qc.invalidateQueries({ queryKey: key })
       void qc.invalidateQueries({ queryKey: ['videos'] })
       void qc.invalidateQueries({ queryKey: ['courses'] })
@@ -119,8 +157,11 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
   // სერვერმა თქვა „ფლეილისტი არ არის" — სექცია არ იხატება
   if (q.isSuccess && !list) return null
 
-  /* არჩევადი = ჯერ ვიდეოებში არ არის; „ვიდეოებშია N · ლოკალური M" — სიიდან */
-  const selectable = items.filter((it) => !it.video)
+  /* არჩევადი = ლოკალური ასლი ჯერ არ აქვს და არც რიგშია (ვიდეოებში მყოფიც —
+     ჩამოსატვირთად; „დამატება" მას ასლს არ შეუქმნის); „ვიდეოებშია N · ლოკალური M" — სიიდან */
+  const selectable = items.filter(
+    (it) => !it.video || (it.video.download_status !== 'ready' && !downloadBusy(it.video)),
+  )
   const allPicked = selectable.length > 0 && selectable.every((it) => picked.includes(it.video_id))
   const togglePick = (id: string) => setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
   const pickedDuration = formatDuration(
@@ -204,18 +245,30 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
                   {pickedText}
                 </span>
               )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="ml-auto"
-                disabled={picked.length === 0}
-                onClick={() => setImporting(true)}
-                data-testid="playlist-add"
-              >
-                <FolderPlus className="size-4" />
-                {t('courses.playlist.addToVideos')}
-              </Button>
+              <div className="ml-auto flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={picked.length === 0}
+                  onClick={() => setImporting('add')}
+                  data-testid="playlist-add"
+                >
+                  <FolderPlus className="size-4" />
+                  {t('courses.playlist.addToVideos')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={picked.length === 0}
+                  onClick={() => setImporting('download')}
+                  data-testid="playlist-download"
+                >
+                  <Download className="size-4" />
+                  {t('courses.playlist.download')}
+                </Button>
+              </div>
             </div>
           )}
           <ol className="space-y-1" data-testid="playlist-items">
@@ -225,7 +278,7 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
                 <li key={item.position} className="flex items-center gap-1">
                   {canImport && (
                     <span className="grid w-7 shrink-0 place-items-center">
-                      {!item.video && (
+                      {selectable.includes(item) && (
                         <Checkbox
                           checked={picked.includes(item.video_id)}
                           onCheckedChange={() => togglePick(item.video_id)}
@@ -254,12 +307,17 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
                       )}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-sm">{item.title ?? '—'}</span>
-                    {/* უკვე ვიდეოებშია — ჩექბოქსის ნაცვლად */}
-                    {item.video && (
-                      <Badge className="shrink-0" data-testid="playlist-in-videos">
-                        {item.video.download_status === 'ready' ? t('courses.playlist.local') : t('courses.playlist.inVideos')}
-                      </Badge>
-                    )}
+                    {/* უკვე ვიდეოებშია — და ლოკალური ასლის მდგომარეობა */}
+                    {item.video &&
+                      (() => {
+                        const badge = videoBadge(item.video, t)
+                        return (
+                          <Badge className={cn('shrink-0', badge.className)} title={badge.title} data-testid="playlist-in-videos">
+                            {item.video.download_status === 'failed' && <TriangleAlert className="size-3" />}
+                            {badge.label}
+                          </Badge>
+                        )
+                      })()}
                     {item.duration != null && (
                       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{formatDuration(item.duration)}</span>
                     )}
@@ -284,14 +342,62 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
 
       {importing && (
         <PlaylistImportDialog
-          title={t('courses.playlist.addToVideos')}
+          title={t(importing === 'download' ? 'courses.playlist.download' : 'courses.playlist.addToVideos')}
           summary={pickedText}
           busy={add.isPending}
-          confirmLabel={t('courses.playlist.addToVideos')}
-          onClose={() => setImporting(false)}
+          confirmLabel={t(importing === 'download' ? 'courses.playlist.download' : 'courses.playlist.addToVideos')}
+          onClose={() => setImporting(null)}
           onConfirm={(choice) => add.mutate(choice)}
-        />
+        >
+          {importing === 'download' && <PlaylistPlanNote courseId={course.id} ids={picked} />}
+        </PlaylistImportDialog>
       )}
     </DetailSection>
+  )
+}
+
+/**
+ * **გეგმა ჩამოტვირთვამდე** — „~X GB · თავისუფალია Y"; არ ეტევა — გაფრთხილება.
+ * ⚠️ ზომა სავარაუდოა (სერვერი რამდენიმე ვიდეოს ზომავს და ხანგრძლივობაზე
+ * ავრცელებს), თუმცა სწორედ ის აჩენს, რომ ნახევარი კურსი კვოტაზე ჩავარდება.
+ */
+function PlaylistPlanNote({ courseId, ids }: { courseId: number; ids: string[] }) {
+  const { t } = useTranslation()
+  const plan = useQuery({
+    queryKey: ['playlist-plan', courseId, ids],
+    queryFn: () => fetchPlaylistPlan(courseId, ids),
+    retry: false,
+    staleTime: 60_000,
+  })
+
+  if (plan.isLoading) {
+    return (
+      <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        {t('courses.playlist.planLoading')}
+      </p>
+    )
+  }
+  if (plan.isError) {
+    return <p className="mt-2 text-sm text-destructive">{errorMessage(plan.error)}</p>
+  }
+
+  const data = plan.data!
+  const free = formatBytes(data.free_bytes)
+
+  return (
+    <div className="mt-2 space-y-1 text-sm" data-testid="playlist-plan">
+      <p className="text-muted-foreground">
+        {data.estimate_bytes === null
+          ? t('courses.playlist.planUnknown', { free })
+          : t('courses.playlist.plan', { size: formatBytes(data.estimate_bytes), free })}
+      </p>
+      {data.fits === false && (
+        <p className="flex items-center gap-1.5 text-destructive" data-testid="playlist-plan-warning">
+          <TriangleAlert className="size-4 shrink-0" />
+          {t('courses.playlist.planTooBig')}
+        </p>
+      )}
+    </div>
   )
 }

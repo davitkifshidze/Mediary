@@ -55,7 +55,7 @@ class VideoDownloader
            და მაშინ `running` სამუდამოდ რჩებოდა: `POST` 409-ს აბრუნებდა,
            `DELETE` ბილიკის არქონის გამო არაფერს აკეთებდა, ე.ი. ჩამოწერა ამ
            ვიდეოზე ხელით SQL-ის გარეშე **ვეღარასდროს გაეშვებოდა**. */
-        if ($video->download_status === Video::DOWNLOAD_RUNNING && ! $video->downloadStale()) {
+        if (in_array($video->download_status, [Video::DOWNLOAD_RUNNING, Video::DOWNLOAD_QUEUED], true) && ! $video->downloadStale()) {
             throw new HttpResponseException(response()->json([
                 'message' => 'download_already_running',
             ], 409));
@@ -123,6 +123,110 @@ class VideoDownloader
     }
 
     /**
+     * **რამდენიმე ვიდეო ერთ ფონურ პროცესად, რიგრიგობით** (კურსის „ჩამოტვირთვა").
+     *
+     * ⚠️ ერთი `yt-dlp` ერთდროულად: ოცდაათი პარალელური პროცესი ქსელსაც და
+     * დისკსაც გადატვირთავდა, `artisan serve` კი თითო `probe()`-ზე წუთობით
+     * გაიჭედებოდა. ამიტომ წინასწარი ზომა აქ არ იზომება — მას გეგმა აჩვენებს
+     * (`CoursePlaylistVideoController::plan()`), ნამდვილ კვოტას კი `run()` თითო ვიდეოზე.
+     *
+     * ყველა მაშინვე `queued`-ია (UI „რიგში"-ს წერს, მეორე გაშვება 409-ია);
+     * მზა, მიმდინარე და ცოცხალ რიგში მდგომი გამოტოვდება.
+     *
+     * @param  iterable<Video>  $videos
+     * @return list<int> რიგში ჩაყენებულების id-ები
+     *
+     * @throws HttpResponseException 503 (პროგრამა არ არის ან ფონური პროცესი ვერ გაეშვა)
+     */
+    public function startBatch(iterable $videos): array
+    {
+        if (! $this->ytdlp->available()) {
+            throw new HttpResponseException(response()->json(['message' => 'ytdlp_unavailable'], 503));
+        }
+
+        $ids = [];
+
+        foreach ($videos as $video) {
+            $busy = in_array($video->download_status, [Video::DOWNLOAD_RUNNING, Video::DOWNLOAD_QUEUED], true);
+            if ($video->hasDownload() || ($busy && ! $video->downloadStale())) {
+                continue;
+            }
+
+            $video->forceFill([
+                'download_status' => Video::DOWNLOAD_QUEUED,
+                'download_error' => null,
+                'download_started_at' => now(),
+            ])->save();
+            $ids[] = (int) $video->getKey();
+        }
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $launched = $this->background->dispatch([
+            PHP_BINARY,
+            base_path('artisan'),
+            'videos:download',
+            ...array_map('strval', $ids),
+        ]);
+
+        if (! $launched) {
+            Video::query()->whereIn('id', $ids)->update([
+                'download_status' => Video::DOWNLOAD_FAILED,
+                'download_error' => 'background_unavailable',
+                'download_started_at' => null,
+            ]);
+
+            throw new HttpResponseException(response()->json(['message' => 'ytdlp_unavailable'], 503));
+        }
+
+        return $ids;
+    }
+
+    /**
+     * **რიგის დამუშავება** — `artisan videos:download {ids*}`-ის შიგნიდან.
+     *
+     * ერთი id — ჩვეულებრივი გაშვება (ღილაკიდან ან ხელით), სტატუსის მიუხედავად.
+     * რამდენიმე — რიგი: მხოლოდ `queued`/`running` მუშავდება (ჩამოტვირთვის
+     * მოხსნა რიგიდან სტატუსს ასუფთავებს და ვიდეო გამოტოვდება), ყოველი ვიდეოს
+     * დასაწყისში კი რიგში დარჩენილებს „გულისცემა" ეხებათ (`download_started_at`).
+     *
+     * @param  list<int>  $ids
+     * @param  callable(Video, bool): void|null  $report  ვიდეო და შედეგი (კონსოლისთვის)
+     */
+    public function runQueue(array $ids, ?callable $report = null): void
+    {
+        $single = count($ids) === 1;
+
+        foreach (array_values($ids) as $i => $id) {
+            $video = Video::query()->find($id);
+            $waiting = $video && in_array($video->download_status, [Video::DOWNLOAD_RUNNING, Video::DOWNLOAD_QUEUED], true);
+
+            if (! $video || (! $single && ! $waiting)) {
+                continue;
+            }
+
+            $rest = array_slice($ids, $i + 1);
+            if ($rest !== []) {
+                Video::query()->whereIn('id', $rest)
+                    ->where('download_status', Video::DOWNLOAD_QUEUED)
+                    ->update(['download_started_at' => now()]);
+            }
+
+            if ($video->download_status === Video::DOWNLOAD_QUEUED) {
+                $video->forceFill(['download_status' => Video::DOWNLOAD_RUNNING, 'download_started_at' => now()])->save();
+            }
+
+            $ok = $this->run($video);
+
+            if ($report) {
+                $report($video, $ok);
+            }
+        }
+    }
+
+    /**
      * ნამდვილი სამუშაო — `artisan videos:download`-ის შიგნიდან.
      *
      * ⚠️ **არასდროს აგდებს გამონაკლისს გარეთ**: ეს ფონური პროცესია და მისი
@@ -134,6 +238,11 @@ class VideoDownloader
         $temp = storage_path('app/ytdlp/'.Str::random(16));
 
         try {
+            /* ⚠️ კვოტა უკვე სავსეა? — ჯგუფში წინასწარი ზომა არ იზომება, ე.ი.
+               ამის გარეშე ყოველი შემდეგი ვიდეო ბოლომდე ჩამოიწერებოდა და მხოლოდ
+               მერე წაიშლებოდა */
+            $this->meter->guard($video->user, 1, StorageFolder::VIDEO_DOWNLOADS);
+
             $result = $this->ytdlp->download($video->url, $temp);
 
             // ნამდვილი ზომა — სავარაუდო ცდება და კვოტა ლიმიტია
