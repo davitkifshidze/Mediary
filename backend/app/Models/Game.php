@@ -172,11 +172,6 @@ class Game extends Model
         return $this->files()->where('kind', 'image');
     }
 
-    public function notes(): HasMany
-    {
-        return $this->hasMany(GameNote::class)->orderByDesc('id');
-    }
-
     /* ---------- helpers ---------- */
 
     /**

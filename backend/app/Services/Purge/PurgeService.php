@@ -20,7 +20,6 @@ use App\Models\DutyShift;
 use App\Models\GalleryImage;
 use App\Models\Game;
 use App\Models\GameFile;
-use App\Models\GameNote;
 use App\Models\Movie;
 use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
@@ -278,7 +277,8 @@ class PurgeService
         'video' => [VideoFile::class, VideoNote::class, 'video_id'],
         'book' => [BookFile::class, BookNote::class, 'book_id'],
         'board_game' => [BoardGameFile::class, BoardGameNote::class, 'board_game_id'],
-        'game' => [GameFile::class, GameNote::class, 'game_id'],
+        // თამაშს ჩანიშვნები აღარ აქვს — მხოლოდ სქრინშოტები
+        'game' => [GameFile::class, null, 'game_id'],
         'note' => [NoteEntryFile::class, null, 'note_entry_id'],
         // კურსს ფაილები აქვს, ჩანიშვნები კი არა
         'course' => [CourseFile::class, null, 'course_id'],

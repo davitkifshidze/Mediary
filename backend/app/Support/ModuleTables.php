@@ -34,7 +34,7 @@ final class ModuleTables
         'song' => ['songs', 'song_genres', 'song_genre_song', 'song_field_values', 'playlists', 'playlist_song'],
         'book' => ['books', 'book_genres', 'book_field_values', 'book_files', 'book_notes'],
         'board_game' => ['board_games', 'board_game_genres', 'board_game_field_values', 'board_game_files', 'board_game_notes'],
-        'game' => ['games', 'game_genres', 'game_genre_game', 'game_field_values', 'game_files', 'game_notes', 'game_videos'],
+        'game' => ['games', 'game_genres', 'game_genre_game', 'game_field_values', 'game_files', 'game_videos'],
         'note' => ['note_entries', 'note_categories', 'note_field_values', 'note_entry_files', 'note_reminders', 'note_notifications'],
         'bookmark' => ['bookmarks', 'bookmark_categories', 'bookmark_field_values', 'bookmark_files'],
         'course' => ['courses', 'course_categories', 'course_field_values', 'course_files'],

@@ -67,7 +67,6 @@ class GameResource extends JsonResource
             'videos_count' => $this->whenCounted('videos'),
             'files_count' => $this->whenCounted('files'),
             'images_count' => $this->whenCounted('images'),
-            'notes_count' => $this->whenCounted('notes'),
             'gallery_count' => $this->whenCounted('galleryImages'),
             'created_at' => $this->created_at?->toIso8601String(),
         ];

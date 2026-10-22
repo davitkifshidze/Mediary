@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Game;
 use App\Models\GameFile;
 use App\Models\GameGenre;
-use App\Models\GameNote;
 use App\Models\GameVideo;
 use App\Models\Module;
 use App\Models\User;
@@ -455,7 +454,7 @@ class GameModuleTest extends TestCase
         $this->assertSame(2, GameVideo::withoutGlobalScope('owner')->count());
     }
 
-    /** ჩანაწერის წაშლა — ფაილები, ჩანიშვნები და ვიდეოებიც მიჰყვება, კვოტაც თავისუფლდება */
+    /** ჩანაწერის წაშლა — ფაილები და ვიდეოებიც მიჰყვება, კვოტაც თავისუფლდება */
     public function test_deleting_a_game_releases_files_and_quota(): void
     {
         Storage::fake('public');
@@ -466,10 +465,6 @@ class GameModuleTest extends TestCase
                 'kind' => 'image',
                 'files' => [UploadedFile::fake()->image('screen.jpg')->size(120)],
             ])
-            ->assertStatus(201);
-
-        $this->actingAs($this->user)
-            ->postJson("/api/games/{$id}/notes", ['body' => 'ბოსი მეორე სართულზეა'])
             ->assertStatus(201);
 
         $this->actingAs($this->user)
@@ -486,7 +481,6 @@ class GameModuleTest extends TestCase
         $this->actingAs($this->user)->deleteJson("/api/trash/game/{$id}")->assertNoContent();
 
         $this->assertSame(0, GameFile::withoutGlobalScope('owner')->count());
-        $this->assertSame(0, GameNote::withoutGlobalScope('owner')->count());
         $this->assertSame(0, GameVideo::withoutGlobalScope('owner')->count());
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
     }

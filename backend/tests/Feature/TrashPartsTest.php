@@ -81,7 +81,6 @@ class TrashPartsTest extends TestCase
         return [
             'video' => ['video_note'],
             'book' => ['book_note'],
-            'game' => ['game_note'],
             'board game' => ['board_game_note'],
         ];
     }
@@ -92,7 +91,6 @@ class TrashPartsTest extends TestCase
         [$parent, $list, $delete] = match ($kind) {
             'video_note' => [Video::create(['user_id' => $this->me->id, 'title' => 'v', 'url' => 'https://youtu.be/dQw4w9WgXcQ']), 'videos', 'video-notes'],
             'book_note' => [Book::create(['user_id' => $this->me->id, 'title_en' => 'b']), 'books', 'book-notes'],
-            'game_note' => [Game::create(['user_id' => $this->me->id, 'title_en' => 'g']), 'games', 'game-notes'],
             'board_game_note' => [BoardGame::create(['user_id' => $this->me->id, 'title' => 'bg']), 'board-games', 'board-game-notes'],
         };
 
@@ -380,7 +378,7 @@ class TrashPartsTest extends TestCase
     /** ვადის ამოწურვა ურნის ჩანაწერსაც შლის */
     public function test_prune_drops_expired_entries_and_parts(): void
     {
-        $game = Game::create(['user_id' => $this->me->id, 'title_en' => 'g']);
+        $game = BoardGame::create(['user_id' => $this->me->id, 'title' => 'g']);
         $note = $game->notes()->create(['user_id' => $this->me->id, 'body' => 'old']);
         $note->moveToTrash();
         $note->forceFill(['trashed_at' => now()->subDays(40)])->saveQuietly();

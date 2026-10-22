@@ -87,7 +87,8 @@ class TrashFilesTest extends TestCase
             'video_file' => [Video::create(['user_id' => $this->me->id, 'title' => 'v', 'url' => 'https://youtu.be/dQw4w9WgXcQ']), 'videos/files/docs', 'videos', 'video-files', 'videos'],
             'book_file' => [Book::create(['user_id' => $this->me->id, 'title_en' => 'b']), 'books/files/docs', 'books', 'book-files', 'books'],
             'board_game_file' => [BoardGame::create(['user_id' => $this->me->id, 'title' => 'bg']), 'boardgames/files/docs', 'board-games', 'board-game-files', 'board-games'],
-            'game_file' => [Game::create(['user_id' => $this->me->id, 'title_en' => 'g']), 'games/files/docs', 'games', 'game-files', 'games'],
+            // თამაშს მხოლოდ სქრინშოტები აქვს
+            'game_file' => [Game::create(['user_id' => $this->me->id, 'title_en' => 'g']), 'games/files/images', 'games', 'game-files', 'games'],
             'note_entry_file' => [NoteEntry::create(['user_id' => $this->me->id, 'title' => 'n']), 'notes/files/docs', 'notes', 'note-files', 'notes'],
             'course_file' => [Course::create(['user_id' => $this->me->id, 'title' => 'c']), 'courses/files/docs', 'courses', 'course-files', 'courses'],
             'place_file' => [Place::create(['user_id' => $this->me->id, 'name' => 'p']), 'places/files/docs', 'places', 'place-files', 'places'],
@@ -97,7 +98,7 @@ class TrashFilesTest extends TestCase
         Storage::disk(StorageFolder::diskFor($path))->put($path, str_repeat('x', $bytes));
 
         $file = $parent->files()->create([
-            'user_id' => $this->me->id, 'kind' => 'doc', 'path' => $path,
+            'user_id' => $this->me->id, 'kind' => $kind === 'game_file' ? 'image' : 'doc', 'path' => $path,
             'original_name' => "{$kind}.pdf", 'mime' => 'application/pdf', 'size' => $bytes,
         ]);
 

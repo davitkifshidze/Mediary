@@ -17,7 +17,6 @@ import i18n from '@/i18n'
 const mocks = vi.hoisted(() => ({
   updateGame: vi.fn(),
   fetchGameFiles: vi.fn(),
-  fetchGameNotes: vi.fn(),
   fetchGameVideos: vi.fn(),
 }))
 
@@ -25,7 +24,6 @@ vi.mock('@/api/games', async (original) => ({
   ...(await original<typeof import('@/api/games')>()),
   updateGame: mocks.updateGame,
   fetchGameFiles: mocks.fetchGameFiles,
-  fetchGameNotes: mocks.fetchGameNotes,
   fetchGameVideos: mocks.fetchGameVideos,
 }))
 
@@ -77,7 +75,6 @@ const game = {
 
 async function mount() {
   mocks.fetchGameFiles.mockResolvedValue([])
-  mocks.fetchGameNotes.mockResolvedValue([])
   mocks.fetchGameVideos.mockResolvedValue([])
   mocks.updateGame.mockResolvedValue(game)
 
@@ -95,6 +92,17 @@ async function mount() {
 const cards = () => [...document.querySelectorAll<HTMLElement>('[data-testid="game-meta"] [data-testid="meta-card"]')]
 
 describe('GameDetail — ბარათები', () => {
+  /* „დოკუმენტის ატვირთვა არ მჭირდება… არ მჭირდება ჩანიშვნები" — მხოლოდ სქრინშოტები რჩება */
+  it('has screenshots but no documents or notes section', async () => {
+    await mount()
+
+    expect(mocks.fetchGameFiles).toHaveBeenCalledWith(9, 'image')
+    expect(mocks.fetchGameFiles).not.toHaveBeenCalledWith(9, 'doc')
+    expect(document.body.textContent).toContain(i18n.t('games.galleryTitle'))
+    expect(document.body.textContent).not.toContain('დოკუმენტები')
+    expect(document.body.textContent).not.toContain('ჩანიშვნები')
+  })
+
   it('shows platforms, modes and genres as cards with their colours', async () => {
     await mount()
 

@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -39,6 +39,7 @@ export function Chip({
   icon,
   count,
   remove,
+  check,
   className,
   children,
   ...props
@@ -57,6 +58,12 @@ export function Chip({
    * დაჭერა ისედაც მოხსნაა, ჯვარი კი ამას ამბობს და ჰოვერზე წითლდება.
    */
   remove?: boolean
+  /**
+   * **ამრჩევის ჩიპი** (ჟანრები, პლატფორმები, რეჟიმები) — მონიშნულზე ✓ წარწერის
+   * შემდეგ და სავსე („მუქი") ფონი უფერო ჩიპზეც. ⚠️ ფილტრის ჩიპებზე არა —
+   * იქ ✓ ხმაურია, მონიშნულობას ჩარჩო ისედაც ამბობს.
+   */
+  check?: boolean
   children: ReactNode
 } & Omit<ComponentProps<'button'>, 'children'>) {
   return (
@@ -67,7 +74,9 @@ export function Chip({
         'group/chip inline-flex shrink-0 cursor-pointer items-center rounded-md border font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
         SIZES[size],
         active
-          ? 'border-primary bg-secondary text-foreground'
+          ? check
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'border-primary bg-secondary text-foreground'
           : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground',
         className,
       )}
@@ -75,6 +84,7 @@ export function Chip({
     >
       {icon}
       <span className="truncate">{children}</span>
+      {check && active && <Check className="size-3 shrink-0" data-testid="chip-check" />}
       {count != null && (
         <span
           className={cn(

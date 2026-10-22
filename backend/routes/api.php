@@ -60,7 +60,6 @@ use App\Http\Controllers\Api\GalleryVideoController;
 use App\Http\Controllers\Api\GameController;
 use App\Http\Controllers\Api\GameFileController;
 use App\Http\Controllers\Api\GameGenreController;
-use App\Http\Controllers\Api\GameNoteController;
 use App\Http\Controllers\Api\GameVideoController;
 use App\Http\Controllers\Api\GenreController;
 use App\Http\Controllers\Api\GenreItemController;
@@ -715,10 +714,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/games/{game}/files', [GameFileController::class, 'store']);
         Route::delete('/game-files/{gameFile}', [GameFileController::class, 'destroy']);
 
-        Route::get('/games/{game}/notes', [GameNoteController::class, 'index']);
-        Route::post('/games/{game}/notes', [GameNoteController::class, 'store']);
-        Route::match(['put', 'patch'], '/game-notes/{gameNote}', [GameNoteController::class, 'update']);
-        Route::delete('/game-notes/{gameNote}', [GameNoteController::class, 'destroy']);
     });
 
     /* ---------- ჩანაწერები (module: note) ----------

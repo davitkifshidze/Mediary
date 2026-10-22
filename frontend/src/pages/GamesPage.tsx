@@ -418,7 +418,6 @@ export function GamesPage() {
                         />
                       }
                       favorite={fav}
-                      files={{ count: game.files_count ?? 0, onOpen: () => setOpened(game) }}
                       link={{ href: store?.url, label: t('actions.link'), icon: ExternalLink, title: store?.label || store?.url }}
                       onEdit={() => setEditing(game)}
                       onDelete={askDelete}

@@ -31,7 +31,6 @@ use App\Models\GalleryVideo;
 use App\Models\Game;
 use App\Models\GameFile;
 use App\Models\GameGenre;
-use App\Models\GameNote;
 use App\Models\GameVideo;
 use App\Models\MediaWatch;
 use App\Models\Movie;
@@ -149,7 +148,6 @@ final class TrashDomain
         // ჩანაწერის ნაწილები
         'video_note' => ['model' => VideoNote::class, 'module' => 'video', 'parent' => 'video', 'size' => false],
         'book_note' => ['model' => BookNote::class, 'module' => 'book', 'parent' => 'book', 'size' => false],
-        'game_note' => ['model' => GameNote::class, 'module' => 'game', 'parent' => 'game', 'size' => false],
         'board_game_note' => ['model' => BoardGameNote::class, 'module' => 'board_game', 'parent' => 'boardGame', 'size' => false],
         'game_video' => ['model' => GameVideo::class, 'module' => 'game', 'parent' => 'game', 'size' => false],
         'playlist' => ['model' => Playlist::class, 'module' => 'song', 'parent' => null, 'size' => false],

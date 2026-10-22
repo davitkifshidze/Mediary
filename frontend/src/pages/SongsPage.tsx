@@ -866,6 +866,7 @@ function SongForm({
                 <Chip
                   key={genre.id}
                   active={on}
+                  check
                   onClick={() =>
                     setGenreIds((cur) =>
                       cur.includes(genre.id) ? cur.filter((id) => id !== genre.id) : [...cur, genre.id],

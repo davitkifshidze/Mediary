@@ -524,7 +524,7 @@ class StorageMeter
             ]);
         }
 
-        // თამაშის ფაილები — ატვირთული სქრინშოტები და დოკუმენტები
+        // თამაშის ფაილები — ატვირთული სქრინშოტები (ძველი დოკუმენტიც, თუ დარჩა — თავისი სახეობით)
         $gameFiles = $skip('game') ? collect() : GameFile::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
             ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at', 'trashed_at', 'game_id']);

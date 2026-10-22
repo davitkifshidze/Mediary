@@ -113,6 +113,7 @@ function ChipGroup<T extends string>({
           <Chip
             key={value}
             active={on}
+            check
             onClick={() => onToggle(value)}
             icon={<Icon className="size-3.5" style={on ? undefined : { color }} />}
             style={tintStyle(color, on)}
@@ -591,6 +592,7 @@ export function GameForm({
                   <Chip
                     key={genre.id}
                     active={on}
+                    check
                     onClick={() => setGenreIds((cur) => toggleIn(cur, genre.id))}
                     icon={<ModuleIcon name={genre.icon} className="size-3.5" style={on ? undefined : (color ? { color } : undefined)} />}
                     style={tintStyle(color, on)}

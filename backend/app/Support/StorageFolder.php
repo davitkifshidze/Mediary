@@ -88,8 +88,6 @@ final class StorageFolder
 
     public const GAME_IMAGES = 'games/files/images';
 
-    public const GAME_DOCS = 'games/files/docs';
-
     /** ბუკმარკის ატვირთული ფოტო (og:image **არ** ჩამოგვაქვს — ის დაშორებული URL-ია) */
     public const BOOKMARK_THUMBNAILS = 'bookmarks/thumbnails';
 
@@ -371,12 +369,6 @@ final class StorageFolder
             'doc' => self::BOARD_GAME_DOCS,
             default => self::BOARD_GAME_RULES,
         };
-    }
-
-    /** `game_files.kind` → საქაღალდე */
-    public static function gameFiles(string $kind): string
-    {
-        return $kind === 'doc' ? self::GAME_DOCS : self::GAME_IMAGES;
     }
 
     /** `note_entry_files.kind` → საქაღალდე */

@@ -157,7 +157,7 @@ final class ExportDomain
         ],
         'game' => [
             'model' => Game::class,
-            'with' => ['genres', 'files', 'notes', 'videos'],
+            'with' => ['genres', 'files', 'videos'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'release_date', 'genres', 'status', 'finished_at', 'rating',
                 'is_favorite', 'developer', 'publisher', 'franchise', 'platforms',
@@ -165,7 +165,7 @@ final class ExportDomain
                 'opencritic', 'users_score', 'age_rating',
                 'size_gb', 'rawg_id', 'rawg_slug', 'igdb_id', 'igdb_slug', 'links',
                 'description_ka', 'description_en', 'cover_path', 'cover_url', 'cover_source', 'visibility', 'created_at',
-                'custom_fields', 'files', 'notes', 'videos',
+                'custom_fields', 'files', 'videos',
             ],
         ],
         /* ⚠️ **ჩანიშვნები ექსპორტში არიან, საჯარო პროფილზე კი — არასდროს.**

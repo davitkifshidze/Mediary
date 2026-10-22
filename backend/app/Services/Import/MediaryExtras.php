@@ -115,6 +115,10 @@ class MediaryExtras
         foreach (array_values($items) as $i => $item) {
             // ⚠️ სახეობა `enum`-ია (წიგნის ფაილი — `book`, სამაგიდოს წესები — `rules`): უცნობი — `doc`
             $kind = in_array($item['kind'] ?? null, ['image', 'doc', 'book', 'rules', 'video'], true) ? $item['kind'] : 'doc';
+            // თამაშს მხოლოდ სქრინშოტები აქვს — ძველი ექსპორტის დოკუმენტი გამოტოვდება
+            if ($module === 'game' && $kind !== 'image') {
+                continue;
+            }
             $stored = $files->store($user, $item['path'] ?? null, $this->filesFolder($module, $kind), $this->uploadKind($kind));
 
             if (! $stored) {
@@ -382,7 +386,7 @@ class MediaryExtras
             'video' => StorageFolder::videoFiles($kind),
             'book' => StorageFolder::bookFiles($kind),
             'board_game' => StorageFolder::boardGameFiles($kind),
-            'game' => StorageFolder::gameFiles($kind),
+            'game' => StorageFolder::GAME_IMAGES,
             'note' => StorageFolder::noteFiles($kind),
             'bookmark' => StorageFolder::BOOKMARK_IMAGES,
             'course' => StorageFolder::courseFiles($kind),

@@ -48,7 +48,7 @@ class GameController extends Controller
     {
         $query = Game::query()
             ->with('genres')
-            ->withCount(['videos', 'files', 'images', 'notes', 'galleryImages']);
+            ->withCount(['videos', 'files', 'images', 'galleryImages']);
         // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
         LibraryStats::drill($query, 'game', $request);
 
@@ -129,7 +129,7 @@ class GameController extends Controller
     {
         return new GameResource(
             $game->load(['genres', 'videos'])
-                ->loadCount(['videos', 'files', 'images', 'notes', 'galleryImages']),
+                ->loadCount(['videos', 'files', 'images', 'galleryImages']),
         );
     }
 
@@ -159,7 +159,7 @@ class GameController extends Controller
 
         return new GameResource(
             $game->load(['genres', 'videos'])
-                ->loadCount(['videos', 'files', 'images', 'notes', 'galleryImages']),
+                ->loadCount(['videos', 'files', 'images', 'galleryImages']),
         );
     }
 

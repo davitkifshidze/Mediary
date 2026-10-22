@@ -1,28 +1,21 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, FileText, Gamepad2, Plus, Trash2, Upload } from 'lucide-react'
+import { Gamepad2, Plus, Trash2 } from 'lucide-react'
 import {
-  createGameNote,
   createGameVideo,
   deleteGameFile,
-  deleteGameNote,
   deleteGameVideo,
   fetchGameFiles,
-  fetchGameNotes,
-  updateGameNote,
   fetchGameVideos,
   GAME_VIDEO_KINDS,
   uploadGameFiles,
   type Game,
-  type GameFile,
   type GameVideoKind,
   toggleGameFavorite,
 } from '@/api/games'
 import { useRecordOpen } from '@/lib/audit'
 import { storageUrl } from '@/lib/api'
-import { useFileViewer } from '@/components/FileViewer'
-import { RecordNotes } from '@/components/RecordNotes'
 import { GameMetaSections } from '@/components/GameMetaCards'
 import { errorMessage } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
@@ -37,18 +30,18 @@ import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { formatBytes } from '@/lib/utils'
 import { LinkField } from '@/components/ui/link-field'
 
 /* ============================================================
-   თამაშის დეტალები — ვიდეოები, სქრინშოტები,
-   დოკუმენტები და ჩანიშვნები.
+   თამაშის დეტალები — ვიდეოები და სქრინშოტები.
+   ⚠️ დოკუმენტები და ჩანიშვნები აღარ არის („დოკუმენტის ატვირთვა არ მჭირდება
+   არაფერში… არ მჭირდება ჩანიშვნები").
 
    ⚠️ **რიგი შეიცვალა** (შენი სიტყვები: „ფოტოები ბოლოშია — ზემოთ
    გააკეთე, კარგი ზომით"): თავში მთავარი ფოტო, სტატუსი, ჟანრები,
    პლატფორმები და მოკლე ცნობები; მერე **სქრინშოტები — Steam-ის მაღაზიის
    გვერდივით** (`PhotoShowcase`: პირველი დიდად, დანარჩენი ზოლად); მერე
-   აღწერა, ბმულები, ვიდეოები, დოკუმენტები და ჩანიშვნები. აქამდე მთავარი
+   აღწერა, ბმულები და ვიდეოები. აქამდე მთავარი
    ფოტო, სტატუსი, ჟანრები და პლატფორმები ფანჯარაში საერთოდ არ ჩანდა, ხოლო
    სქრინშოტები 11-დან მე-9 იყო.
 
@@ -168,13 +161,6 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
           <Videos game={game} />
         </DetailSection>
 
-        <DetailSection title={t('games.docsTitle')} hint={t('games.docsHint')}>
-          <Files game={game} />
-        </DetailSection>
-
-        <DetailSection title={t('games.notesTitle')}>
-          <Notes game={game} />
-        </DetailSection>
       </div>
     </ModalShell>
   )
@@ -286,8 +272,9 @@ function Videos({ game }: { game: Game }) {
 
 /* ---------- ფაილები ---------- */
 
-/** ატვირთვის საერთო ქცევა — ორივე ბლოკს (გალერეა/დოკუმენტები) ერთი და იგივე სჭირდება */
-function useFiles(game: Game, kind: GameFile['kind']) {
+/** სქრინშოტების ატვირთვა და წაშლა */
+function useFiles(game: Game) {
+  const kind = 'image'
   const qc = useQueryClient()
   const { toast } = useToast()
 
@@ -323,7 +310,7 @@ function useFiles(game: Game, kind: GameFile['kind']) {
  */
 function Screenshots({ game }: { game: Game }) {
   const { t } = useTranslation()
-  const { query, upload, remove } = useFiles(game, 'image')
+  const { query, upload, remove } = useFiles(game)
 
   return (
     <DetailPhotos
@@ -337,126 +324,6 @@ function Screenshots({ game }: { game: Game }) {
       uploadLabel={t('games.addPhotos')}
       emptyTitle={t('games.galleryEmpty')}
       deleteTitle={t('games.photoDeleteTitle')}
-    />
-  )
-}
-
-function Files({ game }: { game: Game }) {
-  const { t } = useTranslation()
-  const confirm = useConfirm()
-  const input = useRef<HTMLInputElement>(null)
-  const { query, upload, remove } = useFiles(game, 'doc')
-  const files = query.data ?? []
-  /* ონლაინ მნახველი (2026-09-14) — ⚠️ `resolve: storageUrl` იმიტომაა, რომ ეს
-     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი. */
-  const viewer = useFileViewer({ resolve: storageUrl, onDelete: (id) => remove.mutate(id) })
-
-
-  return (
-    <div>
-      <Button
-        variant="outline"
-        size="sm"
-        className="mb-3"
-        disabled={upload.isPending}
-        onClick={() => input.current?.click()}
-      >
-        <Upload className="size-3.5" />
-        {upload.isPending ? t('actions.saving') : t('games.addDocs')}
-      </Button>
-      <input
-        ref={input}
-        type="file"
-        multiple
-        hidden
-        onChange={(e) => {
-          const picked = Array.from(e.target.files ?? [])
-          if (picked.length) upload.mutate(picked)
-          e.target.value = ''
-        }}
-      />
-
-      {!query.isLoading && !files.length && (
-        <p className="text-xs text-muted-foreground">{t('games.docsEmpty')}</p>
-      )}
-
-      <ul className="space-y-1.5">
-        {files.map((file) => (
-          <li
-            key={file.id}
-            className="flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm"
-          >
-            <FileText className="size-4 shrink-0 text-muted-foreground" />
-            {/* ⚠️ სახელი **ღილაკია** — ონლაინ მნახველი (2026-09-14) */}
-            <button
-              type="button"
-              onClick={() => viewer.open(file)}
-              className="min-w-0 flex-1 cursor-pointer truncate text-left hover:text-primary"
-              title={t('files.viewerOpen')}
-            >
-              {file.original_name ?? file.url}
-            </button>
-            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-              {formatBytes(file.size)}
-            </span>
-            <a
-              href={storageUrl(file.url) ?? '#'}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={t('books.fileDownload')}
-              className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:text-foreground"
-            >
-              <Download className="size-4" />
-            </a>
-            <Button
-              variant="destructiveOutline"
-              size="sm"
-              className="shrink-0"
-              onClick={async () => {
-                const ok = await confirm({
-                  title: t('books.fileDeleteTitle'),
-                  description: t('books.fileDeleteHint', { name: file.original_name ?? file.url }),
-                  variant: 'destructive',
-                })
-                if (ok) remove.mutate(file.id)
-              }}
-              aria-label={t('actions.delete')}
-            >
-              <Trash2 className="size-3.5" />
-              {t('actions.delete')}
-            </Button>
-          </li>
-        ))}
-      </ul>
-
-      {/* ონლაინ მნახველი — ერთი კომპონენტი ყველა მოდულზე (2026-09-14) */}
-      {viewer.node}
-    </div>
-  )
-}
-
-function Notes({ game }: { game: Game }) {
-  const { t } = useTranslation()
-
-  /* ⚠️ სხეული გაზიარებულია (`components/RecordNotes.tsx`).
-     აქ ადრე `books.notesEmpty` იყო ნასესხები — გაზიარებულ კომპონენტს
-     ტექსტი გამომძახებლისგან მოაქვს, ე.ი. თითოეულ მოდულს თავისი გასაღები
-     უნდა ჰქონდეს და არა მეზობლის სივრცე. */
-  return (
-    <RecordNotes
-      queryKey={['game-notes', game.id]}
-      invalidate={[['games']]}
-      api={{
-        list: () => fetchGameNotes(game.id),
-        create: (input) => createGameNote(game.id, input.body),
-        update: (id, input) => updateGameNote(id, input.body),
-        remove: deleteGameNote,
-      }}
-      placeholder={t('games.notePlaceholder')}
-      addLabel={t('actions.add')}
-      emptyTitle={t('games.notesEmpty')}
-      emptyHint={t('recordNotes.emptyHint')}
     />
   )
 }

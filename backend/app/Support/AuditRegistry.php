@@ -44,7 +44,6 @@ use App\Models\GalleryVideo;
 use App\Models\Game;
 use App\Models\GameFile;
 use App\Models\GameGenre;
-use App\Models\GameNote;
 use App\Models\GameVideo;
 use App\Models\Genre;
 use App\Models\GenreTranslation;
@@ -159,7 +158,6 @@ class AuditRegistry
         GameGenre::class => 'game',
         GameVideo::class => 'game',
         GameFile::class => 'game',
-        GameNote::class => 'game',
 
         // ---- ჩანაწერები
         NoteEntry::class => 'note',

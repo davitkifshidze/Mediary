@@ -93,7 +93,6 @@ export interface Game {
   videos_count?: number
   files_count?: number
   images_count?: number
-  notes_count?: number
   gallery_count?: number
   created_at: string | null
 }
@@ -359,7 +358,8 @@ export async function deleteGameVideo(id: number): Promise<void> {
 
 export interface GameFile {
   id: number
-  kind: 'image' | 'doc'
+  /** მხოლოდ სქრინშოტები — დოკუმენტები აღარ მიიღება */
+  kind: 'image'
   url: string
   original_name: string | null
   mime: string | null
@@ -386,38 +386,6 @@ export async function uploadGameFiles(
 
 export async function deleteGameFile(id: number): Promise<void> {
   await api.delete(`/game-files/${id}`)
-}
-
-/* ---------- ჩანიშვნები ---------- */
-
-export interface GameNote {
-  id: number
-  body: string
-  created_at: string | null
-  updated_at: string | null
-}
-
-export async function fetchGameNotes(gameId: number): Promise<GameNote[]> {
-  const { data } = await api.get(`/games/${gameId}/notes`)
-  return data.data
-}
-
-export async function createGameNote(gameId: number, body: string): Promise<GameNote> {
-  const { data } = await api.post(`/games/${gameId}/notes`, { body })
-  return data.data
-}
-
-/**
- * ⚠️ **`PATCH` მარშრუტი დასაწყისიდან არსებობდა, ფრონტის ჰელპერი კი არა** —
- * ე.ი. ჩანიშვნის რედაქტირება UI-ში შეუძლებელი იყო.
- */
-export async function updateGameNote(id: number, body: string): Promise<GameNote> {
-  const { data } = await api.patch(`/game-notes/${id}`, { body })
-  return data.data
-}
-
-export async function deleteGameNote(id: number): Promise<void> {
-  await api.delete(`/game-notes/${id}`)
 }
 
 /* ---------- ჟანრები — per-user ლექსიკონი ---------- */

@@ -12,8 +12,8 @@ use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 
 /**
- * თამაშის ფაილები — **ატვირთული** სქრინშოტი/artwork
- * (`kind = 'image'`) და დოკუმენტები (გაიდი, სეივი, კონფიგი).
+ * თამაშის ფაილები — **ატვირთული** სქრინშოტი/artwork (`kind = 'image'`).
+ * ⚠️ დოკუმენტები (`doc`) აღარ მიიღება — „დოკუმენტის ატვირთვა არ მჭირდება".
  *
  * ⚠️ RAWG-იდან **ჩამოტვირთული** კადრები აქ არ ხვდება — ისინი
  * `gallery_images`-შია. იგივე გაყოფაა ვიდეოსა და
@@ -34,14 +34,10 @@ class GameFileController extends Controller
 
     public function store(Request $request, Game $game)
     {
-        $kind = $request->input('kind', 'image');
-
         $data = $request->validate([
-            'kind' => ['required', 'in:image,doc'],
+            'kind' => ['required', 'in:image'],
             'files' => ['required', 'array', 'max:20'],
-            'files.*' => $kind === 'doc'
-                ? UploadLimits::rule('doc', $request->user())
-                : UploadLimits::rule('image', $request->user()),
+            'files.*' => UploadLimits::rule('image', $request->user()),
         ]);
 
         // კვოტა **მთელ პაკეტზე** ჩაწერამდე
@@ -51,7 +47,7 @@ class GameFileController extends Controller
             $files,
         )));
 
-        $folder = StorageFolder::gameFiles($data['kind']);
+        $folder = StorageFolder::GAME_IMAGES;
         $next = (int) $game->files()->max('sort_order');
 
         $created = [];
