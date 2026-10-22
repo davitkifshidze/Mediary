@@ -196,6 +196,8 @@ describe('duty helpers', () => {
     hourly_rate: 15,
     default_type_id: null,
     default_start_time: null,
+    period_day: 1,
+    period_pending: null,
     is_active: true,
     sort_order: 1,
     rates: [{ type_id: 3, pay: 220 }],

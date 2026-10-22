@@ -8,6 +8,7 @@ import {
   type DutyShiftType,
   type DutyWorkplace,
 } from '@/api/duty'
+import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { DUTY_COLORS, invalidateDuty, payMode, typeName } from '@/lib/duty'
 import { cn } from '@/lib/utils'
@@ -16,6 +17,7 @@ import { useToast } from '@/components/ui/feedback'
 import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { NumberPick } from '@/components/ui/number-pick'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { TimePicker } from '@/components/ui/time-picker'
@@ -30,6 +32,9 @@ import { TimePicker } from '@/components/ui/time-picker'
    სქემაში არ ინახება — ტარიფებიდან იკითხება (`payMode()`).
    ⚠️ **ნაგულისხმევი ტიპი და დაწყების დრო** — სამსახურის არჩევისას მორიგეობის
    ფორმა მათ თვითონ ავსებს; ცარიელი — არაფერს ცვლის.
+   ⚠️ **ანაზღაურების პერიოდი სამსახურისაა** („112 1-დან, კლინიკა 5-დან მომდევნო
+   თვის 4-მდე“): მორიგეობებიან სამსახურზე ახალი დღე მომდევნო პერიოდიდან
+   მოქმედებს (ქვემოთ წერია, როდიდან), ძველი პერიოდები თავის საზღვრებს ინახავს.
    ⚠️ ცვლილება მხოლოდ ახალ მორიგეობებს ეხება: ძველს თანხა ჩანაწერზე აქვს და
    წარსული ჯამი არ იცვლება.
    ============================================================ */
@@ -37,6 +42,9 @@ import { TimePicker } from '@/components/ui/time-picker'
 const FORM_ID = 'duty-workplace-form'
 
 const NONE = 'none'
+
+/** პერიოდის პირველი დღე — სწრაფი არჩევანი (1–28, დანარჩენი „სხვაში“) */
+const DAY_OPTIONS = [1, 5, 10, 15, 20, 25]
 
 export function DutyWorkplaceDialog({
   workplace,
@@ -56,6 +64,7 @@ export function DutyWorkplaceDialog({
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
+  const { date } = useDateFormat()
 
   const [name, setName] = useState(workplace?.name ?? '')
   const [short, setShort] = useState(workplace?.short ?? '')
@@ -66,6 +75,8 @@ export function DutyWorkplaceDialog({
     workplace?.default_type_id != null && types.some((x) => x.id === workplace.default_type_id) ? String(workplace.default_type_id) : NONE,
   )
   const [defaultStart, setDefaultStart] = useState<string | null>(workplace?.default_start_time ?? null)
+  // დაგეგმილი ცვლილება თუ არის — ის ჩანს (მეორე არჩევანი მას ცვლის)
+  const [periodDay, setPeriodDay] = useState(workplace?.period_pending?.day ?? workplace?.period_day ?? 1)
   const [active, setActive] = useState(workplace?.is_active ?? true)
   const [rates, setRates] = useState<Record<number, string>>(() =>
     Object.fromEntries((workplace?.rates ?? []).map((r) => [r.type_id, String(r.pay)])),
@@ -81,6 +92,7 @@ export function DutyWorkplaceDialog({
         hourly_rate: mode === 'hour' && hourly.trim() !== '' ? Number(hourly) : null,
         default_type_id: defaultType === NONE ? null : Number(defaultType),
         default_start_time: defaultStart,
+        period_start_day: periodDay,
         is_active: active,
         rates:
           mode === 'shift'
@@ -93,9 +105,14 @@ export function DutyWorkplaceDialog({
 
       return workplace ? updateDutyWorkplace(workplace.id, input) : createDutyWorkplace(input)
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
       invalidateDuty(qc)
-      toast({ title: t(workplace ? 'duty.workplace.saved' : 'duty.workplace.created'), variant: 'success' })
+      toast({
+        title: saved.period_pending
+          ? t('duty.workplace.periodScheduled', { day: saved.period_pending.day, date: date(saved.period_pending.since) })
+          : t(workplace ? 'duty.workplace.saved' : 'duty.workplace.created'),
+        variant: 'success',
+      })
       onClose()
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
@@ -190,6 +207,15 @@ export function DutyWorkplaceDialog({
               value={hourly}
               onChange={(e) => setHourly(e.target.value)}
             />
+          </FormField>
+
+          <FormField size="half" label={t('duty.workplace.periodDay')} htmlFor="duty-wp-period" hint={t('duty.workplace.periodHint')}>
+            <NumberPick id="duty-wp-period" value={periodDay} onChange={setPeriodDay} options={DAY_OPTIONS} min={1} max={28} />
+            {workplace?.period_pending && (
+              <p className="mt-1.5 text-xs text-muted-foreground" data-testid="duty-wp-period-pending">
+                {t('duty.workplace.periodPending', { day: workplace.period_pending.day, date: date(workplace.period_pending.since) })}
+              </p>
+            )}
           </FormField>
 
           {/* ნაგულისხმევები — სამსახურის არჩევისას ფორმა ავსებს */}

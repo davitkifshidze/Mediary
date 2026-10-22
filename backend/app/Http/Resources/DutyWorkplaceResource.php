@@ -22,6 +22,9 @@ class DutyWorkplaceResource extends JsonResource
             'hourly_rate' => $this->hourly_rate !== null ? (float) $this->hourly_rate : null,
             'default_type_id' => $this->default_type_id,
             'default_start_time' => $this->default_start_time ? substr((string) $this->default_start_time, 0, 5) : null,
+            // ანაზღაურების პერიოდი — დღეს მოქმედი პირველი დღე და მომავალი ცვლილება
+            'period_day' => $this->resource->periodDay(),
+            'period_pending' => $this->resource->periodPending(),
             'is_active' => (bool) $this->is_active,
             'sort_order' => (int) $this->sort_order,
             'rates' => $this->relationLoaded('rates')

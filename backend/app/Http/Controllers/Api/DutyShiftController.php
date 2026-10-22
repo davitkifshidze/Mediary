@@ -349,7 +349,9 @@ class DutyShiftController extends Controller
     private function range(Request $request, array $data): array
     {
         if (empty($data['from']) || empty($data['to'])) {
-            $period = DutyPeriod::containing($data['from'] ?? $data['to'] ?? AppTime::now(), DutySettings::rules($request->user()));
+            // გაფილტრული სამსახური — მისი პერიოდი; სამსახურის გარეშე — კალენდარული თვე
+            $workplace = isset($data['workplace_id']) ? DutyWorkplace::query()->find((int) $data['workplace_id']) : null;
+            $period = DutyPeriod::containing($data['from'] ?? $data['to'] ?? AppTime::now(), $workplace?->periodRules() ?? []);
 
             return [$period['from'], $period['to']];
         }

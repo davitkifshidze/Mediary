@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasTrash;
+use App\Support\AppTime;
+use App\Support\DutyPeriod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -19,6 +21,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * ტარიფები (`rates`), მეორეზე მხოლოდ საათობრივი (`hourly_rate`). სქემა ორივეს
  * იტევს და `DutyPay`-ში ტიპის ტარიფი იმარჯვებს — ამიტომ ფორმა ერთს მეორის
  * ჩართვისას ასუფთავებს, რომ საათობრივი უჩუმრად არ „დაიკარგოს".
+ * ⚠️ **ანაზღაურების პერიოდი სამსახურისაა** (`period` — წესების ისტორია
+ * `[{since, day}]`, `DutyPeriod`): 112 1-დან, კლინიკა 5-დან მომდევნო თვის
+ * 4-მდე. ცარიელი — კალენდარული თვე. დღის შეცვლა (`setPeriodDay()`) ამ
+ * სამსახურის მორიგეობებიან პერიოდზე მომდევნოდან მოქმედებს.
  * ⚠️ **ნაგულისხმევი ტიპი და დაწყების დრო** (`default_type_id`,
  * `default_start_time`) — სამსახურის არჩევისას ფორმა მათ თვითონ ავსებს
  * („112 · 24 სთ · 09:00“).
@@ -37,10 +43,47 @@ class DutyWorkplace extends Model
     protected $casts = [
         'hourly_rate' => 'decimal:2',
         'default_type_id' => 'integer',
+        'period' => 'array',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
         'trash_meta' => 'array',
     ];
+
+    /** @return list<array{since: ?string, day: int}> */
+    public function periodRules(): array
+    {
+        return DutyPeriod::serialize(is_array($this->period) ? $this->period : []);
+    }
+
+    /** დღეს მოქმედი „პერიოდის პირველი დღე“ */
+    public function periodDay(): int
+    {
+        return DutyPeriod::dayAt(AppTime::now(), $this->periodRules());
+    }
+
+    /** @return array{since: string, day: int}|null მომავალი ცვლილება — „5-დან, 1 ნოემბრიდან“ */
+    public function periodPending(): ?array
+    {
+        $today = AppTime::now()->toDateString();
+
+        return collect($this->periodRules())->first(fn (array $rule) => $rule['since'] !== null && $rule['since'] > $today);
+    }
+
+    /** ახალი პირველი დღე — ამ სამსახურის მორიგეობებიან პერიოდზე მომდევნოდან (`DutyPeriod::withDay()`) */
+    public function setPeriodDay(int $day): void
+    {
+        $this->period = DutyPeriod::withDay(
+            $this->periodRules(),
+            $day,
+            AppTime::now(),
+            fn (string $before) => DutyShift::withoutGlobalScope('owner')
+                ->where('user_id', $this->user_id)
+                ->where('workplace_id', $this->id)
+                ->where('date', '<', $before)
+                ->exists(),
+        );
+        $this->save();
+    }
 
     public function rates(): HasMany
     {

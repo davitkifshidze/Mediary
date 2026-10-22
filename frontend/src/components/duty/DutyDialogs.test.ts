@@ -88,6 +88,8 @@ const workplace = (over: Partial<DutyWorkplace>): DutyWorkplace => ({
   hourly_rate: null,
   default_type_id: null,
   default_start_time: null,
+  period_day: 1,
+  period_pending: null,
   is_active: true,
   sort_order: 1,
   rates: [],
@@ -204,6 +206,26 @@ describe('DutyWorkplaceDialog — per shift or per hour', () => {
       1,
       expect.objectContaining({ hourly_rate: 15, rates: [], default_type_id: null, default_start_time: null }),
     )
+  })
+
+  it('keeps the pay period on the workplace and shows a scheduled change', async () => {
+    const { DutyWorkplaceDialog } = await import('@/components/duty/DutyWorkplaceDialog')
+    await mount(
+      h(DutyWorkplaceDialog, {
+        workplace: workplace({ period_day: 1, period_pending: { since: '2026-11-01', day: 5 } }),
+        types,
+        nextColor: '#2a78d6',
+        currency: '₾',
+        onClose: () => {},
+      }),
+    )
+
+    expect(document.querySelector('[data-testid="duty-wp-period-pending"]')?.textContent).toContain('5')
+
+    await act(async () => (document.getElementById('duty-workplace-form') as HTMLFormElement).requestSubmit())
+    await flush()
+    // დაგეგმილი დღე ჩანს და ის იგზავნება (მეორე არჩევანი მას ცვლის)
+    expect(mocks.updateDutyWorkplace).toHaveBeenCalledWith(1, expect.objectContaining({ period_start_day: 5 }))
   })
 
   it('sends no hourly rate per shift', async () => {

@@ -9,6 +9,7 @@ use App\Models\DutyShift;
 use App\Models\DutyWorkplace;
 use App\Support\DictionaryRecords;
 use App\Support\DictionaryTrash;
+use App\Support\DutyPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -41,12 +42,16 @@ class DutyWorkplaceController extends Controller
 
         $workplace = DB::transaction(function () use ($data, $request) {
             $workplace = DutyWorkplace::create([
-                ...array_diff_key($data, ['rates' => true]),
+                ...array_diff_key($data, ['rates' => true, 'period_start_day' => true]),
                 'user_id' => $request->user()->id,
                 'sort_order' => (int) DutyWorkplace::max('sort_order') + 1,
             ]);
 
             $this->syncRates($workplace, $data['rates'] ?? []);
+
+            if (isset($data['period_start_day'])) {
+                $workplace->setPeriodDay((int) $data['period_start_day']);
+            }
 
             return $workplace;
         });
@@ -59,10 +64,14 @@ class DutyWorkplaceController extends Controller
         $data = $this->validated($request, $dutyWorkplace);
 
         DB::transaction(function () use ($data, $dutyWorkplace) {
-            $dutyWorkplace->update(array_diff_key($data, ['rates' => true]));
+            $dutyWorkplace->update(array_diff_key($data, ['rates' => true, 'period_start_day' => true]));
 
             if (array_key_exists('rates', $data)) {
                 $this->syncRates($dutyWorkplace, $data['rates'] ?? []);
+            }
+
+            if (isset($data['period_start_day'])) {
+                $dutyWorkplace->setPeriodDay((int) $data['period_start_day']);
             }
         });
 
@@ -172,6 +181,8 @@ class DutyWorkplaceController extends Controller
                 Rule::exists('duty_shift_types', 'id')->whereNull('trashed_at')->where('user_id', $userId),
             ],
             'default_start_time' => ['nullable', 'date_format:H:i'],
+            // ანაზღაურების პერიოდის პირველი დღე — მორიგეობებიანზე მომდევნო პერიოდიდან
+            'period_start_day' => ['sometimes', 'integer', 'min:'.DutyPeriod::MIN_DAY, 'max:'.DutyPeriod::MAX_DAY],
             'is_active' => ['sometimes', 'boolean'],
             'rates' => ['sometimes', 'array', 'max:100'],
             'rates.*.type_id' => [

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart3, Calculator, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, List, Loader2, Pencil, Plus, Repeat, Settings, TriangleAlert, X } from 'lucide-react'
+import { BarChart3, Calculator, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, List, Loader2, Pencil, Plus, Repeat, Settings, TriangleAlert, Wallet, X } from 'lucide-react'
 import {
   continueDutyPattern,
   DUTY_KEY,
@@ -30,6 +30,7 @@ import { DutyCalendar } from '@/components/duty/DutyCalendar'
 import { DutyDayDialog } from '@/components/duty/DutyDayDialog'
 import { DutyDimToggles } from '@/components/duty/DutyDimToggles'
 import { DutyHistory } from '@/components/duty/DutyHistory'
+import { DutyIncome } from '@/components/duty/DutyIncome'
 import { useDutyDim } from '@/components/duty/useDutyDim'
 import { DutyPatternDialog } from '@/components/duty/DutyPatternDialog'
 import { useDutyShiftActions } from '@/components/duty/useDutyShiftActions'
@@ -51,7 +52,7 @@ import { DutyTotals } from '@/components/duty/DutyTotals'
    „დამატება“ (ბევრი დღე ერთ მოთხოვნაში) ან მათი მორიგეობების შეცვლა/წაშლა.
    ============================================================ */
 
-const VIEWS = ['calendar', 'list', 'totals', 'calculator'] as const
+const VIEWS = ['calendar', 'list', 'totals', 'income', 'calculator'] as const
 type View = (typeof VIEWS)[number]
 
 const ALL = 'all'
@@ -74,7 +75,11 @@ export function DutyPage() {
   }
 
   const settingsQ = useQuery({ queryKey: [DUTY_KEY, 'settings'], queryFn: fetchDutySettings })
-  const periodQ = useQuery({ queryKey: [DUTY_KEY, 'period', anchor ?? 'today'], queryFn: () => fetchDutyPeriod(anchor) })
+  // ⚠️ გაფილტრული სამსახური — მისი პერიოდი („5-დან 4-მდე“); ყველა ერთად — კალენდარული თვე
+  const periodQ = useQuery({
+    queryKey: [DUTY_KEY, 'period', anchor ?? 'today', workplaceFilter],
+    queryFn: () => fetchDutyPeriod(anchor, workplaceFilter),
+  })
   const workplacesQ = useQuery({
     queryKey: [DUTY_KEY, 'workplaces'],
     queryFn: () => fetchDutyWorkplaces(lang === 'en' ? 'en' : 'ka'),
@@ -307,6 +312,7 @@ export function DutyPage() {
             { key: 'calendar', label: t('duty.view.calendar'), icon: CalendarDays },
             { key: 'list', label: t('duty.view.list'), icon: List },
             { key: 'totals', label: t('duty.view.totals'), icon: BarChart3 },
+            { key: 'income', label: t('duty.view.income'), icon: Wallet },
             { key: 'calculator', label: t('duty.view.calculator'), icon: Calculator },
           ]}
           value={view}
@@ -367,6 +373,8 @@ export function DutyPage() {
           dimmed={dimmed}
           currency={currency}
         />
+      ) : view === 'income' ? (
+        <DutyIncome until={period.to} workplaceFilter={workplaceFilter} workplaces={workplaces} settings={settings} />
       ) : view === 'totals' ? (
         <DutyTotals period={period} workplaceFilter={workplaceFilter} workplaces={workplaces} types={types} settings={settings} />
       ) : (

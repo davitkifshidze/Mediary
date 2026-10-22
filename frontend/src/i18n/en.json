@@ -4768,7 +4768,8 @@
       "calendar": "Calendar",
       "list": "List",
       "totals": "Totals",
-      "calculator": "Calculator"
+      "calculator": "Calculator",
+      "income": "Income"
     },
     "period": {
       "previous": "Previous",
@@ -4849,15 +4850,16 @@
       "defaultsHint": "Picking this workplace fills the type and start on the shift form (e.g. 24 h · 09:00); empty — changes nothing.",
       "noDefault": "None",
       "noRate": "No rate — pay isn’t counted",
-      "noRateBanner": "“{{names}}” — no rate, pay isn’t counted. Add one in “Settings”: per shift (a rate per type) or per hour (an hourly rate)."
+      "noRateBanner": "“{{names}}” — no rate, pay isn’t counted. Add one in “Settings”: per shift (a rate per type) or per hour (an hourly rate).",
+      "periodDay": "Pay period — first day",
+      "periodHint": "5 → from the 5th to the 4th of next month; 1 — the calendar month; at most 28. With shifts recorded, a new day applies from the next period — past periods stay as they were.",
+      "periodPending": "Scheduled: from day {{day}}, starting {{date}} — the current period keeps its bounds.",
+      "periodScheduled": "The new period (from day {{day}}) starts on {{date}} — past periods stay as they were.",
+      "periodLine": "period from day {{day}}"
     },
     "settings": {
       "open": "Settings",
       "title": "Duty settings",
-      "periodDay": "First day of the period",
-      "periodDayHint": "Totals and the calendar run from this day to the day before it next month (15 → Sep 15 – Oct 14). At most 28.",
-      "pending": "Scheduled: from day {{day}}, starting {{date}} — the current period keeps its bounds.",
-      "scheduled": "The new period (from day {{day}}) starts on {{date}} — past periods stay as they were.",
       "saved": "Settings saved",
       "currency": "Currency",
       "defaultWorkplace": "Default workplace",
@@ -4950,6 +4952,16 @@
       "noMatch": "No shifts match these filters",
       "onlyFavorite": "Favourites only",
       "range": "Date (from — to)"
+    },
+    "income": {
+      "titleAll": "Income — last {{count}} months, all workplaces",
+      "titleOne": "{{name}} — last {{count}} periods",
+      "csv": "CSV",
+      "period": "Period",
+      "unpaid": "No pay",
+      "total": "Total — {{count}} periods",
+      "empty": "No shifts in these periods",
+      "emptyHint": "Income is counted from shifts — add one or continue a rhythm."
     }
   },
   "actors": {

@@ -110,8 +110,9 @@ export function DutyCalculator({
             {summary.totals.cancelled > 0 && (
               <p className="text-xs text-muted-foreground">{t('duty.totals.cancelled', { count: summary.totals.cancelled })}</p>
             )}
-            {summary.workplaces.length > 1 && (
-              <ul className="space-y-1 text-sm">
+            {/* სად რამდენი — ერთ სამსახურზეც (რომელი სამსახური ჩანს) */}
+            {summary.workplaces.length > 0 && (
+              <ul className="space-y-1 text-sm" data-testid="duty-calc-workplaces">
                 {summary.workplaces.map((row) => {
                   const w = workplaces.find((x) => x.id === row.workplace_id) ?? null
 

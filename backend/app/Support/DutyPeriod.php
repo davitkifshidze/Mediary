@@ -17,6 +17,9 @@ use Carbon\CarbonInterface;
  * `since` ახალი წესის პირველი დღეა (`null` — თავიდანვე). გარდამავალი პერიოდი
  * შეიძლება მოკლე იყოს (1 → 15 ცვლილებაზე: „1 ნოე – 14 ნოე“) — ეს პატიოსანია:
  * არც ერთი დღე ორ პერიოდში არ ხვდება და არც ერთი არ იკარგება.
+ *
+ * ⚠️ **წესები სამსახურისაა** (`DutyWorkplace::periodRules()`); ცარიელი სია —
+ * კალენდარული თვე („ყველა სამსახურის" ხედი, დეშბორდი).
  */
 final class DutyPeriod
 {
@@ -79,6 +82,59 @@ final class DutyPeriod
         }
 
         return $out;
+    }
+
+    /**
+     * **ახალი „პერიოდის პირველი დღე“** — წესების ახალი ისტორია.
+     *
+     * ⚠️ ცვლილება მომდევნო პერიოდის დასაწყისიდან მოქმედებს, მიმდინარე და ძველი
+     * თავის საზღვრებს ინახავს. ⚠️ **გამონაკლისი — ჯერ არაფერი ჩაწერილა**
+     * (`$recordedBefore` მომდევნო პერიოდამდე მორიგეობას ვერ პოულობს): შესანახი
+     * ისტორია არ არსებობს და დღე მაშინვე იცვლება. ⚠️ მომავალში დაგეგმილი (ჯერ
+     * დაუწყებელი) ცვლილება იცვლება და არ გროვდება.
+     *
+     * @param  list<array{since: ?string, day: int}>  $rules
+     * @param  \Closure(string): bool  $recordedBefore  არის თუ არა მორიგეობა ამ დღემდე (`Y-m-d`, არაჩათვლით)
+     * @return list<array{since: ?string, day: int}>
+     */
+    public static function withDay(array $rules, int $day, CarbonInterface $today, \Closure $recordedBefore): array
+    {
+        $day = max(self::MIN_DAY, min(self::MAX_DAY, $day));
+        $today = self::startOf($today);
+
+        // დაგეგმილი (მომავალი) წესი ქრება — მის ადგილს ახალი პასუხი იკავებს
+        $rules = array_values(array_filter(
+            $rules,
+            fn (array $rule) => $rule['since'] === null || $rule['since'] <= $today->toDateString(),
+        ));
+
+        $nextStart = self::containing($today, $rules)['to']->addDay();
+
+        if (! $recordedBefore($nextStart->toDateString())) {
+            return [['since' => null, 'day' => $day]];
+        }
+
+        if (self::dayAt($today, $rules) === $day) {
+            return $rules;
+        }
+
+        $rules[] = ['since' => $nextStart->toDateString(), 'day' => $day];
+
+        return $rules;
+    }
+
+    /**
+     * წესები შესანახად/პასუხისთვის — გაწმენდილი, თარიღი `Y-m-d`-ით.
+     *
+     * @param  list<mixed>  $rules
+     * @return list<array{since: ?string, day: int}>
+     */
+    public static function serialize(array $rules): array
+    {
+        return array_map(fn (array $rule) => [
+            'since' => $rule['since']?->toDateString(),
+            'day' => $rule['day'],
+        ], self::normalize($rules));
     }
 
     /** მოქმედი დღე თარიღზე — „პერიოდის პირველი დღე“ */

@@ -25,7 +25,6 @@ use App\Models\Video;
 use App\Support\AppTime;
 use App\Support\CustomModules;
 use App\Support\DutyPeriod;
-use App\Support\DutySettings;
 use App\Support\ModuleOrder;
 use App\Support\RecordLocks;
 use Illuminate\Database\Eloquent\Builder;
@@ -172,12 +171,12 @@ class DashboardController extends Controller
     }
 
     /**
-     * **მორიგეობის ბარათი მიმდინარე პერიოდს ითვლის.**
+     * **მორიგეობის ბარათი მიმდინარე კალენდარულ თვეს ითვლის.**
      *
-     * ⚠️ პერიოდის წესი `module_user.settings`-შია, და ის **უკვე ჩატვირთულია** —
-     * `hasModule()` მოდულებს pivot-ით ერთხელ კითხულობს. ე.ი. აქ ახალი
-     * query არ ჩნდება და დაფის „≤ 4 query“ ზღვარი ხელუხლებელია; `DutySettings::read()`
-     * (ორი query) აქ სწორედ ამიტომ არ იძახება.
+     * ⚠️ ანაზღაურების პერიოდი სამსახურისაა („112 1-დან, კლინიკა 5-დან"),
+     * მთვლელი კი ყველა სამსახურს ერთად ითვლის — მისი პერიოდი კალენდარული თვეა
+     * („ყველა სამსახურის" ხედის წესი). ახალი query არ ჩნდება — დაფის „≤ 4 query“
+     * ზღვარი ხელუხლებელია.
      */
     private function counterScope(string $key, Builder $query, User $user): Builder
     {
@@ -191,10 +190,8 @@ class DashboardController extends Controller
             return $query;
         }
 
-        $pivot = $user->relationLoaded('modules') ? $user->modules->firstWhere('key', 'duty')?->pivot : null;
-        $stored = json_decode((string) ($pivot?->settings ?? ''), true);
-        $rules = is_array($stored) ? (($stored[DutySettings::KEY] ?? [])['period'] ?? []) : [];
-        $period = DutyPeriod::containing(AppTime::now(), is_array($rules) ? $rules : []);
+        // ⚠️ პერიოდი სამსახურისაა — მთვლელი ყველა სამსახურს ითვლის, ე.ი. კალენდარულ თვეს
+        $period = DutyPeriod::containing(AppTime::now(), []);
 
         // გაუქმებული მორიგეობა არ ითვლება
         return $query->whereBetween('date', [$period['from']->toDateString(), $period['to']->toDateString()])

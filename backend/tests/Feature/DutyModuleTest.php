@@ -326,6 +326,44 @@ class DutyModuleTest extends TestCase
         $this->assertSame(3, $periods[1]['totals']['shifts']);
     }
 
+    public function test_a_workplace_pays_by_its_own_period_and_the_income_table_follows_it(): void
+    {
+        $t = $this->types();
+        $a = $this->workplace('112', [$t['h24'] => 250]);
+        $b = $this->workplace('კლინიკა', hourly: 15);
+        // კლინიკა 5-დან მომდევნო თვის 4-მდე (მორიგეობა ჯერ არ აქვს — მაშინვე)
+        $this->patchJson("/api/duty/workplaces/{$b->id}", ['period_start_day' => 5])->assertJsonPath('data.period_day', 5);
+
+        $this->postJson('/api/duty/shifts', ['date' => '2026-10-02', 'workplace_id' => $a->id, 'type_id' => $t['h24']]);
+        $this->postJson('/api/duty/shifts', ['date' => '2026-10-03', 'workplace_id' => $b->id, 'type_id' => null, 'hours' => 4]);
+        $this->postJson('/api/duty/shifts', ['date' => '2026-10-06', 'workplace_id' => $b->id, 'type_id' => null, 'hours' => 6]);
+
+        // კლინიკის პერიოდი (5 სექტ – 4 ოქტ): მხოლოდ 3 ოქტომბერი, წინა — ცარიელი
+        $this->getJson("/api/duty/summary?workplace_id[]={$b->id}")
+            ->assertJsonPath('from', '2026-09-05')
+            ->assertJsonPath('to', '2026-10-04')
+            ->assertJsonPath('is_period', true)
+            ->assertJsonPath('totals.hours', 4)
+            ->assertJsonPath('totals.pay', 60)
+            ->assertJsonPath('previous.from', '2026-08-05');
+
+        // ყველა ერთად — კალენდარული თვე
+        $this->getJson('/api/duty/summary')->assertJsonPath('from', '2026-10-01')->assertJsonPath('totals.shifts', 3);
+
+        // შემოსავლის ცხრილი — სამსახურის საკუთარი პერიოდებით
+        $income = $this->getJson("/api/duty/summary/periods?count=2&until=2026-10-31&workplace_id={$b->id}")->assertOk()->json('data');
+        $this->assertSame(['2026-09-05', '2026-10-05'], array_column($income, 'from'));
+        $this->assertSame([4.0, 6.0], array_map(fn ($p) => (float) $p['totals']['hours'], $income));
+        $this->assertSame([[$b->id], [$b->id]], array_map(fn ($p) => array_column($p['workplaces'], 'workplace_id'), $income));
+
+        $all = $this->getJson('/api/duty/summary/periods?count=1')->json('data');
+        $this->assertSame('2026-10-01', $all[0]['from']);
+        $this->assertSame(3, $all[0]['totals']['shifts']);
+
+        // სიის ნაგულისხმევი შუალედი — გაფილტრული სამსახურის პერიოდი
+        $this->getJson("/api/duty/shifts?workplace_id={$b->id}")->assertJsonPath('range.from', '2026-09-05');
+    }
+
     public function test_the_full_list_pages_newest_first_and_filters(): void
     {
         $t = $this->types();

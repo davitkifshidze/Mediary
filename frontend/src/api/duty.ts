@@ -6,7 +6,7 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
    **მორიგეობა — მოდული `duty`.**
 
    სამსახური (ტარიფებით) · ტიპი (კლასიფიკატორი, `/dictionaries`) · მორიგეობა ·
-   პერიოდი (შენი „თვე“ — `period_start_day`) · ჯამები.
+   პერიოდი (სამსახურის „თვე“ — `period_day`; ყველა ერთად — კალენდარული თვე) · ჯამები.
 
    ⚠️ **თანხა სერვერზე ითვლება, როცა `pay` არ იგზავნება** (`DutyPay`); ფორმა
    მას წინასწარ ავსებს იმავე წესით (`lib/duty.ts` → `dutyPay()`), რომ ჩანდეს,
@@ -31,6 +31,10 @@ export interface DutyWorkplace {
   default_type_id: number | null
   /** `HH:MM` */
   default_start_time: string | null
+  /** ანაზღაურების პერიოდის პირველი დღე (დღეს მოქმედი) — 5 → „5-დან მომდევნო თვის 4-მდე“ */
+  period_day: number
+  /** მომავალი ცვლილება — „5-დან, 1 ნოემბრიდან“ */
+  period_pending: { since: string; day: number } | null
   is_active: boolean
   sort_order: number
   rates: DutyRate[]
@@ -92,14 +96,10 @@ export interface DutyPeriodInfo extends DutyRange {
 }
 
 export interface DutySettingsData {
-  period: { since: string | null; day: number }[]
   currency: string
   default_workplace_id: number | null
   default_type_id: number | null
-  /** დღეს მოქმედი „პერიოდის პირველი დღე“ */
-  period_start_day: number
-  /** მომავალი ცვლილება — „15-დან, 1 ნოემბრიდან“ */
-  pending: { since: string; day: number } | null
+  /** „ყველა სამსახურის“ მიმდინარე პერიოდი — კალენდარული თვე */
   current: DutyPeriodInfo
   /** შეხსენება წინა დღეს („20:00“); `null` — გამორთულია */
   remind_at: string | null
@@ -133,8 +133,11 @@ export interface DutyPeriodTotals extends DutyRange {
 
 /* ---------- პერიოდი და პარამეტრები ---------- */
 
-export async function fetchDutyPeriod(date?: string): Promise<DutyPeriodInfo> {
-  const { data } = await api.get('/duty/period', { params: date ? { date } : {} })
+/** პერიოდი თარიღით — სამსახურით მისი, მის გარეშე კალენდარული თვე */
+export async function fetchDutyPeriod(date?: string, workplaceId?: number | null): Promise<DutyPeriodInfo> {
+  const { data } = await api.get('/duty/period', {
+    params: { ...(date ? { date } : {}), ...(workplaceId != null ? { workplace_id: workplaceId } : {}) },
+  })
   return data
 }
 
@@ -144,7 +147,6 @@ export async function fetchDutySettings(): Promise<DutySettingsData> {
 }
 
 export interface DutySettingsInput {
-  period_start_day?: number
   currency?: string
   default_workplace_id?: number | null
   default_type_id?: number | null
@@ -181,8 +183,11 @@ export async function fetchDutySummary(range: Partial<DutyRange> & { workplaceId
   return data
 }
 
-export async function fetchDutyPeriods(count = 12, until?: string): Promise<DutyPeriodTotals[]> {
-  const { data } = await api.get('/duty/summary/periods', { params: { count, ...(until ? { until } : {}) } })
+/** ბოლო N პერიოდი — სამსახურით მისი პერიოდებით, მის გარეშე კალენდარული თვეებით */
+export async function fetchDutyPeriods(count = 12, until?: string, workplaceId?: number | null): Promise<DutyPeriodTotals[]> {
+  const { data } = await api.get('/duty/summary/periods', {
+    params: { count, ...(until ? { until } : {}), ...(workplaceId != null ? { workplace_id: workplaceId } : {}) },
+  })
   return data.data
 }
 
@@ -195,6 +200,8 @@ export interface DutyWorkplaceInput {
   hourly_rate?: number | null
   default_type_id?: number | null
   default_start_time?: string | null
+  /** ანაზღაურების პერიოდის პირველი დღე — მორიგეობებიანზე მომდევნო პერიოდიდან */
+  period_start_day?: number
   is_active?: boolean
   /** ⚠️ მთლიანი სია — აქ არმყოფი ტიპის ტარიფი იხსნება */
   rates?: { type_id: number; pay: number | null }[]

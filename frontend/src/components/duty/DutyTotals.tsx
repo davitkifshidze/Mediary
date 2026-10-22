@@ -62,8 +62,9 @@ export function DutyTotals({
     queryFn: () => fetchDutySummary({ from: period.from, to: period.to, workplaceIds: filter }),
   })
   const periodsQ = useQuery({
-    queryKey: [DUTY_KEY, 'periods', period.to],
-    queryFn: () => fetchDutyPeriods(12, period.to),
+    // გაფილტრულ სამსახურზე — მისი პერიოდებით
+    queryKey: [DUTY_KEY, 'periods', period.to, workplaceFilter],
+    queryFn: () => fetchDutyPeriods(12, period.to, workplaceFilter),
   })
 
   const summary = summaryQ.data

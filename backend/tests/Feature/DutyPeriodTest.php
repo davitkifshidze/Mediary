@@ -3,10 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\DutyShift;
+use App\Models\DutyWorkplace;
 use App\Models\Module;
 use App\Models\User;
 use App\Support\DutyPeriod;
-use App\Support\DutySettings;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -94,53 +94,71 @@ class DutyPeriodTest extends TestCase
         return $user->refresh();
     }
 
+    /** სამსახური — მისი პერიოდი იცვლება */
+    private function workplace(User $user, string $name = '112'): DutyWorkplace
+    {
+        return DutyWorkplace::create(['user_id' => $user->id, 'name' => $name, 'sort_order' => 1]);
+    }
+
     public function test_without_any_shift_the_new_day_applies_at_once(): void
     {
         $this->travelTo('2026-10-04 12:00:00');
         $user = $this->user();
+        $wp = $this->workplace($user);
 
-        $this->actingAs($user)->putJson('/api/duty/settings', ['period_start_day' => 15])
+        $this->actingAs($user)->patchJson("/api/duty/workplaces/{$wp->id}", ['period_start_day' => 15])
             ->assertOk()
-            ->assertJsonPath('period_start_day', 15)
-            ->assertJsonPath('pending', null)
-            ->assertJsonPath('current.from', '2026-09-15')
-            ->assertJsonPath('current.to', '2026-10-14');
+            ->assertJsonPath('data.period_day', 15)
+            ->assertJsonPath('data.period_pending', null);
+
+        $this->getJson("/api/duty/period?workplace_id={$wp->id}")
+            ->assertJsonPath('from', '2026-09-15')
+            ->assertJsonPath('to', '2026-10-14');
     }
 
     public function test_with_recorded_shifts_the_change_waits_for_the_next_period(): void
     {
         $this->travelTo('2026-10-04 12:00:00');
         $user = $this->user();
-        DutyShift::create(['user_id' => $user->id, 'date' => '2026-10-02', 'hours' => 24]);
+        $wp = $this->workplace($user);
+        $other = $this->workplace($user, 'კლინიკა');
+        DutyShift::create(['user_id' => $user->id, 'workplace_id' => $wp->id, 'date' => '2026-10-02', 'hours' => 24]);
 
-        $this->actingAs($user)->putJson('/api/duty/settings', ['period_start_day' => 15])
+        $this->actingAs($user)->patchJson("/api/duty/workplaces/{$wp->id}", ['period_start_day' => 15])
             ->assertOk()
-            ->assertJsonPath('period_start_day', 1)
-            ->assertJsonPath('pending.since', '2026-11-01')
-            ->assertJsonPath('pending.day', 15)
-            ->assertJsonPath('current.from', '2026-10-01')
-            ->assertJsonPath('current.to', '2026-10-31');
+            ->assertJsonPath('data.period_day', 1)
+            ->assertJsonPath('data.period_pending.since', '2026-11-01')
+            ->assertJsonPath('data.period_pending.day', 15);
 
         // ⚠️ მეორე ცვლილება დაგეგმილს ცვლის და არ გროვდება
-        $this->putJson('/api/duty/settings', ['period_start_day' => 10])->assertJsonPath('pending.day', 10);
-        $this->assertCount(2, DutySettings::rules($user));
+        $this->patchJson("/api/duty/workplaces/{$wp->id}", ['period_start_day' => 10])->assertJsonPath('data.period_pending.day', 10);
+        $this->assertCount(2, $wp->fresh()->periodRules());
 
         // ძველ დღეზე დაბრუნება დაგეგმილს აუქმებს
-        $this->putJson('/api/duty/settings', ['period_start_day' => 1])->assertJsonPath('pending', null);
-        $this->assertCount(1, DutySettings::rules($user));
+        $this->patchJson("/api/duty/workplaces/{$wp->id}", ['period_start_day' => 1])->assertJsonPath('data.period_pending', null);
+        $this->assertCount(1, $wp->fresh()->periodRules());
 
-        $this->getJson('/api/duty/period?date=2026-10-04')
+        // სხვა სამსახურს მორიგეობა არ აქვს — მისი დღე მაშინვე იცვლება
+        $this->patchJson("/api/duty/workplaces/{$other->id}", ['period_start_day' => 5])->assertJsonPath('data.period_day', 5);
+
+        $this->getJson("/api/duty/period?date=2026-10-04&workplace_id={$wp->id}")
             ->assertOk()
             ->assertJsonPath('from', '2026-10-01')
             ->assertJsonPath('previous.from', '2026-09-01')
             ->assertJsonPath('next.from', '2026-11-01');
+        $this->getJson("/api/duty/period?date=2026-10-04&workplace_id={$other->id}")
+            ->assertJsonPath('from', '2026-09-05')
+            ->assertJsonPath('to', '2026-10-04');
+        // „ყველა სამსახური" — კალენდარული თვე
+        $this->getJson('/api/duty/period?date=2026-10-04')->assertJsonPath('from', '2026-10-01')->assertJsonPath('to', '2026-10-31');
     }
 
     public function test_the_day_stays_between_1_and_28(): void
     {
         $user = $this->user();
+        $wp = $this->workplace($user);
 
-        $this->actingAs($user)->putJson('/api/duty/settings', ['period_start_day' => 31])->assertStatus(422);
-        $this->putJson('/api/duty/settings', ['period_start_day' => 0])->assertStatus(422);
+        $this->actingAs($user)->patchJson("/api/duty/workplaces/{$wp->id}", ['period_start_day' => 31])->assertStatus(422);
+        $this->patchJson("/api/duty/workplaces/{$wp->id}", ['period_start_day' => 0])->assertStatus(422);
     }
 }

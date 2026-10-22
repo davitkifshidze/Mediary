@@ -15,8 +15,8 @@ import i18n from '@/i18n'
    ============================================================ */
 
 const workplaces: DutyWorkplace[] = [
-  { id: 1, name: 'კლინიკა', short: 'A', color: '#2a78d6', hourly_rate: 10, default_type_id: null, default_start_time: null, is_active: true, sort_order: 1, rates: [{ type_id: 3, pay: 220 }], shifts_count: 1 },
-  { id: 2, name: 'საავადმყოფო', short: 'B', color: '#eb6834', hourly_rate: null, default_type_id: null, default_start_time: null, is_active: true, sort_order: 2, rates: [{ type_id: 3, pay: 300 }], shifts_count: 0 },
+  { id: 1, name: 'კლინიკა', short: 'A', color: '#2a78d6', hourly_rate: 10, default_type_id: null, default_start_time: null, period_day: 1, period_pending: null, is_active: true, sort_order: 1, rates: [{ type_id: 3, pay: 220 }], shifts_count: 1 },
+  { id: 2, name: 'საავადმყოფო', short: 'B', color: '#eb6834', hourly_rate: null, default_type_id: null, default_start_time: null, period_day: 1, period_pending: null, is_active: true, sort_order: 2, rates: [{ type_id: 3, pay: 300 }], shifts_count: 0 },
 ]
 
 const types: DutyShiftType[] = [
@@ -25,12 +25,9 @@ const types: DutyShiftType[] = [
 ]
 
 const settings: DutySettingsData = {
-  period: [{ since: null, day: 1 }],
   currency: '₾',
   default_workplace_id: 1,
   default_type_id: 3,
-  period_start_day: 1,
-  pending: null,
   current: { from: '2026-10-01', to: '2026-10-31', previous: { from: '2026-09-01', to: '2026-09-30' }, next: { from: '2026-11-01', to: '2026-11-30' } },
   remind_at: null,
   remind_telegram: false,
@@ -305,6 +302,41 @@ describe('DutyPage', () => {
     await act(async () => move.click())
     await flush()
     expect(document.getElementById('duty-move-form')).toBeTruthy()
+  })
+
+  it('reads the period of the filtered workplace and shows income by period and workplace', async () => {
+    defaults()
+    const p = (from: string, to: string, rows: { workplace_id: number; pay: number }[]) => ({
+      from,
+      to,
+      totals: { shifts: rows.length, hours: rows.length * 24, pay: rows.reduce((s, r) => s + r.pay, 0), unpaid: 0, cancelled: 0 },
+      workplaces: rows.map((r) => ({ workplace_id: r.workplace_id, shifts: 1, hours: 24, pay: r.pay, unpaid: 0, cancelled: 0 })),
+    })
+    mocks.fetchDutyPeriods.mockResolvedValue([
+      p('2026-09-01', '2026-09-30', [{ workplace_id: 1, pay: 220 }]),
+      p('2026-10-01', '2026-10-31', [{ workplace_id: 1, pay: 220 }, { workplace_id: 2, pay: 300 }]),
+    ])
+    await render('/duty?view=income')
+
+    // „ყველა“ — კალენდარული თვე, სამსახურის გარეშე
+    expect(mocks.fetchDutyPeriod).toHaveBeenLastCalledWith(undefined, null)
+    expect(mocks.fetchDutyPeriods).toHaveBeenLastCalledWith(12, '2026-10-31', null)
+
+    const periods = container!.querySelectorAll('[data-testid="duty-income-period"]')
+    expect(periods).toHaveLength(2)
+    // უახლესი ზემოთ, მის ქვეშ სამსახურები
+    expect(periods[0].textContent).toContain('520')
+    expect(container!.querySelectorAll('[data-testid="duty-income-workplace"]')).toHaveLength(2)
+    expect(container!.querySelector('[data-testid="duty-income-total"]')!.textContent).toContain('740')
+  })
+
+  it('asks the server for the period and income of one workplace when it is filtered', async () => {
+    defaults()
+    await render('/duty?view=income&w=2')
+
+    expect(mocks.fetchDutyPeriod).toHaveBeenLastCalledWith(undefined, 2)
+    await flush()
+    expect(mocks.fetchDutyPeriods).toHaveBeenLastCalledWith(12, '2026-10-31', 2)
   })
 
   it('lists every shift by month, newest first, with the filters from the address', async () => {

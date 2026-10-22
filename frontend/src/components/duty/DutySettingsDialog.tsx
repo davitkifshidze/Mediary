@@ -12,7 +12,6 @@ import {
   type DutyShiftType,
   type DutyWorkplace,
 } from '@/api/duty'
-import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { DUTY_COLORS, formatMoney, invalidateDuty, payMode, typeName, workplaceColor } from '@/lib/duty'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -22,7 +21,6 @@ import { FormField, FormSection } from '@/components/ui/form-layout'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
-import { NumberPick } from '@/components/ui/number-pick'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sortable, SortableItem } from '@/components/ui/sortable'
 import { Switch } from '@/components/ui/switch'
@@ -45,7 +43,6 @@ import { DutyPatternDialog } from '@/components/duty/DutyPatternDialog'
    ============================================================ */
 
 const NONE = 'none'
-const DAY_OPTIONS = [1, 5, 10, 15, 20, 25]
 const CURRENCIES = ['₾', '$', '€']
 
 export function DutySettingsDialog({
@@ -62,10 +59,8 @@ export function DutySettingsDialog({
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
-  const { date } = useDateFormat()
   const lang = i18n.language
 
-  const [day, setDay] = useState(settings.pending?.day ?? settings.period_start_day)
   const [currency, setCurrency] = useState(settings.currency)
   const [defaultWorkplace, setDefaultWorkplace] = useState(String(settings.default_workplace_id ?? NONE))
   const [defaultType, setDefaultType] = useState(String(settings.default_type_id ?? NONE))
@@ -81,19 +76,16 @@ export function DutySettingsDialog({
   const save = useMutation({
     mutationFn: () =>
       updateDutySettings({
-        period_start_day: day,
         currency: currency.trim() || '₾',
         default_workplace_id: defaultWorkplace === NONE ? null : Number(defaultWorkplace),
         default_type_id: defaultType === NONE ? null : Number(defaultType),
         remind_at: remindAt,
         remind_telegram: remindTelegram,
       }),
-    onSuccess: (saved) => {
+    onSuccess: () => {
       invalidateDuty(qc)
       toast({
-        title: saved.pending
-          ? t('duty.settings.scheduled', { day: saved.pending.day, date: date(saved.pending.since) })
-          : t('duty.settings.saved'),
+        title: t('duty.settings.saved'),
         variant: 'success',
       })
       onClose()
@@ -112,15 +104,6 @@ export function DutySettingsDialog({
   return (
     <ModalShell title={t('duty.settings.title')} onClose={onClose} size="wide">
       <FormSection>
-        <FormField size="half" label={t('duty.settings.periodDay')} htmlFor="duty-period-day" hint={t('duty.settings.periodDayHint')}>
-          <NumberPick id="duty-period-day" value={day} onChange={setDay} options={DAY_OPTIONS} min={1} max={28} />
-          {settings.pending && (
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              {t('duty.settings.pending', { day: settings.pending.day, date: date(settings.pending.since) })}
-            </p>
-          )}
-        </FormField>
-
         <FormField size="half" label={t('duty.settings.currency')} htmlFor="duty-currency">
           <div className="flex items-center gap-2">
             {CURRENCIES.map((c) => (
@@ -221,6 +204,7 @@ export function DutySettingsDialog({
                       w.hourly_rate != null ? t('duty.workplace.perHour', { pay: formatMoney(w.hourly_rate, settings.currency, lang) }) : null,
                       w.default_type_id != null ? typeName(types.find((x) => x.id === w.default_type_id), lang) || null : null,
                       w.default_start_time,
+                      w.period_day !== 1 ? t('duty.workplace.periodLine', { day: w.period_day }) : null,
                       patternOf(w) ? t('duty.pattern.summary', { count: patternOf(w)!.interval_days }) : null,
                       t('duty.workplace.shifts', { count: w.shifts_count }),
                     ]
