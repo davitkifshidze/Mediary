@@ -240,8 +240,11 @@ export function ReminderCard({
           </span>
         </button>
 
-        <span className="flex shrink-0 items-center gap-0.5">
+        {/* ⚠️ `gap-2` და გადამრთველის შემდეგ მეტი (`mr-2`): `gap-0.5`-ზე გადამრთველი,
+            რედაქტირება და წაშლა ერთმანეთზე იყო მიბჯენილი */}
+        <span className="flex shrink-0 items-center gap-2">
           <Switch
+            className="mr-2"
             checked={reminder.is_active}
             onCheckedChange={onToggle}
             aria-label={t('notes.reminderActive')}
