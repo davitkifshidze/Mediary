@@ -231,6 +231,47 @@ describe('BookmarkDetail', () => {
     ])
   })
 
+  it('"edit" beside a link card opens it filled in and saves the whole list with that link changed', async () => {
+    mocks.setBookmarkLinks.mockClear()
+    await mount()
+
+    const edits = [...document.querySelectorAll<HTMLButtonElement>('[data-testid="bookmark-link-edit"]')]
+    expect(edits).toHaveLength(bookmark.links.length)
+    // ღილაკი ბმულის გვერდითაა და არა მის შიგნით — ბმულზე დაჭერა მას არ „ყლაპავს"
+    expect(edits[1].closest('a')).toBeNull()
+    expect(edits[1].textContent).toBe(i18n.t('actions.edit'))
+
+    await act(async () => edits[1].click())
+    await flush()
+    expect(document.body.textContent).toContain(i18n.t('bookmarks.editLink'))
+
+    const row = [...document.querySelectorAll<HTMLElement>('[data-testid="bookmark-link-row"]')].pop()!
+    const label = row.querySelector<HTMLInputElement>(`input[aria-label="${i18n.t('bookmarks.linkLabel')}"]`)!
+    expect(row.querySelector<HTMLInputElement>('input[placeholder="https://…"]')!.value).toBe(bookmark.links[1].url)
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+    await act(async () => {
+      setter.call(label, 'RTINGS')
+      label.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    await act(async () => [...document.querySelectorAll<HTMLButtonElement>('button[type="submit"]')].pop()!.click())
+    await flush()
+
+    expect(mocks.setBookmarkLinks).toHaveBeenCalledWith(5, [bookmark.links[0], { ...bookmark.links[1], label: 'RTINGS' }])
+  })
+
+  it('"remove link" inside the edit window sends the list without it', async () => {
+    mocks.setBookmarkLinks.mockClear()
+    await mount()
+
+    await act(async () => document.querySelectorAll<HTMLButtonElement>('[data-testid="bookmark-link-edit"]')[0].click())
+    await flush()
+    await act(async () => button(i18n.t('bookmarks.removeLink'))!.click())
+    await flush()
+
+    expect(mocks.setBookmarkLinks).toHaveBeenCalledWith(5, [bookmark.links[1]])
+  })
+
   it('the gallery shows the uploaded photos and the web part for owner bookmark:<id>', async () => {
     await mount(true)
 

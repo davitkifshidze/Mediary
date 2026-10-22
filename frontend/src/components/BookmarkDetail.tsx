@@ -6,6 +6,7 @@ import {
   deleteBookmarkFile,
   fetchBookmarkFiles,
   markBookmarkVisited,
+  setBookmarkLinks,
   setBookmarkStatus,
   toggleBookmarkFavorite,
   uploadBookmarkFiles,
@@ -75,7 +76,8 @@ export function BookmarkDetail({
   const { toast } = useToast()
   const refresh = useBookmarkRefresh()
   const { data: statuses = [] } = useStatuses('bookmark')
-  const [linkOpen, setLinkOpen] = useState(false)
+  /** ბმულის ფანჯარა: `'new'` — დამატება, რიცხვი — სიაში ამ ადგილის რედაქტირება */
+  const [linkEdit, setLinkEdit] = useState<number | 'new' | null>(null)
   const gallery = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -88,6 +90,15 @@ export function BookmarkDetail({
   const status = useMutation({
     mutationFn: (key: string) => setBookmarkStatus(bookmark.id, key),
     onSuccess: refresh,
+    onError: fail,
+  })
+  /* ბარათის მენიუს „მოხსნა" — სია მთლიანად იგზავნება (სერვერზე `links` ერთი სვეტია) */
+  const removeLink = useMutation({
+    mutationFn: (index: number) => setBookmarkLinks(bookmark.id, (bookmark.links ?? []).filter((_, i) => i !== index)),
+    onSuccess: () => {
+      refresh()
+      toast({ title: t('bookmarks.linkRemoved'), variant: 'success' })
+    },
     onError: fail,
   })
   /* „გახსნის" მთვლელის ჩავარდნა ჩუმად არ იკარგება (სიის იგივე წესი) */
@@ -108,7 +119,7 @@ export function BookmarkDetail({
     { key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: openLink },
     statusActions(t('bookmarks.status'), statuses, bookmark.status, lang, (key) => status.mutate(key)),
     favoriteAction(bookmark.is_favorite, () => favorite.mutate(), t),
-    { key: 'add-link', label: t('bookmarks.addLink'), icon: Plus, run: () => setLinkOpen(true) },
+    { key: 'add-link', label: t('bookmarks.addLink'), icon: Plus, run: () => setLinkEdit('new') },
     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: onEdit },
     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: onDelete },
   ]
@@ -215,13 +226,13 @@ export function BookmarkDetail({
           title={t('bookmarks.linksTitle')}
           hint={t('bookmarks.linksHint')}
           action={
-            <Button type="button" variant="outline" size="sm" onClick={() => setLinkOpen(true)}>
+            <Button type="button" variant="outline" size="sm" onClick={() => setLinkEdit('new')}>
               <Plus className="size-3.5" />
               {t('bookmarks.addLink')}
             </Button>
           }
         >
-          <BookmarkLinkCards links={bookmark.links ?? []} />
+          <BookmarkLinkCards links={bookmark.links ?? []} onEdit={setLinkEdit} onRemove={(index) => removeLink.mutate(index)} />
         </DetailSection>
 
         {/* ---------- გალერეა: ორი საცავი ერთ ხედად ---------- */}
@@ -241,7 +252,9 @@ export function BookmarkDetail({
         </div>
       </div>
 
-      {linkOpen && <BookmarkLinkDialog bookmark={bookmark} onClose={() => setLinkOpen(false)} />}
+      {linkEdit !== null && (
+        <BookmarkLinkDialog bookmark={bookmark} edit={linkEdit === 'new' ? undefined : linkEdit} onClose={() => setLinkEdit(null)} />
+      )}
     </ModalShell>
   )
 }

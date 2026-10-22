@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import Lightbox, { type Slide } from 'yet-another-react-lightbox'
 import Counter from 'yet-another-react-lightbox/plugins/counter'
@@ -30,7 +30,19 @@ import 'yet-another-react-lightbox/plugins/thumbnails.css'
    ⚠️ **საჯარო დისკისთვისაა** (`storageUrl`) — პრივატული ფაილის ჩვენება
    blob-ს მოითხოვს (`PhotoGrid`-ის `privateDisk`); როცა ეს სხვა
    მოდულს დასჭირდება, ის აქ ემატება და არა მეორე ასლში.
+
+   ⚠️ **გვერდიგვერდ** (შენი სიტყვები: „ფოტო ძალიან დიდია… უფრო მცირე იყოს, მარჯვნივ
+   სია ყველა ფოტოსი, რაც დაეტევა, დანარჩენი — სქროლით"): მთავარი ფოტო `sm`-იდან
+   ნახევარ სიგანეზეა (`lg`-ზე 55%), ესკიზები მარჯვნივ სვეტად — სვეტის სიმაღლე
+   მთავარი ფოტოსია (შიგნით აბსოლუტური სქროლი), ტელეფონზე ზოლად ქვემოთ.
+   ⚠️ **ავტოსლაიდი** ყოველ წამში (`autoplay`, ნაგულისხმევად ჩართული — ერთი
+   ვიტრინაა რვა ფანჯარაში); ჩერდება ჰოვერზე და ლაითბოქსის ღიაობისას. აქტიური
+   ესკიზი **მხოლოდ თავის სვეტში** სქროლდება — `scrollIntoView` ფანჯარასაც
+   ამოძრავებდა და კითხვისას გვერდი ყოველ წამში ხტებოდა.
    ============================================================ */
+
+/** ავტოსლაიდის ბიჯი (ms) */
+const AUTOPLAY_MS = 1000
 
 export interface ShowcaseItem {
   id: number
@@ -44,6 +56,7 @@ export function PhotoShowcase({
   items,
   empty,
   onDelete,
+  autoplay = true,
   className,
 }: {
   items: ShowcaseItem[]
@@ -51,15 +64,39 @@ export function PhotoShowcase({
   empty?: ReactNode
   /** მიმდინარე (დიდი) ფოტოს წაშლა — დადასტურება გამომძახებლისაა */
   onDelete?: (id: number) => void
+  /** ფოტოები თავისით ცვლის ერთმანეთს (ყოველ წამში); `false` — მხოლოდ ხელით */
+  autoplay?: boolean
   className?: string
 }) {
   const { t } = useTranslation()
   const [index, setIndex] = useState(0)
   const [open, setOpen] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const strip = useRef<HTMLDivElement>(null)
 
   // ⚠️ წაშლის შემდეგ ინდექსი სიის ბოლოს მიღმა შეიძლება დარჩეს
   const current = items.length ? Math.min(index, items.length - 1) : 0
   const shown = items[current]
+  const count = items.length
+  const running = autoplay && count > 1 && !hovered && !open
+
+  useEffect(() => {
+    if (!running) return
+    const timer = setInterval(() => setIndex((i) => (Math.min(i, count - 1) + 1) % count), AUTOPLAY_MS)
+    return () => clearInterval(timer)
+  }, [running, count])
+
+  /* აქტიური ესკიზი ხილვად ადგილზე — მხოლოდ სვეტის/ზოლის სქროლით (იხ. ზემოთ) */
+  useEffect(() => {
+    const box = strip.current
+    const thumb = box?.querySelector<HTMLElement>('[aria-current="true"]')
+    if (!box || !thumb || typeof box.scrollTo !== 'function') return
+    box.scrollTo({
+      top: thumb.offsetTop - (box.clientHeight - thumb.clientHeight) / 2,
+      left: thumb.offsetLeft - (box.clientWidth - thumb.clientWidth) / 2,
+      behavior: 'smooth',
+    })
+  }, [current])
 
   const slides: Slide[] = useMemo(
     () => items.map((item) => ({ src: storageUrl(item.src) ?? '', alt: item.title ?? '' })),
@@ -69,8 +106,13 @@ export function PhotoShowcase({
   if (!shown) return <>{empty}</>
 
   return (
-    <div className={className}>
-      <div className="group relative overflow-hidden rounded-lg bg-muted">
+    <div
+      className={cn('sm:flex sm:gap-3', className)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      data-testid="photo-showcase"
+    >
+      <div className="group relative shrink-0 overflow-hidden rounded-lg bg-muted sm:w-1/2 lg:w-[55%]" data-testid="showcase-main">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -99,24 +141,31 @@ export function PhotoShowcase({
         )}
       </div>
 
-      {/* ⚠️ ზოლი მხოლოდ მაშინ, როცა არჩევანი არსებობს */}
+      {/* ⚠️ ესკიზები მხოლოდ მაშინ, როცა არჩევანი არსებობს: `sm`-იდან მარჯვნივ სვეტად
+          (სიმაღლე — მთავარი ფოტოსი, შიგნით აბსოლუტური სქროლი), ტელეფონზე ზოლად ქვემოთ */}
       {items.length > 1 && (
-        <div className="fb-scroll mt-2 flex gap-2 overflow-x-auto pb-1">
-          {items.map((item, i) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setIndex(i)}
-              aria-label={item.title ?? `${i + 1}`}
-              aria-current={i === current}
-              className={cn(
-                'h-16 w-28 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 transition-opacity',
-                i === current ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100',
-              )}
-            >
-              <img src={storageUrl(item.src) ?? ''} alt="" loading="lazy" className="size-full object-cover" />
-            </button>
-          ))}
+        <div className="relative mt-2 sm:mt-0 sm:min-w-0 sm:flex-1">
+          <div
+            ref={strip}
+            className="fb-scroll flex gap-2 overflow-x-auto pb-1 sm:absolute sm:inset-0 sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden sm:pb-0 sm:pr-1"
+            data-testid="showcase-thumbs"
+          >
+            {items.map((item, i) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setIndex(i)}
+                aria-label={item.title ?? `${i + 1}`}
+                aria-current={i === current}
+                className={cn(
+                  'h-16 w-28 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 transition-opacity sm:aspect-video sm:h-auto sm:w-full',
+                  i === current ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100',
+                )}
+              >
+                <img src={storageUrl(item.src) ?? ''} alt="" loading="lazy" className="size-full object-cover" />
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
