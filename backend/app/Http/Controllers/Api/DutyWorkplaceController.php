@@ -166,6 +166,12 @@ class DutyWorkplaceController extends Controller
             'short' => ['nullable', 'string', 'max:3'],
             'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'hourly_rate' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
+            // სამსახურის არჩევისას ფორმა ამ ორს ავსებს („112 · 24 სთ · 09:00“)
+            'default_type_id' => [
+                'nullable', 'integer',
+                Rule::exists('duty_shift_types', 'id')->whereNull('trashed_at')->where('user_id', $userId),
+            ],
+            'default_start_time' => ['nullable', 'date_format:H:i'],
             'is_active' => ['sometimes', 'boolean'],
             'rates' => ['sometimes', 'array', 'max:100'],
             'rates.*.type_id' => [

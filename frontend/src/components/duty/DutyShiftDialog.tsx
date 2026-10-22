@@ -12,7 +12,7 @@ import {
   type DutyWorkplace,
 } from '@/api/duty'
 import { errorMessage } from '@/lib/errors'
-import { dutyPay, formatHours, invalidateDuty, typeName, workplaceColor } from '@/lib/duty'
+import { dutyPay, formatHours, invalidateDuty, shiftEnd, timeRange, typeName, workplaceColor } from '@/lib/duty'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -30,6 +30,11 @@ import { TimePicker } from '@/components/ui/time-picker'
    სამსახური ჩიპებით (ფერით), ტიპი ჩიპებით ან „სხვა“ + საათები, თანხა წინასწარ
    შევსებული ტარიფიდან (`dutyPay()` — სერვერის `DutyPay`-ის ასლი), შენიშვნა.
 
+   ⚠️ **სამსახურის ნაგულისხმევები** (`default_type_id`, `default_start_time`):
+   ახალ მორიგეობაზე და სამსახურის არჩევისას ტიპი და დაწყება თვითონ ივსება
+   („112“ → 24 სთ · 09:00); ცარიელი ნაგულისხმევი არაფერს ცვლის. დაწყების
+   ქვეშ დასრულება ჩანს — „09:00 → 09:00 (+1)“ (`shiftEnd()`).
+
    ⚠️ **თანხა ცხადად იგზავნება** — რაც ველში წერია, ის ინახება (ცარიელი = უცნობი
    თანხა). ⚠️ სანამ თანხას ხელით არ შეეხები, სამსახურის/ტიპის/საათების შეცვლა მას
    ხელახლა ითვლის; შეხების შემდეგ — აღარ (შენს ციფრს ფორმა არ გადაწერს).
@@ -38,7 +43,7 @@ import { TimePicker } from '@/components/ui/time-picker'
 const CUSTOM = 'custom'
 
 /** „სხვა“ საათების სწრაფი არჩევანი — დანარჩენი `NumberPick`-ის „სხვაში“ */
-const HOUR_OPTIONS = [4, 6, 8, 10, 12, 16, 18, 24]
+const HOUR_OPTIONS = [4, 5, 6, 7, 8, 10, 12, 16, 18, 24]
 
 const FORM_ID = 'duty-shift-form'
 
@@ -65,7 +70,11 @@ export function DutyShiftDialog({
 
   const active = workplaces.filter((w) => w.is_active || w.id === shift?.workplace_id)
   const firstWorkplace = settings?.default_workplace_id ?? active[0]?.id ?? null
-  const firstType = settings?.default_type_id ?? types[0]?.id ?? null
+  const startWorkplace = workplaces.find((w) => w.id === firstWorkplace)
+  // სამსახურის ნაგულისხმევი ტიპი (თუ ჯერ არსებობს) → მოდულისა → პირველი
+  const ownType = (w: DutyWorkplace | undefined) =>
+    w?.default_type_id != null && types.some((x) => x.id === w.default_type_id) ? w.default_type_id : null
+  const firstType = ownType(startWorkplace) ?? settings?.default_type_id ?? types[0]?.id ?? null
 
   const [workplaceId, setWorkplaceId] = useState<number | null>(shift ? shift.workplace_id : firstWorkplace)
   const [typeKey, setTypeKey] = useState<string>(
@@ -73,7 +82,7 @@ export function DutyShiftDialog({
   )
   const [hours, setHours] = useState<number>(shift ? shift.hours : (types.find((x) => x.id === firstType)?.hours ?? 12))
   const [day, setDay] = useState<string>(shift?.date ?? date ?? '')
-  const [startTime, setStartTime] = useState<string | null>(shift?.start_time ?? null)
+  const [startTime, setStartTime] = useState<string | null>(shift ? shift.start_time : (startWorkplace?.default_start_time ?? null))
   const [note, setNote] = useState(shift?.note ?? '')
   const [pay, setPay] = useState<string>(shift?.pay != null ? String(shift.pay) : '')
   const [payTouched, setPayTouched] = useState(!!shift)
@@ -90,6 +99,16 @@ export function DutyShiftDialog({
     const type = types.find((x) => String(x.id) === key)
     if (type) setHours(type.hours)
   }
+
+  /** სამსახური + მისი ნაგულისხმევები (ცარიელი არაფერს ცვლის) */
+  const pickWorkplace = (w: DutyWorkplace) => {
+    setWorkplaceId(w.id)
+    const own = ownType(w)
+    if (own != null) pickType(String(own))
+    if (w.default_start_time) setStartTime(w.default_start_time)
+  }
+
+  const range = timeRange(startTime, shiftEnd(startTime, hours))
 
   const save = useMutation({
     mutationFn: () => {
@@ -145,7 +164,7 @@ export function DutyShiftDialog({
                 <Chip
                   key={w.id}
                   active={workplaceId === w.id}
-                  onClick={() => setWorkplaceId(w.id)}
+                  onClick={() => pickWorkplace(w)}
                   icon={<span className="size-2.5 rounded-sm" style={{ background: workplaceColor(w) }} />}
                 >
                   {w.name}
@@ -179,6 +198,11 @@ export function DutyShiftDialog({
           </FormField>
           <FormField size="half" label={t('fields.name.duty.start_time')} htmlFor="duty-start">
             <TimePicker id="duty-start" value={startTime} onChange={setStartTime} clearable />
+            {range && (
+              <p className="mt-1 text-xs tabular-nums text-muted-foreground" data-testid="duty-shift-range">
+                {range}
+              </p>
+            )}
           </FormField>
 
           <FormField

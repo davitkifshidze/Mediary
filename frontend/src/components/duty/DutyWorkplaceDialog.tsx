@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { CalendarCheck, Clock } from 'lucide-react'
 import {
   createDutyWorkplace,
   updateDutyWorkplace,
@@ -8,24 +9,34 @@ import {
   type DutyWorkplace,
 } from '@/api/duty'
 import { errorMessage } from '@/lib/errors'
-import { DUTY_COLORS, invalidateDuty, typeName } from '@/lib/duty'
+import { DUTY_COLORS, invalidateDuty, payMode, typeName } from '@/lib/duty'
 import { cn } from '@/lib/utils'
+import { CutTabs } from '@/components/ui/cut-tabs'
 import { useToast } from '@/components/ui/feedback'
 import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { TimePicker } from '@/components/ui/time-picker'
 
 /* ============================================================
-   **სამსახური — სახელი, ასო, ფერი, ტარიფები.**
+   **სამსახური — სახელი, ასო, ფერი, ანაზღაურება, ნაგულისხმევები.**
 
-   ⚠️ **ტარიფი ტიპზეა** („24 სთ = 220“) და **საათობრივი — ქასთომ საათებისთვის**
-   (ტიპის გარეშე მორიგეობა, ან ტიპი, რომელსაც ამ სამსახურში ტარიფი არ აქვს).
-   ცარიელი ველი — ტარიფი არ არის. ⚠️ ცვლილება მხოლოდ ახალ მორიგეობებს ეხება:
-   ძველს თანხა ჩანაწერზე აქვს და წარსული ჯამი არ იცვლება.
+   ⚠️ **ანაზღაურება — „მორიგეობაზე“ ან „საათზე“** (გადამრთველი): პირველზე
+   ტარიფები ტიპებზე („112 · 24 სთ = 250“), მეორეზე მხოლოდ საათობრივი
+   (კლინიკა — საათები × განაკვეთი). ⚠️ შენახვისას მეორე სუფთავდება: ორივე რომ
+   ყოფილიყო, ტიპის ტარიფი საათობრივს უჩუმრად სძლევდა (`DutyPay`). რეჟიმი
+   სქემაში არ ინახება — ტარიფებიდან იკითხება (`payMode()`).
+   ⚠️ **ნაგულისხმევი ტიპი და დაწყების დრო** — სამსახურის არჩევისას მორიგეობის
+   ფორმა მათ თვითონ ავსებს; ცარიელი — არაფერს ცვლის.
+   ⚠️ ცვლილება მხოლოდ ახალ მორიგეობებს ეხება: ძველს თანხა ჩანაწერზე აქვს და
+   წარსული ჯამი არ იცვლება.
    ============================================================ */
 
 const FORM_ID = 'duty-workplace-form'
+
+const NONE = 'none'
 
 export function DutyWorkplaceDialog({
   workplace,
@@ -49,7 +60,12 @@ export function DutyWorkplaceDialog({
   const [name, setName] = useState(workplace?.name ?? '')
   const [short, setShort] = useState(workplace?.short ?? '')
   const [color, setColor] = useState(workplace?.color ?? nextColor)
+  const [mode, setMode] = useState<'shift' | 'hour'>(workplace ? (payMode(workplace) ?? 'shift') : 'shift')
   const [hourly, setHourly] = useState(workplace?.hourly_rate != null ? String(workplace.hourly_rate) : '')
+  const [defaultType, setDefaultType] = useState(
+    workplace?.default_type_id != null && types.some((x) => x.id === workplace.default_type_id) ? String(workplace.default_type_id) : NONE,
+  )
+  const [defaultStart, setDefaultStart] = useState<string | null>(workplace?.default_start_time ?? null)
   const [active, setActive] = useState(workplace?.is_active ?? true)
   const [rates, setRates] = useState<Record<number, string>>(() =>
     Object.fromEntries((workplace?.rates ?? []).map((r) => [r.type_id, String(r.pay)])),
@@ -61,12 +77,18 @@ export function DutyWorkplaceDialog({
         name: name.trim(),
         short: short.trim() || null,
         color,
-        hourly_rate: hourly.trim() === '' ? null : Number(hourly),
+        // ⚠️ რეჟიმი მეორეს ასუფთავებს — ორივე ერთად DutyPay-ში ტიპის ტარიფს აჯობებინებდა
+        hourly_rate: mode === 'hour' && hourly.trim() !== '' ? Number(hourly) : null,
+        default_type_id: defaultType === NONE ? null : Number(defaultType),
+        default_start_time: defaultStart,
         is_active: active,
-        rates: types.map((type) => ({
-          type_id: type.id,
-          pay: (rates[type.id] ?? '').trim() === '' ? null : Number(rates[type.id]),
-        })),
+        rates:
+          mode === 'shift'
+            ? types.map((type) => ({
+                type_id: type.id,
+                pay: (rates[type.id] ?? '').trim() === '' ? null : Number(rates[type.id]),
+              }))
+            : [],
       }
 
       return workplace ? updateDutyWorkplace(workplace.id, input) : createDutyWorkplace(input)
@@ -114,7 +136,23 @@ export function DutyWorkplaceDialog({
             </div>
           </FormField>
 
+          <FormField label={t('duty.workplace.payMode')} hint={t('duty.workplace.payModeHint')}>
+            <div data-testid="duty-pay-mode">
+              <CutTabs
+                layout="inline"
+                size="sm"
+                value={mode}
+                onChange={(key) => setMode(key as 'shift' | 'hour')}
+                options={[
+                  { key: 'shift', label: t('duty.workplace.perShift'), icon: CalendarCheck },
+                  { key: 'hour', label: t('duty.workplace.perHourMode'), icon: Clock },
+                ]}
+              />
+            </div>
+          </FormField>
+
           <FormField
+            show={mode === 'shift'}
             label={t('duty.workplace.rates', { currency })}
             hint={t('duty.workplace.ratesHint')}
           >
@@ -136,7 +174,12 @@ export function DutyWorkplaceDialog({
             </div>
           </FormField>
 
-          <FormField label={t('duty.workplace.hourly', { currency })} htmlFor="duty-wp-hourly" hint={t('duty.workplace.hourlyHint')}>
+          <FormField
+            show={mode === 'hour'}
+            label={t('duty.workplace.hourly', { currency })}
+            htmlFor="duty-wp-hourly"
+            hint={t('duty.workplace.hourlyHint')}
+          >
             <Input
               id="duty-wp-hourly"
               type="number"
@@ -147,6 +190,26 @@ export function DutyWorkplaceDialog({
               value={hourly}
               onChange={(e) => setHourly(e.target.value)}
             />
+          </FormField>
+
+          {/* ნაგულისხმევები — სამსახურის არჩევისას ფორმა ავსებს */}
+          <FormField size="half" label={t('duty.workplace.defaultType')} hint={t('duty.workplace.defaultsHint')}>
+            <Select value={defaultType} onValueChange={setDefaultType}>
+              <SelectTrigger aria-label={t('duty.workplace.defaultType')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>{t('duty.workplace.noDefault')}</SelectItem>
+                {types.map((type) => (
+                  <SelectItem key={type.id} value={String(type.id)}>
+                    {typeName(type, i18n.language)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+          <FormField size="half" label={t('duty.workplace.defaultStart')} htmlFor="duty-wp-start">
+            <TimePicker id="duty-wp-start" value={defaultStart} onChange={setDefaultStart} clearable />
           </FormField>
 
           <FormField>

@@ -127,6 +127,44 @@ export function workplaceColor(workplace: { color: string | null } | null | unde
   return index >= 0 ? `var(--duty-${index + 1})` : color
 }
 
+/**
+ * **დასრულება** — დაწყება + საათები (სერვერის `DutyShiftResource::end()`-ის ასლი,
+ * ფორმის წინასწარ საჩვენებლად): `{ time: '09:00', day: 1 }`; დაწყების გარეშე — `null`.
+ */
+export function shiftEnd(start: string | null, hours: number): { time: string; day: number } | null {
+  if (!start || !(hours > 0)) return null
+  const [h, m] = start.split(':').map(Number)
+  const total = h * 60 + m + Math.round(hours * 60)
+  const minutes = total % 1440
+
+  return {
+    time: `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`,
+    day: Math.floor(total / 1440),
+  }
+}
+
+/** „09:00 → 09:00 (+1)“ — დაწყების გარეშე `null` */
+export function timeRange(start: string | null, end: { time: string; day: number } | null): string | null {
+  if (!start || !end) return null
+  return `${start} → ${end.time}${end.day > 0 ? ` (+${end.day})` : ''}`
+}
+
+/** შენახული მორიგეობის დიაპაზონი — სერვერის `end_time`/`end_day`-ით */
+export function shiftRange(shift: Pick<DutyShift, 'start_time' | 'end_time' | 'end_day'>): string | null {
+  return timeRange(shift.start_time, shift.end_time ? { time: shift.end_time, day: shift.end_day ?? 0 } : null)
+}
+
+/**
+ * **ანაზღაურების რეჟიმი** — „მორიგეობაზე“ (ტარიფები ტიპებზე) ან „საათზე“
+ * (მხოლოდ საათობრივი). ⚠️ რეჟიმი სქემაში არ ინახება: ტარიფი თუ აქვს —
+ * მორიგეობაზეა (`DutyPay`-შიც ტარიფი იმარჯვებს), თორემ საათობრივი თუ აქვს —
+ * საათზე; არცერთი — „ტარიფი არ არის“ (`null`).
+ */
+export function payMode(workplace: Pick<DutyWorkplace, 'rates' | 'hourly_rate'>): 'shift' | 'hour' | null {
+  if (workplace.rates.length) return 'shift'
+  return workplace.hourly_rate != null ? 'hour' : null
+}
+
 /** კალენდრის ჩიპი — „A · 24“ (სამსახურის გარეშე — მხოლოდ საათები) */
 export function chipLabel(shift: Pick<DutyShift, 'hours' | 'workplace'>): string {
   const short = shift.workplace?.short || shift.workplace?.name?.slice(0, 1)

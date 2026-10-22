@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DutyShift } from '@/api/duty'
-import { chipLabel, eachDay, formatHours, parseDay, todayIso, weekdayIndex, workplaceColor } from '@/lib/duty'
+import { chipLabel, eachDay, formatHours, parseDay, shiftRange, todayIso, weekdayIndex, workplaceColor } from '@/lib/duty'
 import { cn } from '@/lib/utils'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 
@@ -177,7 +177,8 @@ export function DutyCalendar({
                     borderLeftColor: workplaceColor(shift.workplace),
                     background: `color-mix(in oklab, ${workplaceColor(shift.workplace)} 22%, transparent)`,
                   }}
-                  title={[shift.workplace?.name, `${formatHours(shift.hours)}`, shift.note].filter(Boolean).join(' · ')}
+                  /* უჯრა ვიწროა — ჩიპზე „112 · 24“, დიაპაზონი („09:00 → 09:00 (+1)“) ჰოვერზე */
+                  title={[shift.workplace?.name, shiftRange(shift), `${formatHours(shift.hours)}`, shift.note].filter(Boolean).join(' · ')}
                   data-testid="duty-chip"
                 >
                   {chipLabel(shift)}

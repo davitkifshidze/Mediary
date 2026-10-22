@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, SquarePen } from 'lucide-react'
 import type { DutySettingsData, DutyShift } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
-import { formatHours, formatMoney, typeName, workplaceColor } from '@/lib/duty'
+import { formatHours, formatMoney, shiftRange, typeName, workplaceColor } from '@/lib/duty'
 import { Button } from '@/components/ui/button'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 
@@ -44,8 +44,8 @@ export function DutyDayDialog({
               </p>
               <p className="truncate text-xs text-muted-foreground">
                 {[
+                  shiftRange(shift),
                   t('duty.hoursValue', { hours: formatHours(shift.hours) }),
-                  shift.start_time,
                   shift.pay != null ? formatMoney(shift.pay, currency, i18n.language) : null,
                   shift.note,
                 ]

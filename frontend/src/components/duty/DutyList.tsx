@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { CalendarClock, SquarePen } from 'lucide-react'
 import type { DutySettingsData, DutyShift } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
-import { formatHours, formatMoney, parseDay, typeName, workplaceColor } from '@/lib/duty'
+import { formatHours, formatMoney, parseDay, shiftRange, typeName, workplaceColor } from '@/lib/duty'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FavoriteButton } from '@/components/ui/favorite-button'
@@ -53,7 +53,8 @@ export function DutyList({
             <span className="truncate font-medium">{shift.workplace?.name ?? t('duty.noWorkplace')}</span>
             <span className="truncate text-muted-foreground">
               · {shift.type ? typeName(shift.type, lang) : t('duty.shift.custom')}
-              {shift.start_time && ` · ${shift.start_time}`}
+              {/* „09:00 → 09:00 (+1)“ — დასრულება სერვერიდან (დაწყება + საათები) */}
+              {shift.start_time && ` · ${shiftRange(shift) ?? shift.start_time}`}
             </span>
           </span>
 

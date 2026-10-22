@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, Calculator, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, List, Loader2, Pencil, Plus, Settings, X } from 'lucide-react'
+import { BarChart3, Calculator, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, List, Loader2, Pencil, Plus, Settings, TriangleAlert, X } from 'lucide-react'
 import {
   DUTY_KEY,
   fetchDutyPeriod,
@@ -13,7 +13,7 @@ import {
   fetchDutyWorkplaces,
   type DutyShift,
 } from '@/api/duty'
-import { formatHours, formatMoney, periodLabel, todayIso } from '@/lib/duty'
+import { formatHours, formatMoney, payMode, periodLabel, todayIso } from '@/lib/duty'
 import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { PageContainer } from '@/components/ui/page'
@@ -142,6 +142,9 @@ export function DutyPage() {
 
   const loading = periodQ.isLoading || settingsQ.isLoading || workplacesQ.isLoading || typesQ.isLoading
   const currency = settings?.currency ?? '₾'
+  /* აქტიური სამსახური ტარიფისა და საათობრივის გარეშე — თანხა არ ითვლება;
+     ეს პირველი ნაბიჯია და გვერდი ამას პირდაპირ ამბობს (ბმულით პარამეტრებზე) */
+  const unpaid = workplaces.filter((w) => w.is_active && payMode(w) === null)
 
   return (
     <PageContainer>
@@ -168,6 +171,17 @@ export function DutyPage() {
           </>
         }
       />
+
+      {unpaid.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3 text-sm" data-testid="duty-no-rate">
+          <TriangleAlert className="size-4 shrink-0 text-[var(--icon-warn)]" />
+          <span className="min-w-0 flex-1">{t('duty.workplace.noRateBanner', { names: unpaid.map((w) => w.name).join(', ') })}</span>
+          <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)} disabled={!settings}>
+            <Settings className="size-4" />
+            {t('duty.settings.open')}
+          </Button>
+        </div>
+      )}
 
       {/* ---------- პერიოდი ---------- */}
       <div className="mb-4 flex flex-wrap items-center gap-2">

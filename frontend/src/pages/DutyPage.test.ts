@@ -15,8 +15,8 @@ import i18n from '@/i18n'
    ============================================================ */
 
 const workplaces: DutyWorkplace[] = [
-  { id: 1, name: 'კლინიკა', short: 'A', color: '#2a78d6', hourly_rate: 10, is_active: true, sort_order: 1, rates: [{ type_id: 3, pay: 220 }], shifts_count: 1 },
-  { id: 2, name: 'საავადმყოფო', short: 'B', color: '#eb6834', hourly_rate: null, is_active: true, sort_order: 2, rates: [{ type_id: 3, pay: 300 }], shifts_count: 0 },
+  { id: 1, name: 'კლინიკა', short: 'A', color: '#2a78d6', hourly_rate: 10, default_type_id: null, default_start_time: null, is_active: true, sort_order: 1, rates: [{ type_id: 3, pay: 220 }], shifts_count: 1 },
+  { id: 2, name: 'საავადმყოფო', short: 'B', color: '#eb6834', hourly_rate: null, default_type_id: null, default_start_time: null, is_active: true, sort_order: 2, rates: [{ type_id: 3, pay: 300 }], shifts_count: 0 },
 ]
 
 const types: DutyShiftType[] = [
@@ -40,6 +40,8 @@ const shift: DutyShift = {
   id: 7,
   date: '2026-10-02',
   start_time: null,
+  end_time: null,
+  end_day: null,
   hours: 24,
   pay: 220,
   note: null,
@@ -202,6 +204,27 @@ describe('DutyPage', () => {
   })
 
   /* სიის სტრიქონზე მარჯვენა ღილაკი: რჩეული · რედაქტირება · წაშლა (დადასტურებით, ურნაში) */
+  it('warns about a workplace without a rate and shows where a shift ends', async () => {
+    defaults()
+    mocks.fetchDutyWorkplaces.mockResolvedValue([
+      ...workplaces,
+      { ...workplaces[1], id: 3, name: 'სამსახური', rates: [], hourly_rate: null, shifts_count: 14 },
+    ])
+    mocks.fetchDutyShifts.mockResolvedValue({
+      items: [{ ...shift, start_time: '09:00', end_time: '09:00', end_day: 1 }],
+      range: { from: '2026-10-01', to: '2026-10-31' },
+    })
+    await render('/duty?view=list')
+
+    // ტარიფის გარეშე სამსახური — გვერდი ამბობს და პარამეტრებს ხსნის
+    const notice = container!.querySelector('[data-testid="duty-no-rate"]')!
+    expect(notice.textContent).toContain('„სამსახური“')
+    expect(notice.textContent).not.toContain('კლინიკა')
+    expect(notice.querySelector('button')?.textContent).toBe(i18n.t('duty.settings.open'))
+
+    expect(container!.querySelector('[data-testid="duty-list"]')?.textContent).toContain('09:00 → 09:00 (+1)')
+  })
+
   it('opens the row context menu in the list view and moves the shift to the trash after confirming', async () => {
     defaults()
     await render('/duty?view=list')

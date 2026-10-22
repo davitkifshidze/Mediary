@@ -12,7 +12,7 @@ import {
 } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
-import { DUTY_COLORS, formatMoney, invalidateDuty, typeName, workplaceColor } from '@/lib/duty'
+import { DUTY_COLORS, formatMoney, invalidateDuty, payMode, typeName, workplaceColor } from '@/lib/duty'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { useToast } from '@/components/ui/feedback'
@@ -203,13 +203,17 @@ export function DutySettingsDialog({
                     {w.short && <span className="text-muted-foreground"> · {w.short}</span>}
                     {!w.is_active && <span className="text-muted-foreground"> · {t('duty.workplace.inactive')}</span>}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  {/* ანაზღაურება (რეჟიმით) · ნაგულისხმევები · რამდენი მორიგეობა; ტარიფის გარეშე — წითლად */}
+                  <p className="truncate text-xs text-muted-foreground" data-testid="duty-workplace-line">
+                    {payMode(w) === null && <span className="text-destructive">{t('duty.workplace.noRate')} · </span>}
                     {[
                       ...w.rates.map((r) => {
                         const type = types.find((x) => x.id === r.type_id)
                         return type ? `${typeName(type, lang)} — ${formatMoney(r.pay, settings.currency, lang)}` : null
                       }),
                       w.hourly_rate != null ? t('duty.workplace.perHour', { pay: formatMoney(w.hourly_rate, settings.currency, lang) }) : null,
+                      w.default_type_id != null ? typeName(types.find((x) => x.id === w.default_type_id), lang) || null : null,
+                      w.default_start_time,
                       t('duty.workplace.shifts', { count: w.shifts_count }),
                     ]
                       .filter(Boolean)

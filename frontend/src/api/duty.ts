@@ -26,6 +26,10 @@ export interface DutyWorkplace {
   short: string | null
   color: string | null
   hourly_rate: number | null
+  /** სამსახურის არჩევისას ფორმა ავსებს — „112 · 24 სთ · 09:00“ */
+  default_type_id: number | null
+  /** `HH:MM` */
+  default_start_time: string | null
   is_active: boolean
   sort_order: number
   rates: DutyRate[]
@@ -50,6 +54,10 @@ export interface DutyShift {
   date: string
   /** `HH:MM` */
   start_time: string | null
+  /** დაწყება + საათები (`HH:MM`); დაწყების გარეშე — `null` */
+  end_time: string | null
+  /** რამდენი დღით გვიან მთავრდება — 24-საათიანზე 1 */
+  end_day: number | null
   hours: number
   pay: number | null
   note: string | null
@@ -171,6 +179,8 @@ export interface DutyWorkplaceInput {
   short?: string | null
   color?: string | null
   hourly_rate?: number | null
+  default_type_id?: number | null
+  default_start_time?: string | null
   is_active?: boolean
   /** ⚠️ მთლიანი სია — აქ არმყოფი ტიპის ტარიფი იხსნება */
   rates?: { type_id: number; pay: number | null }[]

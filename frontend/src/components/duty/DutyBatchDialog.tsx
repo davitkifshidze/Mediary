@@ -13,6 +13,7 @@ import { FormField, FormSection } from '@/components/ui/form-layout'
 import { Input } from '@/components/ui/input'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { TimePicker } from '@/components/ui/time-picker'
 
 /* ============================================================
    **ერთიანი მონიშვნა → N მორიგეობა.**
@@ -62,8 +63,14 @@ export function DutyBatchDialog({
   const currency = settings?.currency ?? '₾'
 
   const active = workplaces.filter((w) => w.is_active)
-  const [workplaceId, setWorkplaceId] = useState<number | null>(settings?.default_workplace_id ?? active[0]?.id ?? null)
-  const [defaultType, setDefaultType] = useState<string>(String(settings?.default_type_id ?? types[0]?.id ?? CUSTOM))
+  const firstWorkplace = settings?.default_workplace_id ?? active[0]?.id ?? null
+  const startWorkplace = workplaces.find((w) => w.id === firstWorkplace)
+  // სამსახურის ნაგულისხმევი ტიპი (თუ ჯერ არსებობს) → მოდულისა → პირველი
+  const ownType = (w: DutyWorkplace | undefined) =>
+    w?.default_type_id != null && types.some((x) => x.id === w.default_type_id) ? w.default_type_id : null
+  const [workplaceId, setWorkplaceId] = useState<number | null>(firstWorkplace)
+  const [defaultType, setDefaultType] = useState<string>(String(ownType(startWorkplace) ?? settings?.default_type_id ?? types[0]?.id ?? CUSTOM))
+  const [startTime, setStartTime] = useState<string | null>(startWorkplace?.default_start_time ?? null)
   const [defaultHours, setDefaultHours] = useState('12')
   const [rows, setRows] = useState<Row[]>(() => [...days].sort().map((day) => ({ day, type: INHERIT, hours: '', pay: '' })))
 
@@ -90,6 +97,14 @@ export function DutyBatchDialog({
     { hours: 0, pay: 0 },
   )
 
+  /** სამსახური + მისი ნაგულისხმევები (ცარიელი არაფერს ცვლის) */
+  const pickWorkplace = (w: DutyWorkplace) => {
+    setWorkplaceId(w.id)
+    const own = ownType(w)
+    if (own != null) setDefaultType(String(own))
+    if (w.default_start_time) setStartTime(w.default_start_time)
+  }
+
   const update = (index: number, patch: Partial<Row>) => setRows((all) => all.map((row, i) => (i === index ? { ...row, ...patch } : row)))
 
   const save = useMutation({
@@ -101,6 +116,7 @@ export function DutyBatchDialog({
           date: r.day,
           type_id: r.typeId,
           ...(r.custom ? { hours: r.hours } : {}),
+          ...(startTime ? { start_time: startTime } : {}),
           pay: r.pay,
         })),
       }),
@@ -133,7 +149,7 @@ export function DutyBatchDialog({
               <Chip
                 key={w.id}
                 active={workplaceId === w.id}
-                onClick={() => setWorkplaceId(w.id)}
+                onClick={() => pickWorkplace(w)}
                 icon={<span className="size-2.5 rounded-sm" style={{ background: workplaceColor(w) }} />}
               >
                 {w.name}
@@ -165,6 +181,10 @@ export function DutyBatchDialog({
               />
             )}
           </div>
+        </FormField>
+
+        <FormField size="half" label={t('fields.name.duty.start_time')} htmlFor="duty-batch-start">
+          <TimePicker id="duty-batch-start" value={startTime} onChange={setStartTime} clearable />
         </FormField>
       </FormSection>
 

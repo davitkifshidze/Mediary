@@ -74,6 +74,66 @@ class DutyModuleTest extends TestCase
         $this->getJson('/api/duty/types')->assertJsonCount(3, 'data');
     }
 
+    /* ---------- სამსახურის ნაგულისხმევები და დასრულება ---------- */
+
+    public function test_a_workplace_keeps_its_default_type_and_start_time(): void
+    {
+        $t = $this->types();
+
+        $id = $this->postJson('/api/duty/workplaces', [
+            'name' => '112',
+            'short' => '112',
+            'rates' => [['type_id' => $t['h24'], 'pay' => 250]],
+            'default_type_id' => $t['h24'],
+            'default_start_time' => '09:00',
+        ])->assertCreated()
+            ->assertJsonPath('data.default_type_id', $t['h24'])
+            ->assertJsonPath('data.default_start_time', '09:00')
+            ->assertJsonPath('data.hourly_rate', null)
+            ->json('data.id');
+
+        // საათზე: ტარიფები ცარიელია, ნაგულისხმევები მოიხსნება
+        $this->patchJson("/api/duty/workplaces/{$id}", [
+            'hourly_rate' => 15,
+            'rates' => [],
+            'default_type_id' => null,
+            'default_start_time' => null,
+        ])->assertOk()
+            ->assertJsonPath('data.rates', [])
+            ->assertJsonPath('data.hourly_rate', 15)
+            ->assertJsonPath('data.default_type_id', null)
+            ->assertJsonPath('data.default_start_time', null);
+
+        // სხვისი ან არარსებული ტიპი და არასწორი დრო — 422
+        $this->patchJson("/api/duty/workplaces/{$id}", ['default_type_id' => 999999])->assertStatus(422);
+        $this->patchJson("/api/duty/workplaces/{$id}", ['default_start_time' => '9am'])->assertStatus(422);
+    }
+
+    public function test_a_shift_ends_hours_after_it_starts(): void
+    {
+        $t = $this->types();
+        $wp = $this->workplace('112', [$t['h24'] => 250]);
+
+        $this->postJson('/api/duty/shifts', ['date' => '2026-10-02', 'workplace_id' => $wp->id, 'type_id' => $t['h24'], 'start_time' => '09:00'])
+            ->assertCreated()
+            ->assertJsonPath('data.end_time', '09:00')
+            ->assertJsonPath('data.end_day', 1)
+            ->assertJsonPath('data.pay', 250);
+
+        $this->postJson('/api/duty/shifts', ['date' => '2026-10-03', 'workplace_id' => $wp->id, 'type_id' => null, 'hours' => 4.5, 'start_time' => '20:30'])
+            ->assertJsonPath('data.end_time', '01:00')
+            ->assertJsonPath('data.end_day', 1);
+
+        $this->postJson('/api/duty/shifts', ['date' => '2026-10-04', 'workplace_id' => $wp->id, 'type_id' => null, 'hours' => 5, 'start_time' => '08:00'])
+            ->assertJsonPath('data.end_time', '13:00')
+            ->assertJsonPath('data.end_day', 0);
+
+        // დაწყების გარეშე დასრულებაც არ არის
+        $this->postJson('/api/duty/shifts', ['date' => '2026-10-05', 'workplace_id' => $wp->id, 'type_id' => $t['h24']])
+            ->assertJsonPath('data.end_time', null)
+            ->assertJsonPath('data.end_day', null);
+    }
+
     /* ---------- ტარიფი ---------- */
 
     public function test_two_workplaces_pay_differently_for_the_same_type(): void
