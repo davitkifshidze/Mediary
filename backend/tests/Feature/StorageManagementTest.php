@@ -98,6 +98,25 @@ class StorageManagementTest extends TestCase
     }
 
     /** სია ზომით დალაგებულია და მხოლოდ საკუთარ ფაილებს შეიცავს */
+    /** ფაილი ჩაიწერა და ჩაითვალა, მისი რიგი კი ვერა — ფაილიც და ბაიტებიც ბრუნდება, შეცდომა კი გადის */
+    public function test_a_failed_row_write_releases_the_stored_file_and_its_bytes(): void
+    {
+        $user = $this->makeUser('rolf', ['gallery']);
+        $meter = app(StorageMeter::class);
+        $path = $meter->storeContents($user, str_repeat('x', 500), StorageFolder::GALLERY_IMAGES);
+        $this->assertSame(500, (int) $user->fresh()->storage_used_bytes);
+
+        try {
+            $meter->orRelease($user, $path, fn () => throw new \RuntimeException('duplicate'));
+            $this->fail('the error must reach the caller');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('duplicate', $e->getMessage());
+        }
+
+        Storage::disk('public')->assertMissing($path);
+        $this->assertSame(0, (int) $user->fresh()->storage_used_bytes);
+    }
+
     public function test_files_list_is_sorted_and_scoped_to_the_owner(): void
     {
         Storage::fake('public');

@@ -41,6 +41,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 use ZipArchive;
 
 /**
@@ -1419,7 +1420,7 @@ class StorageMeter
                 try {
                     $modified = (int) $disk->lastModified($path);
                     $size = (int) $disk->size($path);
-                } catch (\Throwable) {
+                } catch (Throwable) {
                     continue;
                 }
 
@@ -1458,7 +1459,7 @@ class StorageMeter
                     $deleted++;
                     $bytes += $orphan['size'];
                 }
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 // ჩაკეტილი/უკვე წაშლილი ფაილი მთელ ნაკადს არ აჩერებს
             }
         }
@@ -1989,8 +1990,31 @@ class StorageMeter
     {
         try {
             return $writer();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->addFor((int) $user->getKey(), -$bytes);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * **ფაილი უკვე ჩაიწერა და ჩაითვალა — მისი რიგის ჩაწერა ჩავარდა?** ფაილიც
+     * და ბაიტებიც უკან ბრუნდება, შეცდომა კი გამომძახებელს გადაეცემა.
+     *
+     * ⚠️ უამისოდ ობოლი ფაილი დისკზე, ბაიტები კი მრიცხველში დარჩებოდა
+     * (უნიკალურობის შეჯახება, ბაზის შეცდომა) — გადათვლამდე კვოტა „ივსებოდა".
+     *
+     * @template T
+     *
+     * @param  callable(): T  $write
+     * @return T
+     */
+    public function orRelease(User $user, string $path, callable $write): mixed
+    {
+        try {
+            return $write();
+        } catch (Throwable $e) {
+            $this->deleteUpload((int) $user->getKey(), $path);
 
             throw $e;
         }
@@ -2031,7 +2055,7 @@ class StorageMeter
             $disk = $this->disk($path);
 
             return $disk->fileExists($path) ? (int) $disk->size($path) : 0;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return 0;
         }
     }

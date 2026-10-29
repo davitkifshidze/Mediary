@@ -451,7 +451,7 @@ class CustomFieldService
         // ⚠️ კვოტა `storeUpload()`-შია — ამოწურვაზე 413 **აქამდე** ამოვარდება
         $path = $this->meter->storeUpload($user, $file, StorageFolder::customFields($module));
 
-        DB::table($table)->insert([
+        $this->meter->orRelease($user, $path, fn () => DB::table($table)->insert([
             'user_id' => $user->getKey(),
             ...CustomFields::rowAttributes($module),
             'record_id' => $recordId,
@@ -469,7 +469,7 @@ class CustomFieldService
             'sort_order' => $next,
             'updated_at' => now(),
             'created_at' => now(),
-        ]);
+        ]));
 
         return $this->values($user, $module, $recordId)[$key] ?? [];
     }

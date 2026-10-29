@@ -471,7 +471,7 @@ class GalleryFetcher
 
             $path = $this->meter->storeContents($user, $body, StorageFolder::GALLERY_IMAGES, $extension);
 
-            $parent->galleryImages()->create([
+            $this->meter->orRelease($user, $path, fn () => $parent->galleryImages()->create([
                 'user_id' => $user->getKey(),
                 'source' => 'tmdb',
                 'category' => $candidate['category'],
@@ -483,7 +483,7 @@ class GalleryFetcher
                 'width' => $candidate['width'],
                 'height' => $candidate['height'],
                 'sort_order' => ++$sort,
-            ]);
+            ]));
 
             $existing[$candidate['remote_path']] = true;
             $result['added']++;

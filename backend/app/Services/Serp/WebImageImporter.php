@@ -120,7 +120,7 @@ class WebImageImporter
 
             $path = $this->meter->storeContents($user, $file['body'], StorageFolder::GALLERY_IMAGES, $file['extension']);
 
-            GalleryImage::create([
+            $this->meter->orRelease($user, $path, fn () => GalleryImage::create([
                 'user_id' => $user->getKey(),
                 'imageable_type' => $parent->getMorphClass(),
                 'imageable_id' => $parent->getKey(),
@@ -138,7 +138,7 @@ class WebImageImporter
                 'height' => $fromThumbnail ? null : $this->int($image['height'] ?? null),
                 'is_thumbnail' => $fromThumbnail,
                 'sort_order' => ++$sort,
-            ]);
+            ]));
 
             $existing[$identity] = true;
             $result['added']++;
