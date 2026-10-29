@@ -8,6 +8,8 @@ use App\Models\Module;
 use App\Models\Movie;
 use App\Models\User;
 use App\Services\Gallery\AlbumVault;
+use App\Services\Storage\StorageMeter;
+use App\Services\Storage\StorageMeter;
 use App\Support\AlbumLock;
 use App\Support\StorageFolder;
 use Database\Seeders\ModulesSeeder;
@@ -94,6 +96,27 @@ class AlbumVaultTest extends TestCase
     }
 
     /** ჩაკეტვა ფაილს პირად დისკზე გადაიტანს და `path`-ს იქით მიმართავს */
+    /**
+     * ჩაკეტილი ალბომის ფოტო კვოტაში **ყოველთვის** ითვლება — ვებიდან, გაუხსნელი
+     * ალბომით გადათვლაც იმავე ჯამს იძლევა, რასაც CLI (`mediary:doctor`).
+     */
+    public function test_a_locked_album_still_counts_against_the_quota_from_a_web_session(): void
+    {
+        $album = $this->album();
+        $this->photo($album, 'gallery/images/a.jpg')->forceFill(['size' => 4096])->save();
+        AlbumVault::seal($album);
+
+        $meter = app(StorageMeter::class);
+        $cli = $meter->recalculate($this->user->refresh());
+
+        $this->actingAs($this->user);
+        AlbumLock::flush();
+        $web = $meter->recalculate($this->user->refresh());
+
+        $this->assertSame($cli, $web);
+        $this->assertGreaterThanOrEqual(4096, $web);
+    }
+
     public function test_sealing_moves_the_file_to_the_private_disk(): void
     {
         $album = $this->album();

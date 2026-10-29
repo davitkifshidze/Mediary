@@ -216,8 +216,10 @@ class StorageMeter
                 continue;
             }
 
+            /* ⚠️ `record_lock`-იც იხსნება: ჩაკეტილი ჩანაწერის პოსტერი დისკზეა და კვოტაში
+               ითვლება — სესიაზე დამოკიდებული ჯამი ვებიდან და CLI-დან სხვადასხვა იქნებოდა */
             $records = $user->{$relation}()
-                ->withoutGlobalScopes(['owner', 'trash'])
+                ->withoutGlobalScopes(['owner', 'trash', 'record_lock'])
                 ->where('poster_source', 'upload')
                 ->whereNotNull('poster_path')
                 ->get(['id', 'poster_path', 'created_at']);
@@ -616,7 +618,8 @@ class StorageMeter
 
         // გალერეის ფოტო **გალერეის** მოდულს ეკუთვნის და არა მშობელს:
         // მსახიობის ფოტოზე `imageable_type` = `cast_member`, რაც მოდული არ არის
-        $galleryImages = $skip('gallery') ? collect() : GalleryImage::withoutGlobalScopes(['owner', 'trash'])
+        // ⚠️ `album_lock`-იც იხსნება — ჩაკეტილი ალბომის ფოტო (`gallery/locked`) კვოტაში ყოველთვის ითვლება, სესიის მიუხედავად
+        $galleryImages = $skip('gallery') ? collect() : GalleryImage::withoutGlobalScopes(['owner', 'trash', 'album_lock'])
             ->where('user_id', $user->id)
             ->get(['id', 'path', 'original_name', 'mime', 'size', 'created_at', 'trashed_at', 'imageable_type', 'imageable_id']);
 
@@ -1244,7 +1247,7 @@ class StorageMeter
             return false;
         }
 
-        $record = $user->{$relation}()->withoutGlobalScopes(['owner', 'trash'])->whereKey($ownerId)->first();
+        $record = $user->{$relation}()->withoutGlobalScopes(['owner', 'trash', 'record_lock'])->whereKey($ownerId)->first();
 
         if (! $record) {
             return false;
