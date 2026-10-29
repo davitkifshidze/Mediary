@@ -262,9 +262,10 @@ class AnimeController extends Controller
 
         if ($request->hasFile('poster')) {
             // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ჯერ ახალი ფაილი: 413-ზე (კვოტა) ძველი ხელუხლებელი რჩება და ურნაში არ ხვდება
+            $stored = $this->meter->storeUpload($request->user(), $request->file('poster'), StorageFolder::ANIME_POSTERS);
             ColumnTrash::capture($anime, 'poster_path', 'poster_source');
-            $anime->poster_path = $this->meter
-                ->storeUpload($request->user(), $request->file('poster'), StorageFolder::ANIME_POSTERS);
+            $anime->poster_path = $stored;
             $anime->poster_source = 'upload';
         }
     }

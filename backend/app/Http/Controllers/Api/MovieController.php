@@ -338,9 +338,10 @@ class MovieController extends Controller
 
         if ($request->hasFile('poster')) {
             // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ჯერ ახალი ფაილი: 413-ზე (კვოტა) ძველი ხელუხლებელი რჩება და ურნაში არ ხვდება
+            $stored = $this->meter->storeUpload($request->user(), $request->file('poster'), StorageFolder::MOVIE_POSTERS);
             ColumnTrash::capture($movie, 'poster_path', 'poster_source');
-            $movie->poster_path = $this->meter
-                ->storeUpload($request->user(), $request->file('poster'), StorageFolder::MOVIE_POSTERS);
+            $movie->poster_path = $stored;
             $movie->poster_source = 'upload';
         }
     }

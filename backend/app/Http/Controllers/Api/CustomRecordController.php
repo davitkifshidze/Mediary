@@ -299,9 +299,10 @@ class CustomRecordController extends Controller
 
         if ($request->hasFile('photo')) {
             // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
+            // ⚠️ ჯერ ახალი ფაილი: 413-ზე (კვოტა) ძველი ხელუხლებელი რჩება და ურნაში არ ხვდება
+            $stored = $this->meter->storeUpload($request->user(), $request->file('photo'), StorageFolder::customPhotos($type));
             ColumnTrash::capture($record, 'photo_path');
-            $record->photo_path = $this->meter
-                ->storeUpload($request->user(), $request->file('photo'), StorageFolder::customPhotos($type));
+            $record->photo_path = $stored;
         }
     }
 

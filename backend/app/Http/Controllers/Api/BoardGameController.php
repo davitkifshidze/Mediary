@@ -315,9 +315,10 @@ class BoardGameController extends Controller
         if ($request->hasFile('image')) {
             // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
             // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ჯერ ახალი ფაილი: 413-ზე (კვოტა) ძველი ხელუხლებელი რჩება და ურნაში არ ხვდება
+            $stored = $this->meter->storeUpload($request->user(), $request->file('image'), StorageFolder::BOARD_GAME_IMAGES);
             ColumnTrash::capture($game, 'image_path', 'image_source');
-            $game->image_path = $this->meter
-                ->storeUpload($request->user(), $request->file('image'), StorageFolder::BOARD_GAME_IMAGES);
+            $game->image_path = $stored;
             $game->image_source = 'upload';
             $game->image_url = null;
         }

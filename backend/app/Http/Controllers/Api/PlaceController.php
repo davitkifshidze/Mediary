@@ -400,9 +400,10 @@ class PlaceController extends Controller
         if ($request->hasFile('photo')) {
             // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
             // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ჯერ ახალი ფაილი: 413-ზე (კვოტა) ძველი ხელუხლებელი რჩება და ურნაში არ ხვდება
+            $stored = $this->meter->storeUpload($request->user(), $request->file('photo'), StorageFolder::PLACE_PHOTOS);
             ColumnTrash::capture($place, 'photo_path');
-            $place->photo_path = $this->meter
-                ->storeUpload($request->user(), $request->file('photo'), StorageFolder::PLACE_PHOTOS);
+            $place->photo_path = $stored;
         }
 
         /* ⚠️ **ბოლოს და ერთი მეთოდით** — სტატუსი და `visited_at` ერთმანეთზეა

@@ -291,8 +291,10 @@ class AuthController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
+            // ⚠️ ჯერ ახალი ფაილი: 413-ზე (კვოტა) ძველი ხელუხლებელი რჩება და ურნაში არ ხვდება
+            $stored = $this->meter->storeUpload($user, $request->file('avatar'), StorageFolder::AVATARS);
             ColumnTrash::capture($user, 'avatar_path');
-            $user->avatar_path = $this->meter->storeUpload($user, $request->file('avatar'), StorageFolder::AVATARS);
+            $user->avatar_path = $stored;
         }
 
         $user->save();

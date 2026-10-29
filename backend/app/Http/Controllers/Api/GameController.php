@@ -441,9 +441,10 @@ class GameController extends Controller
         if ($request->hasFile('cover')) {
             // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
             // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ჯერ ახალი ფაილი: 413-ზე (კვოტა) ძველი ხელუხლებელი რჩება და ურნაში არ ხვდება
+            $stored = $this->meter->storeUpload($request->user(), $request->file('cover'), StorageFolder::GAME_COVERS);
             ColumnTrash::capture($game, 'cover_path', 'cover_source');
-            $game->cover_path = $this->meter
-                ->storeUpload($request->user(), $request->file('cover'), StorageFolder::GAME_COVERS);
+            $game->cover_path = $stored;
             $game->cover_source = 'upload';
             $game->cover_url = null;
         }

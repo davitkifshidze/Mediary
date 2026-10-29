@@ -253,9 +253,10 @@ class SongController extends Controller
         if ($request->hasFile('thumbnail')) {
             // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
             // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ჯერ ახალი ფაილი: 413-ზე (კვოტა) ძველი ხელუხლებელი რჩება და ურნაში არ ხვდება
+            $stored = $this->meter->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::SONG_THUMBNAILS);
             ColumnTrash::capture($song, 'thumbnail_path');
-            $song->thumbnail_path = $this->meter
-                ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::SONG_THUMBNAILS);
+            $song->thumbnail_path = $stored;
             $song->thumbnail_url = null;
         }
     }

@@ -262,9 +262,10 @@ class BookmarkController extends Controller
         if ($request->hasFile('thumbnail')) {
             // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
             // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ჯერ ახალი ფაილი: 413-ზე (კვოტა) ძველი ხელუხლებელი რჩება და ურნაში არ ხვდება
+            $stored = $this->meter->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::BOOKMARK_THUMBNAILS);
             ColumnTrash::capture($bookmark, 'thumbnail_path');
-            $bookmark->thumbnail_path = $this->meter
-                ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::BOOKMARK_THUMBNAILS);
+            $bookmark->thumbnail_path = $stored;
         }
     }
 

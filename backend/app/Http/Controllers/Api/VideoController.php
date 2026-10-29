@@ -359,9 +359,10 @@ class VideoController extends Controller
         if ($request->hasFile('thumbnail')) {
             // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
             // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ჯერ ახალი ფაილი: 413-ზე (კვოტა) ძველი ხელუხლებელი რჩება და ურნაში არ ხვდება
+            $stored = $this->meter->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::VIDEO_THUMBNAILS);
             ColumnTrash::capture($video, 'thumbnail_path');
-            $video->thumbnail_path = $this->meter
-                ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::VIDEO_THUMBNAILS);
+            $video->thumbnail_path = $stored;
             $video->thumbnail_url = null;
         }
     }

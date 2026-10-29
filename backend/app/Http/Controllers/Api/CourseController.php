@@ -286,9 +286,10 @@ class CourseController extends Controller
         if ($request->hasFile('thumbnail')) {
             // `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
             // ⚠️ ურნა — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            // ⚠️ ჯერ ახალი ფაილი: 413-ზე (კვოტა) ძველი ხელუხლებელი რჩება და ურნაში არ ხვდება
+            $stored = $this->meter->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::COURSE_THUMBNAILS);
             ColumnTrash::capture($course, 'thumbnail_path');
-            $course->thumbnail_path = $this->meter
-                ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::COURSE_THUMBNAILS);
+            $course->thumbnail_path = $stored;
         }
 
         /* ⚠️ **ბოლოს** — ცხადად გამოგზავნილი `finished_at` ჯერ იწერება და
