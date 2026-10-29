@@ -206,11 +206,9 @@ export interface ShareGenre {
   name_en: string | null
 }
 
-/** მიმღების ბარათი — ვიწრო (`PublicDomain::card()`) + ჟანრები (+ შესულს „უკვე გაქვს") */
+/** მიმღების ბარათი — ვიწრო (`PublicDomain::card()`) + ჟანრები (+ შესულს „უკვე გაქვს" — `PublicCard`-იდან) */
 export interface ShareCard extends PublicCard {
   genres?: ShareGenre[]
-  /** მხოლოდ შესულ უცხოს: `null` — არ გაქვს; `trashed` — შენს ურნაშია */
-  in_library?: { id: number; trashed: boolean } | null
 }
 
 export interface ShareItems {

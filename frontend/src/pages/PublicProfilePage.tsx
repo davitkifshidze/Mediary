@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ExternalLink, ListMusic, Loader2, Lock, MessageSquare, Star, User as UserIcon } from 'lucide-react'
+import { ExternalLink, Library, ListMusic, Loader2, Lock, MessageSquare, Star, User as UserIcon } from 'lucide-react'
 import {
   fetchPublicItems,
   fetchPublicProfile,
+  planProfileImport,
   type PublicCard,
   type PublicDomainKey,
 } from '@/api/publicProfile'
+import type { ShareDomainKey } from '@/api/shareLinks'
 import { openConversation } from '@/api/chat'
 import { useAuth } from '@/lib/auth'
 import { errorMessage } from '@/lib/errors'
@@ -25,6 +27,10 @@ import { MatchPanel } from '@/components/MatchPanel'
 import { PublicGalleryTab } from '@/components/PublicGalleryTab'
 import { PublicPlaylistDialog } from '@/components/PublicPlaylistDialog'
 import { PublicPersonalAlbumDialog, PublicPersonalAlbumTile } from '@/components/public-gallery/PublicPersonalAlbum'
+import { InLibraryMark, SelectBox } from '@/components/share/ImportMarks'
+import { LibraryImportBar } from '@/components/share/LibraryImportBar'
+import { useLibraryImport } from '@/components/share/useLibraryImport'
+import { InfoHint } from '@/components/ui/info-hint'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
@@ -37,6 +43,11 @@ import { cn } from '@/lib/utils'
 
    არასაჯარო პროფილი **404-ია და არა 403** — „ასეთი user არსებობს, უბრალოდ
    დამალულია" თვითონაც ინფორმაციაა.
+
+   ⚠️ **შესულ უცხოს „ჩემს ბიბლიოთეკაში დამატება" აქვს** — გაზიარების ბმულის
+   იგივე რიგი და ნიშნები (`LibraryImportBar`, „უკვე გაქვს ✓"), ფარგალი კი
+   პროფილისაა. რომელი სექციიდან შეიძლება, სერვერი ამბობს (`viewer.sections`):
+   გალერეა, პირადი გალერეა და პირადი მოდული მხოლოდ სანახავია — ასლი არ აქვთ.
    ============================================================ */
 
 export function PublicProfilePage() {
@@ -94,8 +105,19 @@ export function PublicProfilePage() {
   })
   const items = itemsQuery.items
 
+  // გადმოსატანი სექცია — მხოლოდ ის, რასაც სერვერი შესულ უცხოს სთავაზობს
+  const section = domain ? profile?.viewer.sections[domain as ShareDomainKey] : undefined
+  const library = useLibraryImport({
+    source: { kind: 'profile', owner: username },
+    domain: section ? (domain as ShareDomainKey) : null,
+    lang,
+    plan: (d, ids) => planProfileImport(username, d, ids),
+    headKey: ['public-profile', username],
+  })
+
   const switchDomain = (d: PublicDomainKey) => {
     setDomain(d)
+    library.clear()
   }
 
   /**
@@ -157,6 +179,10 @@ export function PublicProfilePage() {
   const avatar = storageUrl(profile.profile.avatar_path)
   // საკუთარ თავს არ ვედრებით — backend-იც 422 `cannot_match_self`-ს აბრუნებს
   const canMatch = !!user && user.username !== profile.profile.username
+  // შესული უცხო — დამატების რიგი (ან ახსნა, რატომ არა) მას ეხება
+  const stranger = profile.viewer.signed_in && !profile.viewer.own
+  const canAdd = stranger && !!section?.can_create
+  const fresh = items.filter((c) => !c.in_library)
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -244,6 +270,34 @@ export function PublicProfilePage() {
               />
             </div>
 
+            {/* ---------- ჩემს ბიბლიოთეკაში დამატება (შესულ უცხოს) ---------- */}
+            {stranger && domain && section && (
+              <LibraryImportBar
+                ability={section}
+                sectionName={moduleLabel(domain)}
+                hint={t('publicProfile.import.hint')}
+                ownerStatus={section.owner_status}
+                ownerStatusLabel={t('publicProfile.import.statusOwner')}
+                statusMode={library.statusMode}
+                onStatusMode={library.setStatusMode}
+                freshCount={fresh.length}
+                selectedCount={library.selected.size}
+                onToggleAll={() => library.toggleAll(fresh.map((c) => c.id))}
+                onAddSelected={() => library.add([...library.selected])}
+                onAddAll={() => library.add()}
+                adding={library.adding}
+                onRequestModule={library.requestModule}
+                requesting={library.requesting}
+              />
+            )}
+            {stranger && domain && !section && (
+              <p className="mb-5 flex items-center gap-2 text-sm text-muted-foreground">
+                <Library className="size-4" />
+                {t('publicProfile.import.notCopyable')}
+                <InfoHint info={t('publicProfile.import.notCopyableHint')} />
+              </p>
+            )}
+
             {/* ---------- ბადე ----------
                 ⚠️ **გალერეის ჩანართი ბარათებს არ ხატავს**: მისი
                 ჩანაწერი ალბომია (საქაღალდე), ჩვენება კი ფოტოებია — ბარათებად
@@ -269,6 +323,9 @@ export function PublicProfilePage() {
                     <PublicPlaylistTile
                       key={`${card.domain}-${card.id}`}
                       card={card}
+                      selectable={canAdd && !card.in_library}
+                      selected={library.selected.has(card.id)}
+                      onToggle={() => library.toggle(card.id)}
                       onOpen={() => setOpenPlaylist(card)}
                     />
                   ) : card.domain === 'personal_album' ? (
@@ -279,7 +336,14 @@ export function PublicProfilePage() {
                       onOpen={() => setOpenPersonalAlbum(card)}
                     />
                   ) : (
-                    <PublicCardTile key={`${card.domain}-${card.id}`} card={card} lang={lang} />
+                    <PublicCardTile
+                      key={`${card.domain}-${card.id}`}
+                      card={card}
+                      lang={lang}
+                      selectable={canAdd && !card.in_library}
+                      selected={library.selected.has(card.id)}
+                      onToggle={() => library.toggle(card.id)}
+                    />
                   ),
                 )}
               </div>
@@ -317,29 +381,63 @@ export function PublicProfilePage() {
  * ⚠️ რიცხვი ყველა სტუმარს ერთნაირად ეწერება — შესულ უცხოს აქამდე „0" ჩანდა
  * (`PublicProfileService::query()`-ის `withCount`).
  */
-function PublicPlaylistTile({ card, onOpen }: { card: PublicCard; onOpen: () => void }) {
+function PublicPlaylistTile({
+  card,
+  selectable,
+  selected,
+  onToggle,
+  onOpen,
+}: {
+  card: PublicCard
+  selectable: boolean
+  selected: boolean
+  onToggle: () => void
+  onOpen: () => void
+}) {
   const { t } = useTranslation()
   const title = card.title_en || card.title_ka || '—'
 
+  // ⚠️ ნიშნები გახსნის ღილაკის **გვერდით** დგას და არა შიგნით (`ImportMarks`-ის წესი)
   return (
-    <button type="button" onClick={onOpen} className="group block w-full cursor-pointer text-left">
-      <div className="grid aspect-[2/3] w-full place-items-center overflow-hidden rounded-lg border border-border bg-muted transition-colors group-hover:border-primary/50">
-        <div className="px-2 text-center">
-          <ListMusic className="mx-auto size-8 text-muted-foreground transition-colors group-hover:text-primary" />
-          <p className="mt-2 text-xs text-muted-foreground">
-            {t('playlists.songCount', { count: card.songs_count ?? 0 })}
-          </p>
+    <div className="relative min-w-0">
+      <button type="button" onClick={onOpen} className="group block w-full cursor-pointer text-left">
+        <div
+          className={cn(
+            'grid aspect-[2/3] w-full place-items-center overflow-hidden rounded-lg border border-border bg-muted transition-colors group-hover:border-primary/50',
+            selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
+          )}
+        >
+          <div className="px-2 text-center">
+            <ListMusic className="mx-auto size-8 text-muted-foreground transition-colors group-hover:text-primary" />
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t('playlists.songCount', { count: card.songs_count ?? 0 })}
+            </p>
+          </div>
         </div>
-      </div>
-      <p className="mt-2 truncate text-sm font-medium" title={title}>
-        {title}
-      </p>
-    </button>
+        <p className="mt-2 truncate text-sm font-medium" title={title}>
+          {title}
+        </p>
+      </button>
+      <InLibraryMark mine={card.in_library} />
+      {selectable && <SelectBox title={title} selected={selected} onToggle={onToggle} />}
+    </div>
   )
 }
 
-/** ერთი ბარათი — განზრახ მინიმალური: სათაური, ქვესათაური, ქულა */
-function PublicCardTile({ card, lang }: { card: PublicCard; lang: 'ka' | 'en' }) {
+/** ერთი ბარათი — განზრახ მინიმალური: სათაური, ქვესათაური, ქულა (+ შესულ უცხოს „უკვე გაქვს" და მონიშვნა) */
+function PublicCardTile({
+  card,
+  lang,
+  selectable,
+  selected,
+  onToggle,
+}: {
+  card: PublicCard
+  lang: 'ka' | 'en'
+  selectable: boolean
+  selected: boolean
+  onToggle: () => void
+}) {
   const title =
     (lang === 'ka' ? card.title_ka : card.title_en) ||
     card.title_en ||
@@ -352,7 +450,12 @@ function PublicCardTile({ card, lang }: { card: PublicCard; lang: 'ka' | 'en' })
 
   const body = (
     <>
-      <div className="aspect-[2/3] w-full overflow-hidden rounded-lg bg-muted">
+      <div
+        className={cn(
+          'aspect-[2/3] w-full overflow-hidden rounded-lg bg-muted',
+          selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
+        )}
+      >
         {image ? (
           <img src={image} alt="" loading="lazy" className="size-full object-cover" />
         ) : (
@@ -380,22 +483,38 @@ function PublicCardTile({ card, lang }: { card: PublicCard; lang: 'ka' | 'en' })
     </>
   )
 
+  // ⚠️ ნიშნები ბმულის **გარეთ** დგას (`ImportMarks`-ის წესი)
+  const marks = (
+    <>
+      <InLibraryMark mine={card.in_library} />
+      {selectable && <SelectBox title={title} selected={selected} onToggle={onToggle} />}
+    </>
+  )
+
   // ვიდეოსა და სიმღერას გარე ბმული აქვს — სწორედ იმისთვისაა გაზიარებული, რომ გაიხსნას
   if (card.url) {
     return (
-      <a
-        href={card.url}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="group block focus:outline-none"
-      >
-        {body}
-        <span className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-foreground">
-          <ExternalLink className="size-3" />
-        </span>
-      </a>
+      <div className="relative min-w-0">
+        <a
+          href={card.url}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="group block focus:outline-none"
+        >
+          {body}
+          <span className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-foreground">
+            <ExternalLink className="size-3" />
+          </span>
+        </a>
+        {marks}
+      </div>
     )
   }
 
-  return <div>{body}</div>
+  return (
+    <div className="relative min-w-0">
+      {body}
+      {marks}
+    </div>
+  )
 }

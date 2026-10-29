@@ -20,11 +20,21 @@ const mocks = vi.hoisted(() => ({
   fetchPublicProfile: vi.fn(),
   fetchPublicItems: vi.fn(),
   fetchPublicPlaylist: vi.fn(),
+  planProfileImport: vi.fn(),
 }))
+
+const queue = vi.hoisted(() => ({ enqueueShare: vi.fn() }))
 
 vi.mock('@/api/publicProfile', async (original) => ({
   ...(await original<typeof import('@/api/publicProfile')>()),
   ...mocks,
+}))
+
+// ⚠️ ერთი და იგივე ობიექტი ყოველ გამოძახებაზე — თორემ ეფექტები ყოველ რენდერზე თავიდან გაეშვება
+const queueApi = { enqueueShare: queue.enqueueShare }
+vi.mock('@/components/ui/queue', async (original) => ({
+  ...(await original<typeof import('@/components/ui/queue')>()),
+  useQueue: () => queueApi,
 }))
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -35,6 +45,7 @@ const profile: PublicProfile = {
   counts: { playlist: 1 },
   modules: { song: { name_ka: 'სიმღერები', name_en: 'Songs', icon: 'Music', color: '#e0865b' } },
   domain_modules: { playlist: 'song' },
+  viewer: { signed_in: false, own: false, sections: {} },
 }
 
 const playlistCard = { id: 12, domain: 'playlist' as const, title_en: 'Evening', songs_count: 3 }
@@ -124,5 +135,84 @@ describe('PublicProfilePage — ფლეილისტი', () => {
     // ფანჯარა ფლეილისტის სახელითაა და ცარიელზე ამას ამბობს
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Evening')
     expect(document.body.textContent).toContain('სიმღერა ჯერ არ არის დამატებული.')
+  })
+})
+
+describe('PublicProfilePage — ჩემს ბიბლიოთეკაში დამატება', () => {
+  const movies: PublicProfile = {
+    ...profile,
+    domains: ['movie', 'gallery_album'],
+    counts: { movie: 2, gallery_album: 0 },
+    modules: { movie: { name_ka: 'ფილმები', name_en: 'Movies', icon: 'Film', color: '#5b8def' } },
+    domain_modules: { movie: 'movie', gallery_album: 'gallery' },
+    viewer: {
+      signed_in: true,
+      own: false,
+      sections: { movie: { enabled: true, can_create: true, requested: false, owner_status: true } },
+    },
+  }
+
+  it('შესულ უცხოს რიგს, „უკვე გაქვს" ნიშანს და მონიშვნას აჩვენებს და გეგმას პროფილის წყაროთი რიგში აგზავნის', async () => {
+    mocks.fetchPublicProfile.mockResolvedValue(movies)
+    mocks.fetchPublicItems.mockResolvedValue({
+      data: [
+        { id: 1, domain: 'movie', title_en: 'Dune', in_library: { id: 9, trashed: false } },
+        { id: 2, domain: 'movie', title_en: 'Arrival', in_library: null },
+      ],
+      meta: { current_page: 1, last_page: 1, per_page: 24, total: 2 },
+    })
+    mocks.planProfileImport.mockResolvedValue({
+      domain: 'movie',
+      module: { enabled: true, can_create: true, requested: false },
+      items: [
+        { id: 2, title_ka: null, title_en: 'Arrival', year: 2016, state: 'new', mine_id: null },
+        { id: 1, title_ka: null, title_en: 'Dune', year: 2021, state: 'have', mine_id: 9 },
+      ],
+      counts: { new: 1, have: 1, trash: 0 },
+      status_modes: ['default', 'owner'],
+    })
+
+    await mount()
+
+    expect(document.body.textContent).toContain('ჩემს ბიბლიოთეკაში დამატება')
+    expect(document.body.textContent).toContain('უკვე გაქვს')
+    // მონიშვნა მხოლოდ ახალზე — რაც უკვე გაქვს, ის აღარ ინიშნება
+    const boxes = document.querySelectorAll('[role="checkbox"]')
+    expect(boxes).toHaveLength(1)
+
+    const addAll = [...document.querySelectorAll('button')].find((b) => b.textContent?.includes('ყველა ახლის დამატება'))
+    await act(async () => addAll!.click())
+    await flush()
+
+    expect(mocks.planProfileImport).toHaveBeenCalledWith('alice', 'movie', undefined)
+    expect(queue.enqueueShare).toHaveBeenCalledWith(
+      { kind: 'profile', owner: 'alice' },
+      'movie',
+      [{ id: 2, title: 'Arrival (2016)' }],
+      'default',
+    )
+  })
+
+  it('გალერეის ჩანართზე დამატება არ ჩანს — მხოლოდ ახსნა', async () => {
+    mocks.fetchPublicProfile.mockResolvedValue({ ...movies, domains: ['gallery_album'] })
+
+    await mount()
+
+    expect(document.body.textContent).toContain('ამ სექციიდან ბიბლიოთეკაში დამატება არ ხდება')
+    expect(document.body.textContent).not.toContain('ყველა ახლის დამატება')
+  })
+
+  it('ანონიმს დამატების რიგი არ აქვს', async () => {
+    mocks.fetchPublicProfile.mockResolvedValue({ ...movies, viewer: { signed_in: false, own: false, sections: {} } })
+    mocks.fetchPublicItems.mockResolvedValue({
+      data: [{ id: 2, domain: 'movie', title_en: 'Arrival' }],
+      meta: { current_page: 1, last_page: 1, per_page: 24, total: 1 },
+    })
+
+    await mount()
+
+    expect(document.body.textContent).toContain('Arrival')
+    expect(document.body.textContent).not.toContain('ჩემს ბიბლიოთეკაში დამატება')
+    expect(document.querySelectorAll('[role="checkbox"]')).toHaveLength(0)
   })
 })

@@ -308,6 +308,11 @@ export const CODES = [
   'share_own_link',
   'share_record_not_found',
   'share_status_hidden',
+  /* საჯარო პროფილიდან დამატება — იგივე სამი შემთხვევა: საკუთარი პროფილი (409),
+     პროფილზე აღარ მყოფი ჩანაწერი (404) და სტატუსი, რომელსაც პროფილი არ აჩვენებს (422) */
+  'profile_own',
+  'profile_record_not_found',
+  'profile_status_hidden',
 ] as const
 
 /**

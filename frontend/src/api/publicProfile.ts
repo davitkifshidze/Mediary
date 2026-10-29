@@ -2,6 +2,7 @@ import { api, API_URL } from '@/lib/api'
 import { isCustomModuleKey, type CustomModuleKey } from '@/lib/customModules'
 import type { Status } from '@/api/types'
 import type { GalleryParentKind, GallerySort } from '@/api/gallery'
+import type { ShareAbility, ShareDomainKey, ShareItemResult, SharePlan, ShareStatusMode } from '@/api/shareLinks'
 import type { StackPreview } from '@/components/ui/photo-stack'
 import type { MediaType } from '@/lib/media'
 
@@ -116,6 +117,11 @@ export interface PublicCard {
   photos?: number
   videos?: number
   cover_id?: number | null
+  /**
+   * მხოლოდ შესულ უცხოს, გადმოსატან სექციაზე: `null` — არ გაქვს; `trashed` —
+   * შენს ურნაშია. ანონიმსა და მფლობელს ველი საერთოდ არ მოდის.
+   */
+  in_library?: { id: number; trashed: boolean } | null
 }
 
 export interface PublicProfile {
@@ -130,6 +136,16 @@ export interface PublicProfile {
   counts: Record<string, number>
   modules: Record<string, { name_ka: string; name_en: string; icon: string; color: string | null }>
   domain_modules: Record<string, string>
+  viewer: {
+    signed_in: boolean
+    own: boolean
+    /**
+     * შესულ უცხოს — რომელი სექციიდან შეუძლია თავის ბიბლიოთეკაში დამატება
+     * (`owner_status` — „როგორც პროფილზე წერია" სტატუსი შესაძლებელია);
+     * ანონიმსა და მფლობელს — ცარიელი.
+     */
+    sections: Partial<Record<ShareDomainKey, ShareAbility & { owner_status: boolean }>>
+  }
 }
 
 export interface PublicItems {
@@ -152,6 +168,35 @@ export async function fetchPublicItems(
   const { data } = await api.get(
     `/public/profiles/${encodeURIComponent(username)}/${domain}`,
     { params: { page, ...(perPage ? { per_page: perPage } : {}) } },
+  )
+  return data
+}
+
+/* ---------- პროფილიდან ჩემს ბიბლიოთეკაში დამატება — შესულისთვის ----------
+   გაზიარების ბმულის ტყუპი (`planShareImport`/`addShareItem`), იგივე პასუხებით;
+   ფარგალი პროფილის სამი ფენაა და ჩაკეტილი ჩანაწერი არასდროს გადმოდის. */
+
+/** რა შედის არჩევანში და რომელი უკვე გაქვს — `ids`-ის გარეშე მთელი სექციაა */
+export async function planProfileImport(username: string, domain: ShareDomainKey, ids?: number[]): Promise<SharePlan> {
+  const { data } = await api.post(`/public-profiles/${encodeURIComponent(username)}/plan`, {
+    domain,
+    ...(ids && ids.length ? { ids } : {}),
+  })
+  return data
+}
+
+/** ერთი ჩანაწერის დამატება — რიგი თითოს ცალკე აგზავნის */
+export async function addProfileItem(
+  username: string,
+  domain: ShareDomainKey,
+  id: number,
+  statusMode: ShareStatusMode,
+  signal?: AbortSignal,
+): Promise<ShareItemResult> {
+  const { data } = await api.post(
+    `/public-profiles/${encodeURIComponent(username)}/item`,
+    { domain, id, status_mode: statusMode },
+    { signal },
   )
   return data
 }

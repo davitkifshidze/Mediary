@@ -11,11 +11,14 @@ use App\Services\Modules\FieldSettings;
 use App\Services\Personal\PersonalGallery;
 use App\Services\Profile\PublicGallery;
 use App\Services\Profile\PublicProfileService;
+use App\Services\Share\ShareImporter;
+use App\Services\Share\ShareMatcher;
 use App\Support\AlbumLock;
 use App\Support\GalleryParent;
 use App\Support\GallerySort;
 use App\Support\MediaDomain;
 use App\Support\PublicDomain;
+use App\Support\ShareDomain;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -57,7 +60,7 @@ class PublicProfileController extends Controller
     ) {}
 
     /** პროფილის თავი: ავატარი/სახელი/ბიო + ხილვადი დომენები რაოდენობებით */
-    public function show(string $username)
+    public function show(Request $request, string $username)
     {
         $user = $this->profiles->resolve($username);
 
@@ -66,6 +69,8 @@ class PublicProfileController extends Controller
         abort_unless($user, 404);
 
         $domains = $this->profiles->domains($user);
+        $viewer = $request->user();
+        $own = $viewer !== null && (int) $viewer->id === (int) $user->id;
 
         return response()->json([
             'profile' => $this->profiles->header($user),
@@ -83,7 +88,36 @@ class PublicProfileController extends Controller
                 $domains,
                 array_map(PublicDomain::module(...), $domains),
             ),
+            'viewer' => [
+                'signed_in' => $viewer !== null,
+                'own' => $own,
+                /* შესულ უცხოს — რომელი სექციიდან შეუძლია თავის ბიბლიოთეკაში დამატება
+                   (მოდულის უქონელს მოთხოვნის ღილაკი უჩანს); ანონიმსა და მფლობელს — ცარიელი */
+                'sections' => (object) ($viewer !== null && ! $own ? $this->importSections($viewer, $user) : []),
+            ],
         ]);
+    }
+
+    /**
+     * სექციების უფლებები გაზიარების ბმულის ფორმით (`ShareImporter::abilities()`)
+     * + შეიძლება თუ არა „როგორც მფლობელს აქვს" სტატუსი.
+     *
+     * @return array<string, array{enabled: bool, can_create: bool, requested: bool, owner_status: bool}>
+     */
+    private function importSections(User $viewer, User $owner): array
+    {
+        $importable = $this->profiles->importable($owner);
+
+        if ($importable === []) {
+            return [];
+        }
+
+        $abilities = ShareImporter::abilities($viewer, array_keys($importable));
+
+        return array_map(
+            fn (string $domain) => $abilities[$domain] + $importable[$domain],
+            array_combine(array_keys($importable), array_keys($importable)),
+        );
     }
 
     /** ერთი დომენის საჯარო ჩანაწერები, გვერდებად */
@@ -107,9 +141,24 @@ class PublicProfileController extends Controller
            ერთხელ ითვლება რექვესთზე და არა თითო ჩანაწერზე. */
         $hidden = $this->fields->hiddenOnPublic($user, PublicDomain::module($domain));
 
+        /* შესულ უცხოს „უკვე გაქვს ✓" — იგივე წესი, რასაც დამატების გეგმა კითხულობს
+           (`ShareMatcher`); მხოლოდ გადმოსატან სექციაზე (გალერეას, პირად მოდულს ასლი არ აქვს) */
+        $viewer = $request->user();
+        $mark = $viewer !== null && (int) $viewer->id !== (int) $user->id && ShareDomain::has($domain);
+        $records = $page->getCollection();
+        $mine = $mark ? ShareMatcher::matches($viewer, $domain, $records) : [];
+
         return response()->json([
-            'data' => $page->getCollection()
-                ->map(fn ($record) => PublicDomain::card($domain, $record, $hidden))
+            'data' => $records
+                ->map(function ($record) use ($domain, $hidden, $mark, $mine) {
+                    $card = PublicDomain::card($domain, $record, $hidden);
+
+                    if ($mark) {
+                        $card['in_library'] = $mine[(int) $record->getKey()] ?? null;
+                    }
+
+                    return $card;
+                })
                 ->all(),
             'meta' => [
                 'current_page' => $page->currentPage(),

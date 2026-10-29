@@ -1,21 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   CalendarClock,
-  Check,
-  CheckSquare,
   ExternalLink,
-  Library,
   Link2Off,
   ListMusic,
   Loader2,
   LogIn,
   Search,
-  Send,
   Star,
-  Trash2,
   User as UserIcon,
   UserPlus,
 } from 'lucide-react'
@@ -26,15 +21,12 @@ import {
   planShareImport,
   type ShareCard,
   type ShareDomainKey,
-  type SharePlanItem,
-  type ShareStatusMode,
 } from '@/api/shareLinks'
-import { requestModule } from '@/api/account'
 import type { Status } from '@/api/types'
 import { storageUrl } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
-import { errorMessage, isApiCode } from '@/lib/errors'
+import { isApiCode } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
 import { cardRatings, formatRating } from '@/lib/rating'
 import { shareGenreName, shareMeta, type ShareClassifierKind, type ShareDomainMeta } from '@/lib/shareLinks'
@@ -46,11 +38,11 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
-import { InfoHint } from '@/components/ui/info-hint'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useToast } from '@/components/ui/feedback'
-import { useQueue } from '@/components/ui/queue'
 import { ModuleIcon } from '@/components/ModuleIcon'
+import { InLibraryMark, SelectBox } from '@/components/share/ImportMarks'
+import { LibraryImportBar } from '@/components/share/LibraryImportBar'
+import { useLibraryImport } from '@/components/share/useLibraryImport'
 import { EnumStatusBadge, StatusBadge } from '@/components/StatusBadge'
 import { PlaylistPlayerDialog } from '@/components/PublicPlaylistDialog'
 import { cn } from '@/lib/utils'
@@ -107,17 +99,11 @@ export function SharePage() {
   const { user } = useAuth()
   const location = useLocation()
   const { date } = useDateFormat()
-  const { toast } = useToast()
-  const qc = useQueryClient()
-  const { enqueueShare } = useQueue()
 
   const [domain, setDomain] = useState<ShareDomainKey | null>(null)
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
   const [genre, setGenre] = useState(ALL_GENRES)
-  const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [statusMode, setStatusMode] = useState<ShareStatusMode>('default')
-  const [adding, setAdding] = useState(false)
   const [openPlaylist, setOpenPlaylist] = useState<ShareCard | null>(null)
 
   // ძებნა ყოველ ასოზე არ იგზავნება
@@ -159,81 +145,27 @@ export function SharePage() {
   const items = list.items
   const firstPage = list.first
 
+  // ბიბლიოთეკაში დამატება: მონიშვნა, სტატუსის რეჟიმი, გეგმა → რიგი (პროფილის გვერდთან საერთო)
+  const library = useLibraryImport({
+    source: { kind: 'link', token, owner: share?.owner.username ?? '' },
+    domain,
+    lang,
+    plan: (d, ids) => planShareImport(token, d, ids),
+    headKey: ['public-share', token],
+  })
+
   const switchDomain = (next: string) => {
     setDomain(next as ShareDomainKey)
     setGenre(ALL_GENRES)
     setQ('')
     setTerm('')
-    setSelected(new Set())
+    library.clear()
     setOpenPlaylist(null)
   }
 
   const ability = domain ? share?.viewer.sections[domain] : undefined
   const canAdd = !!share && share.viewer.signed_in && !share.viewer.own && !!ability?.can_create
   const fresh = items.filter((c) => !c.in_library)
-
-  const toggle = (id: number) =>
-    setSelected((cur) => {
-      const next = new Set(cur)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-
-  const titleOf = (i: Pick<SharePlanItem, 'title_ka' | 'title_en' | 'year' | 'id'>) => {
-    const title = (lang === 'ka' ? i.title_ka : i.title_en) || i.title_en || i.title_ka || `#${i.id}`
-    return i.year ? `${title} (${i.year})` : title
-  }
-
-  /**
-   * დამატება: ჯერ გეგმა (რომელი უკვე გაქვს), მერე რიგი.
-   * ⚠️ **ურნაში მყოფიც რიგში მიდის** — სერვერი 409-ს აბრუნებს და რიგის მწკრივი
-   * „აღდგენას" სთავაზობს; „უკვე გაქვს" კი არ მიდის — იქ საქმე არაფერია.
-   */
-  const add = async (ids?: number[]) => {
-    if (!domain) return
-    setAdding(true)
-
-    try {
-      const plan = await planShareImport(token, domain, ids)
-      const queue = plan.items.filter((i) => i.state !== 'have')
-
-      if (queue.length) {
-        enqueueShare(
-          token,
-          domain,
-          queue.map((i) => ({ id: i.id, title: titleOf(i) })),
-          statusMode,
-        )
-      }
-
-      toast({
-        title: plan.counts.new > 0 ? t('share.page.queued', { count: plan.counts.new }) : t('share.page.nothingNew'),
-        description:
-          [
-            plan.counts.have > 0 && t('share.summary.have', { count: plan.counts.have }),
-            plan.counts.trash > 0 && t('share.summary.trash', { count: plan.counts.trash }),
-          ]
-            .filter(Boolean)
-            .join(' · ') || undefined,
-        variant: plan.counts.new > 0 ? 'success' : 'info',
-      })
-      setSelected(new Set())
-    } catch (e) {
-      toast({ title: errorMessage(e), variant: 'error' })
-    } finally {
-      setAdding(false)
-    }
-  }
-
-  const askModule = useMutation({
-    mutationFn: (key: string) => requestModule(key),
-    onSuccess: () => {
-      toast({ title: t('share.page.requested'), variant: 'success' })
-      qc.invalidateQueries({ queryKey: ['public-share', token] })
-    },
-    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
-  })
 
   if (head.isLoading) {
     return (
@@ -354,71 +286,25 @@ export function SharePage() {
             </div>
 
             {/* ---------- ბიბლიოთეკაში დამატება (შესულ უცხოს) ---------- */}
-            {domain && share.viewer.signed_in && !share.viewer.own && ability && !ability.enabled && (
-              <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
-                <p className="min-w-0 flex-1 text-sm">
-                  {t('share.page.noModule', { module: sectionName(domain) })}
-                </p>
-                <Button
-                  size="sm"
-                  disabled={ability.requested || askModule.isPending}
-                  onClick={() => askModule.mutate(domain)}
-                >
-                  <Send className="size-4" />
-                  {t(ability.requested ? 'share.page.requestSent' : 'share.page.requestModule')}
-                </Button>
-              </div>
-            )}
-
-            {domain && share.viewer.signed_in && !share.viewer.own && ability?.enabled && !ability.can_create && (
-              <p className="mb-5 rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-                {t('share.page.noCreateRight', { module: sectionName(domain) })}
-              </p>
-            )}
-
-            {canAdd && (
-              <div className="mb-5 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2.5">
-                <Library className="size-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{t('share.page.addTitle')}</span>
-                <InfoHint info={t('share.page.addHint')} />
-                <div className="flex-1" />
-                {/* ⚠️ სტატუსის უქონელ სექციაზე (სიმღერა, სამაგიდო) არჩევანი არაფერს ცვლის */}
-                {share.link.show_status && meta?.status && (
-                  <Select value={statusMode} onValueChange={(v) => setStatusMode(v as ShareStatusMode)}>
-                    <SelectTrigger className="w-60" aria-label={t('share.page.statusMode')}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="default">{t('share.page.statusDefault')}</SelectItem>
-                      <SelectItem value="owner">{t('share.page.statusOwner')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-                {fresh.length > 0 && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setSelected(selected.size === fresh.length ? new Set() : new Set(fresh.map((c) => c.id)))
-                    }
-                  >
-                    <CheckSquare className="size-4" />
-                    {t(selected.size === fresh.length ? 'share.page.unselectAll' : 'share.page.selectNew')}
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={selected.size === 0 || adding}
-                  onClick={() => add([...selected])}
-                >
-                  {t('share.page.addSelected', { count: selected.size })}
-                </Button>
-                <Button size="sm" disabled={adding} onClick={() => add()}>
-                  {adding ? <Loader2 className="size-4 animate-spin" /> : <Library className="size-4" />}
-                  {t('share.page.addAllNew')}
-                </Button>
-              </div>
+            {domain && share.viewer.signed_in && !share.viewer.own && ability && (
+              <LibraryImportBar
+                ability={ability}
+                sectionName={sectionName(domain)}
+                hint={t('share.page.addHint')}
+                // ⚠️ სტატუსის უქონელ სექციაზე (სიმღერა, სამაგიდო) არჩევანი არაფერს ცვლის
+                ownerStatus={share.link.show_status && !!meta?.status}
+                ownerStatusLabel={t('share.page.statusOwner')}
+                statusMode={library.statusMode}
+                onStatusMode={library.setStatusMode}
+                freshCount={fresh.length}
+                selectedCount={library.selected.size}
+                onToggleAll={() => library.toggleAll(fresh.map((c) => c.id))}
+                onAddSelected={() => library.add([...library.selected])}
+                onAddAll={() => library.add()}
+                adding={library.adding}
+                onRequestModule={library.requestModule}
+                requesting={library.requesting}
+              />
             )}
 
             {/* ---------- ძებნა და ჟანრი ---------- */}
@@ -485,8 +371,8 @@ export function SharePage() {
                       key={`${card.domain}-${card.id}`}
                       card={card}
                       selectable={canAdd && !card.in_library}
-                      selected={selected.has(card.id)}
-                      onToggle={() => toggle(card.id)}
+                      selected={library.selected.has(card.id)}
+                      onToggle={() => library.toggle(card.id)}
                       onOpen={() => setOpenPlaylist(card)}
                     />
                   ) : (
@@ -496,8 +382,8 @@ export function SharePage() {
                       lang={lang}
                       aspect={shape.aspect}
                       selectable={canAdd && !card.in_library}
-                      selected={selected.has(card.id)}
-                      onToggle={() => toggle(card.id)}
+                      selected={library.selected.has(card.id)}
+                      onToggle={() => library.toggle(card.id)}
                     />
                   ),
                 )}
@@ -664,42 +550,3 @@ function SharePlaylistTile({
   )
 }
 
-/** „უკვე გაქვს" / „შენს ურნაშია" — ბარათის კუთხეში */
-function InLibraryMark({ mine }: { mine: ShareCard['in_library'] }) {
-  const { t } = useTranslation()
-
-  if (!mine) return null
-
-  return (
-    <span
-      className={cn(
-        'absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium shadow',
-        mine.trashed ? 'bg-background/90 text-muted-foreground' : 'bg-status-watched text-white',
-      )}
-    >
-      {mine.trashed ? <Trash2 className="size-3" /> : <Check className="size-3" />}
-      {t(mine.trashed ? 'share.page.inTrash' : 'share.page.inLibrary')}
-    </span>
-  )
-}
-
-/** მონიშვნის ჩამრთველი ბარათის კუთხეში */
-function SelectBox({ title, selected, onToggle }: { title: string; selected: boolean; onToggle: () => void }) {
-  const { t } = useTranslation()
-
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={selected}
-      aria-label={t('share.page.select', { title })}
-      onClick={onToggle}
-      className={cn(
-        'absolute right-1.5 top-1.5 grid size-6 cursor-pointer place-items-center rounded-md border shadow',
-        selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background/90',
-      )}
-    >
-      {selected && <Check className="size-4" />}
-    </button>
-  )
-}

@@ -7,8 +7,10 @@ use App\Models\PersonalAlbum;
 use App\Models\PersonalMedia;
 use App\Models\Playlist;
 use App\Models\User;
+use App\Services\Modules\FieldSettings;
 use App\Support\PublicDomain;
 use App\Support\RecordLocks;
+use App\Support\ShareDomain;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -37,6 +39,8 @@ class PublicProfileService
 {
     /** რამდენი ჩანაწერი მოდის ერთ გვერდზე */
     public const PER_PAGE = 24;
+
+    public function __construct(private FieldSettings $fields) {}
 
     /**
      * `user_id` => მისი საჯარო დომენები (ერთი რექვესთის სიცოცხლე).
@@ -220,6 +224,35 @@ class PublicProfileService
                უკვე ამბობს, რომ მოდული მისია და საჯაროა. */
             ...array_values(array_filter($publicModules, PublicDomain::isCustom(...))),
         ];
+    }
+
+    /**
+     * **რომელი სექციიდან შეუძლია სტუმარს ჩანაწერის თავის ბიბლიოთეკაში გადატანა**
+     * და შეიძლება თუ არა „როგორც მფლობელს აქვს" სტატუსი.
+     *
+     * ⚠️ პროფილზე ხილვადი **და** გაზიარებადი დომენები (`ShareDomain`): გალერეა,
+     * პირადი გალერეა და პირადი მოდული პროფილზე ჩანს, მაგრამ ასლი მათ არ აქვს.
+     * ⚠️ მფლობელის სტატუსი მხოლოდ მაშინ, როცა ის საჯარო ბარათზე ჩანს — თორემ
+     * გადმოტანა იმას „გაჟონავდა", რაც მფლობელმა დამალა (ბმულის `show_status`-ის წესი).
+     *
+     * @return array<string, array{owner_status: bool}>
+     */
+    public function importable(User $owner): array
+    {
+        $out = [];
+
+        foreach ($this->domains($owner) as $domain) {
+            if (! ShareDomain::has($domain)) {
+                continue;
+            }
+
+            $out[$domain] = [
+                'owner_status' => ShareDomain::statusKind($domain) !== null
+                    && ! in_array('status', $this->fields->hiddenOnPublic($owner, ShareDomain::module($domain)), true),
+            ];
+        }
+
+        return $out;
     }
 
     /**

@@ -1007,7 +1007,13 @@
       "libraryHint": "A group holds the record’s own photos; its actors are in the “Actors” tab.",
       "watch": "Watch"
     },
-    "personalEmpty": "This album is empty."
+    "personalEmpty": "This album is empty.",
+    "import": {
+      "hint": "Films, series and anime are refilled from TMDB on your side; other sections copy the record's facts — title, author, link, main photo… A genre or category is matched in your classifier by name and added if it's missing. The profile owner's favourites, rating, notes, custom fields and files never travel. The copy is yours — the owner's later changes don't touch it; what you already have isn't duplicated, so adding again only brings what's new.",
+      "statusOwner": "As shown on the profile",
+      "notCopyable": "This section can't be added to your library",
+      "notCopyableHint": "Gallery photos, the personal gallery and private modules are on the profile only to look at — they aren't copied."
+    }
   },
   "matches": {
     "title": "Matches",
@@ -1273,6 +1279,9 @@
     "share_own_link": "This is your own link — its records are already in your library",
     "share_record_not_found": "This record is no longer in the link",
     "share_status_hidden": "This link doesn’t share statuses — add the record with your default status",
+    "profile_own": "This is your own profile — its records are already in your library",
+    "profile_record_not_found": "This record is no longer on the profile",
+    "profile_status_hidden": "This profile doesn’t show statuses — add the record with your default status",
     "duty_hours_required": "Enter the hours — a shift without a type needs them.",
     "duty_range_too_long": "The range can’t be longer than 3 years.",
     "nothing_to_change": "Nothing to change — pick a workplace or a type.",

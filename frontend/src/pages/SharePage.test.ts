@@ -215,7 +215,7 @@ describe('SharePage — ბიბლიოთეკაში დამატე�
     await flush()
 
     expect(mocks.planShareImport).toHaveBeenCalledWith(TOKEN, 'movie', [3])
-    expect(mocks.enqueueShare).toHaveBeenCalledWith(TOKEN, 'movie', [{ id: 3, title: 'Ran (1985)' }], 'default')
+    expect(mocks.enqueueShare).toHaveBeenCalledWith({ kind: 'link', token: TOKEN, owner: 'nino' }, 'movie', [{ id: 3, title: 'Ran (1985)' }], 'default')
   })
 
   it('„ყველა ახალი" მთელ სექციას ითხოვს; ურნაში მყოფი რიგში მიდის, „გაქვს" — არა', async () => {
@@ -238,7 +238,7 @@ describe('SharePage — ბიბლიოთეკაში დამატე�
 
     expect(mocks.planShareImport).toHaveBeenCalledWith(TOKEN, 'movie', undefined)
     expect(mocks.enqueueShare).toHaveBeenCalledWith(
-      TOKEN,
+      { kind: 'link', token: TOKEN, owner: 'nino' },
       'movie',
       [
         { id: 2, title: 'Heat' },
@@ -416,6 +416,6 @@ describe('SharePage — პლეილისტები', () => {
     await flush()
 
     expect(mocks.planShareImport).toHaveBeenCalledWith(TOKEN, 'playlist', [3])
-    expect(mocks.enqueueShare).toHaveBeenCalledWith(TOKEN, 'playlist', [{ id: 3, title: 'Road trip' }], 'default')
+    expect(mocks.enqueueShare).toHaveBeenCalledWith({ kind: 'link', token: TOKEN, owner: 'nino' }, 'playlist', [{ id: 3, title: 'Road trip' }], 'default')
   })
 })

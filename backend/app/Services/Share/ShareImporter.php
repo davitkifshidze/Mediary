@@ -30,7 +30,11 @@ use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
- * **ბმულიდან საკუთარ ბიბლიოთეკაში დამატება.**
+ * **ბმულიდან ან საჯარო პროფილიდან საკუთარ ბიბლიოთეკაში დამატება** (`ImportOrigin`).
+ *
+ * ⚠️ **ასლი ცალმხრივი და ერთჯერადია**: ჩანაწერი მიმღებთან ერთხელ ჩნდება და
+ * მერე მისია — წყაროს მერმინდელი ცვლილება მას აღარ ეხება, „უკვე გაქვს" კი
+ * განმეორებით დამატებას დუბლს არ აჩენინებს.
  *
  * ⚠️ **მხოლოდ „რა ფილმია" გადმოდის.** TMDB-იანი ჩანაწერი მიმღებთან
  * TMDB-დან თავიდან ივსება (პოსტერი, აღწერა, ჟანრები, მსახიობები) — მიმღების
@@ -199,13 +203,16 @@ final class ShareImporter
     }
 
     /**
-     * ერთი ჩანაწერის (ან პლეილისტის) დამატება.
+     * ერთი ჩანაწერის (ან პლეილისტის) დამატება — ბმულიდან ან საჯარო პროფილიდან.
+     *
+     * ⚠️ ჩანაწერი გამომძახებელმა **თავისი ფარგლის query-ით** უნდა წაიკითხოს
+     * (`ShareScope::query()` · `PublicProfileService::query()`) — აქ ის აღარ მოწმდება.
      *
      * @return array{result: 'added'|'have', id: int, partial: bool, poster_skipped: ?string, songs_added?: int}
      *
      * @throws RecordInTrashException იგივე ჩანაწერი მიმღების ურნაშია (409)
      */
-    public function add(ShareLink $link, User $owner, User $viewer, string $domain, Model $record, string $statusMode): array
+    public function add(ImportOrigin $origin, User $viewer, string $domain, Model $record, string $statusMode): array
     {
         $model = ShareDomain::model($domain);
 
@@ -221,13 +228,14 @@ final class ShareImporter
         }
 
         $result = match (true) {
-            ShareDomain::isList($domain) && $record instanceof Playlist => $this->addPlaylist($owner, $viewer, $record),
+            ShareDomain::isList($domain) && $record instanceof Playlist => $this->addPlaylist($origin->owner, $viewer, $record),
             MediaDomain::has($domain) => $this->addMedia($viewer, $domain, $record, $statusMode),
             default => $this->addRecord($viewer, $domain, $record, $statusMode),
         };
 
-        if ($result['result'] === 'added') {
-            $this->countImport($link, $owner, $viewer);
+        // მრიცხველი და მფლობელის შეტყობინება ბმულისაა — პროფილიდან გადმოტანა მფლობელს არ ეცნობება
+        if ($result['result'] === 'added' && $origin->link !== null) {
+            $this->countImport($origin->link, $origin->owner, $viewer);
         }
 
         return $result;

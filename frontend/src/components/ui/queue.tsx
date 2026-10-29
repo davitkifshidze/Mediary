@@ -14,6 +14,7 @@ import {
 } from '@/api/gallery'
 import { importItem, type ImportPlanItem } from '@/api/import'
 import { addShareItem, type ShareDomainKey, type ShareStatusMode } from '@/api/shareLinks'
+import { addProfileItem } from '@/api/publicProfile'
 import { restoreFromTrash } from '@/api/trash'
 import {
   mediaApi,
@@ -68,6 +69,25 @@ export interface PurgeQueueOptions {
   user_id?: number
   /** ფოტოები უკატეგორიოში გადავიდეს და არა წაიშალოს */
   keep_gallery?: boolean
+}
+
+/**
+ * `share`-ის წყარო — გაზიარების ბმული (ტოკენით) ან საჯარო პროფილი.
+ * `owner` — მფლობელის username: დუბლის გასაღები მასზეა და არა წყაროზე.
+ */
+export type ShareImportSource = { kind: 'link'; token: string; owner: string } | { kind: 'profile'; owner: string }
+
+/** ერთი ჩანაწერის დამატება წყაროს მიხედვით — ბმულის ან პროფილის კარით */
+function addFromSource(
+  source: ShareImportSource,
+  domain: ShareDomainKey,
+  id: number,
+  statusMode: ShareStatusMode,
+  signal: AbortSignal,
+) {
+  return source.kind === 'profile'
+    ? addProfileItem(source.owner, domain, id, statusMode, signal)
+    : addShareItem(source.token, domain, id, statusMode, signal)
 }
 
 /** სერვერული პარტიის შემოწმების ინტერვალი — ის წუთებს გრძელდება */
@@ -140,12 +160,12 @@ interface QItem {
   /** cast — რა განახლდეს; ერთეულზეა იმავე მიზეზით, რაც `sources` */
   castOpts?: CastSyncOptions
   /**
-   * share — გაზიარების ბმულის ტოკენი და სტატუსის რეჟიმი.
+   * share — წყარო (გაზიარების ბმული ან საჯარო პროფილი) და სტატუსის რეჟიმი.
    * ⚠️ ერთეულზეა და არა დიალოგზე (`sources`-ის მიზეზი): რიგი თითო ჩანაწერს
    * ცალკე აგზავნის, ე.ი. აქ რომ არ ეწეროს, მეორე ჩანაწერიდან სტატუსი
-   * ჩუმად ნაგულისხმევზე დაბრუნდებოდა. `itemId` — **გამზიარებლის** ჩანაწერია.
+   * ჩუმად ნაგულისხმევზე დაბრუნდებოდა. `itemId` — **მფლობელის** ჩანაწერია.
    */
-  shareToken?: string
+  shareSource?: ShareImportSource
   shareStatusMode?: ShareStatusMode
   /**
    * share — **რომელ სექციაში** ემატება. ⚠️ ცალკე ველი და არა
@@ -201,9 +221,9 @@ interface QueueApi {
   enqueueImport: (token: string, source: string, module: string, items: ImportPlanItem[]) => void
   /** მსახიობების მონაცემები — გეგმის მსახიობები + ველები */
   enqueueCast: (items: CastSyncPlanItem[], opts: CastSyncOptions) => void
-  /** ბმულიდან საკუთარ ბიბლიოთეკაში დამატება */
+  /** ბმულიდან ან საჯარო პროფილიდან საკუთარ ბიბლიოთეკაში დამატება */
   enqueueShare: (
-    token: string,
+    source: ShareImportSource,
     domain: ShareDomainKey,
     items: { id: number; title: string }[],
     statusMode: ShareStatusMode,
@@ -550,24 +570,30 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   /**
-   * ბმულიდან დამატება რიგში.
+   * ბმულიდან ან პროფილიდან დამატება რიგში.
    *
-   * ⚠️ **დუბლის გასაღები `share:{token}:{domain}:{id}`-ია** — ერთი და იგივე
-   * ფილმი ორ სხვადასხვა ბმულში შეიძლება იყოს (სხვადასხვა id-ით, სხვადასხვა
-   * მფლობელისგან), და ორივე ცალკე ერთეულია; ერთი ბმულიდან კი ორჯერ არ ემატება.
+   * ⚠️ **დუბლის გასაღები `share:{owner}:{domain}:{id}`-ია** — მფლობელის
+   * ჩანაწერი და არა წყარო: ერთი და იგივე ჩანაწერი მისი ბმულიდანაც და
+   * პროფილიდანაც შეიძლება მოინიშნოს და ორჯერ არ უნდა დადგეს; სხვადასხვა
+   * მფლობელის ჩანაწერებს კი სხვადასხვა id აქვს და ორივე ცალკე ერთეულია.
    */
   const enqueueShare = React.useCallback(
-    (token: string, domain: ShareDomainKey, rows: { id: number; title: string }[], statusMode: ShareStatusMode) => {
+    (
+      source: ShareImportSource,
+      domain: ShareDomainKey,
+      rows: { id: number; title: string }[],
+      statusMode: ShareStatusMode,
+    ) => {
       setExpanded(true) // რამდენიმე წამიდან წუთებამდე — პროგრესი მაშინვე ჩანს
       setItems((cur) => {
         const base = freshBase(cur)
         const busy = new Set(
           cur
             .filter((i) => i.kind === 'share' && (i.status === 'pending' || i.status === 'running'))
-            .map((i) => `share:${i.shareToken}:${i.shareDomain}:${i.itemId}`),
+            .map((i) => `share:${i.shareSource?.owner}:${i.shareDomain}:${i.itemId}`),
         )
         const fresh = rows
-          .filter((r) => !busy.has(`share:${token}:${domain}:${r.id}`))
+          .filter((r) => !busy.has(`share:${source.owner}:${domain}:${r.id}`))
           .map((r) => ({
             id: nextId++,
             kind: 'share' as QKind,
@@ -577,7 +603,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             mediaType: isMediaKey(domain) ? domain : ('movie' as MediaType),
             shareDomain: domain,
             status: 'pending' as QStatus,
-            shareToken: token,
+            shareSource: source,
             shareStatusMode: statusMode,
           }))
         return fresh.length ? [...base, ...fresh] : base
@@ -673,8 +699,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             /* ⚠️ **ეს შტოც `syncItem`-ის ზოგად შტომდე დგას** — თორემ
                გამზიარებლის ჩანაწერის id ჩუმად **ჩემი** ფილმის სინქრონად წავიდოდა */
             : next.kind === 'share'
-              ? addShareItem(
-                  next.shareToken!,
+              ? addFromSource(
+                  next.shareSource!,
                   next.shareDomain ?? next.mediaType,
                   next.itemId!,
                   next.shareStatusMode ?? 'default',
@@ -731,6 +757,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             ? [
                 'dashboard',
                 'public-share-items',
+                'public-profile-items',
                 // პლეილისტის ფანჯრის „უკვე გაქვს" სიმღერებზეც
                 'public-share-playlist',
                 'trash',
@@ -930,6 +957,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             'dashboard',
             'discover',
             'public-share-items',
+            'public-profile-items',
             'public-share-playlist',
           ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
           toast({ title: t('queue.restoredFromTrash', { title: item.title }), variant: 'success' })

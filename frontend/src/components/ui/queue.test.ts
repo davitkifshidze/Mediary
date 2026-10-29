@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import type { ShareDomainKey } from '@/api/shareLinks'
+import type { ShareImportSource } from '@/components/ui/queue'
 
 /* ============================================================
    **რიგის `cast` სახეობა**.
@@ -172,11 +173,16 @@ describe('queue: the headline kind', () => {
    ცალკე ითვლება და მწკრივი „აღდგენას" სთავაზობს.
    ============================================================ */
 
-const shareMocks = vi.hoisted(() => ({ addShareItem: vi.fn(), restoreFromTrash: vi.fn() }))
+const shareMocks = vi.hoisted(() => ({ addShareItem: vi.fn(), addProfileItem: vi.fn(), restoreFromTrash: vi.fn() }))
 
 vi.mock('@/api/shareLinks', async (original) => ({
   ...(await original<typeof import('@/api/shareLinks')>()),
   addShareItem: shareMocks.addShareItem,
+}))
+
+vi.mock('@/api/publicProfile', async (original) => ({
+  ...(await original<typeof import('@/api/publicProfile')>()),
+  addProfileItem: shareMocks.addProfileItem,
 }))
 
 vi.mock('@/api/trash', async (original) => ({
@@ -184,14 +190,17 @@ vi.mock('@/api/trash', async (original) => ({
   restoreFromTrash: shareMocks.restoreFromTrash,
 }))
 
-async function runOneShare(domain: ShareDomainKey = 'movie') {
+async function runOneShare(
+  domain: ShareDomainKey = 'movie',
+  source: ShareImportSource = { kind: 'link', token: 'T'.repeat(48), owner: 'alice' },
+) {
   const { QueueProvider, useQueue } = await import('@/components/ui/queue')
 
   function Starter() {
     const { enqueueShare } = useQueue()
 
     useEffect(() => {
-      enqueueShare('T'.repeat(48), domain, [{ id: 5, title: 'Ran' }], 'owner')
+      enqueueShare(source, domain, [{ id: 5, title: 'Ran' }], 'owner')
     }, [enqueueShare])
 
     return null
@@ -259,6 +268,16 @@ describe('queue: the share kind', () => {
     await flush()
 
     expect(shareMocks.restoreFromTrash).toHaveBeenCalledWith('book', 78)
+  })
+
+  // ⚠️ პროფილის ერთეული პროფილის კარით მიდის — ბმულის endpoint-ს ტოკენი არ აქვს
+  it('adds a profile item through the profile endpoint', async () => {
+    shareMocks.addProfileItem.mockResolvedValue({ ok: true, result: 'added', id: 42, partial: false, poster_skipped: null })
+
+    await runOneShare('movie', { kind: 'profile', owner: 'davit' })
+
+    expect(shareMocks.addProfileItem).toHaveBeenCalledWith('davit', 'movie', 5, 'owner', expect.any(AbortSignal))
+    expect(shareMocks.addShareItem).not.toHaveBeenCalled()
   })
 })
 

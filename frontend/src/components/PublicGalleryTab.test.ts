@@ -85,6 +85,7 @@ const profile: PublicProfile = {
     gallery: { name_ka: 'გალერეა', name_en: 'Gallery', icon: 'Images', color: '#d4a017' },
   },
   domain_modules: { movie: 'movie', gallery_album: 'gallery' },
+  viewer: { signed_in: false, own: false, sections: {} },
 }
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true

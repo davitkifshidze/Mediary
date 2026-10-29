@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\ShareLink;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Share\ImportOrigin;
 use App\Services\Share\ShareImporter;
 use App\Services\Share\ShareMatcher;
 use App\Services\Share\ShareResolver;
@@ -133,7 +134,7 @@ class ShareImportController extends Controller
             return response()->json(['message' => 'share_record_not_found'], 404);
         }
 
-        $result = $this->importer->add($link, $owner, $viewer, $domain, $record, $statusMode);
+        $result = $this->importer->add(ImportOrigin::link($link, $owner), $viewer, $domain, $record, $statusMode);
 
         if ($result['result'] === 'added') {
             /* ⚠️ ცალკე `ACTION_*` არ იბადება: ჩანაწერის შექმნას

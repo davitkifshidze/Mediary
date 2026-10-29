@@ -92,6 +92,7 @@ use App\Http\Controllers\Api\PlaceController;
 use App\Http\Controllers\Api\PlaceFileController;
 use App\Http\Controllers\Api\PlaceRouteController;
 use App\Http\Controllers\Api\PlaylistController;
+use App\Http\Controllers\Api\ProfileImportController;
 use App\Http\Controllers\Api\PublicProfileController;
 use App\Http\Controllers\Api\PublicShareController;
 use App\Http\Controllers\Api\RecordCastController;
@@ -481,6 +482,11 @@ Route::middleware('auth:sanctum')->group(function () {
         ->where('token', '[A-Za-z0-9]{20,100}');
     Route::post('/shares/{token}/item', [ShareImportController::class, 'item'])
         ->where('token', '[A-Za-z0-9]{20,100}');
+    /* **საჯარო პროფილიდან საკუთარ ბიბლიოთეკაში დამატება** — ბმულის ტყუპი, ფარგალი
+       კი პროფილის სამი ფენაა. ⚠️ `auth:sanctum`-შია (საჯარო `/public/profiles/*`-ის გარეთ):
+       ნახვა ყველას შეუძლია, დამატება — მხოლოდ შესულს. `throttle:share` არ დგას — ბმულის მიზეზით. */
+    Route::post('/public-profiles/{username}/plan', [ProfileImportController::class, 'plan']);
+    Route::post('/public-profiles/{username}/item', [ProfileImportController::class, 'item']);
 
     Route::get('/export', [ExportController::class, 'index']);
     // „ჩემი სრული ექსპორტი": ყველა მოდული ერთ ZIP-ში (JSON + ფაილები)
