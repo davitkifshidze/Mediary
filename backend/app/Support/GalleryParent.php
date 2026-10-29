@@ -15,6 +15,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
  * **ვის შეიძლება ეკიდოს გალერეის ფოტო/ვიდეო.**
@@ -256,6 +257,39 @@ final class GalleryParent
         $quietly ? $parent->saveQuietly() : $parent->save();
 
         return true;
+    }
+
+    /**
+     * **ურნაში მყოფი მშობლის ფოტოები გარეთ** — ბრტყელი სია და მისი მთვლელები.
+     *
+     * ⚠️ ფოტო ჩანაწერს ურნაში თან მიჰყვება (ურნა და საცავი მას ჩანაწერის
+     * ნაწილად ითვლის): „ყველა ფოტოში" დარჩენილზე „მთავრად დაყენება" ან
+     * „გადატანა" ურნაში მყოფ ჩანაწერს შეეხებოდა, საბოლოო წაშლისას კი ჩუმად ქრებოდა.
+     * ⚠️ ცხრილით ჯგუფდება — პირადი მოდულები ერთ ცხრილს (`custom_records`) იზიარებს.
+     */
+    public static function excludeTrashed(Builder $query, string $typeColumn = 'gallery_images.imageable_type', string $idColumn = 'gallery_images.imageable_id'): Builder
+    {
+        $byTable = [];
+
+        foreach (self::keys() as $key) {
+            $model = self::model($key);
+
+            if ($model && method_exists($model, 'moveToTrash')) {
+                $byTable[(new $model)->getTable()][] = $key;
+            }
+        }
+
+        if ($byTable === []) {
+            return $query;
+        }
+
+        return $query->whereNot(function (Builder $q) use ($byTable, $typeColumn, $idColumn) {
+            foreach ($byTable as $table => $keys) {
+                $q->orWhere(fn (Builder $x) => $x
+                    ->whereIn($typeColumn, $keys)
+                    ->whereIn($idColumn, DB::table($table)->whereNotNull('trashed_at')->select('id')));
+            }
+        });
     }
 
     /** ვალიდაციის წესი — `in:cast_member,movie,series,…` (+ ამ ანგარიშის პირადი მოდულები) */

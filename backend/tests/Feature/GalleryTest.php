@@ -123,6 +123,22 @@ class GalleryTest extends TestCase
         ]);
     }
 
+    /** ურნაში მყოფი ჩანაწერის ფოტოები „ყველა ფოტოში" და მის რიცხვში აღარ ჩანს — ჩანაწერს ურნაში მიჰყვება */
+    public function test_photos_of_a_trashed_record_leave_the_flat_list_and_its_count(): void
+    {
+        $kept = $this->makeMovie('Kept');
+        $binned = $this->makeMovie('Binned', 551);
+        $keep = $this->image($kept, 'backdrop');
+        $this->image($binned, 'backdrop');
+
+        $this->actingAs($this->user);
+        $binned->moveToTrash();
+
+        $ids = array_column($this->getJson('/api/gallery/photos')->assertOk()->json('data'), 'id');
+        $this->assertSame([$keep->id], $ids);
+        $this->assertSame(1, $this->getJson('/api/gallery')->assertOk()->json('photos'));
+    }
+
     public function test_plan_estimates_size_and_counts_records_without_tmdb_id(): void
     {
         $this->makeMovie('With TMDB');

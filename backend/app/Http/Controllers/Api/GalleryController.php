@@ -129,7 +129,8 @@ class GalleryController extends Controller
            დამორჩილებული მთვლელი „110"-ს დაწერდა 113 ფილაზე. რიცხვი
            ფოტოს არ ამხელს — ამხელს ბილიკი, რომელსაც resource არ ატარებს
            (ალბომის ბარათის იგივე წესი: „0 ფოტო" ჩაკეტილზე ტყუილი იყო). */
-        $photos = fn () => GalleryImage::withoutGlobalScope('album_lock');
+        // ⚠️ ურნაში მყოფი ჩანაწერის ფოტოები არ ითვლება — სია მათ არ აჩვენებს (`photos()`)
+        $photos = fn () => GalleryParent::excludeTrashed(GalleryImage::withoutGlobalScope('album_lock'));
 
         $images = $photos()
             ->selectRaw('count(*) as photos, coalesce(sum(size), 0) as bytes')
@@ -1005,6 +1006,8 @@ class GalleryController extends Controller
 
         // დამალული ჩანაწერის (და მსახიობის) ფოტოები სიაში არ არის
         RecordLocks::excludeMorph($query, 'gallery_images.imageable_type', 'gallery_images.imageable_id');
+        // ურნაში მყოფი ჩანაწერის ფოტოები — ურნასთან ერთად და არა სიაში
+        GalleryParent::excludeTrashed($query);
 
         /* ⚠️ **ჩაკეტილი ფოტო ბრტყელ სიაში ჩანს — დაბლარულად (2026-09-20).**
 
