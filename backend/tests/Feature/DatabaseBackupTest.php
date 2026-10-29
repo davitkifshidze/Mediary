@@ -340,11 +340,10 @@ class DatabaseBackupTest extends TestCase
 
         app(BackupRunner::class)->restore($backup);
 
-        $this->assertSame(
-            app(StorageMeter::class)->recalculate($this->admin->fresh()),
-            (int) $this->admin->fresh()->storage_used_bytes,
-        );
-        $this->assertNotSame(123, (int) $this->admin->fresh()->storage_used_bytes);
+        // ⚠️ ჯერ წაკითხვა — `files()` მრიცხველს არ წერს, `recalculate()` კი წერს
+        $stored = (int) $this->admin->fresh()->storage_used_bytes;
+        $this->assertNotSame(123, $stored);
+        $this->assertSame((int) app(StorageMeter::class)->files($this->admin->fresh())->sum('size'), $stored);
     }
 
     /**
