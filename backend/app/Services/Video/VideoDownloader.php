@@ -255,6 +255,10 @@ class VideoDownloader
                 $result['name'],
             );
 
+            /* ⚠️ `videos:download {id}` უკვე ჩამოწერილზეც ეშვება (`start()`-ის გვერდის ავლით) —
+               ძველი ასლი ჯერ თავისუფლდება, თორემ ფაილი ობლად და მისი ბაიტები მრიცხველში დარჩებოდა */
+            $this->releaseDownload($video);
+
             $video->forceFill([
                 'download_path' => $path,
                 'download_name' => $result['name'],
@@ -294,9 +298,23 @@ class VideoDownloader
         return $video->download_path ? (int) $video->download_size : 0;
     }
 
+    /** არსებული ასლის ფაილი და მისი ბაიტები — სვეტებს არ ეხება (მათ გამომძახებელი წერს) */
+    private function releaseDownload(Video $video): void
+    {
+        if (! $video->download_path) {
+            return;
+        }
+
+        $this->meter->deleteUpload(null, $video->download_path);
+        $this->meter->addFor((int) $video->user_id, -(int) $video->download_size);
+    }
+
     private function fail(Video $video, string $reason): void
     {
         Log::warning('videos:download failed', ['video' => $video->getKey(), 'reason' => $reason]);
+
+        // ⚠️ სვეტი ცარიელდება — ამიტომ ფაილიც და ბაიტებიც აქვე თავისუფლდება
+        $this->releaseDownload($video);
 
         $video->forceFill([
             'download_status' => Video::DOWNLOAD_FAILED,

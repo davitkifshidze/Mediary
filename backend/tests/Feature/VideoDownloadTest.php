@@ -279,6 +279,27 @@ class VideoDownloadTest extends TestCase
         $this->assertSame(0, (int) $this->user->fresh()->storage_used_bytes);
     }
 
+    /**
+     * `videos:download {id}` უკვე ჩამოწერილზე `run()`-ს პირდაპირ იძახებს (`start()`-ის
+     * გარეშე) — ძველი ასლი თავისუფლდება და მრიცხველში მხოლოდ ახალი რჩება.
+     */
+    public function test_running_again_releases_the_previous_copy(): void
+    {
+        $this->fakeYtDlp(4096);
+        $video = $this->makeVideo($this->user);
+        $this->assertTrue(app(VideoDownloader::class)->run($video));
+        $old = $video->fresh()->download_path;
+
+        $this->fakeYtDlp(3000);
+        $this->assertTrue(app(VideoDownloader::class)->run($video->fresh()));
+
+        $new = $video->fresh()->download_path;
+        $this->assertNotSame($old, $new);
+        Storage::disk('private')->assertMissing($old);
+        Storage::disk('private')->assertExists($new);
+        $this->assertSame(3000, (int) $this->user->fresh()->storage_used_bytes);
+    }
+
     /* ============================================================
        მიწოდება და წაშლა
        ============================================================ */
