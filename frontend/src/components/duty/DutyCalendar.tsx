@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Ban, Repeat } from 'lucide-react'
+import { Ban, Plus, Repeat } from 'lucide-react'
 import type { DutyShift } from '@/api/duty'
-import { chipLabel, eachDay, formatMoney, hoursLabel, parseDay, shiftRange, todayIso, typeName, weekdayIndex, workplaceColor } from '@/lib/duty'
+import { chipLabel, eachDay, formatMoney, hoursLabel, parseDay, shiftDay, shiftRange, todayIso, typeName, weekdayIndex, workplaceColor } from '@/lib/duty'
 import { cn } from '@/lib/utils'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -11,8 +11,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
    **მორიგეობის კალენდარი — პერიოდის ბადე.**
 
    ⚠️ **ბადე პერიოდისაა და არა კალენდარული თვისა**: „15 სექ – 14 ოქტ“ ორ თვეს
-   კვეთს, ე.ი. უჯრები `from`-იდან `to`-მდეა, ორშაბათიდან დალაგებული; თვის
-   სახელი ჩნდება პირველ უჯრაზე და ყოველი თვის 1-ში.
+   კვეთს, ე.ი. აქტიური უჯრები `from`-იდან `to`-მდეა; კვირები კი მთლიანია
+   (ორშაბათი → კვირა) და გარეთ მყოფი დღე ბაცად ჩანს. თვის სახელი ჩნდება
+   პირველ უჯრაზე და ყოველი თვის 1-ში; შაბათ-კვირა შეფერილია, დღევანდელი —
+   ჩარჩოთი, წარსულის რიცხვი — ბაცად. ⚠️ ტელეფონზე ბადის ნაცვლად დღიური სიაა.
 
    ⚠️ **ორი რეჟიმი, ერთი უჯრა.** ჩვეულებრივ დაჭერა დღეს ხსნის (სწრაფი დამატება /
    რედაქტირება); მონიშვნის რეჟიმში (`PhotoGrid`-ის მონიშვნის ჩვევა) —
@@ -117,113 +119,197 @@ export function DutyCalendar({
     apply([day], mode)
   }
 
+  // ⚠️ ბადე მთლიანი კვირებია (ორშაბათი → კვირა): პერიოდის გარეთ მყოფი დღე ბაცად
+  // ჩანს და არ იჭერს — ცარიელი ხვრელები ბადეს „ჩამოჭრილს" ხდიდა
+  const before = useMemo(() => {
+    const lead = weekdayIndex(from)
+    return lead ? eachDay(shiftDay(from, -lead), shiftDay(from, -1)) : []
+  }, [from])
+  const after = useMemo(() => {
+    const tail = 6 - weekdayIndex(to)
+    return tail ? eachDay(shiftDay(to, 1), shiftDay(to, tail)) : []
+  }, [to])
+
+  const chip = (shift: DutyShift, size: 'cell' | 'row') => (
+    <span
+      className={cn(
+        'block truncate rounded-[4px] border-l-[3px] font-medium leading-tight text-foreground',
+        size === 'cell' ? 'px-1.5 py-1 text-xs' : 'px-2 py-1.5 text-sm',
+        // გაუქმებული — დღე რჩება, მაგრამ წითლად და გადახაზული
+        shift.status === 'cancelled' && 'text-destructive line-through',
+        // „ღია" სამსახური — ბაცად, ფერი უცვლელი
+        shift.workplace_id != null && dimmed?.has(shift.workplace_id) && 'opacity-45',
+      )}
+      style={
+        shift.status === 'cancelled'
+          ? { borderLeftColor: 'var(--destructive)', background: 'color-mix(in oklab, var(--destructive) 14%, transparent)' }
+          : {
+              borderLeftColor: workplaceColor(shift.workplace),
+              background: `color-mix(in oklab, ${workplaceColor(shift.workplace)} 24%, transparent)`,
+            }
+      }
+      data-testid={size === 'cell' ? 'duty-chip' : undefined}
+      data-status={shift.status}
+    >
+      {shift.status === 'cancelled' && <Ban className="mr-0.5 inline size-3 align-[-2px]" aria-label={t('duty.status.cancelled')} />}
+      {/* რიტმიდან დაბადებული — პატარა „გამეორების" ნიშანი */}
+      {shift.pattern_id != null && (
+        <Repeat
+          className="mr-0.5 inline size-3 align-[-2px] opacity-70"
+          aria-label={t('duty.pattern.fromPattern')}
+          data-testid={size === 'cell' ? 'duty-chip-pattern' : undefined}
+        />
+      )}
+      {chipLabel(shift)}
+    </span>
+  )
+
   return (
     <div className="select-none" data-testid="duty-calendar">
-      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground">
-        {names.map((name) => (
-          <div key={name} className="py-1">
-            {name}
-          </div>
-        ))}
-      </div>
+      {/* ---------- ბადე (ტაბლეტიდან ზემოთ) ---------- */}
+      <div className="hidden sm:block">
+        <div className="grid grid-cols-7 border-b border-border text-center text-xs font-medium text-muted-foreground">
+          {names.map((name, i) => (
+            <div key={name} className={cn('py-2', i >= 5 && 'text-foreground/70')}>
+              {name}
+            </div>
+          ))}
+        </div>
 
-      <div className="grid grid-cols-7 gap-1">
-        {Array.from({ length: weekdayIndex(from) }, (_, i) => (
-          <div key={`pad-${i}`} aria-hidden />
-        ))}
+        <div className="grid grid-cols-7">
+          {before.map((day) => (
+            <OutsideCell key={day} day={day} />
+          ))}
 
-        {days.map((day) => {
-          const date = parseDay(day)
-          const items = byDay.get(day) ?? []
-          const isSelected = selected.has(day)
-          const showMonth = day === from || date.getDate() === 1
+          {days.map((day) => {
+            const date = parseDay(day)
+            const items = byDay.get(day) ?? []
+            const isSelected = selected.has(day)
+            const isToday = day === today
+            const weekend = weekdayIndex(day) >= 5
+            const showMonth = day === from || date.getDate() === 1
 
-          const cell = (
-            <button
-              key={day}
-              type="button"
-              data-day={day}
-              aria-pressed={selecting ? isSelected : undefined}
-              onPointerDown={(e) => {
-                if (!selecting || e.button !== 0) return
-                e.preventDefault()
-                press(day, e.shiftKey)
-              }}
-              onPointerEnter={() => {
-                if (selecting && drag.current) apply([day], drag.current.mode)
-              }}
-              onClick={(e) => {
-                if (selecting) {
-                  // კლავიატურით (Enter/Space) — pointer-ის მოვლენა არ მოსულა
-                  if (e.detail === 0) press(day, e.shiftKey)
-                  return
-                }
-                onOpenDay(day)
-              }}
-              className={cn(
-                'flex min-h-24 flex-col gap-1 rounded-md border p-1.5 text-left transition-colors',
-                isSelected ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-primary/50',
-              )}
-            >
-              <span className="flex items-center gap-1 text-xs">
-                <span
-                  className={cn(
-                    'grid min-w-5 place-items-center rounded-sm px-1 font-semibold tabular-nums',
-                    day === today ? 'bg-primary text-primary-foreground' : 'text-foreground',
-                  )}
-                >
-                  {date.getDate()}
-                </span>
-                {showMonth && <span className="truncate text-muted-foreground">{monthFormat.format(date)}</span>}
-              </span>
-
-              {items.map((shift) => (
-                <RecordContextMenu key={shift.id} actions={shiftActions?.(shift) ?? []} disabled={selecting}>
-                <span
-                  className={cn(
-                    'truncate rounded-sm border-l-[3px] px-1.5 py-0.5 text-[11px] font-medium leading-tight text-foreground',
-                    // გაუქმებული — დღე რჩება, მაგრამ წითლად და გადახაზული
-                    shift.status === 'cancelled' && 'text-destructive line-through',
-                    // „ღია" სამსახური — ბაცად, ფერი უცვლელი
-                    shift.workplace_id != null && dimmed?.has(shift.workplace_id) && 'opacity-45',
-                  )}
-                  style={
-                    shift.status === 'cancelled'
-                      ? { borderLeftColor: 'var(--destructive)', background: 'color-mix(in oklab, var(--destructive) 14%, transparent)' }
-                      : {
-                          borderLeftColor: workplaceColor(shift.workplace),
-                          background: `color-mix(in oklab, ${workplaceColor(shift.workplace)} 22%, transparent)`,
-                        }
+            const cell = (
+              <button
+                key={day}
+                type="button"
+                data-day={day}
+                aria-pressed={selecting ? isSelected : undefined}
+                onPointerDown={(e) => {
+                  if (!selecting || e.button !== 0) return
+                  e.preventDefault()
+                  press(day, e.shiftKey)
+                }}
+                onPointerEnter={() => {
+                  if (selecting && drag.current) apply([day], drag.current.mode)
+                }}
+                onClick={(e) => {
+                  if (selecting) {
+                    // კლავიატურით (Enter/Space) — pointer-ის მოვლენა არ მოსულა
+                    if (e.detail === 0) press(day, e.shiftKey)
+                    return
                   }
-                  data-testid="duty-chip"
-                  data-status={shift.status}
-                >
-                  {shift.status === 'cancelled' && <Ban className="mr-0.5 inline size-3 align-[-2px]" aria-label={t('duty.status.cancelled')} />}
-                  {/* რიტმიდან დაბადებული — პატარა „გამეორების" ნიშანი */}
-                  {shift.pattern_id != null && (
-                    <Repeat className="mr-0.5 inline size-3 align-[-2px] opacity-70" aria-label={t('duty.pattern.fromPattern')} data-testid="duty-chip-pattern" />
-                  )}
-                  {chipLabel(shift)}
+                  onOpenDay(day)
+                }}
+                className={cn(
+                  'group relative flex min-h-28 flex-col gap-1 border-b border-r border-border p-1.5 text-left transition-colors',
+                  weekend && 'bg-muted/40',
+                  isSelected ? 'bg-primary/15 shadow-[inset_0_0_0_2px_var(--primary)]' : 'hover:bg-muted/60',
+                  isToday && !isSelected && 'shadow-[inset_0_0_0_2px_var(--primary)]',
+                )}
+              >
+                <span className="flex items-center gap-1.5 text-xs">
+                  <span
+                    className={cn(
+                      'grid size-6 place-items-center rounded-full font-semibold tabular-nums',
+                      isToday ? 'bg-primary text-primary-foreground' : day < today ? 'text-muted-foreground' : 'text-foreground',
+                    )}
+                  >
+                    {date.getDate()}
+                  </span>
+                  {showMonth && <span className="truncate font-medium uppercase text-muted-foreground">{monthFormat.format(date)}</span>}
                 </span>
-                </RecordContextMenu>
-              ))}
-            </button>
-          )
 
-          /* ⚠️ ჰოვერი — დღის ყველა მორიგეობა (ბრაუზერის `title`-ის ნაცვლად);
-             მონიშვნის რეჟიმში და ცარიელ დღეზე არ ჩნდება */
-          if (!items.length || selecting) return cell
+                {items.map((shift) => (
+                  <RecordContextMenu key={shift.id} actions={shiftActions?.(shift) ?? []} disabled={selecting}>
+                    {chip(shift, 'cell')}
+                  </RecordContextMenu>
+                ))}
 
-          return (
-            <Tooltip key={day}>
-              <TooltipTrigger asChild>{cell}</TooltipTrigger>
-              <TooltipContent side="top" className="max-w-sm p-0">
-                <DaySummary shifts={items} currency={currency} />
-              </TooltipContent>
-            </Tooltip>
-          )
-        })}
+                {/* ცარიელ დღეზე — „დამატების" მინიშნება ჰოვერზე */}
+                {!items.length && !selecting && (
+                  <Plus
+                    className="absolute bottom-1.5 right-1.5 size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                    aria-hidden
+                  />
+                )}
+              </button>
+            )
+
+            /* ⚠️ ჰოვერი — დღის ყველა მორიგეობა (ბრაუზერის `title`-ის ნაცვლად);
+               მონიშვნის რეჟიმში და ცარიელ დღეზე არ ჩნდება */
+            if (!items.length || selecting) return cell
+
+            return (
+              <Tooltip key={day}>
+                <TooltipTrigger asChild>{cell}</TooltipTrigger>
+                <TooltipContent side="top" className="max-w-sm p-0">
+                  <DaySummary shifts={items} currency={currency} />
+                </TooltipContent>
+              </Tooltip>
+            )
+          })}
+
+          {after.map((day) => (
+            <OutsideCell key={day} day={day} />
+          ))}
+        </div>
       </div>
+
+      {/* ---------- დღიური სია (ტელეფონზე) ----------
+          ⚠️ ვიწრო ეკრანზე შვიდსვეტიან ბადეში ჩიპი არ იკითხება — აქ მხოლოდ
+          მორიგეობიანი დღეებია, სრული წარწერით; დაჭერა იგივეა, რაც უჯრაზე */}
+      <ul className="divide-y divide-border sm:hidden" data-testid="duty-agenda">
+        {days
+          .filter((day) => byDay.has(day))
+          .map((day) => {
+            const isSelected = selected.has(day)
+
+            return (
+              <li key={day}>
+                <button
+                  type="button"
+                  aria-pressed={selecting ? isSelected : undefined}
+                  onClick={() => (selecting ? press(day, false) : onOpenDay(day))}
+                  className={cn('flex w-full items-start gap-3 px-3 py-2.5 text-left', isSelected && 'bg-primary/15')}
+                  data-testid="duty-agenda-day"
+                >
+                  <span className={cn('w-12 shrink-0 text-center', day === today && 'text-primary')}>
+                    <span className="block text-lg font-semibold tabular-nums leading-none">{parseDay(day).getDate()}</span>
+                    <span className="block text-[11px] uppercase text-muted-foreground">{names[weekdayIndex(day)]}</span>
+                  </span>
+                  <span className="min-w-0 flex-1 space-y-1">
+                    {(byDay.get(day) ?? []).map((shift) => (
+                      <span key={shift.id} className="block">
+                        {chip(shift, 'row')}
+                      </span>
+                    ))}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        {!shifts.length && <li className="px-3 py-8 text-center text-sm text-muted-foreground">{t('duty.calendar.emptyPeriod')}</li>}
+      </ul>
+    </div>
+  )
+}
+
+/** პერიოდის გარეთ მყოფი დღე — ბადის კვირას ავსებს, არ იჭერს */
+function OutsideCell({ day }: { day: string }) {
+  return (
+    <div className="min-h-28 border-b border-r border-border bg-muted/20 p-1.5" aria-hidden data-outside={day}>
+      <span className="grid size-6 place-items-center text-xs tabular-nums text-muted-foreground/50">{parseDay(day).getDate()}</span>
     </div>
   )
 }

@@ -145,6 +145,19 @@ describe('DutyCalendar', () => {
     expect(summary.querySelectorAll('li')).toHaveLength(2)
   })
 
+  it('fills whole weeks with faded outside days and lists only shift days on the phone agenda', async () => {
+    await render({ selecting: false, shifts: [shift(1, '2026-10-02'), shift(2, '2026-10-02', { hours: 12 })] })
+
+    // 2026-10-01 ხუთშაბათია (სამი დღე წინ), 31 — შაბათი (ერთი მერე); გარეთ მყოფი დღე არ იჭერს
+    const outside = [...container!.querySelectorAll<HTMLElement>('[data-outside]')].map((c) => c.dataset.outside)
+    expect(outside).toEqual(['2026-09-28', '2026-09-29', '2026-09-30', '2026-11-01'])
+    expect(container!.querySelectorAll('[data-day]').length).toBe(31)
+
+    const agenda = container!.querySelectorAll('[data-testid="duty-agenda-day"]')
+    expect(agenda).toHaveLength(1)
+    expect(agenda[0].textContent).toContain('A · 24')
+  })
+
   it('opens a day on a click outside the selection mode', async () => {
     const onOpenDay = vi.fn()
     await render({ selecting: false, onOpenDay })

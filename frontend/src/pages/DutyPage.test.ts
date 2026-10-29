@@ -168,6 +168,15 @@ describe('DutyPage', () => {
     expect(container!.querySelector('[data-day="2026-10-02"] [data-testid="duty-chip"]')!.textContent).toBe('A · 24')
   })
 
+  it('puts the period totals and the workplaces beside the calendar', async () => {
+    defaults()
+    await render()
+
+    const side = container!.querySelector('[data-testid="duty-side"]')!
+    expect(side.textContent).toContain('220')
+    expect(side.querySelector('[data-testid="duty-side-workplaces"]')!.textContent).toContain('კლინიკა')
+  })
+
   it('selects days and prices each one in the batch dialog', async () => {
     defaults()
     await render()

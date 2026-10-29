@@ -4983,6 +4983,17 @@
       "total": "Total — {{count}} periods",
       "empty": "No shifts in these periods",
       "emptyHint": "Income is counted from shifts — add one or continue a rhythm."
+    },
+    "calendar": {
+      "emptyPeriod": "No shifts in this period yet."
+    },
+    "side": {
+      "shifts": "Shifts",
+      "hours": "Hours",
+      "pay": "Pay",
+      "next": "Next shift",
+      "today": "On duty today",
+      "byWorkplace": "Workplaces"
     }
   },
   "actors": {

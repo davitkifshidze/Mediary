@@ -41,6 +41,11 @@ function addDays(iso: string, days: number): string {
   return isoDay(date)
 }
 
+/** დღე `days` დღით წინ ან უკან — `YYYY-MM-DD` (შუადღეზე, DST-ის გარეშე) */
+export function shiftDay(iso: string, days: number): string {
+  return addDays(iso, days)
+}
+
 /** ყველა დღე `from`-დან `to`-მდე ჩათვლით */
 export function eachDay(from: string, to: string): string[] {
   const out: string[] = []

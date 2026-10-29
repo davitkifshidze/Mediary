@@ -23,10 +23,12 @@ import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { cn } from '@/lib/utils'
 import { DutyBatchDialog } from '@/components/duty/DutyBatchDialog'
 import { DutyBulkDialog } from '@/components/duty/DutyBulkDialog'
 import { DutyCalculator } from '@/components/duty/DutyCalculator'
 import { DutyCalendar } from '@/components/duty/DutyCalendar'
+import { DutyCalendarSide } from '@/components/duty/DutyCalendarSide'
 import { DutyDayDialog } from '@/components/duty/DutyDayDialog'
 import { DutyDimToggles } from '@/components/duty/DutyDimToggles'
 import { DutyHistory } from '@/components/duty/DutyHistory'
@@ -41,8 +43,10 @@ import { DutyTotals } from '@/components/duty/DutyTotals'
 /* ============================================================
    **მორიგეობა — `/duty`.**
 
-   ზემოთ პერიოდის ნავიგაცია (← პერიოდი →, „დღეს“) და სამსახურის ფილტრი
-   (ფერებით), ქვემოთ ხედები: **კალენდარი · სია · ჯამები · კალკულატორი**.
+   ზემოთ ხედები (**კალენდარი · სია · ჯამები · შემოსავალი · კალკულატორი**) და
+   სამსახურის ფილტრი (ფერებით). კალენდარი ბარათშია თავისი ნავიგაციით
+   (← პერიოდი →, „დღეს“, რიტმის გაგრძელება), გვერდით კი პანელი — ჯამი,
+   სამსახურები („მუქი / ღია") და უახლოესი მორიგეობა (`DutyCalendarSide`).
 
    ⚠️ **მდგომარეობა მისამართშია** (`?date=` — ნებისმიერი დღე პერიოდში, `?view=`,
    `?w=` — სამსახური): „უკან“ და ბმული იმავე პერიოდს და ხედს აბრუნებს.
@@ -217,6 +221,46 @@ export function DutyPage() {
      ეს პირველი ნაბიჯია და გვერდი ამას პირდაპირ ამბობს (ბმულით პარამეტრებზე) */
   const unpaid = workplaces.filter((w) => w.is_active && payMode(w) === null)
 
+  /* პერიოდის ნავიგაცია — კალენდარში ბარათის თავშია, სხვა ხედებში ცალკე რიგად */
+  const periodNav = (
+    <>
+      <Button variant="outline" size="sm" disabled={!period} onClick={() => period && setParam('date', period.previous.from)}>
+        <ChevronLeft className="size-4" />
+        {t('duty.period.previous')}
+      </Button>
+      <h2 className="min-w-0 px-1 text-lg font-semibold first-letter:uppercase" data-testid="duty-period-label">
+        {period ? periodLabel(period.from, period.to, lang) : '…'}
+      </h2>
+      <Button variant="outline" size="sm" disabled={!period} onClick={() => period && setParam('date', period.next.from)}>
+        {t('duty.period.next')}
+        <ChevronRight className="size-4" />
+      </Button>
+      {anchor && (
+        <Button variant="outline" size="sm" onClick={() => setParam('date', null)}>
+          {t('duty.period.today')}
+        </Button>
+      )}
+      {/* რიტმი ამ პერიოდში ჯერ არ გაგრძელებულა — ერთი დაჭერით ნამდვილი მორიგეობები */}
+      {pending.length > 0 && (
+        <Button variant="outline" size="sm" onClick={() => continueAll.mutate()} disabled={continueAll.isPending} data-testid="duty-pattern-continue">
+          {continueAll.isPending ? <Loader2 className="size-4 animate-spin" /> : <Repeat className="size-4" />}
+          {t('duty.pattern.continue')}
+        </Button>
+      )}
+    </>
+  )
+
+  // კალენდარში ფართო ეკრანზე იგივე ჯამი გვერდით პანელშია — აქ მაშინ აღარ მეორდება
+  const periodTotals = shifts.length ? (
+    <p className={cn('ml-auto text-sm text-muted-foreground', view === 'calendar' && 'xl:hidden')} data-testid="duty-period-totals">
+      {t('duty.period.totals', {
+        count: totals.count,
+        hours: formatHours(totals.hours),
+        pay: formatMoney(totals.pay, currency, lang),
+      })}
+    </p>
+  ) : null
+
   return (
     <PageContainer>
       <PageHeader
@@ -254,58 +298,6 @@ export function DutyPage() {
         </div>
       )}
 
-      {/* ---------- პერიოდი ---------- (სრულ სიას თავისი თარიღის ფილტრი აქვს) */}
-      {view !== 'list' && (
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" disabled={!period} onClick={() => period && setParam('date', period.previous.from)}>
-          <ChevronLeft className="size-4" />
-          {t('duty.period.previous')}
-        </Button>
-        <h2 className="min-w-0 px-2 text-base font-semibold" data-testid="duty-period-label">
-          {period ? periodLabel(period.from, period.to, lang) : '…'}
-        </h2>
-        <Button variant="outline" size="sm" disabled={!period} onClick={() => period && setParam('date', period.next.from)}>
-          {t('duty.period.next')}
-          <ChevronRight className="size-4" />
-        </Button>
-        {anchor && (
-          <Button variant="ghost" size="sm" onClick={() => setParam('date', null)}>
-            {t('duty.period.today')}
-          </Button>
-        )}
-        {/* რიტმი ამ პერიოდში ჯერ არ გაგრძელებულა — ერთი დაჭერით ნამდვილი მორიგეობები */}
-        {pending.length > 0 && (
-          <Button variant="outline" size="sm" onClick={() => continueAll.mutate()} disabled={continueAll.isPending} data-testid="duty-pattern-continue">
-            {continueAll.isPending ? <Loader2 className="size-4 animate-spin" /> : <Repeat className="size-4" />}
-            {t('duty.pattern.continue')}
-          </Button>
-        )}
-
-        {!!shifts.length && (
-          <p className="ml-auto text-sm text-muted-foreground" data-testid="duty-period-totals">
-            {t('duty.period.totals', {
-              count: totals.count,
-              hours: formatHours(totals.hours),
-              pay: formatMoney(totals.pay, currency, lang),
-            })}
-          </p>
-        )}
-      </div>
-      )}
-
-      {view !== 'list' && workplaces.length > 1 && (
-        <div className="mb-4">
-          <CutTabs
-            options={[
-              { key: ALL, label: t('duty.allWorkplaces') },
-              ...workplaces.map((w) => ({ key: String(w.id), label: w.name, color: w.color })),
-            ]}
-            value={workplaceFilter == null ? ALL : String(workplaceFilter)}
-            onChange={(key) => setParam('w', key === ALL ? null : key)}
-          />
-        </div>
-      )}
-
       <div className="mb-4">
         <CutTabs
           options={[
@@ -322,6 +314,27 @@ export function DutyPage() {
           }}
         />
       </div>
+
+      {view !== 'list' && workplaces.length > 1 && (
+        <div className="mb-4">
+          <CutTabs
+            options={[
+              { key: ALL, label: t('duty.allWorkplaces') },
+              ...workplaces.map((w) => ({ key: String(w.id), label: w.name, color: w.color })),
+            ]}
+            value={workplaceFilter == null ? ALL : String(workplaceFilter)}
+            onChange={(key) => setParam('w', key === ALL ? null : key)}
+          />
+        </div>
+      )}
+
+      {/* ---------- პერიოდი ---------- (სრულ სიას თავისი თარიღის ფილტრი აქვს; კალენდარს — თავის ბარათში) */}
+      {view !== 'list' && view !== 'calendar' && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {periodNav}
+          {periodTotals}
+        </div>
+      )}
 
       {/* ---------- მონიშვნის ზოლი ---------- */}
       {selecting && (
@@ -352,27 +365,49 @@ export function DutyPage() {
         </div>
       )}
 
-      {(view === 'calendar' || view === 'list') && <DutyDimToggles workplaces={workplaces} dimmed={dimmed} onToggle={toggleDim} />}
+      {view === 'list' && <DutyDimToggles workplaces={workplaces} dimmed={dimmed} onToggle={toggleDim} />}
 
       {view === 'list' ? (
         <DutyHistory workplaces={workplaces} types={types} settings={settings} dimmed={dimmed} onEdit={(shift) => setEditing({ shift })} />
+      ) : view === 'calendar' ? (
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]">
+          <section className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="flex flex-wrap items-center gap-2 border-b border-border p-3">
+              {periodNav}
+              {periodTotals}
+            </div>
+            {loading || !period || shiftsQ.isLoading ? (
+              <div className="grid place-items-center py-24">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <DutyCalendar
+                from={period.from}
+                to={period.to}
+                shifts={shifts}
+                selecting={selecting}
+                selected={selected}
+                onSelectionChange={setSelected}
+                onOpenDay={openDay}
+                shiftActions={actionsFor}
+                dimmed={dimmed}
+                currency={currency}
+              />
+            )}
+          </section>
+          <DutyCalendarSide
+            shifts={shifts}
+            workplaces={workplaceFilter == null ? workplaces : workplaces.filter((w) => w.id === workplaceFilter)}
+            dimmed={dimmed}
+            onToggleDim={toggleDim}
+            onOpenShift={(shift) => setEditing({ shift })}
+            currency={currency}
+          />
+        </div>
       ) : loading || !period || shiftsQ.isLoading ? (
         <div className="grid place-items-center py-16">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
-      ) : view === 'calendar' ? (
-        <DutyCalendar
-          from={period.from}
-          to={period.to}
-          shifts={shifts}
-          selecting={selecting}
-          selected={selected}
-          onSelectionChange={setSelected}
-          onOpenDay={openDay}
-          shiftActions={actionsFor}
-          dimmed={dimmed}
-          currency={currency}
-        />
       ) : view === 'income' ? (
         <DutyIncome until={period.to} workplaceFilter={workplaceFilter} workplaces={workplaces} settings={settings} />
       ) : view === 'totals' ? (
