@@ -21,6 +21,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -251,9 +252,26 @@ class AdminUserController extends Controller
             return response()->json(['message' => 'cannot_disable_self'], 422);
         }
 
+        $disabling = array_key_exists('is_active', $data) && ! $data['is_active'] && $user->is_active;
+
         $user->forceFill($data)->save();
 
+        // გათიშვა ღია სესიებსაც ხურავს — ყველა მოწყობილობაზე, „დამიმახსოვრე"-ს ჩათვლით
+        if ($disabling) {
+            $this->endSessions($user);
+        }
+
         return new UserResource($user->load('modules', 'role'));
+    }
+
+    private function endSessions(User $user): void
+    {
+        if (config('session.driver') === 'database') {
+            DB::table((string) config('session.table', 'sessions'))->where('user_id', $user->getKey())->delete();
+        }
+
+        $user->setRememberToken(Str::random(60));
+        $user->saveQuietly();
     }
 
     /** მოდულების ჩართვა/გამორთვა კონკრეტულ user-ზე */

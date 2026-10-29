@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\EnsureModulePermission;
@@ -57,7 +58,8 @@ return Application::configure(basePath: dirname(__DIR__))
          * დაწერილიყო — იგივე მიზეზი, რის გამოც აუდიტ-ლოგი observer-ის ერთი
          * ციკლით ებმევა.
          */
-        $middleware->api(append: [EnsureRecordOwnership::class]);
+        // გათიშული ანგარიში — ყოველ მოთხოვნაზე (ღია სესიაც), მფლობელობის შემოწმებამდე
+        $middleware->api(append: [EnsureActiveAccount::class, EnsureRecordOwnership::class]);
 
         /*
          * Laravel-ის საკუთარი ვალიდაცია ინტერფეისის ენაზე.
