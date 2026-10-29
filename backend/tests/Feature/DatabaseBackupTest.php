@@ -6,10 +6,12 @@ use App\Models\DatabaseBackup;
 use App\Models\User;
 use App\Services\Backup\BackupRunner;
 use App\Services\Backup\DatabaseDumper;
+use App\Services\Storage\StorageMeter;
 use App\Support\BackgroundProcess;
 use App\Support\StorageFolder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
 use Tests\TestCase;
@@ -324,6 +326,25 @@ class DatabaseBackupTest extends TestCase
 
         $this->assertTrue($meta['enabled']);
         $this->assertNotNull($meta['last_at']);
+    }
+
+    /** აღდგენილ ბაზაში მრიცხველი დამპის მომენტისაა — აღდგენა მას დისკის ფაქტით ასწორებს */
+    public function test_a_restore_recounts_every_meter(): void
+    {
+        $backup = $this->runFakeDump('before');
+        $dumper = app(DatabaseDumper::class);
+        $dumper->shouldReceive('restore')->andReturnUsing(function () {
+            // „დამპის" მრიცხველი — ფაქტს აცდენილი
+            DB::table('users')->update(['storage_used_bytes' => 123]);
+        });
+
+        app(BackupRunner::class)->restore($backup);
+
+        $this->assertSame(
+            app(StorageMeter::class)->recalculate($this->admin->fresh()),
+            (int) $this->admin->fresh()->storage_used_bytes,
+        );
+        $this->assertNotSame(123, (int) $this->admin->fresh()->storage_used_bytes);
     }
 
     /**

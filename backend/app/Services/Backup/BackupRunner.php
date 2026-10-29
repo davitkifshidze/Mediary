@@ -135,8 +135,8 @@ class BackupRunner
      *
      * ⚠️ **ფაილები დისკზე ბაზას არ მიჰყვება.** აღდგენილი ბაზა შეიძლება
      * ისეთ ატვირთვებს ასახელებდეს, რომლებიც ამ კომპიუტერზე არ დევს (და
-     * პირიქით). ამიტომ `users.storage_used_bytes` აღდგენის შემდეგ
-     * `mediary:storage-recalc`-ს საჭიროებს — ეს პასუხშიც წერია.
+     * პირიქით), `users.storage_used_bytes` კი დამპის მომენტისაა — ამიტომ
+     * წარმატებული აღდგენის ბოლოს ყველა ანგარიშის მრიცხველი თავიდან ითვლება.
      */
     public function restore(DatabaseBackup $backup): void
     {
@@ -192,6 +192,24 @@ class BackupRunner
             'note' => 'restored '.now()->toDateTimeString(),
             'finished_at' => now(),
         ]);
+
+        if ($status === DatabaseBackup::STATUS_READY) {
+            $this->recalculateAll();
+        }
+    }
+
+    /**
+     * ყველა ანგარიშის მრიცხველი — დისკის ფაქტიდან (`StorageMeter::files()`).
+     *
+     * ⚠️ ჩავარდნა აღდგენას არ აბრუნებს — მრიცხველი მერეც გასწორდება (`mediary:storage-recalc`).
+     */
+    private function recalculateAll(): void
+    {
+        try {
+            User::query()->orderBy('id')->each(fn (User $user) => $this->meter->recalculate($user));
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     /**
