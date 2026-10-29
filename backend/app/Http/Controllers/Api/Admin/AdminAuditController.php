@@ -158,7 +158,9 @@ class AdminAuditController extends Controller
             ->orderByDesc('last_id')
             ->paginate(min(max((int) $request->integer('per_page', 25), 1), 100));
 
-        $last = AuditLog::query()
+        /* ⚠️ ბოლო რიგები იმავე ფილტრით (`filtered()`), რომ არასუპერადმინის გამორიცხვა
+           (`profile_visit`) აქაც მოქმედებდეს — დაჯგუფება `open`-ზეა, მაგრამ კარი ერთი უნდა იყოს */
+        $last = $this->filtered($request, ['action', 'module'])
             ->with('user:id,name,username')
             ->whereIn('id', collect($page->items())->pluck('last_id'))
             ->get()
