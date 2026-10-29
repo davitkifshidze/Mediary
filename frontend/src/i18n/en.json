@@ -2919,6 +2919,7 @@
       "login_failed": "Failed sign-in",
       "refresh": "Refresh",
       "open": "Open",
+      "profile_visit": "Profile visit",
       "click": "Click"
     },
     "modules": {
@@ -3004,6 +3005,7 @@
     "views": {
       "log": "Log",
       "opens": "Opens",
+      "profiles": "Profiles",
       "settings": "Settings"
     },
     "opens": {
@@ -3019,6 +3021,15 @@
         "share": "Share link"
       }
     },
+    "profiles": {
+      "total": "{{count}} rows — visitor × profile",
+      "owner": "Whose profile",
+      "visits": "Visits",
+      "imports": "Added",
+      "empty": "Nobody has visited a public profile yet.",
+      "detailTitle": "{{name}} · from @{{owner}}'s profile",
+      "noImports": "Nothing was added from this profile."
+    },
     "settings": {
       "title": "What the log records",
       "hint": "A switch changes recording for every account. A disabled kind is no longer written (what is already logged stays), and clicks, opens, refreshes and page visits are no longer even sent by the browser. Chat deletion is protected — it is always recorded.",
@@ -3032,6 +3043,7 @@
         "visit": "Page visit",
         "refresh": "Refresh",
         "open": "Record opened",
+        "profile_visit": "Visiting someone's public profile",
         "click": "Click",
         "create": "Create",
         "update": "Edit",

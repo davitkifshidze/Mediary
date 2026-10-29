@@ -133,6 +133,14 @@ class AuditLog extends Model
      */
     public const ACTION_OPEN = 'open';
 
+    /**
+     * **სხვის საჯარო პროფილში შესვლა** — `route` `u/{username}`, `context {owner, owner_id}`;
+     * შესულზე `user_id`, ანონიმზე `null` (IP-ით). მფლობელი თავის პროფილს არ ითვლის;
+     * იგივე სტუმარი იმავე პროფილზე წუთში ერთხელ (`AuditLogger::profileVisit()`).
+     * ⚠️ მხოლოდ სუპერადმინი ხედავს — `admin_access:audit` როლს ეს რიგები ჟურნალში არ უჩანს.
+     */
+    public const ACTION_PROFILE_VISIT = 'profile_visit';
+
     /** გვერდის განახლება — SPA ჩატვირთვისას ამოიცნობს (`performance` navigation `reload`) */
     public const ACTION_REFRESH = 'refresh';
 
@@ -158,6 +166,7 @@ class AuditLog extends Model
         self::ACTION_VISIT,
         self::ACTION_REFRESH,
         self::ACTION_OPEN,
+        self::ACTION_PROFILE_VISIT,
         self::ACTION_CLICK,
         self::ACTION_CREATE,
         self::ACTION_UPDATE,

@@ -1550,6 +1550,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/settings/trash', [AdminInstallationController::class, 'updateTrash']);
         /* „ჟურნალის პარამეტრები": რომელი ტიპი იწერება (ყველა ანგარიშზე) */
         Route::get('/audit/settings', [AdminAuditSettingsController::class, 'show']);
+        /* „ვინ შევიდა ვის პროფილში და რა გადმოიტანა" — მხოლოდ სუპერადმინი */
+        Route::get('/audit/profiles', [AdminAuditController::class, 'profiles']);
         Route::put('/audit/settings', [AdminAuditSettingsController::class, 'update']);
 
         /* მასობრივი წაშლა — ორნაბიჯიანი: გეგმა, მერე `confirm=DELETE` */

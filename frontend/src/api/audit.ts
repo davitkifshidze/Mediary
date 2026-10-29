@@ -26,6 +26,7 @@ export const AUDIT_ACTIONS = [
   'visit',
   'refresh',
   'open',
+  'profile_visit',
   'click',
   'create',
   'update',
@@ -91,6 +92,8 @@ export interface AuditFilters {
   /** „გახსნების" ჩაღრმავება: ერთი ჩანაწერის რიგები */
   subject_type?: string | null
   subject_id?: number | null
+  /** „პროფილების" ჩაღრმავება: ვისი პროფილიდან (`context.owner`) */
+  owner?: string | null
 }
 
 function params(filters: AuditFilters): Record<string, string | number> {
@@ -104,6 +107,7 @@ function params(filters: AuditFilters): Record<string, string | number> {
   if (filters.q?.trim()) out.q = filters.q.trim()
   if (filters.subject_type) out.subject_type = filters.subject_type
   if (filters.subject_id) out.subject_id = filters.subject_id
+  if (filters.owner) out.owner = filters.owner
 
   return out
 }
@@ -278,6 +282,28 @@ export async function fetchAuditOpens(
   perPage = 25,
 ): Promise<{ data: AuditOpenRow[]; meta: AuditPage['meta'] }> {
   const { data } = await api.get('/admin/audit/opens', {
+    params: { ...params(filters), page, per_page: perPage },
+  })
+  return data
+}
+
+/** „ვინ შევიდა ვის პროფილში და რა გადმოიტანა" (სუპერადმინი) — სტუმარი × პროფილის მფლობელი */
+export interface AuditProfileRow {
+  user: { id: number; name: string; username: string } | null
+  /** ანონიმზე `null` — ერთ რიგად თითო პროფილზე */
+  user_id: number | null
+  owner: string
+  visits: number
+  imports: number
+  last_at: string | null
+}
+
+export async function fetchAuditProfiles(
+  filters: AuditFilters,
+  page = 1,
+  perPage = 25,
+): Promise<{ data: AuditProfileRow[]; meta: AuditPage['meta'] }> {
+  const { data } = await api.get('/admin/audit/profiles', {
     params: { ...params(filters), page, per_page: perPage },
   })
   return data

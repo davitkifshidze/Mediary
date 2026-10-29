@@ -14,6 +14,7 @@ import {
 } from '@/api/audit'
 import { useAuth } from '@/lib/auth'
 import { AuditOpens } from '@/components/audit/AuditOpens'
+import { AuditProfiles } from '@/components/audit/AuditProfiles'
 import { AuditScope } from '@/components/audit/AuditScope'
 import { AuditSettingsPanel } from '@/components/audit/AuditSettingsPanel'
 import { useDateFormat } from '@/lib/dates'
@@ -86,9 +87,10 @@ const ACTION_TONE: Record<AuditAction, string> = {
   export: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400',
   import: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400',
   restore: 'bg-lime-500/15 text-lime-700 dark:text-lime-400',
+  profile_visit: 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
 }
 
-type AuditView = 'log' | 'opens' | 'settings'
+type AuditView = 'log' | 'opens' | 'profiles' | 'settings'
 
 export function AuditPage() {
   const { t, i18n } = useTranslation()
@@ -181,7 +183,13 @@ export function AuditPage() {
   const views: TabItem<AuditView>[] = [
     { value: 'log', label: t('audit.views.log') },
     { value: 'opens', label: t('audit.views.opens') },
-    ...(me?.is_super_admin ? [{ value: 'settings' as AuditView, label: t('audit.views.settings') }] : []),
+    // „ვინ შევიდა ვის პროფილში" და პარამეტრები — მხოლოდ სუპერადმინს
+    ...(me?.is_super_admin
+      ? [
+          { value: 'profiles' as AuditView, label: t('audit.views.profiles') },
+          { value: 'settings' as AuditView, label: t('audit.views.settings') },
+        ]
+      : []),
   ]
 
   return (
@@ -260,6 +268,8 @@ export function AuditPage() {
 
           {view === 'opens' ? (
             <AuditOpens filters={filters} moduleName={moduleName} />
+          ) : view === 'profiles' ? (
+            <AuditProfiles filters={filters} />
           ) : (
             <>
               {/* ---------- მოქმედებები მონიშნულებზე ---------- */}

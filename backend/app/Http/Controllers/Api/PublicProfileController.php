@@ -72,6 +72,9 @@ class PublicProfileController extends Controller
         $viewer = $request->user();
         $own = $viewer !== null && (int) $viewer->id === (int) $user->id;
 
+        // ვინ შევიდა ვის პროფილში — მხოლოდ სუპერადმინის ჟურნალისთვის; მფლობელი არ ითვლება
+        $this->audit->profileVisit($user, $request);
+
         return response()->json([
             'profile' => $this->profiles->header($user),
             'domains' => $domains,

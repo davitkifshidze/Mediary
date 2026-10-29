@@ -222,6 +222,39 @@ class AuditLogger
     }
 
     /**
+     * **სხვის საჯარო პროფილში შესვლა** — `PublicProfileController::show()`.
+     *
+     * ⚠️ ანონიმიც იწერება (`user_id` ცარიელია, IP — `ip`-ში), მფლობელი კი თავის
+     * პროფილს არ ითვლის. ⚠️ **იგივე სტუმარი იმავე პროფილზე წუთში ერთხელ**
+     * (`Cache::add` — შესულზე id-ით, ანონიმზე IP-ის ჰეშით): SPA პროფილის თავს
+     * ჩანართზე დაბრუნებისასაც ითხოვს და ყოველი ასეთი მოთხოვნა „შესვლა" არ არის.
+     */
+    public function profileVisit(User $owner, Request $request): ?AuditLog
+    {
+        if (! $this->enabled || ! $this->tableExists() || ! AuditSettings::enabled(AuditLog::ACTION_PROFILE_VISIT)) {
+            return null;
+        }
+
+        $viewer = $request->user();
+
+        if ($viewer && (int) $viewer->getKey() === (int) $owner->getKey()) {
+            return null;
+        }
+
+        $who = $viewer ? 'u'.$viewer->getKey() : 'ip'.sha1((string) $request->ip());
+
+        if (! Cache::add('audit-profile:'.$owner->getKey().':'.$who, 1, self::OPEN_WINDOW_SECONDS)) {
+            return null;
+        }
+
+        return $this->log(AuditLog::ACTION_PROFILE_VISIT, [
+            // SPA-ს მისამართი და არა API-ის — ჟურნალში ის იკითხება
+            'route' => 'u/'.$owner->username,
+            'context' => ['owner' => $owner->username, 'owner_id' => (int) $owner->getKey()],
+        ]);
+    }
+
+    /**
      * **SPA-ს პაკეტი** — დაჭერები და განახლება.
      *
      * ⚠️ მხოლოდ ოთხი ველი იკითხება (`action`, `path`, `label`, `role`) —

@@ -37,6 +37,7 @@ final class AuditSettings
         'visit' => [AuditLog::ACTION_VISIT],
         'refresh' => [AuditLog::ACTION_REFRESH],
         'open' => [AuditLog::ACTION_OPEN],
+        'profile_visit' => [AuditLog::ACTION_PROFILE_VISIT],
         'click' => [AuditLog::ACTION_CLICK],
         'create' => [AuditLog::ACTION_CREATE],
         'update' => [AuditLog::ACTION_UPDATE],

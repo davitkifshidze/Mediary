@@ -11,6 +11,8 @@ use App\Support\AuditRegistry;
 use App\Support\Like;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -71,10 +73,12 @@ class AdminAuditController extends Controller
      * ადმინის ზონა, ჩატი, გლობალური ლექსიკონები) — თუ სიაში არ იქნება,
      * იმ რიგებამდე ფილტრით ვერასდროს მიხვალ.
      */
-    public function meta()
+    public function meta(Request $request)
     {
         return response()->json([
-            'actions' => AuditLog::ACTIONS,
+            'actions' => $this->seesProfiles($request)
+                ? AuditLog::ACTIONS
+                : array_values(array_diff(AuditLog::ACTIONS, [AuditLog::ACTION_PROFILE_VISIT])),
             'protected_actions' => AuditLog::PROTECTED_ACTIONS,
             /* ⚠️ **პირადი მოდული მფლობელის სახელით** (`owner`): ორ ადამიანს
                ერთი სახელის („რეცეპტები") მოდული შეიძლება ჰქონდეს და ორი ერთნაირი
@@ -193,6 +197,80 @@ class AdminAuditController extends Controller
     }
 
     /**
+     * **„ვინ შევიდა ვის პროფილში და რა გადმოიტანა"** — მხოლოდ სუპერადმინი
+     * (`super_admin` ჯგუფი). სტუმარი × პროფილის მფლობელი → შესვლები,
+     * გადმოტანილი ჩანაწერები და ბოლო ფაქტი; ჩაღრმავება ჩვეულებრივი სიაა
+     * `action=import&user_id=…&owner=…`-ით.
+     *
+     * ⚠️ წყარო ორი ტიპია, ორივე `context.owner`-ით: `profile_visit` და `import`
+     * (მხოლოდ პროფილიდან გადმოტანას აქვს `context.owner` — ბმულისა და ჩატის
+     * `import`-ს არა). ⚠️ ანონიმი (`user_id` ცარიელი) ერთ რიგად ჯგუფდება თითო პროფილზე.
+     * ⚠️ ფილტრი იგივე `filtered()`-ია (ვინ · პერიოდი · ძებნა), მოქმედებისა და მოდულის გარეშე.
+     */
+    public function profiles(Request $request)
+    {
+        $owner = $this->contextOwner();
+
+        $page = $this->filtered($request, ['action', 'module'])
+            ->whereIn('action', [AuditLog::ACTION_PROFILE_VISIT, AuditLog::ACTION_IMPORT])
+            ->whereNotNull('context->owner')
+            ->toBase()
+            ->selectRaw(
+                'user_id, '.$owner.' as owner, '
+                ."sum(case when action = 'profile_visit' then 1 else 0 end) as visits, "
+                ."sum(case when action = 'import' then 1 else 0 end) as imports, "
+                .'max(created_at) as last_at, max(id) as last_id',
+            )
+            ->groupBy('user_id', DB::raw($owner))
+            ->orderByDesc('last_at')
+            ->orderByDesc('last_id')
+            ->paginate(min(max((int) $request->integer('per_page', 25), 1), 100));
+
+        $users = User::whereIn('id', collect($page->items())->pluck('user_id')->filter()->unique())
+            ->get(['id', 'name', 'username'])
+            ->keyBy('id');
+
+        return response()->json([
+            'data' => collect($page->items())->map(fn ($row) => [
+                'user' => $row->user_id !== null && $users->has($row->user_id) ? [
+                    'id' => (int) $row->user_id,
+                    'name' => $users[$row->user_id]->name,
+                    'username' => $users[$row->user_id]->username,
+                ] : null,
+                'user_id' => $row->user_id === null ? null : (int) $row->user_id,
+                'owner' => (string) $row->owner,
+                'visits' => (int) $row->visits,
+                'imports' => (int) $row->imports,
+                // ბაზის სტრიქონი აპის ზონაშია (`APP_TIMEZONE`), ე.ი. `parse()` სწორ მომენტს იძლევა
+                'last_at' => $row->last_at ? Carbon::parse((string) $row->last_at)->toIso8601String() : null,
+            ])->all(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * `context.owner` SQL-ში, ბრჭყალების გარეშე — MySQL/MariaDB-ის `json_extract`
+     * JSON-სტრიქონს აბრუნებს (`"davit"`), sqlite-ისა — უბრალო ტექსტს.
+     */
+    private function contextOwner(): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "json_extract(context, '$.owner')"
+            : "json_unquote(json_extract(context, '$.owner'))";
+    }
+
+    /** პროფილში შესვლები მხოლოდ სუპერადმინისაა — `admin_access:audit` როლსაც არ უჩანს */
+    private function seesProfiles(Request $request): bool
+    {
+        return (bool) $request->user()?->isSuperAdmin();
+    }
+
+    /**
      * ერთი სვეტის დაჯგუფება — `[{key, total}]`.
      *
      * ⚠️ ცარიელი `module` (შესვლა, გასვლა, რეგისტრაცია) **ცალკე ჭრილია და
@@ -280,6 +358,15 @@ class AdminAuditController extends Controller
     private function filtered(Request $request, array $except = []): Builder
     {
         $query = AuditLog::query();
+
+        if (! $this->seesProfiles($request)) {
+            $query->where('action', '!=', AuditLog::ACTION_PROFILE_VISIT);
+        }
+
+        // ვისი პროფილიდან — „პროფილების" ხედის ჩაღრმავება
+        if ($owner = trim((string) $request->query('owner'))) {
+            $query->where('context->owner', $owner);
+        }
 
         if ($userId = $request->integer('user_id')) {
             $query->where('user_id', $userId);

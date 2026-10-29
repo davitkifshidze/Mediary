@@ -566,6 +566,17 @@ class ChatController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
+        // ჩანაწერის შექმნას `AuditObserver` წერს; აქ წყაროა — ვისი ჩატის ბარათიდან შემოვიდა
+        if ($result['created']) {
+            $this->audit->log(AuditLog::ACTION_IMPORT, [
+                'module' => $domain,
+                'subject_type' => $domain,
+                'subject_id' => $result['record']->getKey(),
+                'subject_label' => (string) ($shared['title'] ?? '') ?: null,
+                'new_values' => ['source' => 'chat', 'owner' => $message->author?->username],
+            ]);
+        }
+
         return response()->json([
             'created' => $result['created'],
             'id' => $result['record']->getKey(),
