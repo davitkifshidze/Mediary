@@ -44,7 +44,7 @@ Backend (`backend/`):
 - `php artisan test` (sqlite `:memory:`, `memory_limit` 512M in `phpunit.xml`) · `./vendor/bin/pint` (CI runs `--test`)
 - `php artisan migrate` — part of pulling new code; `php artisan mediary:doctor` reports pending migrations, binaries, stray `.env` keys and the last backup
 - `php artisan migrate:fresh --seed` · `mediary:bootstrap-admin` (first super admin) · `mediary:seed-demo`
-- `php artisan schedule:work` — `notes:remind` every minute, `backups:auto` at 03:00, `trash:prune` at 03:30 (the backup must stay before the prune)
+- `php artisan schedule:work` — `notes:remind` every minute, `backups:auto` at 03:00, `trash:prune` at 03:30 (it refuses to run without a successful backup in the last 24 h; `--force` overrides)
 - `mediary:storage-recalc [--user=]` (after restores or hand-deleted files) · `media:redownload` · `videos:download {id}` · `backups:run {id}`
 - `php artisan tinker` — pass Georgian text through stdin; the Windows console mangles UTF-8 in argv.
 

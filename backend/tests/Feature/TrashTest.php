@@ -219,7 +219,7 @@ class TrashTest extends TestCase
             ->where('id', $old->id)
             ->update(['trashed_at' => now()->subDays(TrashDomain::KEEP_DAYS + 1)]);
 
-        $this->artisan('trash:prune')->assertSuccessful();
+        $this->artisan('trash:prune', ['--force' => true])->assertSuccessful();
 
         $this->assertDatabaseMissing('movies', ['id' => $old->id]);
         $this->assertDatabaseHas('movies', ['id' => $fresh->id]);

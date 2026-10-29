@@ -481,7 +481,7 @@ class CustomModuleRegistryTest extends TestCase
         CustomRecord::withoutGlobalScopes()->whereKey($this->record->id)
             ->update(['trashed_at' => now()->subDays(TrashDomain::KEEP_DAYS + 1)]);
 
-        $this->artisan('trash:prune')->assertSuccessful();
+        $this->artisan('trash:prune', ['--force' => true])->assertSuccessful();
 
         $this->assertNull(CustomRecord::withoutGlobalScopes()->find($this->record->id));
         foreach ($paths as $path) {

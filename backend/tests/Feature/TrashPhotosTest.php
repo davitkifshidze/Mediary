@@ -192,7 +192,7 @@ class TrashPhotosTest extends TestCase
         $this->actingAs($this->me)->putJson("/api/movies/{$movie->id}", ['title_en' => 'Old', 'remove_poster' => true])->assertOk();
         TrashedFile::withoutGlobalScope('owner')->update(['trashed_at' => now()->subDays(40)]);
 
-        $this->artisan('trash:prune')->assertSuccessful();
+        $this->artisan('trash:prune', ['--force' => true])->assertSuccessful();
 
         Storage::disk('public')->assertMissing('movies/posters/old.jpg');
         $this->assertSame(0, $this->used());

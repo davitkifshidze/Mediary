@@ -360,7 +360,7 @@ class CustomModuleDeleteTest extends TestCase
 
         TrashEntry::withoutGlobalScopes()->whereKey($id)->update(['trashed_at' => now()->subDays(TrashDomain::KEEP_DAYS + 1)]);
 
-        $this->artisan('trash:prune')->assertSuccessful();
+        $this->artisan('trash:prune', ['--force' => true])->assertSuccessful();
 
         $this->assertNull(Module::withoutGlobalScopes()->where('key', $this->key)->first());
         $this->assertSame(0, CustomRecord::withoutGlobalScopes()->count());

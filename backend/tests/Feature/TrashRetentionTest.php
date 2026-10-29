@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\DatabaseBackup;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\User;
@@ -84,12 +85,31 @@ class TrashRetentionTest extends TestCase
         $plainForty = $this->trashed($plain, now()->subDays(40));
         $longForty = $this->trashed($long, now()->subDays(40));
 
-        $this->artisan('trash:prune')->assertSuccessful();
+        $this->artisan('trash:prune', ['--force' => true])->assertSuccessful();
 
         $this->assertFalse($this->exists($shortTen), '7 დღის ვადა — 10 დღის წინანდელი იშლება');
         $this->assertTrue($this->exists($plainTen), 'ნაგულისხმევი 30 — 10 დღის წინანდელი რჩება');
         $this->assertFalse($this->exists($plainForty), 'ნაგულისხმევი 30 — 40 დღის წინანდელი იშლება');
         $this->assertTrue($this->exists($longForty), '60 დღის ვადა — 40 დღის წინანდელი რჩება');
+    }
+
+    /** საბოლოო წაშლა ბოლო 24 საათის წარმატებულ ასლს მიჰყვება — ჩავარდნილი ან ძველი ასლის შემდეგ ურნა ხელუხლებელია */
+    public function test_pruning_waits_for_a_fresh_backup(): void
+    {
+        config(['mediary.backup.auto' => true]);
+        $long = $this->user('long', 30);
+        $movie = $this->trashed($long, now()->subDays(40));
+
+        DatabaseBackup::create(['user_id' => $long->id, 'name' => 'old.sql', 'status' => DatabaseBackup::STATUS_READY, 'finished_at' => now()->subDays(2)]);
+        DatabaseBackup::create(['user_id' => $long->id, 'name' => 'failed.sql', 'status' => DatabaseBackup::STATUS_FAILED, 'finished_at' => now()]);
+
+        $this->artisan('trash:prune')->assertFailed();
+        $this->assertTrue($this->exists($movie));
+
+        DatabaseBackup::create(['user_id' => $long->id, 'name' => 'fresh.sql', 'status' => DatabaseBackup::STATUS_READY, 'finished_at' => now()]);
+
+        $this->artisan('trash:prune')->assertSuccessful();
+        $this->assertFalse($this->exists($movie));
     }
 
     /** `--days` ყველას ერთ ვადას აძალებს — ხელით გაშვებისთვის */
@@ -98,7 +118,7 @@ class TrashRetentionTest extends TestCase
         $long = $this->user('long', 60);
         $movie = $this->trashed($long, now()->subDays(40));
 
-        $this->artisan('trash:prune', ['--days' => 30])->assertSuccessful();
+        $this->artisan('trash:prune', ['--days' => 30, '--force' => true])->assertSuccessful();
 
         $this->assertFalse($this->exists($movie));
     }

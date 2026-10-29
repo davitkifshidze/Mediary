@@ -147,7 +147,7 @@ class TrashChatTest extends TestCase
         $this->actingAs($this->bob)->deleteJson("/api/chat/messages/{$message}", ['scope' => 'self'])->assertNoContent();
         TrashedMessage::withoutGlobalScope('owner')->update(['trashed_at' => now()->subDays(40)]);
 
-        $this->artisan('trash:prune')->assertSuccessful();
+        $this->artisan('trash:prune', ['--force' => true])->assertSuccessful();
 
         $this->assertSame(0, TrashedMessage::withoutGlobalScope('owner')->count());
         $this->assertSame(1, MessageHide::count());

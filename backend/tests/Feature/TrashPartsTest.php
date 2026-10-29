@@ -388,7 +388,7 @@ class TrashPartsTest extends TestCase
             'slot' => '1', 'label' => 'x', 'trashed_at' => now()->subDays(40),
         ]);
 
-        $this->artisan('trash:prune')->assertSuccessful();
+        $this->artisan('trash:prune', ['--force' => true])->assertSuccessful();
 
         $this->assertNull($note::withoutGlobalScopes()->find($note->id));
         $this->assertSame(0, TrashEntry::withoutGlobalScope('owner')->count());

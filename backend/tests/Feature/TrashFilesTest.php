@@ -417,7 +417,7 @@ class TrashFilesTest extends TestCase
            გამორთვას ვერ შეამოწმებდა. რექვესთიდან გაშვებულ გასუფთავებაზე კი
            ჩაკეტილი ალბომის ფოტო დამალული იქნებოდა და ვერასდროს წაიშლებოდა. */
         $this->actingAs($this->me);
-        $this->artisan('trash:prune')->assertSuccessful();
+        $this->artisan('trash:prune', ['--force' => true])->assertSuccessful();
 
         $this->assertNull(GalleryImage::withoutGlobalScopes()->find($old->id));
         Storage::disk('private')->assertMissing('gallery/locked/old.jpg');

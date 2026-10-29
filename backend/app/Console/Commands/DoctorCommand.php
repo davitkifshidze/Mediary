@@ -153,6 +153,18 @@ class DoctorCommand extends Command
             return;
         }
 
+        // ურნის წმენდა ასლის შემდეგ უნდა იდგეს — თორემ ის ყოველთვის წინა დღის ასლს დაეყრდნობა
+        $backupAt = (string) config('mediary.backup.at', '03:00');
+        $pruneAt = (string) config('mediary.trash.prune_at', '03:30');
+        $this->check(
+            'ასლი წმენდამდე',
+            $pruneAt > $backupAt,
+            $pruneAt > $backupAt
+                ? "ასლი {$backupAt}, ურნის წმენდა {$pruneAt}"
+                : "ურნის წმენდა ({$pruneAt}) ასლზე ({$backupAt}) ადრეა — `TRASH_PRUNE_AT` ასლის შემდეგ დააყენე",
+            warnOnly: true,
+        );
+
         $last = DatabaseBackup::where('status', DatabaseBackup::STATUS_READY)->max('finished_at');
 
         if (! $last) {

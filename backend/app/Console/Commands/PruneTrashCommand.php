@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\DatabaseBackup;
 use App\Services\Trash\TrashBin;
 use Illuminate\Console\Command;
 
@@ -32,7 +33,8 @@ use Illuminate\Console\Command;
 class PruneTrashCommand extends Command
 {
     protected $signature = 'trash:prune {--days= : ყველასთვის ერთი ვადა (ნაგულისხმევად — თითო ანგარიშის საკუთარი)}
-                            {--dry-run : მხოლოდ დათვლა}';
+                            {--dry-run : მხოლოდ დათვლა}
+                            {--force : გაშვება ბოლო 24 საათის წარმატებული ასლის გარეშეც}';
 
     protected $description = 'ურნაში ვადაგასული ჩანაწერების საბოლოო წაშლა';
 
@@ -41,6 +43,16 @@ class PruneTrashCommand extends Command
         $days = $this->option('days') !== null ? (int) $this->option('days') : null;
         $dry = (bool) $this->option('dry-run');
         $total = 0;
+
+        /* ⚠️ **საბოლოო წაშლა ასლს მიჰყვება და არა საათს.** 03:00 → 03:30 რიგი
+           ჩავარდნილ ან დაგვიანებულ ასლს ვერ ხედავდა — წაშლა მაშინაც ხდებოდა,
+           როცა უკან დასაბრუნებელი გზა არ არსებობდა. ავტომატური ასლის გამორთვისას
+           (`BACKUP_AUTO=false`) პირობა არ მოქმედებს — ასლი მაშინ შენი პასუხისმგებლობაა. */
+        if (! $dry && ! $this->option('force') && config('mediary.backup.auto') && ! $this->recentBackup()) {
+            $this->warn('ბოლო 24 საათში წარმატებული ასლი არ არის — ურნა არ სუფთავდება (`--force` — მაინც)');
+
+            return self::FAILURE;
+        }
 
         /* ⚠️ `lazyById` და არა `chunk` (`TrashBin::prune()`-ში): `chunk()`
            offset-ით დადის და წაშლა რიგებს წაანაცვლებს, ე.ი. ყოველი მეორე
@@ -53,5 +65,12 @@ class PruneTrashCommand extends Command
         $this->info($dry ? "ვადაგასულია {$total} ჩანაწერი" : "წაშლილია {$total} ჩანაწერი");
 
         return self::SUCCESS;
+    }
+
+    private function recentBackup(): bool
+    {
+        return DatabaseBackup::where('status', DatabaseBackup::STATUS_READY)
+            ->where('finished_at', '>=', now()->subDay())
+            ->exists();
     }
 }

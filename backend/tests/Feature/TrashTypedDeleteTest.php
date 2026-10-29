@@ -238,7 +238,7 @@ class TrashTypedDeleteTest extends TestCase
         $this->actingAs($this->admin)->deleteJson('/api/admin/audit', ['confirm' => 'DELETE'])->assertOk();
 
         TrashEntry::withoutGlobalScope('owner')->update(['trashed_at' => now()->subDays(40)]);
-        $this->artisan('trash:prune')->assertSuccessful();
+        $this->artisan('trash:prune', ['--force' => true])->assertSuccessful();
 
         $this->assertSame(0, TrashEntry::withoutGlobalScope('owner')->count());
         $this->assertSame(0, AuditLog::withoutGlobalScope('trash')->where('subject_label', 'old')->count());

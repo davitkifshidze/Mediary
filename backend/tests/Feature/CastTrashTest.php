@@ -150,7 +150,7 @@ class CastTrashTest extends TestCase
         $this->actingAs($this->nino)->deleteJson("/api/cast/{$member->id}")->assertOk();
 
         $this->travel(40)->days();
-        $this->artisan('trash:prune', ['--days' => 30])->assertSuccessful();
+        $this->artisan('trash:prune', ['--days' => 30, '--force' => true])->assertSuccessful();
 
         $this->assertNull(CastMember::withoutGlobalScopes()->find($member->id));
         $this->assertSame(0, TrashEntry::where('kind', CastMemberTrash::KIND)->count());
