@@ -669,7 +669,7 @@ final class ShareImporter
         $column = $photo['column'];
         $path = (string) $record->getAttribute($column);
 
-        if ($path === '' || preg_match('#^https?://#', $path)) {
+        if ($path === '' || preg_match('#^https?://#', $path) || ! self::copyable($path)) {
             return null;
         }
 
@@ -707,6 +707,22 @@ final class ShareImporter
         $copy->forceFill($fill)->save();
 
         return null;
+    }
+
+    /**
+     * **სხვისი ფაილიდან მხოლოდ საჯარო მედია იკითხება.**
+     *
+     * ⚠️ გზა მფლობელის სვეტიდან მოდის და დღეს მას მხოლოდ აპი წერს — მაგრამ წაკითხვა
+     * სხვის ანგარიშში ხდება, ე.ი. თავდაცვის მეორე ფენა: შედარებითი გზა, `..`-ისა და
+     * `\`-ის გარეშე, საჯარო დისკზე (`notes/`, `chat/`, `backups/`… არა) და არა ჩაკეტილი
+     * ალბომიდან (`gallery/locked`, პირად დისკზე).
+     */
+    private static function copyable(string $path): bool
+    {
+        return ! str_starts_with($path, '/')
+            && ! str_contains($path, '\\')
+            && ! in_array('..', explode('/', $path), true)
+            && ! StorageFolder::isPrivate($path);
     }
 
     /**

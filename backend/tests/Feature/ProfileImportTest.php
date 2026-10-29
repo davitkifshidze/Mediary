@@ -171,6 +171,23 @@ class ProfileImportTest extends TestCase
         $this->assertSame('to_play', $copy->status);
     }
 
+    /** მფლობელის სვეტი პირად ფაილზე რომ უთითებდეს — ასლი მას არ წაიკითხავს (მხოლოდ საჯარო მედია) */
+    public function test_a_main_photo_pointing_at_a_private_file_is_never_copied(): void
+    {
+        Storage::fake('private');
+        Storage::disk('private')->put('notes/secret.txt', 'private');
+
+        $game = new Game;
+        $game->forceFill([
+            'user_id' => $this->owner->id, 'title_en' => 'Hades', 'visibility' => 'public',
+            'cover_path' => 'notes/secret.txt', 'cover_source' => 'upload',
+        ])->save();
+
+        $id = $this->add($game->id, 'game')->assertOk()->json('id');
+
+        $this->assertNull(Game::withoutGlobalScopes()->findOrFail($id)->cover_path);
+    }
+
     public function test_private_locked_and_foreign_records_are_404_even_by_id(): void
     {
         $private = $this->movie($this->owner, 'Private', 'private', ['tmdb_id' => 4]);
