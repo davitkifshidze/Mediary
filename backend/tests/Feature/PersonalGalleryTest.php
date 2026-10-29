@@ -496,6 +496,21 @@ class PersonalGalleryTest extends TestCase
         $this->assertCount(1, $this->getJson('/api/personal/media')->json('data'));
     }
 
+    /** ურნაში მყოფი ალბომის ფოტოს აღდგენა ალბომსაც აბრუნებს — თორემ „აღდგა", მაგრამ არსად ჩანდა */
+    public function test_restoring_a_photo_brings_back_its_trashed_album(): void
+    {
+        $album = $this->album();
+        $media = $this->media(['album_id' => $album->id]);
+
+        $this->deleteJson("/api/personal/media/{$media->id}")->assertNoContent();
+        $this->deleteJson("/api/personal/albums/{$album->id}")->assertNoContent();
+
+        $this->postJson("/api/trash/personal_media/{$media->id}/restore")->assertOk()->assertJson(['with_parent' => true]);
+
+        $this->assertNull($album->fresh()->trashed_at);
+        $this->assertContains($media->id, array_column($this->getJson('/api/personal/media')->json('data'), 'id'));
+    }
+
     public function test_the_final_delete_frees_both_files_and_the_quota(): void
     {
         $person = $this->person();

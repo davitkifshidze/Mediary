@@ -9,6 +9,7 @@ use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\Message;
 use App\Models\Module;
+use App\Models\PersonalAlbum;
 use App\Models\PersonalMedia;
 use App\Models\TrashedFile;
 use App\Models\TrashedMessage;
@@ -487,6 +488,18 @@ final class TrashBin
             if ($parent && $parent['trashed']) {
                 TrashDomain::trashOf($parent['kind'], (int) $user->getKey())->find($parent['id'])?->restoreFromTrash();
                 $withParent = true;
+            }
+
+            /* ⚠️ **პირადი გალერეის ფოტოს მეორე მშობელი ალბომია**: ურნაში მყოფი ალბომის
+               ფოტო `personal_parent` scope-ით ისევ დამალული დარჩებოდა — „აღდგა", მაგრამ
+               არსად ჩანს. ალბომიც ბრუნდება (ადამიანის წესით). */
+            if ($row instanceof PersonalMedia && $row->album_id) {
+                $album = PersonalAlbum::withoutGlobalScopes()->where('user_id', $user->getKey())->find($row->album_id);
+
+                if ($album !== null && $album->trashed_at !== null) {
+                    $album->restoreFromTrash();
+                    $withParent = true;
+                }
             }
 
             // აუდიტის ლოგის რიგები ლოგში ბრუნდება, ელემენტი ქრება
