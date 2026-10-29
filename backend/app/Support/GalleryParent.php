@@ -260,6 +260,45 @@ final class GalleryParent
     }
 
     /**
+     * **ფოტო ყველა იმ ჩანაწერის მთავარი ფოტოდან იხსნება, რომელიც მას უთითებს** —
+     * ჩაკეტვისას, ურნაში გადატანისას და წაშლისას.
+     *
+     * ⚠️ მხოლოდ **მიმდინარე** მშობლის შემოწმება საკმარისი არ არის: „მთავრად დაყენების"
+     * შემდეგ ფოტო სხვა ჩანაწერზე შეიძლება გადაიტანო, პირველი კი იმავე გზას ინარჩუნებს —
+     * ჩაკეტვა ფაილს გადაიტანდა და ის გატეხილ სურათს აჩვენებდა.
+     *
+     * @return int რამდენ ჩანაწერს მოეხსნა
+     */
+    public static function clearPrimaryEverywhere(int $userId, ?string $path, bool $quietly = false): int
+    {
+        if ($path === null || $path === '') {
+            return 0;
+        }
+
+        $cleared = 0;
+        $models = [];
+
+        foreach (self::PARENTS as $key => $parent) {
+            if ($parent['primary'] ?? null) {
+                $models[$parent['model']] = [$key, $parent['primary']['path']];
+            }
+        }
+        $models[CustomRecord::class] = [null, self::CUSTOM_PRIMARY['path']];
+
+        foreach ($models as $model => [$key, $column]) {
+            $rows = $model::withoutGlobalScopes()->where('user_id', $userId)->where($column, $path)->get();
+
+            foreach ($rows as $row) {
+                // პირადი მოდულის ტიპი მისივე გასაღებია
+                $type = $key ?? (string) $row->getAttribute('module');
+                $cleared += (int) self::clearPrimaryIfAt($row, $type, $path, $quietly);
+            }
+        }
+
+        return $cleared;
+    }
+
+    /**
      * **ურნაში მყოფი მშობლის ფოტოები გარეთ** — ბრტყელი სია და მისი მთვლელები.
      *
      * ⚠️ ფოტო ჩანაწერს ურნაში თან მიჰყვება (ურნა და საცავი მას ჩანაწერის

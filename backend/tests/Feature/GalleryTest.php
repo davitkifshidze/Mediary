@@ -139,6 +139,22 @@ class GalleryTest extends TestCase
         $this->assertSame(1, $this->getJson('/api/gallery')->assertOk()->json('photos'));
     }
 
+    /** ფოტო, რომელიც სხვა ჩანაწერზე გადაიტანე, წაშლისას **პირველსაც** აღარ რჩება მთავარ ფოტოდ */
+    public function test_deleting_a_moved_photo_clears_every_record_that_used_it_as_primary(): void
+    {
+        $first = $this->makeMovie('First');
+        $second = $this->makeMovie('Second', 552);
+        $photo = $this->image($first, 'poster');
+        $first->forceFill(['poster_path' => $photo->path, 'poster_source' => 'tmdb'])->save();
+
+        // ფოტო მეორე ფილმზე გადავიდა — პირველი ისევ მის გზას უთითებს
+        $photo->forceFill(['imageable_id' => $second->id])->save();
+
+        $this->actingAs($this->user)->deleteJson("/api/gallery/images/{$photo->id}")->assertSuccessful();
+
+        $this->assertNull($first->fresh()->poster_path);
+    }
+
     public function test_plan_estimates_size_and_counts_records_without_tmdb_id(): void
     {
         $this->makeMovie('With TMDB');

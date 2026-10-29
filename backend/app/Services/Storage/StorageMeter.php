@@ -1088,7 +1088,7 @@ class StorageMeter
 
             // ⚠️ ფოტო ჩანაწერის მთავარი ფოტო თუ იყო, ბმული არ უნდა დაეკიდოს
             if ($model instanceof GalleryImage && ! $permanent) {
-                GalleryParent::clearPrimaryIfAt($model->imageable, (string) $model->imageable_type, $model->path);
+                GalleryParent::clearPrimaryEverywhere((int) $model->user_id, $model->path);
             }
 
             return $permanent ? (bool) $model->delete() : $model->moveToTrash();

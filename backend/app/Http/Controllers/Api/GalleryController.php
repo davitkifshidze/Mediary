@@ -1705,11 +1705,7 @@ class GalleryController extends Controller
            ⚠️ სვეტი მშობლისაა (`poster_path`/`cover_path`/`thumbnail_path`) —
            ერთი ხელით ჩაწერილი სახელი სიმღერაზე/წიგნზე/თამაშზე ჩუმად
            გატეხილ სურათს დატოვებდა. */
-        GalleryParent::clearPrimaryIfAt(
-            $galleryImage->imageable,
-            (string) $galleryImage->imageable_type,
-            $galleryImage->path,
-        );
+        GalleryParent::clearPrimaryEverywhere((int) $galleryImage->user_id, $galleryImage->path);
 
         /* ⚠️ **ურნა** — ფოტო ურნაში გადადის: რიგი, ფაილი და კვოტა
            რჩება, `trash` scope კი მას ყველა ჭრილიდან მალავს. მთავარი ფოტოს

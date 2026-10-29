@@ -259,12 +259,7 @@ final class AlbumVault
      */
     private static function clearPoster(GalleryImage $image, string $path): void
     {
-        // ⚠️ სვეტი მშობლისაა — იხ. `GalleryParent::clearPrimaryIfAt()`
-        GalleryParent::clearPrimaryIfAt(
-            $image->imageable,
-            (string) $image->imageable_type,
-            $path,
-            quietly: true,
-        );
+        // ⚠️ ყველა ჩანაწერიდან, რომელიც ამ გზას უთითებს — იხ. `GalleryParent::clearPrimaryEverywhere()`
+        GalleryParent::clearPrimaryEverywhere((int) $image->user_id, $path, quietly: true);
     }
 }
