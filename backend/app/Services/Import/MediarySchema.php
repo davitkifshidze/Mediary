@@ -75,8 +75,29 @@ final class MediarySchema
             $column['type'] === 'date' => self::moment($value, 'Y-m-d'),
             in_array($column['type'], ['datetime', 'timestamp'], true) => self::moment($value, 'Y-m-d H:i:s'),
             $column['type'] === 'time' => is_string($value) && preg_match('/^\d{1,2}:\d{2}(:\d{2})?$/', trim($value)) ? trim($value) : null,
+            self::isLink($field) => self::link($value, $column['length'] ?? ($column['type'] === 'varchar' ? 255 : null)),
             default => self::text($value, $column['length'] ?? ($column['type'] === 'varchar' ? 255 : null)),
         };
+    }
+
+    /** ბმულის სვეტი — `url` ან `*_url` */
+    private static function isLink(string $field): bool
+    {
+        return $field === 'url' || str_ends_with($field, '_url');
+    }
+
+    /**
+     * **ბმული მხოლოდ `სქემა://…` ფორმით.**
+     *
+     * ⚠️ ფორმა ბმულს `url` წესით ამოწმებს, იმპორტი კი აქამდე უბრალო ტექსტად წერდა: ხელით
+     * აწყობილი ფაილის `-`-ით დაწყებული „ბმული" ვიდეოს ჩამოტვირთვისას yt-dlp-ს ოფციად
+     * გადაეცემოდა. ასეთი მნიშვნელობა `null`-ია (სვეტი ცარიელი რჩება).
+     */
+    private static function link(mixed $value, ?int $length): ?string
+    {
+        $text = self::text($value, $length);
+
+        return $text !== null && preg_match('#^[a-z][a-z0-9+.\-]*://.+$#is', trim($text)) ? $text : null;
     }
 
     /** თარიღი/მომენტი აპლიკაციის ზონაში (ექსპორტი კედლის საათით წერს — `RecordExporter::normalize()`) */

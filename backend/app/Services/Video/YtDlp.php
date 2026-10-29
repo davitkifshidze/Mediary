@@ -235,6 +235,8 @@ class YtDlp
             // ⚠️ `filesize` ხშირად ცარიელია (streaming manifest), `filesize_approx` — არა
             '--print', '%(filesize,filesize_approx)s',
             '-f', $this->formatSelector(),
+            // ⚠️ `--` — ბმული ოფციად არასდროს წაიკითხება (`-`-ით დაწყებულიც), `info()`-ის წესი
+            '--',
             $url,
         ], null, ProcessEnv::for());
         $process->setTimeout((int) config('mediary.ytdlp.probe_timeout', 60));
@@ -303,6 +305,8 @@ class YtDlp
             $args[] = 'mp4';
         }
 
+        // ⚠️ `--` — ბმული ოფციად არასდროს წაიკითხება (`-`-ით დაწყებულიც)
+        $args[] = '--';
         $args[] = $url;
 
         $process = new Process($args, null, ProcessEnv::for());
