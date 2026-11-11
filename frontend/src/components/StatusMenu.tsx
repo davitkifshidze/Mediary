@@ -103,7 +103,7 @@ function RowStatusMenu({
       {options.map((option) => (
         <ActionMenuClose key={option.key} asChild>
           <button type="button" className={actionItemClass()} onClick={option.pick}>
-            <Check className={cn('size-3.5', option.selected ? 'opacity-100' : 'opacity-0')} />
+            <Check className={cn('fb-selected size-3.5', option.selected ? 'opacity-100' : 'opacity-0')} />
             {option.node}
           </button>
         </ActionMenuClose>

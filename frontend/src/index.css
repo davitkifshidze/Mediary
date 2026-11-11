@@ -61,6 +61,10 @@
   --status-c12: #6b7280;
   /* რჩეული წითელ-ვარდისფერია (შენი სიტყვებით), სტაფილოსფერი აღარ */
   --favorite: #c8355e;
+  /* მონიშვნის ნიშანი (`SelectMark`): ფერადი ყუთი და **თეთრი** ✓ ორივე თემაში —
+     `primary` მუქ თემაში ღიაა და ✓ მუქი გამოდიოდა */
+  --mark: #211d16;
+  --mark-foreground: #ffffff;
   /* ვიდეოს პლატფორმის ბეჯები (`lib/platforms.ts`): ბრენდის ფერები,
      ფაილი — ნაცრისფერი, სხვა — მოყავისფრო ნაცრისფერი */
   --platform-youtube: #d00000;
@@ -220,6 +224,8 @@
   --status-c11: #d4a373;
   --status-c12: #9ca3af;
   --favorite: #f06a8a;
+  --mark: #3f7fb0;
+  --mark-foreground: #ffffff;
   /* იგივე ბრენდები მუქ ფონზე ოდნავ ღია, რომ ჩამქრალ ფონზე ტექსტი იკითხებოდეს */
   --platform-youtube: #ff5a5a;
   --platform-vimeo: #5ccbf0;
@@ -638,6 +644,59 @@
 }
 
 
+/* ============================================================
+   **კურსორი — ერთი წესი ყველა დასაჭერ ელემენტზე.**
+
+   ⚠️ ნედლ `<button>`-ს Tailwind-ის ნაგულისხმევით ისრის კურსორი აქვს; `Button`
+   კომპონენტი `cursor-pointer`-ს თვითონ წერს, ხელით დაწერილი ღილაკი კი (სეზონის
+   აკორდეონი, სერიის ნიშანი, ცხრილის სათაური) — ხან წერდა, ხან არა, და ვერ
+   მიხვდებოდი, იჭირება თუ არა. ახლა ეს ელემენტის **სახეობიდან** გამომდინარეობს.
+   დასაჭერი სტრიქონი და ბარათი (`div`) კლასს ისევ თვითონ წერს — მათ სახეობა არ ამხელს.
+
+   ⚠️ `:where()` — სპეციფიკურობა ნულია, ე.ი. კომპონენტის `cursor-grab`,
+   `cursor-default` და მისთანები ისევ იმარჯვებს.
+
+   ⚠️ **გამორთული — `not-allowed`.** ამისთვის გამორთულმა ღილაკმა თაგვი უნდა
+   „იგრძნოს": `Button` აღარ წერს `pointer-events-none`-ს, მის ჰოვერის ფერებს კი
+   `not-disabled:` იცავს; აიქონების ჰოვერის წესებს — ქვემოთ `:where(:not(:disabled))`.
+   ============================================================ */
+@layer base {
+  :where(button, summary, select, a[href], label[for], [role='button'], [role='tab'], [role='checkbox'], [role='switch'], [role='radio'], [role='menuitem'], [role='option']) {
+    cursor: pointer;
+  }
+
+  :where(button, input, select, textarea):disabled,
+  :where([aria-disabled='true']) {
+    cursor: not-allowed;
+  }
+}
+
+/* ============================================================
+   **მონიშვნის ნიშანი (`SelectMark`).**
+
+   მონიშნული — ფერადი ყუთი და თეთრი ✓. თუ ნიშანი დასაჭერ ელემენტშია და
+   დაჭერა მონიშვნას **მოხსნის**, ჰოვერზე ყუთი წითლდება და ✓-ის ადგილას ✕ ჩანს.
+   ⚠️ გამორთულ ღილაკში — არა: იქ დაჭერა არაფერს ხსნის. `fb-mark-host` — ფილა,
+   რომელიც `div`-ია და მაინც იჭირება (ფოტოს ბადე).
+   ⚠️ აიქონებზე ზოგადი ჰოვერის წესები (მწვანე ✓, მბრუნავი ✕) არ მოქმედებს —
+   კომპონენტი მათ `transition-transform`-ით გამორიცხავს.
+   ============================================================ */
+.fb-mark-on {
+  border-color: var(--mark);
+  background-color: var(--mark);
+  color: var(--mark-foreground);
+}
+.fb-mark-on > .fb-mark-x { display: none; }
+
+:where(button, a, label, [role='button'], [role='checkbox'], [role='option'], .fb-mark-host):where(:not(:disabled)):hover .fb-mark-on {
+  border-color: var(--destructive);
+  background-color: var(--destructive);
+  color: var(--destructive-foreground);
+}
+:where(button, a, label, [role='button'], [role='checkbox'], [role='option'], .fb-mark-host):where(:not(:disabled)):hover .fb-mark-on > .fb-mark-check { display: none; }
+:where(button, a, label, [role='button'], [role='checkbox'], [role='option'], .fb-mark-host):where(:not(:disabled)):hover .fb-mark-on > .fb-mark-x { display: block; }
+
+
 /* ---- ჰოვერი: მოძრაობა ----
    ⚠️ **`:not(.transition-transform)` აქ სავალდებულოა და არა სილამაზისთვის.**
    იმ აიქონს, რომლის ტრანსფორმსაც **კომპონენტი** მართავს (საიდბარისა და
@@ -655,153 +714,153 @@
    არ ემთხვევა, აიქონი ბოლოს ჩუმად ხტება (ვარსკვლავზე ეს თვალსაჩინოა). */
 @media (prefers-reduced-motion: no-preference) {
   /* ნაგულისხმევი — მსუბუქი ზრდა */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide:not(.transition-transform) { transform: scale(1.12); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide:not(.transition-transform) { transform: scale(1.12); }
 
   /* დახურვა/მოხსნა — ჯვარი ბრუნავს */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-x:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-circle-x:not(.transition-transform) { transform: rotate(90deg) scale(1.1); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-x:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-circle-x:not(.transition-transform) { transform: rotate(90deg) scale(1.1); }
 
   /* დამატება — ხაზგასმული ზრდა */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-plus:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-circle-plus:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-user-plus:not(.transition-transform) { transform: scale(1.25); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-plus:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-circle-plus:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-user-plus:not(.transition-transform) { transform: scale(1.25); }
 
   /* რედაქტირება — კალამი წერს */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-square-pen:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-pen-line:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-pencil-line:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-file-pen:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-notebook-pen:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-pencil:not(.transition-transform) { animation: fb-icon-write 520ms cubic-bezier(0.16, 1, 0.3, 1); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-square-pen:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-pen-line:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-pencil-line:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-file-pen:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-notebook-pen:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-pencil:not(.transition-transform) { animation: fb-icon-write 520ms cubic-bezier(0.16, 1, 0.3, 1); }
 
   /* ხელსაწყო — იხრება */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-wrench:not(.transition-transform) { transform: rotate(-12deg) scale(1.12); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-wrench:not(.transition-transform) { transform: rotate(-12deg) scale(1.12); }
 
   /* განახლება/გამეორება — ნახევარი ბრუნი */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-refresh-cw:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-rotate-cw:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-repeat:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-shuffle:not(.transition-transform) { transform: rotate(180deg); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-refresh-cw:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-rotate-cw:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-repeat:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-shuffle:not(.transition-transform) { transform: rotate(180deg); }
 
   /* დაბრუნება — საწინააღმდეგო ბრუნი */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-rotate-ccw:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-undo-2:not(.transition-transform) { transform: rotate(-180deg); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-rotate-ccw:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-undo-2:not(.transition-transform) { transform: rotate(-180deg); }
 
   /* პარამეტრები — კბილანა */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-settings-2:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-sliders-horizontal:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-user-cog:not(.transition-transform) { transform: rotate(45deg); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-settings-2:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-sliders-horizontal:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-user-cog:not(.transition-transform) { transform: rotate(45deg); }
 
   /* ჩამოტვირთვა — ქვევით */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-download:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-cloud-download:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-hard-drive-download:not(.transition-transform) { transform: translateY(2px); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-download:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-cloud-download:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-hard-drive-download:not(.transition-transform) { transform: translateY(2px); }
 
   /* ატვირთვა — ზევით */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-upload:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-cloud-upload:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-hard-drive-upload:not(.transition-transform) { transform: translateY(-2px); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-upload:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-cloud-upload:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-hard-drive-upload:not(.transition-transform) { transform: translateY(-2px); }
 
   /* ინფორმაცია ამოხტება, გაფრთხილება კანკალებს (ფონის ნაცვლად) */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-info:not(.transition-transform) { animation: fb-icon-hop 420ms cubic-bezier(0.16, 1, 0.3, 1); }
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-triangle-alert:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-circle-alert:not(.transition-transform) { animation: fb-icon-tremble 480ms ease-in-out; }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-info:not(.transition-transform) { animation: fb-icon-hop 420ms cubic-bezier(0.16, 1, 0.3, 1); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-triangle-alert:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-circle-alert:not(.transition-transform) { animation: fb-icon-tremble 480ms ease-in-out; }
 
   /* წინ — მარჯვნივ */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-arrow-right:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-chevron-right:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-send:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-log-in:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-skip-forward:not(.transition-transform) { transform: translateX(3px); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-arrow-right:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-chevron-right:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-send:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-log-in:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-skip-forward:not(.transition-transform) { transform: translateX(3px); }
 
   /* უკან — მარცხნივ */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-arrow-left:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-chevron-left:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-log-out:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-skip-back:not(.transition-transform) { transform: translateX(-3px); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-arrow-left:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-chevron-left:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-log-out:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-skip-back:not(.transition-transform) { transform: translateX(-3px); }
 
   /* ქვევით */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-chevron-down:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-arrow-down-wide-narrow:not(.transition-transform) { transform: translateY(2px); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-chevron-down:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-arrow-down-wide-narrow:not(.transition-transform) { transform: translateY(2px); }
 
   /* ზევით */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-chevron-up:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-arrow-up-narrow-wide:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-arrow-up-wide-narrow:not(.transition-transform) { transform: translateY(-2px); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-chevron-up:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-arrow-up-narrow-wide:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-arrow-up-wide-narrow:not(.transition-transform) { transform: translateY(-2px); }
 
   /* გარე ბმული — „გავიდა" */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-external-link:not(.transition-transform) { transform: translate(2px, -2px); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-external-link:not(.transition-transform) { transform: translate(2px, -2px); }
 
   /* დაკვრა/ძებნა/დადასტურება — ძლიერი ზრდა */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-play:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-circle-play:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-search:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-check:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-check-check:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-eye:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-eye-off:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-sparkles:not(.transition-transform) { transform: scale(1.22); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-play:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-circle-play:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-search:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-check:not(.transition-transform):not(.fb-selected),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-check-check:not(.transition-transform):not(.fb-selected),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-eye:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-eye-off:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-sparkles:not(.transition-transform) { transform: scale(1.22); }
 
   /* მიმაგრება — სამაგრი იხრება */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-paperclip:not(.transition-transform) { transform: rotate(-20deg) scale(1.1); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-paperclip:not(.transition-transform) { transform: rotate(-20deg) scale(1.1); }
 
   /* წაშლა — ქანაობა (ერთხელ) */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-trash-2:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-trash:not(.transition-transform) { animation: fb-icon-shake 420ms ease-in-out; }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-trash-2:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-trash:not(.transition-transform) { animation: fb-icon-shake 420ms ease-in-out; }
 
   /* რჩეული — ამოხტომა შემობრუნებით (ბოლო კადრი `transform`-ს ემთხვევა, რომ ანიმაციის ბოლოს არ ხტებოდეს) */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-star:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-heart:not(.transition-transform) { animation: fb-icon-star 560ms cubic-bezier(0.16, 1, 0.3, 1); transform: scale(1.24); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-star:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-heart:not(.transition-transform) { animation: fb-icon-star 560ms cubic-bezier(0.16, 1, 0.3, 1); transform: scale(1.24); }
 
   /* შეხსენება — ზარის ცხრადი რხევა */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell-ring:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell-plus:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell-off:not(.transition-transform) { animation: fb-icon-ring 760ms cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-bell:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-bell-ring:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-bell-plus:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-bell-off:not(.transition-transform) { animation: fb-icon-ring 760ms cubic-bezier(0.36, 0.07, 0.19, 0.97); }
 
   /* ---- ნავიგაციის ინსტრუმენტები (საიდბარის ქვედა რიგი) ---- */
 
   /* თარგმანი — გადაბრუნება (ერთი ენიდან მეორეზე) */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-languages:not(.transition-transform) { transform: rotateY(180deg); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-languages:not(.transition-transform) { transform: rotateY(180deg); }
 
   /* ლექსიკონები — წიგნი თაროდან იხრება */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-library:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-book-open:not(.transition-transform) { transform: rotate(-7deg) scale(1.12); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-library:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-book-open:not(.transition-transform) { transform: rotate(-7deg) scale(1.12); }
 
   /* ჟანრები — იარლიყი ეკიდება */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-tags:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-tag:not(.transition-transform) { transform: rotate(-12deg) scale(1.1); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-tags:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-tag:not(.transition-transform) { transform: rotate(-12deg) scale(1.1); }
 
   /* სიები — წინ */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-list-checks:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-list:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-list-video:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-list-music:not(.transition-transform) { transform: translateX(2px) scale(1.08); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-list-checks:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-list:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-list-video:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-list-music:not(.transition-transform) { transform: translateX(2px) scale(1.08); }
 
   /* ხალხი */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-users:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-user:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-user-round:not(.transition-transform) { transform: scale(1.18); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-users:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-user:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-user-round:not(.transition-transform) { transform: scale(1.18); }
 
   /* ჩატი — ბუშტი ამოხტება */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-message-square:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-messages-square:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-message-square-x:not(.transition-transform) { transform: translateY(-2px) scale(1.1); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-message-square:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-messages-square:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-message-square-x:not(.transition-transform) { transform: translateY(-2px) scale(1.1); }
 
   /* მოდულები — პაზლი ჯდება */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-puzzle:not(.transition-transform) { transform: rotate(14deg) scale(1.1); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-puzzle:not(.transition-transform) { transform: rotate(14deg) scale(1.1); }
 
   /* მოთხოვნები — შემოვარდნილი წერილი */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-inbox:not(.transition-transform) { animation: fb-icon-drop 520ms cubic-bezier(0.16, 1, 0.3, 1); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-inbox:not(.transition-transform) { animation: fb-icon-drop 520ms cubic-bezier(0.16, 1, 0.3, 1); }
 
   /* ლოგი/დოკუმენტი — იშლება */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-scroll-text:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-file-text:not(.transition-transform) { transform: scaleY(1.12) scale(1.06); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-scroll-text:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-file-text:not(.transition-transform) { transform: scaleY(1.12) scale(1.06); }
 
   /* უფლებები */
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-shield-check:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-shield:not(.transition-transform),
-  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-key-round:not(.transition-transform) { transform: scale(1.16); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-shield-check:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-shield:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-key-round:not(.transition-transform) { transform: scale(1.16); }
 
 }
 
@@ -811,22 +870,22 @@
    ყველა აიქონზე — თორემ მოდულის ფერი (საიდბარი, `--mod`) და სტატუსების
    ტონები დაიკარგებოდა. */
 /* შეუქცევადი/უარყოფითი მოქმედება */
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-trash-2:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-trash:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-x:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-ban:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-circle-slash:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-shield-off:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-file-x:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-video-off:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-log-out:not(.transition-transform) { color: var(--destructive); }
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-trash-2:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-trash:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-x:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-ban:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-circle-slash:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-shield-off:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-file-x:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-video-off:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-log-out:not(.transition-transform) { color: var(--destructive); }
 
 /* რედაქტირება — სრულ ტონამდე (სტაფილოსფერი, `--edit`) */
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-square-pen:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-pen-line:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-pencil-line:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-file-pen:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-pencil:not(.transition-transform) { color: var(--edit); }
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-square-pen:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-pen-line:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-pencil-line:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-file-pen:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-pencil:not(.transition-transform) { color: var(--edit); }
 
 /* **რედაქტირების ღილაკში** (`Button variant="edit"`) აიქონი ტექსტს მიჰყვება:
    მოსვენებულზე სტაფილოსფერია, ჰოვერზე სავსე ფონზე — ღია.
@@ -845,37 +904,38 @@
 .fb-destructive:hover .lucide:not(.transition-transform) { color: currentColor; }
 
 /* რჩეული — აპის საკუთარი ტოკენი და თბილი შუქი */
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-star:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-heart:not(.transition-transform) { color: var(--favorite); filter: drop-shadow(0 0 6px color-mix(in oklab, var(--favorite) 55%, transparent)); }
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-star:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-heart:not(.transition-transform) { color: var(--favorite); filter: drop-shadow(0 0 6px color-mix(in oklab, var(--favorite) 55%, transparent)); }
 
 /* შეხსენება — ზარის ოქროსფერი და შუქი */
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell-ring:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell-plus:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell-off:not(.transition-transform) { color: var(--gold); filter: drop-shadow(0 0 6px color-mix(in oklab, var(--gold) 50%, transparent)); }
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-bell:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-bell-ring:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-bell-plus:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-bell-off:not(.transition-transform) { color: var(--gold); filter: drop-shadow(0 0 6px color-mix(in oklab, var(--gold) 50%, transparent)); }
 
 /* „ჯადოსნური" მოქმედება */
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-sparkles:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-wand-sparkles:not(.transition-transform) { color: var(--gold); }
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-sparkles:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-wand-sparkles:not(.transition-transform) { color: var(--gold); }
 
-/* დადასტურება/შენახვა */
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-check:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-check-check:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-circle-check:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-shield-check:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-save:not(.transition-transform) { color: var(--icon-ok); }
+/* დადასტურება/შენახვა. ⚠️ `fb-selected` — ✓, რომელიც მხოლოდ „ეს არის არჩეული“-ს ამბობს
+   (სელექტის პუნქტი, ჩეკბოქსი, მენიუს მონიშნული რიგი): ის დადასტურება არ არის და ჰოვერზე არ მწვანდება */
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-check:not(.transition-transform):not(.fb-selected),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-check-check:not(.transition-transform):not(.fb-selected),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-circle-check:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-shield-check:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-save:not(.transition-transform) { color: var(--icon-ok); }
 
 /* ბმული და ინფორმაცია */
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-external-link:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-link:not(.transition-transform),
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-info:not(.transition-transform) { color: var(--icon-info); }
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-external-link:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-link:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide-info:not(.transition-transform) { color: var(--icon-info); }
 
 /* ⚠️ **გამორთვის სახელური** — თუ სადმე მოძრაობა ან ფერი ხელს უშლის,
    `fb-icon-plain` ან ბლოკს დაედება, ან თვითონ აიქონს. */
 .fb-icon-plain .lucide,
 .lucide.fb-icon-plain,
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .fb-icon-plain .lucide,
-:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide.fb-icon-plain {
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .fb-icon-plain .lucide,
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):where(:not(:disabled)):hover .lucide.fb-icon-plain {
   transform: none;
   animation: none;
   filter: none;

@@ -139,7 +139,7 @@ export function contextMenuItems(actions: MenuAction[]): ReactNode {
           <ContextMenuSubContent>
             {action.sub.map((item) => (
               <ContextMenuItem key={item.key} disabled={item.disabled} onSelect={deferred(item.run)}>
-                <Check className={cn('size-3.5', item.checked ? 'opacity-100' : 'opacity-0')} />
+                <Check className={cn('fb-selected size-3.5', item.checked ? 'opacity-100' : 'opacity-0')} />
                 {item.label}
               </ContextMenuItem>
             ))}
@@ -205,7 +205,7 @@ export function RecordActionMenu({
               {action.sub.map((item) => (
                 <ActionMenuClose key={item.key} asChild>
                   <button type="button" className={actionItemClass()} disabled={item.disabled} onClick={item.run}>
-                    <Check className={cn('size-3.5', item.checked ? 'opacity-100' : 'opacity-0')} />
+                    <Check className={cn('fb-selected size-3.5', item.checked ? 'opacity-100' : 'opacity-0')} />
                     {item.label}
                   </button>
                 </ActionMenuClose>

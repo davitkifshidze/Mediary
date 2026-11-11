@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
-  Check,
   CheckSquare,
   Download,
   ImageOff,
@@ -41,6 +40,7 @@ import { hasTerm, toggleTerm } from '@/lib/webQuery'
 import { CastMemberDialog } from '@/components/CastMemberDialog'
 import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 import { Button } from '@/components/ui/button'
+import { SelectMark } from '@/components/ui/select-mark'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
@@ -777,16 +777,8 @@ export function WebImageDialog({
                             </span>
                           )}
 
-                          <span
-                            className={cn(
-                              'absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-md border transition-colors',
-                              on
-                                ? 'border-primary bg-primary text-primary-foreground'
-                                : 'border-white/70 bg-black/40 text-transparent',
-                            )}
-                          >
-                            <Check className="size-3.5" />
-                          </span>
+                          {/* მონიშნული — თეთრი ✓; ფილაზე ჰოვერისას წითელი ✕ (დაჭერა მოხსნის) */}
+                          <SelectMark checked={on} size="sm" onPhoto className="absolute right-1.5 top-1.5" />
                         </span>
 
                         <span className="block space-y-1 px-2.5 py-2">

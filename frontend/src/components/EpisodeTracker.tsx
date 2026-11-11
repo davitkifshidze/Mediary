@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronDown, DownloadCloud, ListVideo } from 'lucide-react'
+import { ChevronDown, DownloadCloud, ListVideo } from 'lucide-react'
 import {
   fetchEpisodes,
   markEpisodes,
@@ -13,6 +13,7 @@ import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
+import { SelectMark } from '@/components/ui/select-mark'
 import { InfoHint } from '@/components/ui/info-hint'
 import { useToast } from '@/components/ui/feedback'
 
@@ -188,7 +189,8 @@ function SeasonRow({
             disabled={busy}
             onClick={() => onSeason(!done)}
           >
-            <Check className="size-4" />
+            {/* სეზონის ნიშანი იმავე ყუთია, რაც სერიისა: ნანახზე თეთრი ✓, ჰოვერზე წითელი ✕ */}
+            <SelectMark checked={done} size="sm" />
             {done ? t('episodes.unmarkSeason') : t('episodes.markSeason')}
           </Button>
         )}
@@ -202,14 +204,10 @@ function SeasonRow({
                 type="button"
                 disabled={!editable || busy}
                 onClick={() => onEpisode(episode.id, !episode.watched)}
-                className={
-                  episode.watched
-                    ? 'flex size-5 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground'
-                    : 'flex size-5 shrink-0 items-center justify-center rounded-md border border-border'
-                }
+                className="shrink-0 rounded-md"
                 aria-label={t(episode.watched ? 'episodes.unmark' : 'episodes.mark')}
               >
-                {episode.watched && <Check className="size-3.5" />}
+                <SelectMark checked={episode.watched} size="sm" />
               </button>
               <span className="w-10 shrink-0 text-xs tabular-nums text-muted-foreground">
                 {season.season}×{episode.episode}

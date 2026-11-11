@@ -40,6 +40,7 @@ import { fetchPrivateObjectUrl, usePrivateFileUrl } from '@/components/PrivateFi
 import { useInViewOnce } from '@/lib/inView'
 import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { SelectMark } from '@/components/ui/select-mark'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { Pagination } from '@/components/ui/pagination'
 import { useClientPages } from '@/lib/paged'
@@ -847,6 +848,8 @@ function PhotoCell({
           className={cn(
             'group relative flex h-full flex-col overflow-hidden rounded-xl border bg-card transition-colors',
             checked ? 'border-primary' : 'border-border',
+            // მონიშვნის რეჟიმში ფილაზე დაჭერა ნიშანს ხსნის — ჰოვერზე ნიშანი წითელ ✕-ად იქცევა
+            picking && 'fb-mark-host',
           )}
         >
           <div className="flex flex-1 flex-col justify-center bg-muted/40">
@@ -901,14 +904,7 @@ function PhotoCell({
               არაფერი". ორივე პირობა საჭიროა: `picking` ცარიელ უჯრებზეც
               აჩვენებს ჩარჩოს, `checked` კი მაშინაც, თუ რეჟიმი ჯერ არ ჩართულა. */}
           {(picking || checked) && (
-            <span
-              className={cn(
-                'pointer-events-none absolute right-2 top-2 grid size-6 place-items-center rounded-md',
-                checked ? 'bg-primary text-primary-foreground' : 'bg-background/80 text-muted-foreground',
-              )}
-            >
-              {checked ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
-            </span>
+            <SelectMark checked={checked} onPhoto className="pointer-events-none absolute right-2 top-2" />
           )}
 
           {item.badge && (

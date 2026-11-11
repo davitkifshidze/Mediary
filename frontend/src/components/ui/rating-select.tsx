@@ -55,7 +55,7 @@ function Option({ checked, onSelect, children }: { checked: boolean; onSelect: (
         checked && 'font-medium',
       )}
     >
-      <span className="absolute left-2 flex size-4 items-center justify-center">{checked && <Check className="size-4" />}</span>
+      <span className="absolute left-2 flex size-4 items-center justify-center">{checked && <Check className="fb-selected size-4" />}</span>
       {children}
     </button>
   )
@@ -154,7 +154,7 @@ export function RatingSelect({
 
           {/* ბოლო რიგი — ★ + ხელით ჩასაწერი წილადი (0–10, მეათედამდე; მძიმეც მიიღება) */}
           <div className="relative mt-1 flex items-center gap-1.5 border-t border-border pb-0.5 pl-8 pr-1 pt-1.5">
-            <span className="absolute left-2 flex size-4 items-center justify-center">{custom && <Check className="size-4" />}</span>
+            <span className="absolute left-2 flex size-4 items-center justify-center">{custom && <Check className="fb-selected size-4" />}</span>
             <Star className="transition-transform size-3.5 shrink-0 fill-current text-gold" aria-hidden="true" />
             <input
               type="text"

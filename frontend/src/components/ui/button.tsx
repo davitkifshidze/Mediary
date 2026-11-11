@@ -2,15 +2,20 @@ import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
+/* ⚠️ **გამორთული ღილაკი თაგვს „გრძნობს"** — მასზე კურსორი `not-allowed`-ია და
+   მინიშნება (`title`, `Tooltip`) ჩანს. ამიტომ `pointer-events-none` აღარ წერია,
+   ჰოვერის ფერები კი `not-disabled:`-ით იწერება: გამორთული ღილაკი ჰოვერზე არ
+   იცვლება. ბმულად დახატულ ღილაკს (`asChild`, `buttonVariants()` `<a>`-ზე)
+   ეს არ ეხება — ბმული არასდროს არის `:disabled`. */
 const buttonVariants = cva(
-  'inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background,border-color,opacity] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background,border-color,opacity] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:opacity-90',
-        secondary: 'bg-secondary text-secondary-foreground hover:opacity-90',
-        outline: 'border border-border bg-transparent hover:bg-muted',
-        ghost: 'hover:bg-muted',
+        default: 'bg-primary text-primary-foreground not-disabled:hover:opacity-90',
+        secondary: 'bg-secondary text-secondary-foreground not-disabled:hover:opacity-90',
+        outline: 'border border-border bg-transparent not-disabled:hover:bg-muted',
+        ghost: 'not-disabled:hover:bg-muted',
         /* **წაშლის ოჯახი — ორი იერი.** `destructive` სავსე წითელია მუდმივი
            ჩარჩოთი და ჰოვერზე ბრუნდება (ფონი — გვერდის, ტექსტი და აიქონი —
            წითელი): დასტურის დიალოგი, დიალოგების ფუტერი, ფოტოს გადაფარვა.
@@ -20,16 +25,16 @@ const buttonVariants = cva(
            მიჰყვება (ზოგადი ჰოვერის წესი ურნას წითლად ღებავს და სავსე წითელ
            ფონზე გააქრობდა). ჩარჩო ორივეს აქვს, რომ ზომა არ შეიცვალოს. */
         destructive:
-          'fb-destructive border border-destructive bg-destructive text-destructive-foreground hover:bg-background hover:text-destructive',
+          'fb-destructive border border-destructive bg-destructive text-destructive-foreground not-disabled:hover:bg-background not-disabled:hover:text-destructive',
         destructiveOutline:
-          'fb-destructive border border-destructive/60 bg-transparent text-destructive hover:border-destructive hover:bg-destructive hover:text-destructive-foreground',
+          'fb-destructive border border-destructive/60 bg-transparent text-destructive not-disabled:hover:border-destructive not-disabled:hover:bg-destructive not-disabled:hover:text-destructive-foreground',
         /* **რედაქტირება** (2026-09-28, შენი არჩევანი) — სტაფილოსფერი ჩარჩო და
            ტექსტი, ჰოვერზე სავსე სტაფილოსფერი ღილაკი. ერთი ვარიანტი ყველგან:
            ჩანაწერის გვერდი, სიების რიგები, ლექსიკონები, ველები, ალბომები.
            ⚠️ `fb-edit` Tailwind-ის კლასი არაა — `index.css`-ის სახელურია,
            რომლითაც აიქონი ტექსტის ფერს მიჰყვება (ზოგადი ჰოვერის წესი მას
            სრულ სტაფილოსფრად შეღებავდა და სავსე ფონზე გააქრობდა). */
-        edit: 'fb-edit border border-edit/60 bg-transparent text-edit hover:border-edit hover:bg-edit hover:text-edit-foreground',
+        edit: 'fb-edit border border-edit/60 bg-transparent text-edit not-disabled:hover:border-edit not-disabled:hover:bg-edit not-disabled:hover:text-edit-foreground',
       },
       size: {
         default: 'h-10 px-4 py-2',
@@ -42,7 +47,7 @@ const buttonVariants = cva(
        ფერი `index.css`-იდან) — ფონის კვადრატი მოიხსნა. ტექსტიან ღილაკს ფონი
        რჩება: იქ ის ღილაკის საზღვარია და არა აიქონის მორთულობა. */
     compoundVariants: [
-      { size: 'icon', variant: ['ghost', 'outline'], class: 'hover:bg-transparent' },
+      { size: 'icon', variant: ['ghost', 'outline'], class: 'not-disabled:hover:bg-transparent' },
     ],
     defaultVariants: { variant: 'default', size: 'default' },
   },

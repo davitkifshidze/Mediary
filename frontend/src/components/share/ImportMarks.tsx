@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Check, Trash2 } from 'lucide-react'
 import type { PublicCard } from '@/api/publicProfile'
 import { cn } from '@/lib/utils'
+import { SelectMark } from '@/components/ui/select-mark'
 
 /* ============================================================
    **„ჩემს ბიბლიოთეკაში დამატების" ნიშნები ბარათის კუთხეში** — გაზიარების
@@ -42,12 +43,9 @@ export function SelectBox({ title, selected, onToggle }: { title: string; select
       aria-checked={selected}
       aria-label={t('share.page.select', { title })}
       onClick={onToggle}
-      className={cn(
-        'absolute right-1.5 top-1.5 grid size-6 cursor-pointer place-items-center rounded-md border shadow',
-        selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background/90',
-      )}
+      className="absolute right-1.5 top-1.5 rounded-md shadow"
     >
-      {selected && <Check className="size-4" />}
+      <SelectMark checked={selected} />
     </button>
   )
 }
