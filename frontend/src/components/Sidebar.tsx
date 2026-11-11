@@ -28,6 +28,7 @@ import {
   Trash2,
   Users,
   X,
+  type LucideIcon,
 } from 'lucide-react'
 import { MEDIA, mediaFromPath, type MediaType } from '@/lib/media'
 import {
@@ -49,7 +50,15 @@ import { GALLERY_CUTS } from '@/lib/galleryCuts'
 import { PERSONAL_CUTS } from '@/lib/personalCuts'
 import { cn } from '@/lib/utils'
 import { statusName, useCustomStatusMap, useStatusMap } from '@/lib/statuses'
-import { arrangeSections, layoutFor, pseudoSectionsFor, sectionSearch } from '@/lib/statusSections'
+import {
+  ALL_SECTION_COLOR,
+  FAVORITE_SECTION_COLOR,
+  arrangeSections,
+  layoutFor,
+  pseudoSectionsFor,
+  sectionSearch,
+} from '@/lib/statusSections'
+import { STATUS_PALETTE, statusColor } from '@/lib/statusColor'
 // ⚠️ `App.tsx` ამას ისედაც სტატიკურად აიმპორტებს — ე.ი. საწყის chunk-ს არაფერი ემატება
 import { DICTIONARIES } from '@/lib/dictionaries'
 import { useContentLang } from '@/lib/settings'
@@ -63,7 +72,8 @@ import { isCustomModule } from '@/lib/customModules'
  * ნაგულისხმევად პირველი/ბოლოა, მაგრამ მომხმარებელი ლექსიკონის გვერდზე
  * მათ ადგილს ცვლის და ნებისმიერ სექციას მალავს.
  */
-type VideoSection = { id: string; label: string; icon?: string | null; search: string }
+/** მოდულის ქვეპუნქტი; ⚠️ `color` სავალდებულოა — იხ. `SubItem` */
+type VideoSection = { id: string; label: string; icon?: string | null; color: string; search: string }
 
 /**
  * დომენი მხოლოდ დომენის საკუთარი მარშრუტებისთვის — /genres, /status, /actors
@@ -133,13 +143,69 @@ const MODULE_ROW_IDLE =
    ============================================================ */
 const SUB_ROW =
   'flex w-full cursor-pointer items-center gap-2.5 rounded-md border-l-2 px-3 py-1.5 text-sm transition-colors'
-const SUB_ROW_ACTIVE =
-  'border-l-[var(--mod)] bg-[var(--mod-fill)] font-semibold text-foreground [&>svg]:text-[var(--mod)]'
+const SUB_ROW_ACTIVE = 'border-l-[var(--mod)] bg-[var(--mod-fill)] font-semibold text-foreground'
 const SUB_ROW_IDLE =
   'border-l-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
 
-/** ქვე-პუნქტი — ერთი განსაზღვრება ოცივე გამოძახებისთვის */
-const subRow = (active: boolean) => cn(SUB_ROW, active ? SUB_ROW_ACTIVE : SUB_ROW_IDLE)
+/** შეხსენებებისა და ფლეილისტების პუნქტები — მოდულის სექციებს შორის დგას */
+const PLAYLISTS_COLOR = 'var(--tool-chat)'
+const REMINDERS_COLOR = 'var(--status-towatch)'
+
+/**
+ * **ქვეპუნქტი — ერთი კომპონენტი, და ფერი მასში სავალდებულოა.**
+ *
+ * ⚠️ აიქონი **ყოველთვის** ფერადია და არა მხოლოდ აქტიურ მდგომარეობაში: ადრე
+ * არააქტიური პუნქტის აიქონი ნაცრისფერი იყო, ე.ი. მენიუ ერთი ნაცრისფერი სვეტი
+ * ჩანდა და სტატუსის საკუთარი ფერი (`statuses.color`) საერთოდ არ გამოიყენებოდა.
+ * `color` ტიპით სავალდებულოა — ფერის გარეშე პუნქტი ვეღარ დაიწერება: სტატუსი
+ * თავის ფერს აწვდის, ფსევდო-განყოფილება და ჭრილი — თავის აღწერაში ჩაწერილს
+ * (`statusSections.ts`, `galleryCuts.ts`, `personalCuts.ts`).
+ *
+ * ⚠️ აქტიური პუნქტი ხაზითა და ფონით ჩანს (მოდულის ფერში), აიქონი კი თავის
+ * ფერს ინარჩუნებს — „რომელია" და „რომელზე ვდგავარ" ორი სხვადასხვა ნიშანია.
+ * ⚠️ ფერი inline `style`-ია: Tailwind კლასს ცვლადიდან ვერ დაბადებს.
+ */
+function SubItem({
+  active,
+  color,
+  icon,
+  label,
+  to,
+  onClick,
+}: {
+  active: boolean
+  /** აიქონის ფერი — CSS-მნიშვნელობა (`var(--…)` ან `#rrggbb`) */
+  color: string
+  /** მოდულის აიქონის სახელი (`ModuleIcon`) ან lucide-კომპონენტი */
+  icon: string | LucideIcon | null | undefined
+  label: string
+  /** ბმული; მის გარეშე პუნქტი ღილაკია (მისამართს `onClick` ცვლის) */
+  to?: string
+  onClick: () => void
+}) {
+  const Icon = typeof icon === 'string' || icon == null ? null : icon
+  const body = (
+    <>
+      {Icon ? (
+        <Icon className="size-4 shrink-0" style={{ color }} />
+      ) : (
+        <ModuleIcon name={icon as string | null | undefined} className="size-4 shrink-0" style={{ color }} />
+      )}
+      <span className="min-w-0 truncate">{label}</span>
+    </>
+  )
+  const className = cn(SUB_ROW, active ? SUB_ROW_ACTIVE : SUB_ROW_IDLE)
+
+  return to !== undefined ? (
+    <Link to={to} onClick={onClick} className={className} data-sub-item>
+      {body}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} className={className} data-sub-item>
+      {body}
+    </button>
+  )
+}
 
 /**
  * „დამატება" — **მოქმედებაა და არა ჭრილი**, ე.ი. აქტიური მდგომარეობა არ
@@ -341,15 +407,24 @@ export function Sidebar({
       layoutFor(enabled, domain),
     )
       .filter((row) => !row.hidden)
-      .map((row) =>
+      .map((row, index) =>
         row.kind === 'status'
           ? {
               id: row.id,
               label: statusName(row.status, lang),
               icon: row.status.icon ?? 'Circle',
+              /* სტატუსის საკუთარი ფერი. ⚠️ სერვერი უფერო სტატუსს აღარ ქმნის
+                 (`Status::booted()`); სათადარიგო პალიტრის ფერი მხოლოდ ძველი ქეშისთვისაა */
+              color: statusColor(row.status) ?? `var(--status-${STATUS_PALETTE[index % STATUS_PALETTE.length]})`,
               search: sectionSearch(row),
             }
-          : { id: row.id, label: t(row.pseudo.labelKey), icon: row.pseudo.icon, search: sectionSearch(row) },
+          : {
+              id: row.id,
+              label: t(row.pseudo.labelKey),
+              icon: row.pseudo.icon,
+              color: row.pseudo.color,
+              search: sectionSearch(row),
+            },
       )
 
   /**
@@ -378,8 +453,8 @@ export function Sidebar({
 
   /** „ყველა" · „რჩეული" — ფსევდო-განყოფილებები სტატუსის ლექსიკონის გარეშე */
   const favoriteSections: VideoSection[] = [
-    { id: 'all', label: t('filter.all'), icon: 'LayoutGrid', search: '' },
-    { id: 'favorite', label: t('filter.favorite'), icon: 'Star', search: 'view=favorite' },
+    { id: 'all', label: t('filter.all'), icon: 'LayoutGrid', color: ALL_SECTION_COLOR, search: '' },
+    { id: 'favorite', label: t('filter.favorite'), icon: 'Star', color: FAVORITE_SECTION_COLOR, search: 'view=favorite' },
   ]
 
   /**
@@ -420,17 +495,17 @@ export function Sidebar({
         {sectionOpen && (
           <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
             {sections.map((sec) => (
-              <button
+              <SubItem
                 key={sec.id}
+                active={activeSection === sec.id}
+                color={sec.color}
+                icon={sec.icon}
+                label={sec.label}
                 onClick={() => {
                   navigate({ pathname: m.route_base, search: sec.search })
                   setDrawerOpen(false)
                 }}
-                className={subRow(activeSection === sec.id)}
-              >
-                <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
-                <span className="min-w-0 truncate">{sec.label}</span>
-              </button>
+              />
             ))}
             {extra}
             <Link
@@ -474,14 +549,14 @@ export function Sidebar({
             {sectionsFor(type).map((sec) => {
               const active = isActiveDomain && activeView === sec.id
               return (
-                <button
+                <SubItem
                   key={sec.id}
+                  active={active}
+                  color={sec.color}
+                  icon={sec.icon}
+                  label={sec.label}
                   onClick={() => setView(d.libraryPath, sec.id)}
-                  className={subRow(active)}
-                >
-                  <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
-                  <span className="min-w-0 truncate">{sec.label}</span>
-                </button>
+                />
               )
             })}
             <Link
@@ -510,14 +585,14 @@ export function Sidebar({
       return moduleSection(m, favoriteSections, {
         active: location.pathname === m.route_base || location.pathname.startsWith('/playlists'),
         extra: (
-          <Link
+          <SubItem
+            active={location.pathname.startsWith('/playlists')}
+            color={PLAYLISTS_COLOR}
+            icon={ListMusic}
+            label={t('playlists.title')}
             to="/playlists"
             onClick={() => setDrawerOpen(false)}
-            className={subRow(location.pathname.startsWith('/playlists'))}
-          >
-            <ListMusic className="size-4 shrink-0" />
-            {t('playlists.title')}
-          </Link>
+          />
         ),
       })
     }
@@ -528,14 +603,14 @@ export function Sidebar({
     if (m.key === 'note') {
       return moduleSection(m, sectionsFor('note'), {
         extra: (
-          <Link
+          <SubItem
+            active={location.pathname === '/notes/reminders'}
+            color={REMINDERS_COLOR}
+            icon={BellRing}
+            label={t('notes.remindersTitle')}
             to="/notes/reminders"
             onClick={() => setDrawerOpen(false)}
-            className={subRow(location.pathname === '/notes/reminders')}
-          >
-            <BellRing className="size-4 shrink-0" />
-            {t('notes.remindersTitle')}
-          </Link>
+          />
         ),
       })
     }
@@ -581,23 +656,20 @@ export function Sidebar({
           {sectionOpen && (
             <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
               {GALLERY_CUTS.map((cut) => (
-                <Link
+                <SubItem
                   key={cut.key}
+                  // ⚠️ „ყველა" მხოლოდ ზუსტ მისამართზეა აქტიური, თორემ
+                  // ყოველ ქვე-გვერდზე ორი პუნქტი აინთებოდა
+                  active={cut.key === 'all' ? location.pathname === cut.path : location.pathname.startsWith(cut.path)}
+                  color={cut.color}
+                  icon={cut.icon}
+                  /* ⚠️ სახელი ერთი გასაღებიდან მოდის: ადრე „ჩანაწერები" ჩართული
+                     მოდულების სახელებისგან იგებოდა, რაც ტაბისთვის გრძელი იყო და
+                     მაინც არასრული — შიგნით სიმღერაც ზის და წიგნიც */
+                  label={t(`gallery.cut.${cut.key}`)}
                   to={cut.path}
                   onClick={() => setDrawerOpen(false)}
-                  className={subRow(
-                    // ⚠️ „ყველა" მხოლოდ ზუსტ მისამართზეა აქტიური, თორემ
-                    // ყოველ ქვე-გვერდზე ორი პუნქტი აინთებოდა
-                    (cut.key === 'all' ? location.pathname === cut.path : location.pathname.startsWith(cut.path)),
-                  )}
-                >
-                  <cut.icon className="size-4 shrink-0" />
-                  {/* ⚠️ სახელი ერთი გასაღებიდან მოდის: ადრე
-                      „ჩანაწერები" ჩართული მოდულების სახელებისგან
-                      იგებოდა, რაც ტაბისთვის გრძელი იყო და მაინც
-                      არასრული — შიგნით სიმღერაც ზის და წიგნიც */}
-                  <span className="min-w-0 truncate">{t(`gallery.cut.${cut.key}`)}</span>
-                </Link>
+                />
               ))}
             </div>
           )}
@@ -632,15 +704,15 @@ export function Sidebar({
           {sectionOpen && (
             <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
               {PERSONAL_CUTS.map((cut) => (
-                <Link
+                <SubItem
                   key={cut.key}
+                  active={onPersonal && activeCut === cut.key}
+                  color={cut.color}
+                  icon={cut.icon}
+                  label={t(`personal.cut.${cut.key}`)}
                   to={cut.path}
                   onClick={() => setDrawerOpen(false)}
-                  className={subRow(onPersonal && activeCut === cut.key)}
-                >
-                  <cut.icon className="size-4 shrink-0" />
-                  <span className="min-w-0 truncate">{t(`personal.cut.${cut.key}`)}</span>
-                </Link>
+                />
               ))}
             </div>
           )}

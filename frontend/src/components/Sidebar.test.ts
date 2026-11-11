@@ -205,6 +205,67 @@ describe('Sidebar module sections', () => {
 })
 
 /* ============================================================
+   **ქვეპუნქტის აიქონი ყოველთვის ფერადია.**
+
+   ⚠️ არააქტიური პუნქტის აიქონი ადრე ნაცრისფერი იყო და სტატუსის საკუთარი ფერი
+   მენიუში საერთოდ არ ჩანდა. ყველა ქვეპუნქტი ერთი კომპონენტით იხატება
+   (`SubItem`, `data-sub-item`), რომელსაც ფერი სავალდებულოდ სჭირდება.
+   ============================================================ */
+
+describe('Sidebar sub-item colours', () => {
+  /** გაშლილი განყოფილების ქვეპუნქტები: ტექსტი და აიქონის inline ფერი */
+  const colours = (button: HTMLButtonElement) =>
+    [...(button.nextElementSibling?.querySelectorAll<HTMLElement>('[data-sub-item]') ?? [])].map((x) => ({
+      text: x.textContent?.trim(),
+      color: x.querySelector<SVGElement>('svg')?.style.color ?? '',
+    }))
+
+  it('colours every item of a section whether it is the active one or not', async () => {
+    const el = await mount('/courses?view=favorite')
+    const items = colours(moduleButton(el, 'course')!)
+
+    expect(items).toEqual([
+      { text: i18n.t('filter.all'), color: 'var(--mod)' },
+      { text: i18n.t('filter.favorite'), color: 'var(--favorite)' },
+    ])
+  })
+
+  it('gives a status its own colour and falls back to the palette when it has none', async () => {
+    const status = (key: string, color: string | null, sort: number) => ({
+      id: sort, key, module: 'note', name_ka: key, name_en: key, role: 'todo', icon: 'Circle', color, is_default: false, sort_order: sort,
+    })
+    mocks.statusMap = { note: [status('later', 'c7', 1), status('hex', '#2f6b8f', 2), status('legacy', null, 3)] }
+
+    const el = await mount()
+    const note = moduleButton(el, 'note')!
+    await act(async () => note.click())
+
+    const items = colours(note)
+    const byText = Object.fromEntries(items.map((i) => [i.text, i.color]))
+
+    expect(byText.later).toBe('var(--status-c7)')
+    // jsdom hex-ს rgb()-ად აბრუნებს
+    expect(byText.hex).toBe('rgb(47, 107, 143)')
+    expect(byText.legacy).toMatch(/^var\(--status-c\d+\)$/)
+    expect(items.every((i) => i.color !== '')).toBe(true)
+
+    mocks.statusMap = {}
+  })
+
+  it('colours the extra rows too — playlists and reminders', async () => {
+    const el = await mount()
+
+    const song = moduleButton(el, 'song')!
+    await act(async () => song.click())
+    expect(colours(song).at(-1)).toEqual({ text: i18n.t('playlists.title'), color: 'var(--tool-chat)' })
+
+    const note = moduleButton(el, 'note')!
+    await act(async () => note.click())
+    expect(colours(note).at(-1)).toEqual({ text: i18n.t('notes.remindersTitle'), color: 'var(--status-towatch)' })
+  })
+})
+
+/* ============================================================
    **ერთი რიგი** — მედია და დანარჩენი მოდულები ერთმანეთში
    ერევა, `enabled`-ის (ე.ი. სერვერის პირადი რიგის) მიხედვით. ადრე ჯერ ყველა
    მედია იხატებოდა და მერე დანარჩენი — ფილმს სიმღერის შემდეგ ვერანაირი რიგი

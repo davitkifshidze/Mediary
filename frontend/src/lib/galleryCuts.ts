@@ -24,9 +24,9 @@ export type GalleryCut =
 
 /** ჭრილი → მისამართი და ხატულა */
 export const GALLERY_CUTS = [
-  { key: 'all', path: '/gallery', icon: Images },
-  { key: 'records', path: '/gallery/records', icon: LibraryBig },
-  { key: 'actors', path: '/gallery/actors', icon: Users },
+  { key: 'all', path: '/gallery', icon: Images, color: 'var(--mod)' },
+  { key: 'records', path: '/gallery/records', icon: LibraryBig, color: 'var(--tool-bulk)' },
+  { key: 'actors', path: '/gallery/actors', icon: Users, color: 'var(--tool-people)' },
   /* ⚠️ **„უკატეგორიო" → „ალბომები" (შენი მითითება, 2026-09-16).** ჭრილის
      სახელი მისი **ნარჩენით** ერქვა — „ის ფოტოები, რომლებსაც მშობელი არ
      ჰყავთ" —, თუმცა მისი შინაარსი ალბომებია: სწორედ აქ ალაგებ, ქმნი
@@ -34,11 +34,12 @@ export const GALLERY_CUTS = [
      („ალბომის გარეშე") და არა მთელი სექციის სახელი.
      ⚠️ ძველი მისამართი `/gallery/uncategorized` ცოცხალია და აქ
      გადმოამისამართებს — შენახული ბმული არ უნდა გატყდეს. */
-  { key: 'albums', path: '/gallery/albums', icon: Folders },
-  { key: 'videos', path: '/gallery/videos', icon: Video },
-  { key: 'sources', path: '/gallery/sources', icon: Radio },
-  { key: 'modules', path: '/gallery/modules', icon: Boxes },
-] as const satisfies readonly { key: GalleryCut; path: string; icon: unknown }[]
+  { key: 'albums', path: '/gallery/albums', icon: Folders, color: 'var(--gold)' },
+  { key: 'videos', path: '/gallery/videos', icon: Video, color: 'var(--tool-translations)' },
+  { key: 'sources', path: '/gallery/sources', icon: Radio, color: 'var(--tool-sync)' },
+  { key: 'modules', path: '/gallery/modules', icon: Boxes, color: 'var(--tool-modules)' },
+  // ⚠️ `color` სავალდებულოა (`satisfies`): მენიუს ქვეპუნქტის აიქონი ყოველთვის ფერადია
+] as const satisfies readonly { key: GalleryCut; path: string; icon: unknown; color: string }[]
 
 /* ⚠️ **`galleryCutLabel()` წაშლილია.** ის ჭრილის სახელს ჩართული
    მედია-მოდულებისგან აწყობდა („ფილმები · სერიალები · ანიმეები") და შენი

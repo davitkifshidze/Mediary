@@ -7,6 +7,7 @@ use App\Models\Concerns\HasTrash;
 use App\Support\DictionaryKey;
 use App\Support\DictionaryTrash;
 use App\Support\StatusDomain;
+use App\Support\StatusPalette;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -46,6 +47,32 @@ class Status extends Model
         'sort_order' => 'integer',
         'is_default' => 'boolean',
     ];
+
+    /* ---------- ფერი ---------- */
+
+    /**
+     * ⚠️ **ფერის გარეშე სტატუსი არ იქმნება** — ამ კლასიფიკატორის პირველი თავისუფალი
+     * ფერი ეწერება (`StatusPalette`), თორემ მენიუში მისი აიქონი ნაცრისფერი რჩებოდა.
+     * წერტილი მოდელის `creating`-ია: სტატუსი რამდენიმე გზით იბადება (ფორმა,
+     * ნაგულისხმევების ნაკრები, პირადი მოდული, იმპორტი) და ერთ-ერთი გამორჩებოდა.
+     * ხელით არჩეული ფერი ხელუხლებელია.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $status) {
+            if ($status->color !== null && $status->color !== '') {
+                return;
+            }
+
+            $status->color = StatusPalette::firstFree(
+                static::withoutGlobalScopes(['owner', 'trash'])
+                    ->where('user_id', $status->user_id)
+                    ->where('module', $status->module)
+                    ->whereNull('trashed_at')
+                    ->pluck('color'),
+            );
+        });
+    }
 
     /* ---------- აუდიტი ---------- */
 

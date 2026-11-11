@@ -15,7 +15,8 @@ import { Clapperboard, Folders, Users } from 'lucide-react'
 export type PersonalCut = 'people' | 'albums' | 'media'
 
 export const PERSONAL_CUTS = [
-  { key: 'people', path: '/personal', icon: Users },
-  { key: 'albums', path: '/personal/albums', icon: Folders },
-  { key: 'media', path: '/personal/media', icon: Clapperboard },
-] as const satisfies readonly { key: PersonalCut; path: string; icon: unknown }[]
+  { key: 'people', path: '/personal', icon: Users, color: 'var(--tool-people)' },
+  { key: 'albums', path: '/personal/albums', icon: Folders, color: 'var(--gold)' },
+  { key: 'media', path: '/personal/media', icon: Clapperboard, color: 'var(--tool-stats)' },
+  // ⚠️ `color` სავალდებულოა (`satisfies`): მენიუს ქვეპუნქტის აიქონი ყოველთვის ფერადია
+] as const satisfies readonly { key: PersonalCut; path: string; icon: unknown; color: string }[]

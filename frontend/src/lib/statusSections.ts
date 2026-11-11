@@ -35,22 +35,44 @@ export interface PseudoSection {
   /** i18n */
   labelKey: string
   icon: string
+  /**
+   * აიქონის ფერი მენიუში — თემის ტოკენი. ⚠️ სავალდებულოა: ქვეპუნქტის აიქონი
+   * ყოველთვის ფერადია, სტატუსისა — მისი საკუთარი ფერით, ფსევდო-განყოფილებისა — ამით.
+   */
+  color: string
   /** სად დგას, სანამ მომხმარებელი არ გადაიტანს */
   defaultAt: 'start' | 'end'
 }
 
-const ALL: PseudoSection = { id: 'all', labelKey: 'filter.all', icon: 'LayoutGrid', defaultAt: 'start' }
-const FAVORITE: PseudoSection = { id: 'favorite', labelKey: 'filter.favorite', icon: 'Star', defaultAt: 'end' }
+/** „ყველა" მოდულის საკუთარ ფერს იღებს (`--mod`) — ის მოდულის მთელი სიაა */
+export const ALL_SECTION_COLOR = 'var(--mod)'
+export const FAVORITE_SECTION_COLOR = 'var(--favorite)'
+
+const ALL: PseudoSection = { id: 'all', labelKey: 'filter.all', icon: 'LayoutGrid', color: ALL_SECTION_COLOR, defaultAt: 'start' }
+const FAVORITE: PseudoSection = {
+  id: 'favorite',
+  labelKey: 'filter.favorite',
+  icon: 'Star',
+  color: FAVORITE_SECTION_COLOR,
+  defaultAt: 'end',
+}
 /** ლოკალურად ჩამოწერილი ვიდეოები */
 const DOWNLOADED: PseudoSection = {
   id: 'downloaded',
   labelKey: 'videos.downloadedSection',
   icon: 'HardDriveDownload',
+  color: 'var(--tool-backups)',
   defaultAt: 'end',
 }
 
 /** ჩაკეტილი ფილმები/სერიალები/ანიმე (სხვაგან ისინი იმალება) */
-const LOCKED: PseudoSection = { id: 'locked', labelKey: 'lock.section', icon: 'Lock', defaultAt: 'end' }
+const LOCKED: PseudoSection = {
+  id: 'locked',
+  labelKey: 'lock.section',
+  icon: 'Lock',
+  color: 'var(--status-undecided)',
+  defaultAt: 'end',
+}
 
 /** ⚠️ სარკე: `App\Support\StatusDomain::RESERVED_KEYS` (სტატუსი ამ გასაღებებს არ იღებს) */
 export const PSEUDO_SECTIONS: Record<StatusDomain, PseudoSection[]> = {
