@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
+use App\Models\Concerns\HasManualOrder;
 use App\Models\Concerns\HasStatus;
 use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
@@ -44,6 +45,9 @@ class Bookmark extends Model
 
     /** `gallery_images` + `gallery_videos` ამ ჩანაწერზე */
     use HasGallery;
+
+    /** ხელით დალაგება — `sort_order`; ახალი ჩანაწერი რიგის თავში ხვდება */
+    use HasManualOrder;
 
     /** სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
     use HasStatus;

@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { usePagedList } from '@/lib/paged'
 import { usePageSize } from '@/lib/pageSize'
+import { MANUAL_SORT, manualPageSize, useManualOrder } from '@/lib/manualOrder'
+import { InfoHint } from '@/components/ui/info-hint'
 import { useDrillParams } from '@/lib/statsLinks'
 import { Pagination } from '@/components/ui/pagination'
 import {
@@ -36,6 +38,7 @@ import {
   type SongFilters,
   type SongGenre,
   type SongInput,
+  reorderSongs,
 } from '@/api/songs'
 import { fetchPlaylists, setSongPlaylists } from '@/api/playlists'
 import type { VideoMetadata } from '@/api/videos'
@@ -94,7 +97,7 @@ import { RecordActionBar } from '@/components/RecordActionBar'
    ნაკრები მუსიკალურია: შემსრულებელი · ალბომი · წელი · ჟანრი · ქულა.
    ============================================================ */
 
-const SORTS = ['newest', 'oldest', 'title', 'artist', 'album', 'year', 'rating', 'played'] as const
+const SORTS = ['newest', MANUAL_SORT, 'oldest', 'title', 'artist', 'album', 'year', 'rating', 'played'] as const
 
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
 const EMPTY_FILTERS = { genres: [] as string[], tags: [] as string[] }
@@ -179,10 +182,18 @@ export function SongsPage() {
   const query = usePagedList({
     queryKey: ['songs', filters],
     fetchPage: (page, per_page) => fetchSongs({ ...filters, page, per_page }),
-    pageSize,
+    // ხელით დალაგებისას სია ერთი გვერდია (ჭერი 500) — გვერდებს შორის გადათრევა შეუძლებელია
+    pageSize: manualPageSize(sort, pageSize),
   })
   const genresQ = useQuery({ queryKey: ['song-genres'], queryFn: fetchSongGenres })
-  const songs = query.items
+  // „ხელით" დალაგება: გადათრევა და „თავში" / „ბოლოში" (`lib/manualOrder.ts`)
+  const manual = useManualOrder({
+    sort,
+    items: query.items,
+    save: reorderSongs,
+    onSaved: () => qc.invalidateQueries({ queryKey: ['songs'] }),
+  })
+  const songs = manual.items
   /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
   const total = query.total
   const allGenres = useMemo(() => genresQ.data ?? [], [genresQ.data])
@@ -274,7 +285,12 @@ export function SongsPage() {
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
-            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} />
+            {/* ხელით დალაგებისას სია ერთი გვერდია — ზომის ამრჩევის ნაცვლად ახსნა */}
+            {manual.active ? (
+              <InfoHint info={t('order.hint')} />
+            ) : (
+              <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} />
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">
@@ -355,7 +371,7 @@ export function SongsPage() {
             />
           )}
 
-          <RecordList layout={layout}>
+          <RecordList layout={layout} sortable={manual.sortable}>
             {songs.map((song) => {
               const cover = storageUrl(song.thumbnail)
               const fav = {
@@ -456,7 +472,8 @@ export function SongsPage() {
                     )
                   }
                   tags={song.tags}
-                  actions={actions}
+                  actions={[...actions, ...manual.actions(song)]}
+                  sortId={manual.sortId(song)}
                   onDelete={askDelete}
                   favorite={fav}
                   badges={badges}

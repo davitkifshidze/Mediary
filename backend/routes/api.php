@@ -756,6 +756,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/note-notifications/{noteNotification}', [NoteReminderController::class, 'markRead']);
 
         Route::get('/notes', [NoteEntryController::class, 'index']);
+        // ხელით გადალაგება — ⚠️ `{…}`-ზე ზემოთ; „reorder" `UPDATE_ENDPOINTS`-შია (POST → `update`)
+        Route::post('/notes/reorder', [NoteEntryController::class, 'reorder']);
         Route::post('/notes', [NoteEntryController::class, 'store']);
         Route::get('/notes/{note}', [NoteEntryController::class, 'show']);
         Route::match(['put', 'patch'], '/notes/{note}', [NoteEntryController::class, 'update']);
@@ -825,6 +827,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // ბმულის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის.
         // ⚠️ უფლება `view`-ია (`VIEW_ENDPOINTS`) — იხ. `/videos/metadata`.
         Route::post('/songs/metadata', [SongController::class, 'metadata']);
+        // ხელით გადალაგება — ⚠️ `{…}`-ზე ზემოთ; „reorder" `UPDATE_ENDPOINTS`-შია (POST → `update`)
+        Route::post('/songs/reorder', [SongController::class, 'reorder']);
         Route::post('/songs', [SongController::class, 'store']);
         Route::get('/songs/{song}', [SongController::class, 'show']);
         Route::match(['put', 'patch'], '/songs/{song}', [SongController::class, 'update']);
@@ -860,6 +864,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // ⚠️ `{bookmark}`-ზე ზემოთ, თორემ „metadata" id-ად წაიკითხება.
         // ⚠️ უფლება `view`-ია (`VIEW_ENDPOINTS`) — იხ. `/videos/metadata`.
         Route::post('/bookmarks/metadata', [BookmarkController::class, 'metadata']);
+        // ხელით გადალაგება — ⚠️ `{…}`-ზე ზემოთ; „reorder" `UPDATE_ENDPOINTS`-შია (POST → `update`)
+        Route::post('/bookmarks/reorder', [BookmarkController::class, 'reorder']);
         Route::post('/bookmarks', [BookmarkController::class, 'store']);
         Route::get('/bookmarks/{bookmark}', [BookmarkController::class, 'show']);
         Route::match(['put', 'patch'], '/bookmarks/{bookmark}', [BookmarkController::class, 'update']);

@@ -1844,6 +1844,7 @@
     "deleteHint": "“{{name}}” will be deleted and removed from playlists.",
     "sort": {
       "newest": "Newest",
+      "manual": "Manual",
       "oldest": "Oldest",
       "title": "By title",
       "artist": "By artist",
@@ -2529,6 +2530,7 @@
     },
     "sort": {
       "newest": "Newest",
+      "manual": "Manual",
       "oldest": "Oldest",
       "title": "By name",
       "updated": "Last updated"
@@ -2740,6 +2742,7 @@
     "deleteHint": "“{{name}}” will move to the trash — you can restore it from there.",
     "sort": {
       "newest": "Newest first",
+      "manual": "Manual",
       "oldest": "Oldest first",
       "title": "By title",
       "domain": "By domain",
@@ -3273,6 +3276,11 @@
     "colorRole": "Role colour",
     "colorPick": "Colour {{n}}",
     "colorHint": "By default the colour follows the role: amber for “not yet”, blue for “in progress”, green for “done”. An own colour overrides it so two statuses of one role (e.g. “Read” and “Archived”) can be told apart."
+  },
+  "order": {
+    "toTop": "To the top",
+    "toBottom": "To the bottom",
+    "hint": "In manual order the list is one page (up to 500 records). Drag by the handle, or pick “To the top” / “To the bottom” in the menu. A new record goes to the top."
   },
   "list": {
     "showMore": "Show more",

@@ -203,3 +203,12 @@ export async function reorderSongGenres(ids: number[]): Promise<SongGenre[]> {
   return data.data
 }
 
+
+/**
+ * ხელით გადალაგება: მოწოდებული ჩანაწერები ახალ რიგზე დგება **მათსავე უჯრებში** —
+ * ფილტრით დამალულები და 500-იანი გვერდის მიღმა დარჩენილები ადგილს არ იცვლის.
+ */
+export async function reorderSongs(ids: number[]): Promise<number[]> {
+  const { data } = await api.post('/songs/reorder', { ids })
+  return data.ids
+}

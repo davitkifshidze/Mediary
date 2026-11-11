@@ -303,3 +303,12 @@ export async function reorderBookmarkCategories(ids: number[]): Promise<Bookmark
   const { data } = await api.post('/bookmark-categories/reorder', { ids })
   return data.data
 }
+
+/**
+ * ხელით გადალაგება: მოწოდებული ჩანაწერები ახალ რიგზე დგება **მათსავე უჯრებში** —
+ * ფილტრით დამალულები და 500-იანი გვერდის მიღმა დარჩენილები ადგილს არ იცვლის.
+ */
+export async function reorderBookmarks(ids: number[]): Promise<number[]> {
+  const { data } = await api.post('/bookmarks/reorder', { ids })
+  return data.ids
+}

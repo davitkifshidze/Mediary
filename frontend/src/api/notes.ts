@@ -351,3 +351,12 @@ export async function reorderNoteCategories(ids: number[]): Promise<NoteCategory
   const { data } = await api.post('/note-categories/reorder', { ids })
   return data.data
 }
+
+/**
+ * ხელით გადალაგება: მოწოდებული ჩანაწერები ახალ რიგზე დგება **მათსავე უჯრებში** —
+ * ფილტრით დამალულები და 500-იანი გვერდის მიღმა დარჩენილები ადგილს არ იცვლის.
+ */
+export async function reorderNotes(ids: number[]): Promise<number[]> {
+  const { data } = await api.post('/notes/reorder', { ids })
+  return data.ids
+}

@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { usePagedList } from '@/lib/paged'
 import { usePageSize } from '@/lib/pageSize'
+import { MANUAL_SORT, manualPageSize, useManualOrder } from '@/lib/manualOrder'
+import { InfoHint } from '@/components/ui/info-hint'
 import { useDrillParams } from '@/lib/statsLinks'
 import { plainText } from '@/lib/richText'
 import { RICH_TEXT_MAX } from '@/lib/richText'
@@ -42,6 +44,7 @@ import {
   type BookmarkInput,
   type BookmarkLink,
   type BookmarkStatus,
+  reorderBookmarks,
 } from '@/api/bookmarks'
 import { storageUrl } from '@/lib/api'
 import { BOOKMARK_WEB_TERMS, bookmarkKey, bookmarkWebQuery, useBookmarkRefresh } from '@/lib/bookmarks'
@@ -110,7 +113,7 @@ import { DictionaryStatusMenu } from '@/components/StatusMenu'
    ფანჯრის შიგნით იხსნება — ორივე იმავე „გახსნის" მთვლელს ზრდის.
    ============================================================ */
 
-const SORTS = ['newest', 'oldest', 'title', 'domain', 'visited', 'visits'] as const
+const SORTS = ['newest', MANUAL_SORT, 'oldest', 'title', 'domain', 'visited', 'visits'] as const
 
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
 const EMPTY_FILTERS = { categories: [] as string[], tags: [] as string[] }
@@ -178,10 +181,18 @@ export function BookmarksPage() {
   const query = usePagedList({
     queryKey: ['bookmarks', filters],
     fetchPage: (page, per_page) => fetchBookmarks({ ...filters, page, per_page }),
-    pageSize,
+    // ხელით დალაგებისას სია ერთი გვერდია (ჭერი 500) — გვერდებს შორის გადათრევა შეუძლებელია
+    pageSize: manualPageSize(sort, pageSize),
   })
   const categoriesQ = useQuery({ queryKey: ['bookmark-categories'], queryFn: fetchBookmarkCategories })
-  const bookmarks = query.items
+  // „ხელით" დალაგება: გადათრევა და „თავში" / „ბოლოში" (`lib/manualOrder.ts`)
+  const manual = useManualOrder({
+    sort,
+    items: query.items,
+    save: reorderBookmarks,
+    onSaved: () => qc.invalidateQueries({ queryKey: ['bookmarks'] }),
+  })
+  const bookmarks = manual.items
   /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
   const total = query.total
   const allCategories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data])
@@ -357,7 +368,12 @@ export function BookmarksPage() {
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
-            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} />
+            {/* ხელით დალაგებისას სია ერთი გვერდია — ზომის ამრჩევის ნაცვლად ახსნა */}
+            {manual.active ? (
+              <InfoHint info={t('order.hint')} />
+            ) : (
+              <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} />
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">
@@ -438,7 +454,7 @@ export function BookmarksPage() {
             />
           )}
 
-          <RecordList layout={layout}>
+          <RecordList layout={layout} sortable={manual.sortable}>
             {bookmarks.map((bookmark) => {
               // გატეხილად ნაცნობი მისამართი აღარ იხატება — ჩანს ფავიკონი / გლობუსი
               const image = photo.photoOf(bookmark)
@@ -517,7 +533,8 @@ export function BookmarksPage() {
                     )
                   }
                   tags={bookmark.tags}
-                  actions={actions}
+                  actions={[...actions, ...manual.actions(bookmark)]}
+                  sortId={manual.sortId(bookmark)}
                   onDelete={() => void askDelete(bookmark)}
                   favorite={fav}
                   badges={badges}

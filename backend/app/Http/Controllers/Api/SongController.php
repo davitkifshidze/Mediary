@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\ReordersRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SongResource;
 use App\Models\Song;
@@ -34,6 +35,8 @@ use Illuminate\Validation\Rule;
  */
 class SongController extends Controller
 {
+    use ReordersRecords;
+
     public function __construct(private StorageMeter $meter) {}
 
     public function index(Request $request)
@@ -77,6 +80,8 @@ class SongController extends Controller
             'rating' => $query->orderByDesc('rating'),
             'oldest' => $query->orderBy('id'),
             'played' => $query->orderByDesc('played_at'),
+            // ხელით დალაგებული რიგი (`HasManualOrder`) — სია მაშინ ერთ გვერდად იშლება
+            'manual' => $query->manualOrder(),
             default => $query->orderByDesc('id'),
         };
 
@@ -150,6 +155,12 @@ class SongController extends Controller
         $song->moveToTrash();
 
         return response()->noContent();
+    }
+
+    /** ხელით გადალაგება: მოწოდებული ჩანაწერები ახალ რიგზე დგება (`ReordersRecords`) */
+    public function reorder(Request $request)
+    {
+        return $this->reorderRecords($request, Song::class);
     }
 
     public function toggleFavorite(Song $song)

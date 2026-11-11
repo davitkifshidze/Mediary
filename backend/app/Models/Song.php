@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\RatingCast;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
+use App\Models\Concerns\HasManualOrder;
 use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
 use App\Services\Storage\StorageMeter;
@@ -33,6 +34,9 @@ class Song extends Model
 
     /** მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
+
+    /** ხელით დალაგება — `sort_order`; ახალი ჩანაწერი რიგის თავში ხვდება */
+    use HasManualOrder;
 
     /** ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
     use HasTags;

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\ReordersRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BookmarkResource;
 use App\Models\Bookmark;
@@ -30,6 +31,8 @@ use Illuminate\Validation\Rule;
  */
 class BookmarkController extends Controller
 {
+    use ReordersRecords;
+
     public function __construct(private StorageMeter $meter) {}
 
     public function index(Request $request)
@@ -76,6 +79,8 @@ class BookmarkController extends Controller
             'oldest' => $query->orderBy('id'),
             'visited' => $query->orderByDesc('visited_at'),
             'visits' => $query->orderByDesc('visit_count'),
+            // ხელით დალაგებული რიგი (`HasManualOrder`) — სია მაშინ ერთ გვერდად იშლება
+            'manual' => $query->manualOrder(),
             default => $query->orderByDesc('id'),
         };
 
@@ -136,6 +141,12 @@ class BookmarkController extends Controller
         $bookmark->moveToTrash();
 
         return response()->noContent();
+    }
+
+    /** ხელით გადალაგება: მოწოდებული ჩანაწერები ახალ რიგზე დგება (`ReordersRecords`) */
+    public function reorder(Request $request)
+    {
+        return $this->reorderRecords($request, Bookmark::class);
     }
 
     public function toggleFavorite(Bookmark $bookmark)

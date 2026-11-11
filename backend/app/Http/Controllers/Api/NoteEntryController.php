@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\ReordersRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\NoteEntryResource;
 use App\Models\NoteEntry;
@@ -21,6 +22,8 @@ use Illuminate\Validation\Rule;
  */
 class NoteEntryController extends Controller
 {
+    use ReordersRecords;
+
     public function index(Request $request)
     {
         $query = NoteEntry::query()->with('category')->withCount(['files', 'reminders']);
@@ -54,6 +57,8 @@ class NoteEntryController extends Controller
             'title' => $query->orderBy('title'),
             'updated' => $query->orderByDesc('updated_at'),
             'oldest' => $query->orderBy('id'),
+            // ხელით დალაგებული რიგი (`HasManualOrder`) — სია მაშინ ერთ გვერდად იშლება
+            'manual' => $query->manualOrder(),
             default => $query->orderByDesc('id'),
         };
 
@@ -97,6 +102,12 @@ class NoteEntryController extends Controller
         $note->moveToTrash();
 
         return response()->noContent();
+    }
+
+    /** ხელით გადალაგება: მოწოდებული ჩანაწერები ახალ რიგზე დგება (`ReordersRecords`) */
+    public function reorder(Request $request)
+    {
+        return $this->reorderRecords($request, NoteEntry::class);
     }
 
     public function toggleFavorite(NoteEntry $note)

@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { usePagedList } from '@/lib/paged'
 import { usePageSize } from '@/lib/pageSize'
+import { MANUAL_SORT, manualPageSize, useManualOrder } from '@/lib/manualOrder'
+import { InfoHint } from '@/components/ui/info-hint'
 import { useDrillParams } from '@/lib/statsLinks'
 import { Pagination } from '@/components/ui/pagination'
 import {
@@ -27,6 +29,7 @@ import {
   setNoteStatus,
   type NoteEntry,
   type NoteFilters,
+  reorderNotes,
 } from '@/api/notes'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
@@ -71,7 +74,7 @@ import { DictionaryStatusMenu } from '@/components/StatusMenu'
    სექციაა** (`?view=`), პანელი კი კატეგორიასა და ტეგებს ფილტრავს.
    ============================================================ */
 
-const SORTS = ['newest', 'oldest', 'title', 'updated'] as const
+const SORTS = ['newest', MANUAL_SORT, 'oldest', 'title', 'updated'] as const
 
 /* ⚠️ სტატუსების სია აღარ წერია კოდში — ის per-user ლექსიკონია.
    ფერი `statusTone()`-იდან მოდის, ე.ი. ხელით დამატებულიც ფერადია. */
@@ -141,10 +144,18 @@ export function NotesPage() {
   const query = usePagedList({
     queryKey: ['notes', filters],
     fetchPage: (page, per_page) => fetchNotes({ ...filters, page, per_page }),
-    pageSize,
+    // ხელით დალაგებისას სია ერთი გვერდია (ჭერი 500) — გვერდებს შორის გადათრევა შეუძლებელია
+    pageSize: manualPageSize(sort, pageSize),
   })
   const categoriesQ = useQuery({ queryKey: ['note-categories'], queryFn: fetchNoteCategories })
-  const notes = query.items
+  // „ხელით" დალაგება: გადათრევა და „თავში" / „ბოლოში" (`lib/manualOrder.ts`)
+  const manual = useManualOrder({
+    sort,
+    items: query.items,
+    save: reorderNotes,
+    onSaved: () => qc.invalidateQueries({ queryKey: ['notes'] }),
+  })
+  const notes = manual.items
   /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
   const total = query.total
   const allCategories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data])
@@ -245,7 +256,12 @@ export function NotesPage() {
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
-            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} />
+            {/* ხელით დალაგებისას სია ერთი გვერდია — ზომის ამრჩევის ნაცვლად ახსნა */}
+            {manual.active ? (
+              <InfoHint info={t('order.hint')} />
+            ) : (
+              <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} />
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">
@@ -325,7 +341,7 @@ export function NotesPage() {
             />
           )}
 
-          <RecordList layout={layout}>
+          <RecordList layout={layout} sortable={manual.sortable}>
             {notes.map((note) => {
               const fav = {
                 active: note.is_favorite,
@@ -398,7 +414,8 @@ export function NotesPage() {
                   }
                   tags={note.tags.slice(0, 6)}
                   hashTags={false}
-                  actions={actions}
+                  actions={[...actions, ...manual.actions(note)]}
+                  sortId={manual.sortId(note)}
                   onEdit={() => setEditing(note)}
                   onDelete={askDelete}
                   favorite={fav}
