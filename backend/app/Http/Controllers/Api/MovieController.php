@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\FiltersMediaLibrary;
 use App\Http\Controllers\Concerns\PicksRandomRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMovieRequest;
@@ -11,11 +12,9 @@ use App\Http\Resources\MovieResource;
 use App\Models\Genre;
 use App\Models\Movie;
 use App\Services\Enrichment\MovieEnricher;
-use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CredentialProviders;
-use App\Support\Like;
 use App\Support\MediaDuplicate;
 use App\Support\MissingCredential;
 use App\Support\RecordLocks;
@@ -27,82 +26,25 @@ use Illuminate\Support\Str;
 
 class MovieController extends Controller
 {
-    use PicksRandomRecords;
+    use FiltersMediaLibrary, PicksRandomRecords;
 
     public function __construct(private StorageMeter $meter) {}
 
     /** ფილმების სია (ფილტრი: status, genre, favorite, q, sort) */
     public function index(Request $request)
     {
-        /* ფილტრი „ჩაკეტილები": მხოლოდ ჩემი ჩაკეტილები. დამალული
-           ბოქლომიანი ბარათით მოდის (`lockedCard()`), ამ სესიაში გახსნილი — ჩვეულებრივად.
-           ⚠️ დანარჩენ სიაში დამალული საერთოდ არ არის (`record_lock` scope). */
-        if ($request->boolean('locked')) {
-            return MovieListResource::collection($this->paginated($request, Movie::query()->onlyLocked()->with('genres')->orderByDesc('id')));
-        }
-
-        $query = Movie::query()->with('genres');
-        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
-        LibraryStats::drill($query, 'movie', $request);
-
-        // სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
-        // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.
-        /* ⚠️ რამდენიმე სტატუსი **ან**-ითაა და არა „და"-თი: ჩანაწერს
-           ერთი სტატუსი აქვს, ე.ი. თითო გასაღებზე ცალკე `whereHas` ყოველთვის
-           ცარიელს დააბრუნებდა (ასე იყო მძიმით გამოყოფილ სიაზეც). */
-        if ($keys = $this->statusKeys($request)) {
-            $query->statusKey($keys);
-        }
-
-        if ($request->boolean('favorite')) {
-            $query->where('is_favorite', true);
-        }
-
-        if ($request->string('source')->toString() === 'synced') {
-            $query->where('sync_status', 'synced');
-        }
-
-        // ჟანრი მძიმით გამოყოფილი სიაც შეიძლება (ფილტრის პანელი მრავალს ნიშნავს):
-        // თითოეული მონიშნული ჟანრი **ცალკე** whereHas-ია, ე.ი. ფილტრი ვიწროვდება.
-        foreach ($this->slugList($request->string('genre')->toString()) as $slug) {
-            $query->whereHas('genres', fn ($q) => $q->where('slug', $slug));
-        }
-
-        if ($q = $request->string('q')->toString()) {
-            $query->whereHas('translations', fn ($t) => $t->where('title', 'like', Like::contains($q)));
-        }
-
-        // დიაპაზონის ფილტრები (კომბინირებადი)
-        if ($request->filled('year_min')) {
-            $query->where('year', '>=', $request->integer('year_min'));
-        }
-        if ($request->filled('year_max')) {
-            $query->where('year', '<=', $request->integer('year_max'));
-        }
-        if ($request->filled('rating_min')) {
-            $query->where('rating', '>=', $request->float('rating_min'));
-        }
-        if ($request->filled('rating_max')) {
-            $query->where('rating', '<=', $request->float('rating_max'));
-        }
+        // ფილტრი ერთია სამივე მოდულზე — „ჩაკეტილი" ჭრილისაც (`FiltersMediaLibrary`)
+        $query = $this->libraryQuery($request, Movie::class, 'movie');
+        $locked = $request->boolean('locked');
 
         /* „რა ვნახო დღეს". ⚠️ **ფილტრების შემდეგ და დალაგებამდე**:
            არჩევანი ზუსტად იმ სიიდან უნდა მოდიოდეს, რომელსაც ეკრანზე ხედავ,
            დალაგებას კი შემთხვევით არჩევანზე აზრი არ აქვს. */
-        if ($request->string('pick')->toString() === 'random') {
+        if (! $locked && $request->string('pick')->toString() === 'random') {
             return $this->randomPick($request, $query);
         }
 
-        $sort = $request->string('sort')->toString();
-
-        match ($sort) {
-            'added_asc' => $query->orderBy('id'),
-            'year_desc' => $query->orderByDesc('year'),
-            'year_asc' => $query->orderBy('year'),
-            'rating_desc', 'rating' => $query->orderByDesc('rating'),
-            'rating_asc' => $query->orderBy('rating'),
-            default => $query->orderByDesc('id'),
-        };
+        $sort = $this->sortLibrary($query, $request);
 
         /* ⚠️ ფრანჩაიზა **გვერდის შიგნით** იკრიბება და არა მთელ ბიბლიოთეკაზე.
            ფრონტი ყოველთვის პირველ გვერდს ითხოვს და `per_page`-ს ზრდის
@@ -110,6 +52,12 @@ class MovieController extends Controller
            კლასტერი მასზე სწორად დგება. `annotateFranchise()` ბეჯს ისედაც
            ცალკე query-ით ითვლის, ე.ი. ქვესიმრავლეზეც მუშაობს. */
         $page = $this->paginated($request, $query);
+
+        // „ჩაკეტილებში" დამალული ბოქლომიანი ბარათია — ფრანჩაიზად არ იკვრება
+        if ($locked) {
+            return MovieListResource::collection($page);
+        }
+
         $movies = $page instanceof LengthAwarePaginator ? $page->getCollection() : $page;
         Movie::annotateFranchise($movies);
 

@@ -61,6 +61,32 @@ export function filterCount(value: unknown): number {
 }
 
 /**
+ * „დან" > „მდე" → წყვილი გადაისმება.
+ *
+ * ⚠️ შებრუნებული ზღვარი ცარიელ სიას აჩვენებდა ახსნის გარეშე. სერვერიც იმავეს
+ * აკეთებს, მაგრამ მისამართსა და პანელშიც სწორი წყვილი უნდა ეწეროს. ნახევრად
+ * შევსებული წყვილი (მხოლოდ „დან" ან მხოლოდ „მდე") ხელუხლებელია.
+ */
+export function straightenRanges<T extends { [K in keyof T]: string }>(
+  ranges: T,
+  pairs: readonly (readonly [keyof T, keyof T])[],
+): T {
+  const next = { ...ranges }
+
+  for (const [from, to] of pairs) {
+    const filled = next[from].trim() !== '' && next[to].trim() !== ''
+
+    if (filled && Number(next[from]) > Number(next[to])) {
+      const low = next[to]
+      next[to] = next[from]
+      next[from] = low
+    }
+  }
+
+  return next
+}
+
+/**
  * მონახაზი + მოქმედი ფილტრი.
  *
  * @param applied მისამართიდან წაკითხული მოქმედი ფილტრი

@@ -39,7 +39,10 @@ import {
   FilterRange,
   FilterTrigger,
 } from '@/components/FilterPanel'
-import { filterCount, useFilterDraft } from '@/lib/filters'
+import { filterCount, straightenRanges, useFilterDraft } from '@/lib/filters'
+import { useModuleSetting } from '@/lib/moduleSetting'
+import { Chip, ChipRow } from '@/components/ui/chip'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -51,8 +54,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
-/** მედიის წელს გვერდი თავის ფილტრის პანელში კითხულობს (`year_min`/`year_max`) */
-const MEDIA_DRILL_EXCEPT = ['year_min', 'year_max']
+/** მედიის წელსა და ჩემს ქულას გვერდი თავის ფილტრის პანელში კითხულობს და არა ჭრილის ჩიპად */
+const MEDIA_DRILL_EXCEPT = ['year_min', 'year_max', 'my_rating_min', 'my_rating_max']
+
+/** რამდენიმე ჟანრი: ერთი მაინც (`any`) თუ ყველა ერთად (`all`) — მოდულზე ახსოვს */
+const GENRE_MODES = ['any', 'all'] as const
 
 /* ============================================================
    ბიბლიოთეკა — ბადე + მარჯვენა ფილტრების პანელი.
@@ -66,11 +72,29 @@ const MEDIA_DRILL_EXCEPT = ['year_min', 'year_max']
 interface Ranges {
   yearMin: string
   yearMax: string
+  /** TMDB-ის რეიტინგი */
   ratingMin: string
   ratingMax: string
+  /** ჩემი ქულა — ცალკე დიაპაზონი, TMDB-ისას არ ერევა */
+  myRatingMin: string
+  myRatingMax: string
 }
 
-const EMPTY_RANGES: Ranges = { yearMin: '', yearMax: '', ratingMin: '', ratingMax: '' }
+const EMPTY_RANGES: Ranges = {
+  yearMin: '',
+  yearMax: '',
+  ratingMin: '',
+  ratingMax: '',
+  myRatingMin: '',
+  myRatingMax: '',
+}
+
+/** „დან – მდე" წყვილები — შებრუნებული წყვილი გაშვებისას თავისით გადაისმება */
+const RANGE_PAIRS: readonly [keyof Ranges, keyof Ranges][] = [
+  ['yearMin', 'yearMax'],
+  ['ratingMin', 'ratingMax'],
+  ['myRatingMin', 'myRatingMax'],
+]
 
 /**
  * პანელის მონახაზი — ჯერ გაუშვებელი მონიშვნები.
@@ -92,6 +116,8 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   const { settings } = useSettings()
   // ხედი თითო დომენზე (ფილმი/სერიალი/ანიმე); ნაგულისხმევი — ახლანდელი ბარათები
   const [layout, setLayout] = useRecordLayout(type, 'cards')
+  // ჟანრების რეჟიმი ფილტრი არ არის, არჩევანია: მაშინვე მოქმედებს და მოდულზე ახსოვს
+  const [genreMode, setGenreMode] = useModuleSetting(type, 'genre_mode', GENRE_MODES, 'any')
   const [pageSize, setPageSize, columns] = usePageSize(type, layout, settings.cardSize)
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -146,18 +172,23 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
       yearMax: p.get('year_max') ?? '',
       ratingMin: p.get('rating_min') ?? '',
       ratingMax: p.get('rating_max') ?? '',
+      myRatingMin: p.get('my_rating_min') ?? '',
+      myRatingMax: p.get('my_rating_max') ?? '',
     }
   }, [search])
 
   /** მონახაზის გაშვება = ახალი მისამართი; მიმდინარე სექცია (`?view=`) ინახება */
   const writeFilters = (next: Draft) => {
+    const r = straightenRanges(next.ranges, RANGE_PAIRS)
     const q = new URLSearchParams()
     if (view !== 'all') q.set('view', view)
     if (next.genres.length) q.set('genre', next.genres.join(','))
-    if (next.ranges.yearMin) q.set('year_min', next.ranges.yearMin)
-    if (next.ranges.yearMax) q.set('year_max', next.ranges.yearMax)
-    if (next.ranges.ratingMin) q.set('rating_min', next.ranges.ratingMin)
-    if (next.ranges.ratingMax) q.set('rating_max', next.ranges.ratingMax)
+    if (r.yearMin) q.set('year_min', r.yearMin)
+    if (r.yearMax) q.set('year_max', r.yearMax)
+    if (r.ratingMin) q.set('rating_min', r.ratingMin)
+    if (r.ratingMax) q.set('rating_max', r.ratingMax)
+    if (r.myRatingMin) q.set('my_rating_min', r.myRatingMin)
+    if (r.myRatingMax) q.set('my_rating_max', r.myRatingMax)
 
     setPanelOpen(false)
     navigate({ pathname: libraryPath, search: q.toString() })
@@ -194,6 +225,8 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     q: q || undefined,
     // მრავალი ჟანრი — backend მძიმით გამოყოფილ სიას იღებს
     genre: genres.length ? genres.join(',') : undefined,
+    // ერთ ჟანრზე ორივე რეჟიმი ერთი და იგივეა — პარამეტრი მხოლოდ რამდენიმეზე მიდის
+    genre_mode: genres.length > 1 && genreMode === 'all' ? 'all' : undefined,
     sort: sortValue === 'added' ? undefined : sortValue,
     status: view !== 'all' && view !== 'favorite' && view !== 'locked' ? view : undefined,
     favorite: view === 'favorite' ? true : undefined,
@@ -203,6 +236,8 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     year_max: num(ranges.yearMax),
     rating_min: num(ranges.ratingMin),
     rating_max: num(ranges.ratingMax),
+    my_rating_min: num(ranges.myRatingMin),
+    my_rating_max: num(ranges.myRatingMax),
     group: type === 'movie' ? grouped : undefined,
     // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
@@ -402,12 +437,22 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
         >
           {/* სტატუსის ჯგუფი აქ განზრახ არ არის — სექცია საიდბარშია */}
           <FilterGroup title={t('filter.genres')} count={draft.genres.length}>
+            {/* რამდენიმე ჟანრი: ერთი მაინც თუ ყველა ერთად — მაშინვე მოქმედებს და ახსოვს */}
+            <ChipRow className="mb-2 items-center gap-1.5 px-0.5">
+              {GENRE_MODES.map((mode) => (
+                <Chip key={mode} active={genreMode === mode} onClick={() => setGenreMode(mode)} className="py-1">
+                  {t(`filter.genreMode.${mode}`)}
+                </Chip>
+              ))}
+              <InfoHint info={t('filter.genreMode.hint')} />
+            </ChipRow>
             <FilterOptionList>
               {genreList.map((g) => (
                 <FilterOption
                   key={g.slug}
                   label={genreName(g, lang)}
-                  count={type === 'series' ? g.series_count : g.movies_count}
+                  // ⚠️ თითო მოდული თავის რიცხვს: ანიმეს გვერდზე ფილმების რაოდენობა ცარიელ ჟანრს სავსედ აჩვენებდა
+                  count={type === 'series' ? g.series_count : type === 'anime' ? g.animes_count : g.movies_count}
                   checked={draft.genres.includes(g.slug)}
                   onChange={(on) => toggleGenre(g.slug, on)}
                 />
@@ -418,7 +463,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
           {/* ⚠️ დიაპაზონები **გაშლილია** (ჯგუფის ნაგულისხმევი მდგომარეობა):
               შეკეცილი ჯგუფი მალავდა იმას, რომ წელი და ქულა საერთოდ იფილტრება.
               შეკეცვა შესაძლებელი რჩება, უბრალოდ ხელით. */}
-          <FilterGroup title={t('filter.ranges')} count={filterCount(draft.ranges)}>
+          <FilterGroup title={t('filter.ranges')} count={filterCount(draft.ranges)} info={t('filter.rangesHint')}>
             <div className="space-y-3 px-0.5 pt-1">
               <FilterRange
                 label={t('filter.year')}
@@ -432,7 +477,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
                 max={currentYear + 1}
               />
               <FilterRange
-                label={t('filter.rating')}
+                label={t('filter.tmdbRating')}
                 from={draft.ranges.ratingMin}
                 to={draft.ranges.ratingMax}
                 onFrom={(v) => setRange('ratingMin', v)}
@@ -442,6 +487,18 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
                 min={0}
                 max={10}
                 step="0.1"
+              />
+              <FilterRange
+                label={t('filter.myRating')}
+                from={draft.ranges.myRatingMin}
+                to={draft.ranges.myRatingMax}
+                onFrom={(v) => setRange('myRatingMin', v)}
+                onTo={(v) => setRange('myRatingMax', v)}
+                fromPlaceholder="1"
+                toPlaceholder="10"
+                min={1}
+                max={10}
+                step="0.5"
               />
             </div>
           </FilterGroup>

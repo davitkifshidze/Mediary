@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\FiltersMediaLibrary;
 use App\Http\Controllers\Concerns\PicksRandomRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAnimeRequest;
@@ -11,11 +12,9 @@ use App\Http\Resources\AnimeResource;
 use App\Models\Anime;
 use App\Models\Genre;
 use App\Services\Enrichment\AnimeEnricher;
-use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CredentialProviders;
-use App\Support\Like;
 use App\Support\MediaDuplicate;
 use App\Support\MissingCredential;
 use App\Support\RecordLocks;
@@ -34,79 +33,25 @@ use Illuminate\Support\Str;
  */
 class AnimeController extends Controller
 {
-    use PicksRandomRecords;
+    use FiltersMediaLibrary, PicksRandomRecords;
 
     public function __construct(private StorageMeter $meter) {}
 
     /** ანიმეების სია (ფილტრი: status, genre, favorite, q, sort) */
     public function index(Request $request)
     {
-        /* ფილტრი „ჩაკეტილები": მხოლოდ ჩემი ჩაკეტილები. დამალული
-           ბოქლომიანი ბარათით მოდის (`lockedCard()`), ამ სესიაში გახსნილი — ჩვეულებრივად.
-           ⚠️ დანარჩენ სიაში დამალული საერთოდ არ არის (`record_lock` scope). */
-        if ($request->boolean('locked')) {
-            return AnimeListResource::collection($this->paginated($request, Anime::query()->onlyLocked()->with('genres')->orderByDesc('id')));
-        }
-
-        $query = Anime::query()->with('genres');
-        // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
-        LibraryStats::drill($query, 'anime', $request);
-
-        // სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
-        // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.
-        /* ⚠️ რამდენიმე სტატუსი **ან**-ითაა და არა „და"-თი: ჩანაწერს
-           ერთი სტატუსი აქვს, ე.ი. თითო გასაღებზე ცალკე `whereHas` ყოველთვის
-           ცარიელს დააბრუნებდა (ასე იყო მძიმით გამოყოფილ სიაზეც). */
-        if ($keys = $this->statusKeys($request)) {
-            $query->statusKey($keys);
-        }
-
-        if ($request->boolean('favorite')) {
-            $query->where('is_favorite', true);
-        }
-
-        if ($request->string('source')->toString() === 'synced') {
-            $query->where('sync_status', 'synced');
-        }
-
-        // მძიმით გამოყოფილი ჟანრები — იგივე ლოგიკა, რაც ფილმებზე
-        foreach ($this->slugList($request->string('genre')->toString()) as $slug) {
-            $query->whereHas('genres', fn ($q) => $q->where('slug', $slug));
-        }
-
-        if ($q = $request->string('q')->toString()) {
-            $query->whereHas('translations', fn ($t) => $t->where('title', 'like', Like::contains($q)));
-        }
-
-        // დიაპაზონის ფილტრები (კომბინირებადი)
-        if ($request->filled('year_min')) {
-            $query->where('year', '>=', $request->integer('year_min'));
-        }
-        if ($request->filled('year_max')) {
-            $query->where('year', '<=', $request->integer('year_max'));
-        }
-        if ($request->filled('rating_min')) {
-            $query->where('rating', '>=', $request->float('rating_min'));
-        }
-        if ($request->filled('rating_max')) {
-            $query->where('rating', '<=', $request->float('rating_max'));
-        }
+        // ფილტრი ერთია სამივე მოდულზე — „ჩაკეტილი" ჭრილისაც (`FiltersMediaLibrary`)
+        $query = $this->libraryQuery($request, Anime::class, 'anime');
+        $locked = $request->boolean('locked');
 
         /* „რა ვნახო დღეს". ⚠️ **ფილტრების შემდეგ და დალაგებამდე**:
            არჩევანი ზუსტად იმ სიიდან უნდა მოდიოდეს, რომელსაც ეკრანზე ხედავ,
            დალაგებას კი შემთხვევით არჩევანზე აზრი არ აქვს. */
-        if ($request->string('pick')->toString() === 'random') {
+        if (! $locked && $request->string('pick')->toString() === 'random') {
             return $this->randomPick($request, $query);
         }
 
-        match ($request->string('sort')->toString()) {
-            'added_asc' => $query->orderBy('id'),
-            'year_desc' => $query->orderByDesc('year'),
-            'year_asc' => $query->orderBy('year'),
-            'rating_desc', 'rating' => $query->orderByDesc('rating'),
-            'rating_asc' => $query->orderBy('rating'),
-            default => $query->orderByDesc('id'),
-        };
+        $this->sortLibrary($query, $request);
 
         return AnimeListResource::collection($this->paginated($request, $query));
     }

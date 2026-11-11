@@ -13,14 +13,19 @@ import type { Genre, Movie, MovieListItem } from './types'
 export interface MediaFilters extends ListParams {
   status?: string
   genre?: string
+  /** რამდენიმე ჟანრი: ნაგულისხმევად ერთი მაინც; `all` — ყველა ერთად */
+  genre_mode?: 'all'
   favorite?: boolean
   q?: string
   sort?: string
   source?: string
   year_min?: number
   year_max?: number
+  /** `rating_*` TMDB-ის რეიტინგია, `my_rating_*` — ჩემი ქულა */
   rating_min?: number
   rating_max?: number
+  my_rating_min?: number
+  my_rating_max?: number
   /** ფილტრი „ჩაკეტილები" (დამალული — ბოქლომიანი ბარათით) */
   locked?: boolean
   /**

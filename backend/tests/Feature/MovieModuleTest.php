@@ -208,10 +208,10 @@ class MovieModuleTest extends TestCase
     }
 
     /**
-     * ⚠️ **მძიმით გამოყოფილი ჟანრები AND-ით იჭრება** და არა OR-ით — სწორედ
-     * ამას აგზავნის მარჯვენა პანელი (`Controller::slugList()`).
+     * ⚠️ **მძიმით გამოყოფილი ჟანრები ნაგულისხმევად „ნებისმიერია"**, „ყველა ერთად"
+     * კი `genre_mode=all`-ით ითხოვება — სამივე მოდულზე ეს `MediaLibraryFilterTest`-შია.
      */
-    public function test_multiple_genres_narrow_the_list(): void
+    public function test_multiple_genres_narrow_the_list_only_when_all_are_asked(): void
     {
         $action = Genre::create(['slug' => 'action']);
         $drama = Genre::create(['slug' => 'drama']);
@@ -226,6 +226,9 @@ class MovieModuleTest extends TestCase
             ->assertOk()->assertJsonCount(2, 'data');
 
         $this->actingAs($this->alice)->getJson('/api/movies?genre=action,drama')
+            ->assertOk()->assertJsonCount(2, 'data');
+
+        $this->actingAs($this->alice)->getJson('/api/movies?genre=action,drama&genre_mode=all')
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.title_en', 'Both');

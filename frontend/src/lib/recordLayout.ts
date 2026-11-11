@@ -1,7 +1,4 @@
-import { useCallback, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { updateModuleSettings, type ModuleInfo } from '@/api/account'
-import { useModules } from '@/lib/modules'
+import { readModuleSetting, useModuleSetting } from '@/lib/moduleSetting'
 
 /* ============================================================
    **სიის ხედი — ბარათები · ბადე · სტრიქონები**.
@@ -32,34 +29,14 @@ export function readLayout(
   setting: string,
   fallback: RecordLayout,
 ): RecordLayout {
-  const raw = settings?.[setting]
-  return typeof raw === 'string' && (RECORD_LAYOUTS as readonly string[]).includes(raw) ? (raw as RecordLayout) : fallback
+  return readModuleSetting(settings, setting, RECORD_LAYOUTS, fallback)
 }
 
+/** შენახვა და აღდგენა — `useModuleSetting` (ერთი მექანიზმი მოდულის ყველა არჩევანზე) */
 export function useRecordLayout(
   moduleKey: string,
   fallback: RecordLayout,
   setting: string = VIEW_SETTING,
 ): readonly [RecordLayout, (next: RecordLayout) => void] {
-  const { all } = useModules()
-  const qc = useQueryClient()
-  const scope = `${moduleKey}:${setting}`
-  const [local, setLocal] = useState<{ scope: string; layout: RecordLayout } | null>(null)
-  const saved = readLayout(all.find((m) => m.key === moduleKey)?.user_settings, setting, fallback)
-
-  const change = useCallback(
-    (next: RecordLayout) => {
-      setLocal({ scope, layout: next })
-      qc.setQueryData<ModuleInfo[]>(['modules'], (list) =>
-        list?.map((m) => (m.key === moduleKey ? { ...m, user_settings: { ...m.user_settings, [setting]: next } } : m)),
-      )
-      void updateModuleSettings(moduleKey, { [setting]: next }).catch(() => {
-        // მეხსიერების დაკარგვა ხედს არ აჩერებს — შემდეგ ჯერზე შენახული/ნაგულისხმევი იქნება
-      })
-    },
-    [qc, moduleKey, setting, scope],
-  )
-
-  // ⚠️ სხვა მოდულზე გადასვლისას (პირადი მოდულები ერთ გვერდს იზიარებენ) ლოკალური აღარ მოქმედებს
-  return [local?.scope === scope ? local.layout : saved, change] as const
+  return useModuleSetting(moduleKey, setting, RECORD_LAYOUTS, fallback)
 }

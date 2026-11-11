@@ -13,6 +13,7 @@ import { ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Chip, ChipRow } from '@/components/ui/chip'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { DrillChips } from '@/components/DrillChips'
@@ -70,12 +71,15 @@ function selectedOptions(node: ReactNode, out: ReactElement<OptionProps>[] = [])
 export function FilterGroup({
   title,
   count,
+  info,
   defaultOpen = true,
   children,
 }: {
   title: string
   /** მონიშნულთა რაოდენობა — სათაურთან ჩანს, ჩაკეცილშიც */
   count?: number
+  /** ჯგუფის ახსნა — `i` სათაურთან (**უკვე ნათარგმნი ტექსტი**) */
+  info?: string
   defaultOpen?: boolean
   children: ReactNode
 }) {
@@ -100,6 +104,9 @@ export function FilterGroup({
             </span>
           )}
         </button>
+
+        {/* ⚠️ ღილაკის **გარეთ**: `i` თვითონ დასაჭერია, ღილაკში ჩასმული ღილაკი კი არ შეიძლება */}
+        <InfoHint info={info} />
 
         {/* ჯგუფის გასუფთავება — „ერთიანი წაშლა" იქვე, სადაც რიცხვი დგას.
             ⚠️ თითო რიგის საკუთარ `onChange(false)`-ს იძახებს, ე.ი. მოხსნის

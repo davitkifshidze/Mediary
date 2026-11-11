@@ -383,6 +383,14 @@
     "search": "Search the list",
     "noMatches": "Nothing matches",
     "clearGroup": "Clear this group",
+    "tmdbRating": "TMDB rating",
+    "myRating": "My rating",
+    "rangesHint": "A record without a year or a rating is outside every range — it leaves the list as soon as a bound is set. Reversed bounds are swapped for you.",
+    "genreMode": {
+      "any": "Any",
+      "all": "All together",
+      "hint": "With several genres ticked: “Any” keeps a record that has at least one of them; “All together” keeps only those that have every one. The choice applies at once and is remembered for this module."
+    },
     "clearAll": "Clear everything"
   },
   "sort": {
