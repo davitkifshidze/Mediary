@@ -377,6 +377,62 @@ class GalleryAlbumTest extends TestCase
             ->assertJsonPath('data.0.id', $inside->id);
     }
 
+    /**
+     * ⚠️ **მშობლის გარეშე ფოტო ურნის შიგთავსზე არ არის დამოკიდებული.**
+     *
+     * ურნაში მყოფი ჩანაწერის ფოტოების ფილტრი `NOT (ტიპი IN (…) AND id IN (…))`
+     * იყო: ფოტოზე, რომელსაც ტიპი არ აქვს, SQL-ში ეს `NULL` გამოდის და რიგი
+     * იჭრება. ე.ი. ურნაში ერთი ფილმიც საკმარისი იყო, რომ უმშობლო ფოტო —
+     * ალბომშიც და ალბომის გარეთაც — ყველა ეკრანიდან გამქრალიყო. ⚠️ ამ ფაილის
+     * დანარჩენ ტესტებში ურნა ცარიელია, ამიტომ ვერ დაინახეს.
+     */
+    public function test_a_trashed_record_does_not_hide_parentless_photos(): void
+    {
+        Storage::fake('public');
+
+        $binned = $this->makeMovie('Binned');
+        $this->photo($binned, 'gallery/images/binned.jpg');
+        $binned->moveToTrash();
+
+        // დამალული (ჩაკეტილი) ჩანაწერიც იმავე სიას ჭრის — მასაც იგივე პასუხი უნდა ჰქონდეს
+        $hidden = $this->makeMovie('Hidden');
+        $this->photo($hidden, 'gallery/images/hidden.jpg');
+        RecordLock::create([
+            'user_id' => $this->user->id,
+            'lockable_type' => $hidden->getMorphClass(),
+            'lockable_id' => $hidden->getKey(),
+            'password_hash' => Hash::make('secret1'),
+        ]);
+
+        $loose = $this->photo(null, 'gallery/images/loose.jpg');
+        $inside = $this->photo(null, 'gallery/images/inside.jpg');
+        $album = $this->actingAs($this->user)->postJson('/api/gallery/albums', ['name' => 'Trip'])->json();
+        $inside->update(['album_id' => $album['id']]);
+
+        $get = fn (string $uri) => $this->actingAs($this->user)->getJson($uri)->assertOk();
+
+        // ბრტყელი სია: ორივე უმშობლო ჩანს, ურნისა და დამალული ჩანაწერის ფოტო — არა
+        $flat = $get('/api/gallery/photos');
+        $this->assertEqualsCanonicalizing([$loose->id, $inside->id], array_column($flat->json('data'), 'id'));
+
+        // მთვლელი იმავე რიცხვს ამბობს, რასაც სია
+        $get('/api/gallery')
+            ->assertJsonPath('photos', $flat->json('meta.total'))
+            ->assertJsonPath('uncategorized', 2);
+
+        // „ალბომის გარეთ" და ალბომის შიგნით
+        $get('/api/gallery/photos?owner=none&album=none')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $loose->id);
+
+        $inner = $get("/api/gallery/photos?owner=album:{$album['id']}");
+        $inner->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $inside->id);
+
+        // ალბომის ბარათის რიცხვი = შიდა სიის რიცხვს
+        $card = collect($get('/api/gallery/albums')->json())->firstWhere('id', $album['id']);
+        $this->assertSame($inner->json('meta.total'), $card['photos']);
+    }
+
     /* ============================================================
        **ჩაკეტილი ალბომი (2026-09-16).**
 
@@ -448,6 +504,49 @@ class GalleryAlbumTest extends TestCase
         AlbumLock::flush();
 
         return $album;
+    }
+
+    /**
+     * **ფოტოების რაოდენობა ერთი განსაზღვრებით** — ბადე, გალერეის სათაური და
+     * მთავარი გვერდის ბარათი ერთსა და იმავე რიცხვს ამბობს.
+     *
+     * ⚠️ სამივე ადრე თავის წესს იყენებდა: ბარათი ჩაკეტილი ალბომის ფოტოებს
+     * აკლებდა და ურნაში მყოფი ჩანაწერისას ამატებდა, სათაური კი დამალული
+     * ჩანაწერის ფოტოებსაც ითვლიდა. ჩაკეტილი ალბომის ფოტო **ითვლება** — ბადეში ის
+     * დაბლარული ფილაა.
+     */
+    public function test_the_grid_the_header_and_the_dashboard_card_count_the_same_photos(): void
+    {
+        Storage::fake('public');
+        Storage::fake('private');
+
+        $this->photo(null, 'gallery/images/loose.jpg');
+        $this->photo($this->makeMovie('Kept'), 'gallery/images/kept.jpg');
+        $this->lockedPhoto($this->lockedAlbum(), 'gallery/locked/secret.jpg');
+
+        $binned = $this->makeMovie('Binned');
+        $this->photo($binned, 'gallery/images/binned.jpg');
+        $binned->moveToTrash();
+
+        $hidden = $this->makeMovie('Hidden');
+        $this->photo($hidden, 'gallery/images/hidden.jpg');
+        RecordLock::create([
+            'user_id' => $this->user->id,
+            'lockable_type' => $hidden->getMorphClass(),
+            'lockable_id' => $hidden->getKey(),
+            'password_hash' => Hash::make('secret1'),
+        ]);
+
+        $grid = $this->spa()->getJson('/api/gallery/photos')->assertOk()->json('meta.total');
+        $header = $this->spa()->getJson('/api/gallery')->assertOk();
+        $card = collect($this->spa()->getJson('/api/dashboard')->assertOk()->json('data'))->firstWhere('key', 'gallery');
+
+        // უმშობლო + ჩანაწერისა + ჩაკეტილი ალბომისა; ურნისა და დამალული ჩანაწერისა — არა
+        $this->assertSame(3, $grid);
+        $this->assertSame($grid, $header->json('photos'));
+        // ბარათი ფოტოებთან ერთად ვიდეო-ბმულებსაც ითვლის — აქ ვიდეო არ არის
+        $this->assertSame(0, $header->json('videos'));
+        $this->assertSame($grid, $card['count']);
     }
 
     /**

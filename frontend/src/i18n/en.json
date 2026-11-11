@@ -1050,7 +1050,7 @@
   },
   "storage": {
     "title": "Storage",
-    "hint": "Only your own uploads count — avatar, manually uploaded posters, main photos and attached files. Posters downloaded from TMDB don't use your quota.",
+    "hint": "Only your own uploads count — avatar, manually uploaded posters, main photos and attached files. Posters downloaded from TMDB don't use your quota. A file in the trash still takes up space until it is deleted for good.",
     "used": "Used",
     "quota": "Quota",
     "quotaHint": "The total limit for this account.",
@@ -1998,6 +1998,7 @@
     "statActors": "actors",
     "statVideos": "videos",
     "statSize": "size",
+    "statsHint": "“Photos” counts what “All photos” shows — without the photos of records that are in the trash or hidden; photos in a locked album do count. The storage bar counts every upload of yours, including what is in the trash.",
     "sort": {
       "label": "Order",
       "new": "Newest",

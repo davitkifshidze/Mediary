@@ -186,6 +186,13 @@ class DashboardController extends Controller
             return $query->withoutLocked();
         }
 
+        /* გალერეის ფოტო — იმავე განსაზღვრებით, რითაც გალერეის სათაური და ბადე
+           (`GalleryImage::scopeListed()`): ბარათი და გალერეა ერთ რიცხვს ამბობს.
+           ⚠️ მხოლოდ `not exists` / `not in` ქვე-პირობებია — ახალი query არ ემატება. */
+        if ($query->getModel() instanceof GalleryImage) {
+            return $query->listed();
+        }
+
         if ($key !== 'duty') {
             return $query;
         }

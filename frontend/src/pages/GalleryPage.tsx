@@ -16,6 +16,7 @@ import { cn, formatBytes } from '@/lib/utils'
 import { GalleryDownloadDialog, type GalleryDownloadPin } from '@/components/GalleryDownloadDialog'
 import { StorageBar } from '@/components/StorageBar'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { AllPhotosCut } from '@/components/gallery/AllPhotosCut'
@@ -116,6 +117,10 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
             <Stat label={t('gallery.statUncategorized')} value={summary.uncategorized} />
             <Stat label={t('gallery.statVideos')} value={summary.videos} />
             <Stat label={t('gallery.statSize')} value={formatBytes(summary.bytes)} />
+            {/* რას ითვლის „ფოტო" და რას — საცავის ზოლი: ორი რიცხვი სხვადასხვა კითხვას პასუხობს */}
+            <div className="ml-auto self-start">
+              <InfoHint info={t('gallery.statsHint')} />
+            </div>
           </div>
           <StorageBar usage={summary.storage} />
         </section>

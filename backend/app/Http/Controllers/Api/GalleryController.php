@@ -25,7 +25,6 @@ use App\Support\Like;
 use App\Support\LockedPhotos;
 use App\Support\MediaDomain;
 use App\Support\MissingCredential;
-use App\Support\RecordLocks;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -129,8 +128,9 @@ class GalleryController extends Controller
            დამორჩილებული მთვლელი „110"-ს დაწერდა 113 ფილაზე. რიცხვი
            ფოტოს არ ამხელს — ამხელს ბილიკი, რომელსაც resource არ ატარებს
            (ალბომის ბარათის იგივე წესი: „0 ფოტო" ჩაკეტილზე ტყუილი იყო). */
-        // ⚠️ ურნაში მყოფი ჩანაწერის ფოტოები არ ითვლება — სია მათ არ აჩვენებს (`photos()`)
-        $photos = fn () => GalleryParent::excludeTrashed(GalleryImage::withoutGlobalScope('album_lock'));
+        // ⚠️ იგივე განსაზღვრება, რასაც ბადე იყენებს (`GalleryImage::scopeListed()`) —
+        // ურნაში მყოფი და დამალული ჩანაწერის ფოტოები არც აქ ითვლება
+        $photos = fn () => GalleryImage::query()->listed();
 
         $images = $photos()
             ->selectRaw('count(*) as photos, coalesce(sum(size), 0) as bytes')
@@ -1004,10 +1004,10 @@ class GalleryController extends Controller
             ? $this->sourceQuery($from)
             : GalleryImage::query();
 
-        // დამალული ჩანაწერის (და მსახიობის) ფოტოები სიაში არ არის
-        RecordLocks::excludeMorph($query, 'gallery_images.imageable_type', 'gallery_images.imageable_id');
-        // ურნაში მყოფი ჩანაწერის ფოტოები — ურნასთან ერთად და არა სიაში
-        GalleryParent::excludeTrashed($query);
+        /* დამალული ჩანაწერის (და მსახიობის) ფოტოები სიაში არ არის, ურნაში მყოფი
+           ჩანაწერისა — ურნასთან ერთადაა. ⚠️ პირობა მოდელზეა (`scopeListed()`):
+           სათაურის მთვლელი და მთავარი გვერდის ბარათი იმავეს კითხულობს. */
+        $query->listed();
 
         /* ⚠️ **ჩაკეტილი ფოტო ბრტყელ სიაში ჩანს — დაბლარულად (2026-09-20).**
 

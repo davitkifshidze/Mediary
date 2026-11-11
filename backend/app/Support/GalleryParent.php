@@ -305,6 +305,11 @@ final class GalleryParent
      * ნაწილად ითვლის): „ყველა ფოტოში" დარჩენილზე „მთავრად დაყენება" ან
      * „გადატანა" ურნაში მყოფ ჩანაწერს შეეხებოდა, საბოლოო წაშლისას კი ჩუმად ქრებოდა.
      * ⚠️ ცხრილით ჯგუფდება — პირადი მოდულები ერთ ცხრილს (`custom_records`) იზიარებს.
+     *
+     * ⚠️ **მშობლის გარეშე ფოტო ყოველთვის გადის — ცხადი `IS NULL`-ით.** მარტო
+     * `NOT (ტიპი IN (…) AND id IN (…))` ცარიელ ტიპზე SQL-ში `NULL` გამოდის და
+     * არა `TRUE`, ე.ი. ურნაში ერთი ჩანაწერიც საკმარისი იყო, რომ ყველა უმშობლო
+     * ფოტო (ალბომებისაც) სიიდანაც და მთვლელებიდანაც გამქრალიყო.
      */
     public static function excludeTrashed(Builder $query, string $typeColumn = 'gallery_images.imageable_type', string $idColumn = 'gallery_images.imageable_id'): Builder
     {
@@ -322,13 +327,15 @@ final class GalleryParent
             return $query;
         }
 
-        return $query->whereNot(function (Builder $q) use ($byTable, $typeColumn, $idColumn) {
-            foreach ($byTable as $table => $keys) {
-                $q->orWhere(fn (Builder $x) => $x
-                    ->whereIn($typeColumn, $keys)
-                    ->whereIn($idColumn, DB::table($table)->whereNotNull('trashed_at')->select('id')));
-            }
-        });
+        return $query->where(fn (Builder $w) => $w
+            ->whereNull($typeColumn)
+            ->orWhereNot(function (Builder $q) use ($byTable, $typeColumn, $idColumn) {
+                foreach ($byTable as $table => $keys) {
+                    $q->orWhere(fn (Builder $x) => $x
+                        ->whereIn($typeColumn, $keys)
+                        ->whereIn($idColumn, DB::table($table)->whereNotNull('trashed_at')->select('id')));
+                }
+            }));
     }
 
     /** ვალიდაციის წესი — `in:cast_member,movie,series,…` (+ ამ ანგარიშის პირადი მოდულები) */

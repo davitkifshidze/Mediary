@@ -7,6 +7,8 @@ use App\Models\Concerns\HasTrash;
 use App\Models\Concerns\StoredFile;
 use App\Support\AlbumLock;
 use App\Support\CustomModules;
+use App\Support\GalleryParent;
+use App\Support\RecordLocks;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -77,6 +79,27 @@ class GalleryImage extends Model
            ცარიელ ინსტანციაზე აგებს და მერე `Model::getActualClassNameForMorph()`-ს
            ეკითხება — იქამდე რიგები უკვე ჩატვირთულია, ე.ი. რუკაც მზადაა. */
         static::retrieved(fn (GalleryImage $image) => CustomModules::registerMorph($image->imageable_type));
+    }
+
+    /**
+     * **„გალერეაში ჩანს" — ფოტოების რაოდენობის ერთადერთი განსაზღვრება.**
+     *
+     * „ყველა ფოტოს" ბადე, გალერეის სათაურის მთვლელები და მთავარი გვერდის
+     * ბარათი ამ ერთ პირობას კითხულობს: ფოტო ჩემია, ურნაში არ არის (არც თვითონ,
+     * არც მისი ჩანაწერი) და მისი ჩანაწერი დამალული არ არის. ⚠️ ჩაკეტილი ალბომის
+     * ფოტო **ითვლება** — ბადეში ის დაბლარული ფილაა (ფაილს `GalleryImageResource`
+     * აშიშვლებს), ე.ი. რიცხვი ფილების რაოდენობას ემთხვევა.
+     *
+     * ⚠️ ადრე ოთხი ეკრანი ოთხ წესს იყენებდა: სათაური დამალული ჩანაწერის ფოტოებსაც
+     * ითვლიდა, ბადე — არა; მთავარი გვერდის ბარათი ჩაკეტილ ალბომს აკლებდა და ურნაში
+     * მყოფი ჩანაწერის ფოტოებს ამატებდა.
+     */
+    public function scopeListed(Builder $query): Builder
+    {
+        $query->withoutGlobalScope('album_lock');
+        RecordLocks::excludeMorph($query, 'gallery_images.imageable_type', 'gallery_images.imageable_id');
+
+        return GalleryParent::excludeTrashed($query);
     }
 
     public function imageable(): MorphTo
