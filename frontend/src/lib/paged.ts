@@ -52,7 +52,8 @@ export interface Page<T> {
 
 interface ListPayload<T> {
   data?: T[]
-  meta?: { total?: number; last_page?: number }
+  /** `records` — ჩანაწერების რიცხვი იქ, სადაც გვერდი **ერთეულებს** ითვლის (ფილმების ფრანჩაიზი ერთი ერთეულია) */
+  meta?: { total?: number; last_page?: number; records?: number }
 }
 
 /**
@@ -66,7 +67,8 @@ export function readPage<T>(payload: ListPayload<T>): Page<T> {
 
   return {
     items,
-    total: payload?.meta?.total ?? items.length,
+    // ⚠️ ეკრანზე „სულ N" ჩანაწერებია; გვერდების რაოდენობას სერვერის `last_page` ამბობს
+    total: payload?.meta?.records ?? payload?.meta?.total ?? items.length,
     lastPage: Math.max(1, payload?.meta?.last_page ?? 1),
   }
 }

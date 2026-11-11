@@ -113,27 +113,34 @@ class ListPaginationTest extends TestCase
     }
 
     /**
-     * ⚠️ ფრანჩაიზის კლასტერი გვერდის შიგნით უნდა დარჩეს სრული: გვერდი
-     * ჯერ ჩამოდის, კლასტერი მერე დგება — ე.ი. რაოდენობა არ უნდა შეიცვალოს.
+     * ⚠️ ფილმების სიაში გვერდი **ერთეულებს** ითვლის: ფრანჩაიზი ერთი ერთეულია და
+     * გვერდებს შორის არ იჭრება, ამიტომ გვერდზე ფილმი ნაგულისხმევ ზომაზე მეტიც
+     * შეიძლება იყოს. `meta.total` ერთეულებია, ფილმების რიცხვი — `meta.records`.
      */
-    public function test_franchise_clustering_keeps_the_page_size(): void
+    public function test_a_franchise_is_one_unit_of_the_page(): void
     {
-        $total = Controller::LIST_PER_PAGE + 7;
-        for ($i = 0; $i < $total; $i++) {
-            Movie::create([
-                'user_id' => $this->user->id,
-                'year' => 2000 + ($i % 20),
-                // ყოველი მესამე ერთსა და იმავე კოლექციაშია
-                'tmdb_collection_id' => $i % 3 === 0 ? 77 : null,
-            ]);
+        $singles = Controller::LIST_PER_PAGE + 5;
+        $parts = 8;
+
+        for ($i = 0; $i < $singles; $i++) {
+            Movie::create(['user_id' => $this->user->id, 'year' => 2000 + ($i % 20)]);
+        }
+        for ($i = 0; $i < $parts; $i++) {
+            Movie::create(['user_id' => $this->user->id, 'year' => 1990 + $i, 'tmdb_collection_id' => 77]);
         }
 
-        $res = $this->actingAs($this->user)->getJson('/api/movies')->assertOk();
+        $first = $this->actingAs($this->user)->getJson('/api/movies')->assertOk();
 
-        $this->assertCount(Controller::LIST_PER_PAGE, $res->json('data'));
-        $this->assertSame($total, $res->json('meta.total'));
+        // ერთეული: ფრანჩაიზი + ცალკე ფილმები; ფრანჩაიზი ბოლოს დაემატა, ე.ი. პირველ გვერდზეა
+        $this->assertSame($singles + 1, $first->json('meta.total'));
+        $this->assertSame($singles + $parts, $first->json('meta.records'));
+        $this->assertSame(2, $first->json('meta.last_page'));
+        $this->assertCount(Controller::LIST_PER_PAGE - 1 + $parts, $first->json('data'));
 
-        $ids = array_column($res->json('data'), 'id');
-        $this->assertSame(count($ids), count(array_unique($ids)), 'კლასტერმა ჩანაწერი არ უნდა გაასამაგროს');
+        $second = $this->actingAs($this->user)->getJson('/api/movies?page=2')->assertOk();
+        $ids = [...array_column($first->json('data'), 'id'), ...array_column($second->json('data'), 'id')];
+
+        $this->assertCount($singles + $parts, $ids);
+        $this->assertSame(count($ids), count(array_unique($ids)), 'ერთეულებად დაჭრამ ჩანაწერი არ უნდა გაამეოროს');
     }
 }

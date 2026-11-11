@@ -35,6 +35,18 @@ describe('readPage', () => {
     expect(page.lastPage).toBe(1)
   })
 
+  it('ერთეულებად დაჭრილ სიაზე ჯამი ჩანაწერებია, ბოლო გვერდი კი სერვერისაა', () => {
+    // ფილმების სია: 6 ერთეული (ფრანჩაიზი ერთი ერთეულია) სამ გვერდზე, სულ 9 ფილმი
+    const page = readPage<{ id: number }>({
+      data: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }],
+      meta: { total: 6, last_page: 3, records: 9 },
+    })
+
+    expect(page.items).toHaveLength(4)
+    expect(page.total).toBe(9)
+    expect(page.lastPage).toBe(3)
+  })
+
   it('ცარიელ და გაუმართავ პასუხზე არ ტყდება', () => {
     expect(readPage({ data: [] })).toEqual({ items: [], total: 0, lastPage: 1 })
     expect(readPage({})).toEqual({ items: [], total: 0, lastPage: 1 })

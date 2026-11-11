@@ -19,9 +19,11 @@ use App\Support\MediaDuplicate;
 use App\Support\MissingCredential;
 use App\Support\RecordLocks;
 use App\Support\StorageFolder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class MovieController extends Controller
@@ -46,71 +48,106 @@ class MovieController extends Controller
 
         $sort = $this->sortLibrary($query, $request);
 
-        /* ⚠️ ფრანჩაიზა **გვერდის შიგნით** იკრიბება და არა მთელ ბიბლიოთეკაზე.
-           ფრონტი ყოველთვის პირველ გვერდს ითხოვს და `per_page`-ს ზრდის
-           („მეტის ჩვენება“), ე.ი. ჩატვირთული პრეფიქსი ყოველთვის სრულია და
-           კლასტერი მასზე სწორად დგება. `annotateFranchise()` ბეჯს ისედაც
-           ცალკე query-ით ითვლის, ე.ი. ქვესიმრავლეზეც მუშაობს. */
-        $page = $this->paginated($request, $query);
-
         // „ჩაკეტილებში" დამალული ბოქლომიანი ბარათია — ფრანჩაიზად არ იკვრება
         if ($locked) {
-            return MovieListResource::collection($page);
+            return MovieListResource::collection($this->paginated($request, $query));
         }
-
-        $movies = $page instanceof LengthAwarePaginator ? $page->getCollection() : $page;
-        Movie::annotateFranchise($movies);
 
         // ჯგუფის (ფრანჩაიზის) გათვალისწინება — default ჩართული.
-        // `group=0` → სუფთა დალაგება, ფრანჩაიზის ნაწილები დაიშლება.
+        // `group=0` → სუფთა დალაგება: ფრანჩაიზის ნაწილები დაიშლება და გვერდი ფილმებს ითვლის.
         if ($request->has('group') && ! $request->boolean('group')) {
+            $page = $this->paginated($request, $query);
+            Movie::annotateFranchise($page instanceof LengthAwarePaginator ? $page->getCollection() : $page);
+
             return MovieListResource::collection($page);
         }
 
-        $clustered = $this->clusterByFranchise($movies, $sort);
-
-        return MovieListResource::collection(
-            $page instanceof LengthAwarePaginator ? $page->setCollection($clustered) : $clustered,
-        );
+        return $this->franchisePage($request, $query, $sort);
     }
 
     /**
-     * ფრანჩაიზის ნაწილები გვერდიგვერდ — კლასტერი დგება მისი პირველი (sort-ით)
-     * ნაწილის პოზიციაზე, ე.ი. ახალი ნაწილის მქონე ჯგუფი year_desc-ზე თავში წამოვა.
-     * უკოლექციო ფილმი ადგილზე რჩება.
+     * **ფრანჩაიზი სიაში ერთი ერთეულია — და ერთეულები იკვრება გვერდებად დაჭრამდე.**
      *
-     * ჯგუფის შიგნით: default-ად ახალი მარცხნივ, კლებადობით მარჯვნივ;
-     * ზრდადი დალაგების არჩევისას მიმართულებას ვუსწორებთ, თორემ ჯგუფი სიის
-     * მიმართულებას ეწინააღმდეგება.
+     * ⚠️ ადრე სია ჯერ იჭრებოდა და ნაწილები მხოლოდ **იმ გვერდის შიგნით** იკვრებოდა:
+     * სხვადასხვა გვერდზე მოხვედრილი ნაწილები ვერასდროს ერთდებოდა (SPA თითო გვერდს
+     * ცალკე ითხოვს და `per_page`-ს აღარ ზრდის). ახლა ჯერ მთელი გაფილტრული სია
+     * იკითხება მსუბუქად — id, კოლექცია, წელი —, მასზე ეწყობა ერთეულები, და იჭრება
+     * **ერთეულების** სია: გვერდის ზომა და ბოლო გვერდი ერთეულებს ითვლის, ჯგუფი შუაზე
+     * არასდროს იჭრება, მისი ყველა ნაწილი კი ერთ გვერდზეა, რომელზეც არ უნდა ყოფილიყო.
+     *
+     * ⚠️ `meta.total` ამიტომ **ერთეულების** რიცხვია; ფილმების რაოდენობა ცალკე მოდის
+     * (`meta.records`) — სათაურის „N ფილმი" და „სულ N" მას აჩვენებს.
      */
-    private function clusterByFranchise($movies, string $sort = '')
+    private function franchisePage(Request $request, Builder $query, string $sort)
+    {
+        $model = $query->getModel();
+
+        $rows = (clone $query)->setEagerLoads([])->toBase()->get([
+            $model->getQualifiedKeyName().' as id',
+            $model->qualifyColumn('tmdb_collection_id'),
+            $model->qualifyColumn('year'),
+        ]);
+
+        $units = collect($this->franchiseUnits($rows, $sort));
+        $page = $this->paginated($request, $units);
+
+        $ids = ($page instanceof LengthAwarePaginator ? $page->getCollection() : $page)->flatten()->all();
+        $position = array_flip($ids);
+
+        // ⚠️ იგივე scope-ები, რითაც id-ები ამოვიდა (`owner`, ურნა, დამალული) — მეორე კარი არ იხსნება
+        $movies = Movie::query()->with('genres')->whereIn($model->getQualifiedKeyName(), $ids)->get()
+            ->sortBy(fn (Movie $movie) => $position[$movie->id])
+            ->values();
+
+        Movie::annotateFranchise($movies);
+
+        return MovieListResource::collection(
+            $page instanceof LengthAwarePaginator ? $page->setCollection($movies) : $movies,
+        )->additional(['meta' => ['records' => $rows->count()]]);
+    }
+
+    /**
+     * **სიის ერთეულები** — თითო ერთეული ფილმების id-ების სიაა: ფრანჩაიზი თავისი ყველა
+     * (ფილტრში მოხვედრილი) ნაწილით, ან ერთი უკოლექციო ფილმი.
+     *
+     * ერთეული დგება მისი პირველი (sort-ით) ნაწილის ადგილას, ე.ი. ახალი ნაწილის მქონე
+     * ჯგუფი `year_desc`-ზე თავში წამოვა. ჯგუფის შიგნით ნაწილები გამოსვლის წლითაა:
+     * ნაგულისხმევად ახალი წინ; ზრდადი დალაგებისას მიმართულება სიისას მიჰყვება, თორემ
+     * ჯგუფი სიის მიმართულებას ეწინააღმდეგებოდა.
+     *
+     * @param  Collection<int, object{id: int, tmdb_collection_id: ?int, year: ?int}>  $rows  დალაგებული სია
+     * @return list<list<int>>
+     */
+    private function franchiseUnits($rows, string $sort = ''): array
     {
         $dir = str_ends_with($sort, '_asc') ? 'asc' : 'desc';
 
-        $byCollection = $movies
-            ->filter(fn ($m) => $m->tmdb_collection_id)
+        $byCollection = $rows
+            ->filter(fn ($row) => $row->tmdb_collection_id)
             ->sortBy([['year', $dir], ['id', $dir]])
             ->groupBy('tmdb_collection_id');
 
         $emitted = [];
-        $out = [];
-        foreach ($movies as $m) {
-            $cid = $m->tmdb_collection_id;
-            if (! $cid) {
-                $out[] = $m;
+        $units = [];
+
+        foreach ($rows as $row) {
+            $collection = $row->tmdb_collection_id;
+
+            if (! $collection) {
+                $units[] = [(int) $row->id];
 
                 continue;
             }
-            if (isset($emitted[$cid])) {
+
+            if (isset($emitted[$collection])) {
                 continue;
             }
-            $emitted[$cid] = true;
-            foreach ($byCollection[$cid] as $part) {
-                $out[] = $part;
-            }
+
+            $emitted[$collection] = true;
+            $units[] = $byCollection[$collection]->map(fn ($part) => (int) $part->id)->values()->all();
         }
 
-        return collect($out);
+        return $units;
     }
 
     /** ერთი ფილმი დეტალურად */
