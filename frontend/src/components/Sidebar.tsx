@@ -481,6 +481,7 @@ export function Sidebar({
     return (
       <div key={m.key} style={modAccent(m.color)}>
         <button
+          data-kind="accordion"
           onClick={() => setOpen((o) => ({ ...o, [m.key]: !o[m.key] }))}
           aria-expanded={sectionOpen}
           className={cn(MODULE_ROW, (active ?? onModule) ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE)}
@@ -530,6 +531,7 @@ export function Sidebar({
     return (
       <div key={m.key} style={modAccent(m.color)}>
         <button
+          data-kind="accordion"
           onClick={() => setOpen((o) => ({ ...o, [type]: !o[type] }))}
           aria-expanded={sectionOpen}
           className={cn(
@@ -639,6 +641,7 @@ export function Sidebar({
       return (
         <div key={m.key} style={modAccent(m.color)}>
           <button
+            data-kind="accordion"
             onClick={() => setOpen((o) => ({ ...o, gallery: !o.gallery }))}
             aria-expanded={sectionOpen}
             className={cn(
@@ -692,6 +695,7 @@ export function Sidebar({
       return (
         <div key={m.key} style={modAccent(m.color)}>
           <button
+            data-kind="accordion"
             onClick={() => setOpen((o) => ({ ...o, personal: !o.personal }))}
             aria-expanded={sectionOpen}
             className={cn(MODULE_ROW, onPersonal ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE)}

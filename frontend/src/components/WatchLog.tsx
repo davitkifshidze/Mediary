@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, Plus, Trash2 } from 'lucide-react'
+import { Eye, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
 import { deleteWatch, fetchWatches, logWatch } from '@/api/watches'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
@@ -86,7 +86,8 @@ export function WatchLog({ type, recordId, watched }: { type: MediaType; recordI
 
         <div className="flex items-center gap-2">
           {watches.length > 0 && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => setOpen((v) => !v)}>
+            <Button type="button" variant="outline" size="sm" onClick={() => setOpen((v) => !v)}>
+              {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
               {open ? t('watchLog.hide') : t('watchLog.show')}
             </Button>
           )}

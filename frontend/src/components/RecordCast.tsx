@@ -273,6 +273,7 @@ export function RecordCast({
         <div className="mt-5">
           <div className="flex items-center gap-1.5">
             <button
+              data-kind="accordion"
               type="button"
               onClick={() => setShowHidden((v) => !v)}
               aria-expanded={showHidden}

@@ -79,7 +79,7 @@ export function DutyCalendarSide({
             <CalendarClock className="size-3.5" />
             {t(next.date === today ? 'duty.side.today' : 'duty.side.next')}
           </h3>
-          <button type="button" onClick={() => onOpenShift(next)} className="w-full cursor-pointer text-left" data-testid="duty-side-next">
+          <button data-kind="card" type="button" onClick={() => onOpenShift(next)} className="w-full cursor-pointer text-left" data-testid="duty-side-next">
             <p className="font-semibold first-letter:uppercase">{dayFormat.format(parseDay(next.date))}</p>
             <p className="mt-1 flex items-center gap-1.5 text-sm">
               <span className="size-2.5 shrink-0 rounded-sm" style={{ background: workplaceColor(next.workplace) }} />

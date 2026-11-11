@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Globe, Lock, LockOpen, ShieldAlert } from 'lucide-react'
+import { Globe, Lock, LockOpen, ShieldAlert, X, Save } from 'lucide-react'
 import {
   createGalleryAlbum,
   updateGalleryAlbum,
@@ -193,7 +193,8 @@ export function AlbumDialog({
             <div className="flex flex-wrap items-center gap-2 rounded-md bg-destructive/10 p-2.5 text-xs text-destructive">
               <ShieldAlert className="size-4 shrink-0" />
               <span className="min-w-0 flex-1">{t('gallery.albumRemoveLockHint')}</span>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setRemoving(false)}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setRemoving(false)}>
+                <X className="size-4" />
                 {t('actions.cancel')}
               </Button>
             </div>
@@ -222,10 +223,12 @@ export function AlbumDialog({
       {/* ⚠️ მოქმედებების რიგი `</form>`-ის შემდეგაა და `form=`-ით უკავშირდება —
           პროექტის არსებული წესი: ღილაკები ბოლოში დგანან და არა შუაში */}
       <ModalFooter>
-        <Button type="button" variant="ghost" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button type="submit" form="album-form" disabled={!ready || save.isPending}>
+          <Save className="size-4" />
           {t('actions.save')}
         </Button>
       </ModalFooter>

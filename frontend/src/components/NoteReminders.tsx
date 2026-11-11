@@ -685,13 +685,16 @@ function ReminderEditor({
           <p className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-500">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
             <span className="flex-1">{t('notes.permissionHint')}</span>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="xs"
+              className="shrink-0 text-foreground"
               onClick={async () => setPermission(await requestNotificationPermission())}
-              className="shrink-0 cursor-pointer text-primary hover:text-primary/70"
             >
+              <BellPlus className="size-3.5" />
               {t('notes.permissionAsk')}
-            </button>
+            </Button>
           </p>
         )}
       </StepSection>
@@ -707,7 +710,8 @@ function ReminderEditor({
         </Button>
 
         {/* ⚠️ ახლა ახალ შეხსენებაზეც ჩანს — ორივე შემთხვევაში სიაში აბრუნებს */}
-        <Button size="sm" variant="ghost" onClick={onCancel}>
+        <Button size="sm" variant="outline" onClick={onCancel}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
       </div>

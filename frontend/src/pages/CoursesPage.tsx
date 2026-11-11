@@ -2,7 +2,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, FileText, GraduationCap, Image as ImageIcon, Link2, Loader2, Plus, Search } from 'lucide-react'
+import {
+  ExternalLink,
+  FileText,
+  GraduationCap,
+  Image as ImageIcon,
+  Link2,
+  Loader2,
+  Plus,
+  Search,
+  FilterX,
+} from 'lucide-react'
 import {
   COURSE_STATUSES,
   createCourse,
@@ -285,6 +295,7 @@ export function CoursesPage() {
               actions={
                 activeCount > 0 || term ? (
                   <Button variant="outline" onClick={() => { setQ(''); clear() }}>
+                    <FilterX className="size-4" />
                     {t('filter.clear')}
                   </Button>
                 ) : (

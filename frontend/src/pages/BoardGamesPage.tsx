@@ -16,6 +16,7 @@ import {
   Search,
   Tags,
   Users,
+  FilterX,
 } from 'lucide-react'
 import {
   deleteBoardGame,
@@ -276,6 +277,7 @@ export function BoardGamesPage() {
                 <>
                   {activeCount > 0 && (
                     <Button variant="outline" onClick={clear}>
+                      <FilterX className="size-4" />
                       {t('filter.clear')}
                     </Button>
                   )}

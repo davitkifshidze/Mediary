@@ -1,7 +1,17 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowRightLeft, Plus, Replace, Search, Unlink, type LucideIcon } from 'lucide-react'
+import {
+  ArrowRightLeft,
+  CheckSquare,
+  ChevronDown,
+  Plus,
+  Replace,
+  Search,
+  Square,
+  Unlink,
+  type LucideIcon,
+} from 'lucide-react'
 import {
   GENRE_ITEM_BUCKET,
   fetchGenreItems,
@@ -284,6 +294,7 @@ export function GenreItemsManager({
                   {found.length > shown.length && (
                     <div className="p-2">
                       <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => setLimit((n) => n + VISIBLE)}>
+                        <ChevronDown className="size-4" />
                         {t('purge.itemsMore', { count: found.length - shown.length })}
                       </Button>
                     </div>
@@ -425,22 +436,21 @@ function DomainPicker({
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className="flex gap-1">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="xs"
             onClick={() => onChange(all.map((m) => m.id))}
             disabled={!all.length}
-            className="cursor-pointer rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
           >
+            <CheckSquare className="size-3.5" />
             {t('genres.pickAll')} ({all.length})
-          </button>
+          </Button>
           {value.length > 0 && (
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              className="cursor-pointer rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
+            <Button type="button" variant="outline" size="xs" onClick={() => onChange([])}>
+              <Square className="size-3.5" />
               {t('filter.clear')}
-            </button>
+            </Button>
           )}
         </div>
       </div>

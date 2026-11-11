@@ -24,6 +24,7 @@ import {
   SquarePlay,
   Trash2,
   TriangleAlert,
+  X,
 } from 'lucide-react'
 import {
   clearCredential,
@@ -281,6 +282,7 @@ function ProviderTile({
 
   return (
     <button
+      data-kind="card"
       type="button"
       onClick={onOpen}
       aria-label={t('credentials.editTitle', { name: brandOf(credential.provider) })}
@@ -713,7 +715,8 @@ function ProviderDialog({ credential, onClose }: { credential: Credential; onClo
             {t('credentials.clear')}
           </Button>
         )}
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.close')}
         </Button>
         <Button onClick={() => save.mutate()} disabled={!dirty || save.isPending}>

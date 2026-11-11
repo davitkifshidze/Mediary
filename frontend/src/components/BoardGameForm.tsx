@@ -418,7 +418,7 @@ export function BoardGameForm({
                       </span>
                       <Button
                         type="button"
-                        variant={added ? 'ghost' : 'outline'}
+                        variant="outline"
                         size="sm"
                         className="shrink-0"
                         disabled={added}

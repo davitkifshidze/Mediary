@@ -26,7 +26,7 @@ export function MediaLockedCard({ movie, type }: { movie: MovieListItem; type: M
 
   return (
     <>
-      <button type="button" onClick={() => setUnlocking(true)} className="group block w-full cursor-pointer text-left" data-testid="media-locked-card">
+      <button data-kind="card" type="button" onClick={() => setUnlocking(true)} className="group block w-full cursor-pointer text-left" data-testid="media-locked-card">
         <div className="grid aspect-[2/3] place-items-center rounded-lg bg-muted text-muted-foreground ring-1 ring-border transition group-hover:ring-foreground/30">
           <span className="flex flex-col items-center gap-2 text-xs">
             <Lock className="size-8" />

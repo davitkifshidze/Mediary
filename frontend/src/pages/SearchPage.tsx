@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ImageOff, ListMusic, Loader2, Search, Users } from 'lucide-react'
+import { ImageOff, ListMusic, Loader2, Search, Users, ArrowRight, ChevronDown } from 'lucide-react'
 import { globalSearch, type SearchGroup, type SearchItem } from '@/api/search'
 import { storageUrl } from '@/lib/api'
 import { moduleName, useModules } from '@/lib/modules'
@@ -213,10 +213,12 @@ export function SearchPage() {
               <div className="mt-2">
                 {!domain ? (
                   <Button variant="outline" size="sm" onClick={() => setDomain(group.key)}>
+                    <ArrowRight className="size-4" />
                     {t('search.showAllIn', { name: labelOf(group), count: group.total })}
                   </Button>
                 ) : group.items.length < DEEP_MAX ? (
                   <Button variant="outline" size="sm" onClick={() => setLimit((l) => Math.min(l + DEEP_STEP, DEEP_MAX))}>
+                    <ChevronDown className="size-4" />
                     {t('list.showMore')}
                   </Button>
                 ) : (

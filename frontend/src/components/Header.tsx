@@ -226,7 +226,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
                   </Link>
                 </PopoverPrimitive.Close>
                 <PopoverPrimitive.Close asChild>
-                  <button onClick={() => void logout()} className={`${item} text-destructive hover:text-destructive`}>
+                  <button data-kind="menu-item" onClick={() => void logout()} className={`${item} text-destructive hover:text-destructive`}>
                     <LogOut className="size-4 shrink-0" />
                     {t('auth.logout')}
                   </button>

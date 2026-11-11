@@ -89,6 +89,7 @@ function DrillCaption({ calendarMonth, displayIndex: _index, children, ...div }:
   return (
     <div {...div}>
       <button
+        data-kind="calendar"
         type="button"
         className="fb-cal-drill"
         title={t('dates.pickMonth')}
@@ -148,7 +149,7 @@ function useCalendarView(selected: Date | undefined, calendar: CalendarProps) {
         <div className="rdp-month">
           <div className="rdp-month_caption">
             {onLabel ? (
-              <button type="button" className="fb-cal-drill" onClick={onLabel} title={t('dates.pickYear')} data-testid="calendar-year">
+              <button data-kind="calendar" type="button" className="fb-cal-drill" onClick={onLabel} title={t('dates.pickYear')} data-testid="calendar-year">
                 <span className="rdp-caption_label">{label}</span>
               </button>
             ) : (
@@ -181,6 +182,7 @@ function useCalendarView(selected: Date | undefined, calendar: CalendarProps) {
         const active = selected?.getFullYear() === year && selected.getMonth() === m
         return (
           <button
+            data-kind="calendar"
             key={m}
             type="button"
             aria-pressed={active}
@@ -282,6 +284,7 @@ function CalendarPopover({
         <PopoverPrimitive.Trigger asChild>
           {/* ⚠️ `type="button"` — ფორმის შიგნით ტიპის გარეშე submit-ია */}
           <button
+            data-kind="field"
             id={id}
             type="button"
             className="flex h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm shadow-sm focus:outline-none"

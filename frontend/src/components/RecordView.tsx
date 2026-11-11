@@ -233,6 +233,7 @@ function Title({ props, small = false }: { props: RecordViewProps; small?: boole
     </p>
   ) : (
     <button
+      data-kind="link"
       type="button"
       onClick={onOpen}
       className={cn('block max-w-full cursor-pointer truncate text-left font-medium hover:text-primary', text)}

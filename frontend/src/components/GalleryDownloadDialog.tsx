@@ -3,7 +3,7 @@ import { useContentLang } from '@/lib/settings'
 import { statusName, useMergedStatuses } from '@/lib/statuses'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Check, Clapperboard, Layers, Loader2, Play, Search, Square, UserRound, Users } from 'lucide-react'
+import { Check, Clapperboard, Layers, Loader2, Play, Search, Square, UserRound, Users, X } from 'lucide-react'
 import {
   fetchGalleryPlan,
   GALLERY_CAST_SIZES,
@@ -625,6 +625,7 @@ export function GalleryDownloadDialog({
 
                   return (
                     <button
+                      data-kind="card"
                       key={source}
                       type="button"
                       aria-pressed={on}
@@ -685,7 +686,7 @@ export function GalleryDownloadDialog({
                               <Users className="size-3.5" />
                               {t('gallery.pickAllMale')}
                             </Button>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => pickByGender(null)}>
+                            <Button type="button" size="sm" variant="outline" onClick={() => pickByGender(null)}>
                               <Square className="size-3.5" />
                               {t('photos.clear')}
                             </Button>
@@ -863,6 +864,7 @@ export function GalleryDownloadDialog({
         </div>
         <div className="flex shrink-0 gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <X className="size-4" />
             {t('confirm.cancel')}
           </Button>
           <Button onClick={run} disabled={!canRun}>

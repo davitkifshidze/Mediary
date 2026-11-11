@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ExternalLink, HelpCircle } from 'lucide-react'
+import { ExternalLink, HelpCircle, X } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 
@@ -80,7 +80,10 @@ export function CredentialHelpDialog({
               <ExternalLink className="size-4" />
             </a>
           )}
-          <Button onClick={onClose}>{t('actions.close')}</Button>
+          <Button onClick={onClose}>
+            <X className="size-4" />
+            {t('actions.close')}
+          </Button>
         </ModalFooter>
       </div>
     </ModalShell>

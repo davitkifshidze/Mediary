@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { CheckSquare, Loader2, Play, Search, Square } from 'lucide-react'
+import { CheckSquare, Loader2, Play, Search, Square, X } from 'lucide-react'
 import {
   CAST_SYNC_FIELDS,
   fetchCastSyncPlan,
@@ -201,7 +201,7 @@ export function CastSyncFlow({
                     <CheckSquare className="size-3.5" />
                     {t('castSync.pickAll')}
                   </Button>
-                  <Button type="button" size="sm" variant="ghost" disabled={!ids.length} onClick={() => setIds([])}>
+                  <Button type="button" size="sm" variant="outline" disabled={!ids.length} onClick={() => setIds([])}>
                     <Square className="size-3.5" />
                     {t('castSync.clear')}
                   </Button>
@@ -316,6 +316,7 @@ export function CastSyncFlow({
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('confirm.cancel')}
           </Button>
           <Button onClick={run} disabled={!canRun}>

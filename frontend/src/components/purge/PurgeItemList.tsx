@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2, Search, Trash2, X } from 'lucide-react'
+import { Loader2, Search, Trash2, X, CheckSquare, Square, ChevronDown } from 'lucide-react'
 import type { PurgePlanItem } from '@/api/account'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -102,6 +102,7 @@ export function PurgeItemList({
             disabled={disabled}
             onClick={() => onToggleAll(excluded.size > 0)}
           >
+            {excluded.size > 0 ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
             {excluded.size > 0 ? t('purge.itemsSelectAll') : t('purge.itemsClearAll')}
           </Button>
         </div>
@@ -176,6 +177,7 @@ export function PurgeItemList({
           className="mt-2"
           onClick={() => setLimit((n) => n + VISIBLE)}
         >
+          <ChevronDown className="size-4" />
           {t('purge.itemsMore', { count: found.length - shown.length })}
         </Button>
       )}

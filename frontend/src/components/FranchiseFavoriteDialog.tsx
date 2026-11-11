@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Film, Layers, Loader2, Star } from 'lucide-react'
+import { Film, Layers, Loader2, Star, X } from 'lucide-react'
 import { fetchMovieCollection, mediaApi, type CollectionPart } from '@/api/media'
 import type { MovieListItem } from '@/api/types'
 import { movieTitle } from '@/lib/display'
@@ -242,6 +242,7 @@ export function FranchiseFavoriteDialog({
 
           <ModalFooter>
             <Button variant="outline" onClick={onClose} disabled={saving}>
+              <X className="size-4" />
               {t('actions.cancel')}
             </Button>
             <Button onClick={() => void commit(chosen)} disabled={saving}>

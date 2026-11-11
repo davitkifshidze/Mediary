@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { FileUp, Play, Upload, X } from 'lucide-react'
+import { FileUp, Play, Upload, X, FileSearch, ChevronDown } from 'lucide-react'
 import {
   discardImport,
   fetchImportSources,
@@ -174,6 +174,7 @@ export function ImportPanel() {
             <div className="flex flex-wrap gap-2">
               {ambiguous.map((key) => (
                 <Button key={key} type="button" size="sm" variant="outline" disabled={busy} onClick={() => build(key)}>
+                  <FileSearch className="size-4" />
                   {t('import.readAs', { module: moduleName(key) })}
                 </Button>
               ))}
@@ -281,7 +282,7 @@ function ModuleCard({
         <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)] [&>svg]:size-5 [&>svg]:text-[var(--mod)]">
           <ModuleIcon name={icon} />
         </span>
-        <button type="button" className="min-w-0 flex-1 text-left" onClick={onOpen}>
+        <button data-kind="row" type="button" className="min-w-0 flex-1 text-left" onClick={onOpen}>
           <span className="block truncate font-medium">{name}</span>
           <span className="block text-xs text-muted-foreground">{t('import.records', { count: m.total })}</span>
         </button>
@@ -343,7 +344,8 @@ function Rows({ items }: { items: ImportPlanItem[] }) {
         ))}
       </ul>
       {items.length > shown.length && (
-        <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={() => setAll(true)}>
+        <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => setAll(true)}>
+          <ChevronDown className="size-4" />
           {t('import.showAll', { count: items.length })}
         </Button>
       )}

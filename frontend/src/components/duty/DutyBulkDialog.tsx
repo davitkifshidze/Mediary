@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Check, Trash2 } from 'lucide-react'
+import { Check, Trash2, X } from 'lucide-react'
 import { bulkUpdateDutyShifts, deleteDutyShifts, type DutyShift, type DutyShiftType, type DutyWorkplace } from '@/api/duty'
 import { errorMessage } from '@/lib/errors'
 import { invalidateDuty, typeName, workplaceColor } from '@/lib/duty'
@@ -110,6 +110,7 @@ export function DutyBulkDialog({
           {t('duty.bulk.delete', { count: shifts.length })}
         </Button>
         <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button onClick={() => change.mutate()} disabled={(workplace === KEEP && type === KEEP) || change.isPending}>

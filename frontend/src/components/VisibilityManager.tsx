@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Globe, Loader2, Lock, Search, TriangleAlert } from 'lucide-react'
+import { Globe, Loader2, Lock, Search, TriangleAlert, CheckSquare, Square } from 'lucide-react'
 import {
   PUBLIC_DOMAINS,
   domainModule,
@@ -278,7 +278,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
       {canEdit && !!rows.length && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() =>
               setPicked((p) =>
@@ -286,6 +286,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
               )
             }
           >
+            {allPicked ? <Square className="size-4" /> : <CheckSquare className="size-4" />}
             {allPicked ? t('storage.selectNone') : t('storage.selectShown', { count: rows.length })}
           </Button>
           <span className="text-xs text-muted-foreground">
@@ -302,10 +303,12 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
               {t('visibility.makePrivate')}
             </Button>
             {/* ⚠️ „ყველა" = **მთელი დომენი** და არა ნაჩვენები გვერდი */}
-            <Button variant="ghost" size="sm" disabled={busy} onClick={() => askMany('public', true)}>
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => askMany('public', true)}>
+              <Globe className="size-4" />
               {t('visibility.allPublic', { count: meta?.total ?? 0 })}
             </Button>
-            <Button variant="ghost" size="sm" disabled={busy} onClick={() => askMany('private', true)}>
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => askMany('private', true)}>
+              <Lock className="size-4" />
               {t('visibility.allPrivate', { count: meta?.total ?? 0 })}
             </Button>
           </span>

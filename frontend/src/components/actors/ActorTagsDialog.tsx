@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/feedback'
 import { FormField } from '@/components/ui/form-layout'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { TagSelect } from '@/components/TagSelect'
+import { X, Save } from 'lucide-react'
 
 /* ============================================================
    **მსახიობის ტეგები `/actors`-ის მენიუდან.**
@@ -55,9 +56,11 @@ export function ActorTagsDialog({
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
+          <Save className="size-4" />
           {t('actions.save')}
         </Button>
       </ModalFooter>

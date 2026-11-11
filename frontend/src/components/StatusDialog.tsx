@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 import { InfoHint } from '@/components/ui/info-hint'
+import { X, Save } from 'lucide-react'
 
 /* ============================================================
    სტატუსის დამატება/რედაქტირება.
@@ -120,6 +121,7 @@ export function StatusDialog({
           <div className="flex flex-wrap gap-1.5">
             {ROLES.map((role) => (
               <button
+                data-kind="chip"
                 key={role}
                 type="button"
                 onClick={() => setForm((f) => ({ ...f, role }))}
@@ -173,10 +175,12 @@ export function StatusDialog({
         </div>
 
         <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={save.isPending}>
+            <Save className="size-4" />
             {save.isPending ? t('actions.saving') : t('actions.save')}
           </Button>
         </ModalFooter>

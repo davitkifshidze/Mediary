@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Lock, Search, Trash2 } from 'lucide-react'
+import { AlertTriangle, Lock, Search, Trash2, X } from 'lucide-react'
 import {
   fetchAuditLogs,
   fetchAuditMeta,
@@ -287,6 +287,7 @@ export function AuditPage() {
                       {t('audit.deleteSelected', { count: selected.length })}
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setConfirming('filter')}>
+                      <Trash2 className="size-4" />
                       {t('audit.deleteFiltered')}
                     </Button>
                   </>
@@ -423,6 +424,7 @@ export function AuditPage() {
             </div>
             <ModalFooter>
               <Button variant="outline" onClick={() => setConfirming(null)}>
+                <X className="size-4" />
                 {t('actions.cancel')}
               </Button>
               <Button
@@ -430,6 +432,7 @@ export function AuditPage() {
                 disabled={confirmWord !== CONFIRM_WORD || purge.isPending}
                 onClick={() => purge.mutate(confirming === 'selected' ? selected : undefined)}
               >
+                <Trash2 className="size-4" />
                 {t('audit.deleteNow')}
               </Button>
             </ModalFooter>

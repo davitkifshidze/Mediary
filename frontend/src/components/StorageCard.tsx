@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArchiveRestore, RotateCcw, Trash2 } from 'lucide-react'
+import { ArchiveRestore, RotateCcw, Trash2, X, Send } from 'lucide-react'
 import {
   cancelRequest,
   cleanStorageOrphans,
@@ -338,12 +338,13 @@ function QuotaRequest({ quota }: { quota: number }) {
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-border px-3 py-2 text-sm">
           <span>{t('storage.requestPending', { requested: formatBytes(requestedQuota(pending)) })}</span>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             className="ml-auto"
             onClick={() => cancel.mutate(pending.id)}
             disabled={cancel.isPending}
           >
+            <X className="size-4" />
             {t('modules.cancelRequest')}
           </Button>
         </div>
@@ -388,6 +389,7 @@ function QuotaRequest({ quota }: { quota: number }) {
               onClick={() => send.mutate()}
               disabled={send.isPending || Math.round(Number(mb) || suggested) * MB <= quota}
             >
+              <Send className="size-4" />
               {send.isPending ? t('actions.saving') : t('storage.requestSend')}
             </Button>
           </div>

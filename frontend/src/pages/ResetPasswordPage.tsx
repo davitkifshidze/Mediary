@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Clapperboard, Loader2, ShieldAlert } from 'lucide-react'
+import { Clapperboard, Loader2, ShieldAlert, LogIn } from 'lucide-react'
 import { fetchResetTarget, submitReset, type ResetTarget } from '@/api/account'
 import { errorMessage, fieldErrors, isApiCode } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
@@ -100,6 +100,7 @@ export function ResetPasswordPage() {
               </h1>
               <p className="mb-5 text-sm text-muted-foreground">{t('reset.expiredHint')}</p>
               <Button className="w-full" onClick={() => navigate('/login', { replace: true })}>
+                <LogIn className="size-4" />
                 {t('reset.toLogin')}
               </Button>
             </>
@@ -108,6 +109,7 @@ export function ResetPasswordPage() {
               <h1 className="mb-1 text-xl font-semibold tracking-tight">{t('reset.title')}</h1>
               <p className="mb-5 text-sm text-muted-foreground">{t('reset.done')}</p>
               <Button className="w-full" onClick={() => navigate('/login', { replace: true })}>
+                <LogIn className="size-4" />
                 {t('reset.toLogin')}
               </Button>
             </>

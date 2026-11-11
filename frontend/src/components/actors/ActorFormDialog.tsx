@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search } from 'lucide-react'
+import { Search, X, Save } from 'lucide-react'
 import { ACTORS_KEY, createActor, updateActor, type ActorInput, type SavedActor } from '@/api/actors'
 import { searchCastMembers, type CastCandidate, type CastSearchResult } from '@/api/cast'
 import type { Actor } from '@/api/media'
@@ -221,9 +221,11 @@ export function ActorFormDialog({
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button onClick={() => save.mutate()} disabled={busy || !name.trim()}>
+          <Save className="size-4" />
           {t(editing ? 'actions.save' : 'actors.form.create')}
         </Button>
       </ModalFooter>

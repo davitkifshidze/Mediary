@@ -726,6 +726,7 @@ export function GroupsCut({
                   {/* ⚠️ სათაური **ღილაკია** („შეკრება"): ცალკე პატარა
                       ისარი სენსორულ ეკრანზე პრაქტიკულად მიუწვდომელია */}
                   <button
+                    data-kind="accordion"
                     type="button"
                     onClick={() => toggleSection(key)}
                     className="mb-2 flex w-full items-center gap-2 text-left text-sm font-semibold"

@@ -10,6 +10,8 @@ import {
   Play,
   Plus,
   Trash2,
+  X,
+  Save,
 } from 'lucide-react'
 import {
   createPlaylist,
@@ -242,10 +244,12 @@ function PlaylistDialog({ playlist, onClose }: { playlist: Playlist | null; onCl
         />
 
         <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={!name.trim() || save.isPending}>
+            <Save className="size-4" />
             {save.isPending ? t('actions.saving') : t('actions.save')}
           </Button>
         </ModalFooter>
@@ -280,7 +284,8 @@ function DeleteDialog({ playlist, onClose }: { playlist: Playlist; onClose: () =
       </p>
 
       <ModalFooter>
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button variant="destructive" disabled={remove.isPending} onClick={() => remove.mutate()}>

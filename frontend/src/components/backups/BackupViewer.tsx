@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Database, Loader2, RotateCcw, ShieldAlert, Table2 } from 'lucide-react'
+import { AlertTriangle, Database, Loader2, RotateCcw, ShieldAlert, Table2, FolderOpen, X } from 'lucide-react'
 import {
   closeBackupInspect,
   fetchBackupRows,
@@ -215,6 +215,7 @@ export function BackupViewer({ backup, onClose }: { backup: Backup; onClose: () 
                 hint={t('backups.viewerHint')}
                 actions={
                   <Button size="sm" disabled={inspect.isPending} onClick={() => inspect.mutate()}>
+                    <FolderOpen className="size-4" />
                     {t('backups.viewerOpenAction')}
                   </Button>
                 }
@@ -284,7 +285,8 @@ export function BackupViewer({ backup, onClose }: { backup: Backup; onClose: () 
               <Input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} />
             </label>
             <ModalFooter>
-              <Button variant="ghost" onClick={() => setRestoring(null)}>
+              <Button variant="outline" onClick={() => setRestoring(null)}>
+                <X className="size-4" />
                 {t('actions.cancel')}
               </Button>
               <Button
@@ -327,6 +329,7 @@ function TableRow({
       )}
     >
       <button
+        data-kind="row"
         type="button"
         disabled={!open}
         onClick={onPick}

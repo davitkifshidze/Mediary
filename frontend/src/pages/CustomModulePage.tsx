@@ -13,6 +13,7 @@ import {
   SquarePen,
   Tags,
   Trash2,
+  FilterX,
 } from 'lucide-react'
 import type { ModuleInfo } from '@/api/account'
 import type { LinkMetadata } from '@/api/bookmarks'
@@ -415,6 +416,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
                 <>
                   {activeCount > 0 && (
                     <Button variant="outline" onClick={clear}>
+                      <FilterX className="size-4" />
                       {t('filter.clear')}
                     </Button>
                   )}

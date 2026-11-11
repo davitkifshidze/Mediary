@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Repeat, SquarePen, Tags, Trash2 } from 'lucide-react'
+import { Plus, Repeat, SquarePen, Tags, Trash2, X, Save } from 'lucide-react'
 import {
   DUTY_KEY,
   fetchDutyPatterns,
@@ -232,9 +232,11 @@ export function DutySettingsDialog({
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
+          <Save className="size-4" />
           {t('actions.save')}
         </Button>
       </ModalFooter>

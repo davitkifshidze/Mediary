@@ -82,6 +82,7 @@ export function VideoCard({
       >
         {/* ⚠️ ფანჯრის გახსნა **ნახვად აღარ ითვლება**: ნახვას დამკვრელი ითვლის ჩართვაზე */}
         <button
+          data-kind="tile"
           type="button"
           onClick={onOpen}
           aria-label={v.title}
@@ -139,6 +140,7 @@ export function VideoCard({
           {/* სათაურიც ფანჯარას ხსნის, როგორც ესკიზი */}
           <h3 className="min-w-0 text-sm font-medium">
             <button
+              data-kind="link"
               type="button"
               onClick={onOpen}
               title={v.title}

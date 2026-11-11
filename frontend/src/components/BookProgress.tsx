@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Minus, Plus } from 'lucide-react'
+import { CheckCircle2, Minus, Plus, Save, X } from 'lucide-react'
 import { setBookProgress, type Book } from '@/api/books'
 import { errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
@@ -198,6 +198,7 @@ function ProgressActions({
   return (
     <>
       <Button variant="outline" size={size} disabled={busy || !draft.dirty} onClick={() => onSave(draft.input)}>
+        <Save className="size-4" />
         {t('actions.save')}
       </Button>
       {!draft.finished && (
@@ -240,7 +241,8 @@ export function ProgressDialog({ book, onClose }: { book: Book; onClose: () => v
       </div>
       {/* ღილაკები ქვედა ზოლში, ერთად */}
       <ModalFooter>
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.close')}
         </Button>
         <ProgressActions draft={draft} busy={save.isPending} onSave={(input) => save.mutate(input)} />

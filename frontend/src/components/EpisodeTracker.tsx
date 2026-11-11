@@ -173,7 +173,7 @@ function SeasonRow({
     <li>
       <div className="flex items-center gap-3 px-3 py-2">
         {/* ⚠️ სათაურივე ღილაკია — ცალკე პატარა ისარი სენსორულ ეკრანზე პრაქტიკულად მიუწვდომელია */}
-        <button type="button" onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm">
+        <button data-kind="accordion" type="button" onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm">
           <ChevronDown className={open ? 'size-4 transition-transform' : 'size-4 -rotate-90 transition-transform'} />
           <span className="font-medium">{t('episodes.season', { number: season.season })}</span>
           <span className="text-xs text-muted-foreground tabular-nums">

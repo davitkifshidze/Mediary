@@ -139,9 +139,10 @@ export function LoginPage() {
           </form>
 
           {needsCode ? (
-            <button
+            <Button
               type="button"
-              className="mt-5 flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
+              variant="outline"
+              className="mt-5 w-full"
               onClick={() => {
                 setNeedsCode(false)
                 setCode('')
@@ -150,7 +151,7 @@ export function LoginPage() {
             >
               <ArrowLeft className="size-4" />
               {t('auth.backToPassword')}
-            </button>
+            </Button>
           ) : (
             <>
               <p className="mt-5 text-center text-sm text-muted-foreground">

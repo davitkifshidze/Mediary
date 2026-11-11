@@ -334,6 +334,7 @@ export function RolePage() {
                   დარჩა „ყველა მოდულის" (`*`) მოხსნის შემდეგ. */}
               <div className="rounded-md border border-dashed border-border">
                 <button
+                  data-kind="accordion"
                   type="button"
                   aria-expanded={bulkOpen}
                   onClick={() => setBulkOpen((v) => !v)}
@@ -546,6 +547,7 @@ function PermCard({
         {/* მთელი რიგი — ღილაკს სახელი აქვს, ე.ი. `title`-ის მიღმა აღარ იმალება */}
         {onRow && (
           <button
+            data-kind="chip"
             type="button"
             aria-pressed={!!rowOn}
             disabled={readOnly}
@@ -602,6 +604,7 @@ function PermToggle({
 
   return (
     <button
+      data-kind="chip"
       type="button"
       aria-pressed={on}
       disabled={readOnly}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Lock } from 'lucide-react'
+import { Lock, X, LockOpen } from 'lucide-react'
 import { unlockGalleryAlbum, type GalleryAlbum } from '@/api/gallery'
 import { errorMessage, isApiCode } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
@@ -93,10 +93,12 @@ export function AlbumUnlockDialog({
         </div>
 
         <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={!password || unlock.isPending}>
+            <LockOpen className="size-4" />
             {t('gallery.albumUnlock')}
           </Button>
         </ModalFooter>

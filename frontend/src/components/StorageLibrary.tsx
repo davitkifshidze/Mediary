@@ -274,7 +274,7 @@ export function StorageLibrary({
           ამიტომ ორივე ღილაკზე რიცხვი ცხადად წერია და არა „ყველა" მარტო. */}
       {bulk && !!files.length && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2">
-          <Button variant="ghost" size="sm" onClick={toggleAllShown} disabled={!shown.length}>
+          <Button variant="outline" size="sm" onClick={toggleAllShown} disabled={!shown.length}>
             {allShownPicked ? <Square className="size-4" /> : <CheckSquare className="size-4" />}
             {allShownPicked ? t('storage.selectNone') : t('storage.selectShown', { count: shown.length })}
           </Button>
@@ -296,11 +296,12 @@ export function StorageLibrary({
                   {t('storage.downloadSelected', { count: picked.length })}
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   disabled={busy}
                   onClick={() => onBulkDownload('all', total ?? files.length)}
                 >
+                  <Download className="size-4" />
                   {t('storage.downloadAll', { count: total ?? files.length })}
                 </Button>
               </>
@@ -322,6 +323,7 @@ export function StorageLibrary({
                   disabled={busy}
                   onClick={() => onBulkDelete('all', total ?? files.length)}
                 >
+                  <Trash2 className="size-4" />
                   {t('storage.deleteAll', { count: total ?? files.length })}
                 </Button>
               </>
@@ -484,7 +486,7 @@ function Actions({
   const url = storageUrl(file.path) ?? ''
 
   const btn = cn(
-    'inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs hover:bg-muted',
+    'inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-xs hover:bg-muted',
     compact && 'size-7 justify-center px-0',
   )
 
@@ -509,19 +511,18 @@ function Actions({
         </>
       )}
       {onDelete && (
-        <button
+        <Button
           type="button"
+          variant="destructiveOutline"
+          size="xs"
           onClick={() => onDelete(file)}
           disabled={deletingPath === file.path}
           title={t('actions.delete')}
-          className={cn(
-            'fb-destructive inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-destructive/60 px-2.5 text-xs text-destructive transition-colors hover:border-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50',
-            compact && 'size-7 justify-center px-0',
-          )}
+          className={compact ? 'size-7 px-0' : 'h-8'}
         >
           <Trash2 className="size-3.5" />
           {!compact && t('actions.delete')}
-        </button>
+        </Button>
       )}
     </span>
   )

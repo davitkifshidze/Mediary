@@ -45,6 +45,7 @@ export function LayoutToggle({
         ] satisfies { key: GalleryLayout; icon: typeof Layers }[]
       ).map(({ key, icon: Icon }) => (
         <button
+          data-kind="tab"
           key={key}
           type="button"
           aria-pressed={value === key}

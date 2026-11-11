@@ -13,6 +13,7 @@ import {
   Plus,
   Search,
   Sparkles,
+  FilterX,
 } from 'lucide-react'
 import { fetchGenres, mediaApi, type MediaFilters } from '@/api/media'
 import { mediaKey, mediaOf, type MediaType } from '@/lib/media'
@@ -414,6 +415,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
                 <>
                   {activeCount > 0 && (
                     <Button variant="outline" onClick={clearFilters}>
+                      <FilterX className="size-4" />
                       {t('filter.clear')}
                     </Button>
                   )}

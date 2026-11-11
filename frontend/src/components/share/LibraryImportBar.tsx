@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { CheckSquare, Library, Loader2, Send } from 'lucide-react'
+import { CheckSquare, Library, Loader2, Send, Plus } from 'lucide-react'
 import type { ShareAbility, ShareStatusMode } from '@/api/shareLinks'
 import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -101,6 +101,7 @@ export function LibraryImportBar({
         </Button>
       )}
       <Button size="sm" variant="outline" disabled={selectedCount === 0 || adding} onClick={onAddSelected}>
+        <Plus className="size-4" />
         {t('share.page.addSelected', { count: selectedCount })}
       </Button>
       <Button size="sm" disabled={adding} onClick={onAddAll}>

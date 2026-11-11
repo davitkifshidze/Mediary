@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Coins } from 'lucide-react'
+import { Coins, Layers } from 'lucide-react'
 import type { SerpEngine, SerpQuota } from '@/api/web'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -84,11 +84,12 @@ export function WebSourcePicker({
         <Button
           type="button"
           size="sm"
-          variant={allSelected ? 'secondary' : 'ghost'}
+          variant={allSelected ? 'secondary' : 'outline'}
           className="ml-auto"
           disabled={disabled}
           onClick={() => onChange(allSelected ? [all[0]] : all)}
         >
+          <Layers className="size-4" />
           {allSelected ? t('web.onlyFirst') : t('web.allTogether')}
         </Button>
       )}

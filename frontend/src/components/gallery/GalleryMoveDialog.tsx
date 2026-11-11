@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Inbox, MoveRight } from 'lucide-react'
+import { Inbox, MoveRight, X } from 'lucide-react'
 import {
   fetchGalleryGroups,
   galleryParentsOf,
@@ -227,6 +227,7 @@ export function GalleryMoveDialog({
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button disabled={!ready || move.isPending} onClick={() => move.mutate()}>

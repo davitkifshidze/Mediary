@@ -72,14 +72,10 @@ export function GalleryRecordPage() {
     else navigate(`/gallery/records?domain=${encodeURIComponent(String(type))}`)
   }
   const back = (
-    <button
-      type="button"
-      onClick={goBack}
-      className="mb-4 inline-flex cursor-pointer items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-    >
+    <Button type="button" variant="outline" size="sm" className="mb-4" onClick={goBack}>
       <ArrowLeft className="size-4" />
       {t('gallery.cut.records')}
-    </button>
+    </Button>
   )
 
   /* ---------- არა-მედია მშობელი: ბრტყელი ბადე ---------- */

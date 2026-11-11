@@ -11,7 +11,7 @@ import { mediaOf, type MediaType } from '@/lib/media'
 import { tmdbSubtitle, tmdbTitle } from '@/lib/display'
 import { useContentLang, useSettings } from '@/lib/settings'
 import { PageContainer } from '@/components/ui/page'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { QueryErrorState } from '@/components/ui/query-error-state'
 import { isNotFound } from '@/lib/errors'
 import { NotFound } from '@/pages/NotFoundPage'
@@ -220,14 +220,10 @@ export function ActorPage() {
   if (a.hidden) {
     return (
       <PageContainer>
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="mb-5 inline-flex cursor-pointer items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
+        <Button type="button" variant="outline" size="sm" className="mb-5" onClick={() => navigate(-1)}>
           <ArrowLeft className="size-4" />
           {t('actions.back')}
-        </button>
+        </Button>
         <h1 className="mb-4 text-2xl font-semibold tracking-tight">{name}</h1>
         <RecordLockedScreen
           base={actorLockBase(a.id)}
@@ -244,14 +240,10 @@ export function ActorPage() {
 
   return (
     <PageContainer>
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="mb-5 inline-flex cursor-pointer items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
+      <Button type="button" variant="outline" size="sm" className="mb-5" onClick={() => navigate(-1)}>
         <ArrowLeft className="size-4" />
         {t('actions.back')}
-      </button>
+      </Button>
 
       {/* **შიდა გვერდის თავი**: ბიოგრაფია, დაბადება, ოფიციალური
           ბმულები (IMDb · Instagram · Wikidata) და TMDB-დან განახლების ღილაკი.

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { FolderPlus, Loader2 } from 'lucide-react'
+import { FolderPlus, Loader2, X } from 'lucide-react'
 import { updateModuleSettings, type ModuleInfo } from '@/api/account'
 import { fetchVideoTypes } from '@/api/videos'
 import { videoTypeName } from '@/lib/display'
@@ -119,6 +119,7 @@ export function PlaylistImportDialog({
 
       <ModalFooter>
         <Button type="button" variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button type="button" onClick={confirm} disabled={!ready} data-testid="playlist-import-confirm">

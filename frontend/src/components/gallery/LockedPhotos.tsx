@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Lock } from 'lucide-react'
+import { Lock, LockOpen } from 'lucide-react'
 import type { GalleryLockedImage } from '@/api/gallery'
 import { LOCKED_PHOTO_PLACEHOLDER } from '@/lib/lockedPhoto'
 import { PHOTO_COLUMNS, PHOTO_PER_PAGE_MAX } from '@/lib/pageSize'
@@ -55,6 +55,7 @@ export function LockedPhotos({
         <span className="min-w-0 flex-1 text-sm">{t('gallery.lockedGridHint', { count: total })}</span>
         {onUnlock && (
           <Button size="sm" onClick={onUnlock}>
+            <LockOpen className="size-4" />
             {t('gallery.albumUnlock')}
           </Button>
         )}

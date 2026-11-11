@@ -290,7 +290,8 @@ export function WebVideoDialog({
           <p className="mt-4 text-sm text-muted-foreground">{t('errors.serpapi_unavailable')}</p>
         )}
         <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
         </ModalFooter>
@@ -360,7 +361,7 @@ export function WebVideoDialog({
             {/* ველი იცლება, ფოკუსი ველში ბრუნდება */}
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               disabled={!query}
               onClick={() => {
                 setQuery('')
@@ -563,7 +564,8 @@ export function WebVideoDialog({
       </div>
 
       <ModalFooter>
-        <Button type="button" variant="ghost" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.close')}
         </Button>
       </ModalFooter>

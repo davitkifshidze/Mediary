@@ -141,7 +141,7 @@ function ModulePhotos({
     <section>
       {/* სათაურის ზოლი: „← უკან · {მოდული} · N ფოტო"; ჩანაწერი თითო უჯრის ქვესათაურშია */}
       <div className="mb-4 flex flex-wrap items-center gap-2" data-testid="module-photos-header">
-        <Button variant="ghost" size="sm" onClick={onBack}>
+        <Button variant="outline" size="sm" onClick={onBack}>
           <ArrowLeft className="size-4" />
           {t('actions.back')}
         </Button>

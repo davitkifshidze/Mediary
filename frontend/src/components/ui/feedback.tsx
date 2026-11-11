@@ -1,7 +1,7 @@
 import * as React from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Info, X, XCircle, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LAYER_ALERT } from '@/lib/layers'
 import { cn } from '@/lib/utils'
@@ -205,6 +205,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
                       ინგლისურ UI-ში თითქმის ყველა წაშლის დიალოგს „გაუქმება" ეწერა */}
                   <div className="mt-6 flex justify-end gap-2">
                     <Button variant="outline" onClick={() => settle(false)}>
+                      <X className="size-4" />
                       {confirmState.cancelText ?? t('confirm.cancel')}
                     </Button>
                     <Button
@@ -212,6 +213,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
                       onClick={() => settle(true)}
                       autoFocus
                     >
+                      <Check className="size-4" />
                       {confirmState.confirmText ?? t('confirm.confirm')}
                     </Button>
                   </div>
@@ -261,6 +263,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
                   </div>
                   <div className="mt-6 flex justify-end">
                     <Button onClick={closeAlert} autoFocus>
+                      <Check className="size-4" />
                       {alertState.okText ?? t('alert.ok')}
                     </Button>
                   </div>

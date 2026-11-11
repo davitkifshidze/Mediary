@@ -435,6 +435,7 @@ function Thread({ id }: { id: number }) {
                 disabled={removeMessage.isPending}
                 onClick={() => removeMessage.mutate({ id: removing.id, scope: 'self' })}
               >
+                <Trash2 className="size-4" />
                 {t('chat.deleteForMe')}
               </Button>
               {/* ⚠️ „ორივესთან" მხოლოდ ავტორს — სხვისი წერილის ყველასთვის
@@ -445,10 +446,12 @@ function Thread({ id }: { id: number }) {
                   disabled={removeMessage.isPending}
                   onClick={() => removeMessage.mutate({ id: removing.id, scope: 'both' })}
                 >
+                  <Trash2 className="size-4" />
                   {t('chat.deleteForBoth')}
                 </Button>
               )}
-              <Button variant="ghost" onClick={() => setRemoving(null)}>
+              <Button variant="outline" onClick={() => setRemoving(null)}>
+                <X className="size-4" />
                 {t('actions.cancel')}
               </Button>
             </div>
@@ -505,6 +508,7 @@ function Thread({ id }: { id: number }) {
               requestAnimationFrame(() => toBottom())
             }}
           >
+            <ArrowDown className="size-4" />
             {t('chat.backToLatest')}
           </Button>
         </div>
@@ -811,6 +815,7 @@ function SearchPanel({
           {hits.data?.map((hit) => (
             <li key={hit.id}>
               <button
+                data-kind="row"
                 type="button"
                 onClick={() => onJump(hit.id)}
                 className="w-full cursor-pointer rounded-md border border-border px-3 py-2 text-left text-sm transition-colors hover:border-primary/40"
@@ -865,6 +870,7 @@ function PinsPanel({
         {pins.data?.map((m) => (
           <div key={m.id} className="flex items-start gap-2 rounded-md border border-border px-3 py-2">
             <button
+              data-kind="row"
               type="button"
               onClick={() => onJump(m.id)}
               className="min-w-0 flex-1 cursor-pointer text-left text-sm transition-colors hover:text-primary"
@@ -963,14 +969,10 @@ function Bubble({
         <span>{m.attachment.size != null ? formatBytes(m.attachment.size) : ''}</span>
         {/* ⚠️ ღილაკი მხოლოდ გამგზავნს — ფაილი მისი კვოტიდან იხარჯება */}
         {onDeleteFile && (
-          <button
-            type="button"
-            onClick={() => onDeleteFile(m.id)}
-            className="inline-flex cursor-pointer items-center gap-1 hover:text-primary"
-          >
+          <Button type="button" variant="destructiveOutline" size="xs" onClick={() => onDeleteFile(m.id)}>
             <Trash2 className="size-3" />
             {t('actions.delete')}
-          </button>
+          </Button>
         )}
       </p>
 

@@ -57,7 +57,7 @@ export function PersonalGroups({
     return (
       <section data-testid="personal-group-open">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setGroup(null)}>
+          <Button variant="outline" size="sm" onClick={() => setGroup(null)}>
             <ArrowLeft className="size-4" />
             {t('actions.back')}
           </Button>

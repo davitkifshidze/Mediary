@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
+import { X, Save } from 'lucide-react'
 
 /* ============================================================
    ჩანაწერის კატეგორიის დამატება/რედაქტირება.
@@ -100,10 +101,12 @@ export function NoteCategoryDialog({
         </div>
 
         <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={save.isPending}>
+            <Save className="size-4" />
             {save.isPending ? t('actions.saving') : t('actions.save')}
           </Button>
         </ModalFooter>

@@ -43,6 +43,7 @@ export function PlayerSpot({
     <div ref={anchor} data-player-spot className={cn('relative aspect-video w-full overflow-hidden rounded-lg bg-black', className)}>
       {!inline && (
         <button
+          data-kind="tile"
           type="button"
           onClick={live ? player.popIn : onPlay}
           className="group absolute inset-0 block cursor-pointer"

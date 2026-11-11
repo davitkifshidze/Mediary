@@ -225,7 +225,7 @@ export function NotificationBell() {
             {unread > 0 && (
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => read.mutate(undefined)}
                 disabled={read.isPending}
@@ -250,7 +250,7 @@ export function NotificationBell() {
             <div className="mt-1.5 border-t border-border pt-1.5">
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 className="w-full justify-start"
                 onClick={async () => {

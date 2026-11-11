@@ -159,6 +159,7 @@ function QueueRow({
       {/* ⚠️ მენიუ ღილაკის **გარეთაა** — ჩადგმული ინტერაქტიული ელემენტი
           არასწორი HTML-ია და ერთი დაჭერა ორივეს გაუშვებდა */}
       <button
+        data-kind="row"
         type="button"
         onClick={onJump}
         aria-current={active ? 'true' : undefined}

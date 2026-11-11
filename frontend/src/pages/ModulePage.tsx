@@ -2,7 +2,23 @@ import { useCallback, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, Ban, Clock, Loader2, Lock, LockOpen, RotateCcw, SquarePen, Send, Trash2, UserRound, Users, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Ban,
+  Clock,
+  Loader2,
+  Lock,
+  LockOpen,
+  RotateCcw,
+  SquarePen,
+  Send,
+  Trash2,
+  UserRound,
+  Users,
+  X,
+  Eraser,
+} from 'lucide-react'
 import {
   cancelRequest,
   deleteCustomModule,
@@ -291,7 +307,7 @@ export function ModulePage() {
               <Clock className="size-3.5" />
               {t('modules.pending')}
             </span>
-            <Button variant="ghost" size="sm" onClick={() => cancel.mutate(pending.id)}>
+            <Button variant="outline" size="sm" onClick={() => cancel.mutate(pending.id)}>
               <X className="size-4" />
               {t('modules.cancelRequest')}
             </Button>
@@ -306,7 +322,8 @@ export function ModulePage() {
               onChange={(e) => setMessage(e.target.value)}
             />
             <div className="mt-2 flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setAsking(false)}>
+              <Button variant="outline" size="sm" onClick={() => setAsking(false)}>
+                <X className="size-4" />
                 {t('actions.cancel')}
               </Button>
               <Button size="sm" disabled={ask.isPending} onClick={() => ask.mutate()}>
@@ -381,11 +398,12 @@ export function ModulePage() {
                 />
                 {module.color && (
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => patch.mutate({ color: null })}
                     disabled={patch.isPending}
                   >
+                    <Eraser className="size-4" />
                     {t('admin.moduleColorClear')}
                   </Button>
                 )}
@@ -670,7 +688,7 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
             გატეხილად ტოვებს, და თუმცა უკან ჩართვა იმავე გვერდზეა, ერთი
             ღილაკი, რომელიც ყველაფერს აბრუნებს, ბევრად ნაკლებ ძებნას ითხოვს. */}
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           disabled={reset.isPending}
           onClick={async () => {
@@ -738,7 +756,7 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
                 </Button>
                 {field.locked && isAdmin && (
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     disabled={save.isPending}
                     onClick={() =>

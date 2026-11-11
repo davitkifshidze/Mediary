@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Search,
   Tags,
+  FilterX,
 } from 'lucide-react'
 import {
   createBookmark,
@@ -423,6 +424,7 @@ export function BookmarksPage() {
                 <>
                   {activeCount > 0 && (
                     <Button variant="outline" onClick={clear}>
+                      <FilterX className="size-4" />
                       {t('filter.clear')}
                     </Button>
                   )}

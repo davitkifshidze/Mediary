@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Copy, KeyRound, Loader2, ShieldCheck, ShieldOff } from 'lucide-react'
+import { Check, Copy, KeyRound, Loader2, ShieldCheck, ShieldOff, X } from 'lucide-react'
 import {
   confirmTwoFactor,
   disableTwoFactor,
@@ -295,6 +295,7 @@ export function TwoFactorCard() {
             <ModalFooter className="justify-between">
               <CopyButton text={codes.join('\n')} label={t('twoFactor.copy')} />
               <Button type="button" onClick={close}>
+                <X className="size-4" />
                 {t('actions.close')}
               </Button>
             </ModalFooter>

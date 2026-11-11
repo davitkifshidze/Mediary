@@ -208,7 +208,8 @@ export function CustomRecordDetail({
       </div>
 
       <ModalFooter>
-        <Button type="button" variant="ghost" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.close')}
         </Button>
         {/* ჩანაწერი გალერეის მშობელია: ვებიდან ფოტო/ვიდეო და გადატანილი

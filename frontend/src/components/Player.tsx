@@ -44,7 +44,7 @@ import {
 import { formatDuration } from '@/lib/videoDuration'
 import { PlayerQueue } from '@/components/PlayerQueue'
 import { PlayerStage } from '@/components/PlayerStage'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -449,7 +449,7 @@ function PanelControls({
  * ⚠️ ცალკე კომპონენტია: `useNavigate` როუტერს ითხოვს, ბმულის გარეშე ჩანაწერს
  * (გალერეის ვიდეო) კი ღილაკი საერთოდ არ აქვს.
  */
-function ReturnButton({ className, text }: { className: string; text?: ReactNode }) {
+function ReturnButton({ className, text }: { className?: string; text?: ReactNode }) {
   const { t } = useTranslation()
   const player = usePlayer()
   const href = player.current?.href
@@ -474,25 +474,28 @@ function ReturnLink({
   onReturn,
 }: {
   href: string | null
-  className: string
+  className?: string
   label: string
   text?: ReactNode
   onReturn: () => void
 }) {
   const navigate = useNavigate()
+  const back = () => {
+    onReturn()
+    if (href) navigate(href)
+  }
+  // წარწერიანი — ჩვეულებრივი ჩარჩოიანი ღილაკი; წარწერის გარეშე — ზოლის აიქონი
+  if (text) {
+    return (
+      <Button type="button" variant="outline" size="sm" onClick={back} aria-label={label} title={label}>
+        <AppWindow className="size-3.5" />
+        {text}
+      </Button>
+    )
+  }
   return (
-    <button
-      type="button"
-      onClick={() => {
-        onReturn()
-        if (href) navigate(href)
-      }}
-      aria-label={label}
-      title={label}
-      className={cn('cursor-pointer', className)}
-    >
-      <AppWindow className={text ? 'size-3.5' : 'size-4'} />
-      {text}
+    <button type="button" onClick={back} aria-label={label} title={label} className={cn('cursor-pointer', className)}>
+      <AppWindow className="size-4" />
     </button>
   )
 }
@@ -632,7 +635,7 @@ function FloatBar({ frame, onFrame }: { frame: FrameBox; onFrame: (box: FrameBox
           <SkipForward className="size-4" />
         </BarButton>
         <span className="ml-auto flex items-center gap-1.5">
-          <ReturnButton className={buttonVariants({ variant: 'outline', size: 'sm' })} text={label(t('playback.back'))} />
+          <ReturnButton text={label(t('playback.back'))} />
           <Button
             type="button"
             variant="outline"

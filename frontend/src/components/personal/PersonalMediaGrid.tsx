@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ImagePlus, Lock, PenLine } from 'lucide-react'
+import { ImagePlus, Lock, PenLine, X, Save } from 'lucide-react'
 import {
   deletePersonalMedia,
   fetchPersonalMedia,
@@ -165,9 +165,14 @@ export function PersonalMediaGrid({
           },
         ]}
         lightboxExtra={(item, close) => (
-          <button
+          /* ⚠️ `yarl__button` აქ აღარ წერია: ის ბიბლიოთეკის შრეგარეშე CSS-ია და
+             ჩარჩოსა და ფონს გააუქმებდა — ტექსტიანი ღილაკი კი ფოტოზეც ღილაკს
+             უნდა ჰგავდეს (მუქი ფონი, ღია ჩარჩო). */
+          <Button
             type="button"
-            className="yarl__button flex items-center gap-1.5 text-sm"
+            variant="outline"
+            size="sm"
+            className="self-center border-white/40 bg-black/50 text-white not-disabled:hover:bg-black/75"
             data-testid="lightbox-caption"
             onClick={() => {
               close()
@@ -176,7 +181,7 @@ export function PersonalMediaGrid({
           >
             <PenLine className="size-4" />
             {t('personal.media.captionLabel')}
-          </button>
+          </Button>
         )}
         extraTools={extraTools}
         emptyText={emptyText ?? t('personal.media.empty')}
@@ -239,10 +244,12 @@ function CaptionDialog({ media, onClose }: { media: PersonalMedia; onClose: () =
       </form>
 
       <ModalFooter>
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button type="submit" form="personal-caption-form" disabled={save.isPending}>
+          <Save className="size-4" />
           {t(save.isPending ? 'actions.saving' : 'actions.save')}
         </Button>
       </ModalFooter>

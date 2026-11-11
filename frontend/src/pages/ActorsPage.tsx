@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Drama, Globe, Plus, RefreshCw, Search, Tags, Trash2, UserMinus } from 'lucide-react'
+import { Drama, Globe, Plus, RefreshCw, Search, Tags, Trash2, UserMinus, FilterX } from 'lucide-react'
 import {
   ACTOR_RECORD_STEPS,
   ACTOR_SORTS,
@@ -317,6 +317,7 @@ export function ActorsPage() {
                         write(EMPTY_FILTERS, 'all')
                       }}
                     >
+                      <FilterX className="size-4" />
                       {t('filter.clear')}
                     </Button>
                   ) : undefined

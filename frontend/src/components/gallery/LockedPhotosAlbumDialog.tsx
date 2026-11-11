@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Lock } from 'lucide-react'
+import { Lock, X } from 'lucide-react'
 import { albumPasswordProblem } from '@/lib/albumPassword'
 import { Button } from '@/components/ui/button'
 import { FormSection } from '@/components/ui/form-layout'
@@ -50,6 +50,7 @@ export function LockedPhotosAlbumDialog({
 
       <ModalFooter>
         <Button type="button" variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button type="submit" form="locked-photos-form" disabled={!ready || busy}>

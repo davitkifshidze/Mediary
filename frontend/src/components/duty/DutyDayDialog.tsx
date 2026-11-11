@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Plus, SquarePen } from 'lucide-react'
+import { Plus, SquarePen, X } from 'lucide-react'
 import type { DutySettingsData, DutyShift } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
 import { formatMoney, hoursLabel, shiftRange, typeName, workplaceColor } from '@/lib/duty'
@@ -65,6 +65,7 @@ export function DutyDayDialog({
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.close')}
         </Button>
         <Button onClick={onAdd}>

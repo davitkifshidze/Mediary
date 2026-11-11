@@ -77,7 +77,7 @@ function HiddenActorTile({ actor }: { actor: HiddenActorCard }) {
 
   return (
     <>
-      <button type="button" onClick={() => setUnlocking(true)} className="group block w-full cursor-pointer text-left" data-testid="actor-locked-tile">
+      <button data-kind="card" type="button" onClick={() => setUnlocking(true)} className="group block w-full cursor-pointer text-left" data-testid="actor-locked-tile">
         <div className="grid aspect-[2/3] place-items-center rounded-xl border border-border bg-muted text-muted-foreground transition group-hover:border-foreground/30">
           <span className="flex flex-col items-center gap-2 text-xs">
             <Lock className="size-8" />

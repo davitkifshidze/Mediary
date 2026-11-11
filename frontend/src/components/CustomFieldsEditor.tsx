@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, X, Save } from 'lucide-react'
 import { sortByIds } from '@/lib/reorder'
 import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
 import {
@@ -222,16 +222,18 @@ export function CustomFieldsEditor({
           {/* ⚠️ ცხადად ვამბობთ, რომ წაშლა მნიშვნელობებსაც წაიღებს */}
           <p className="text-xs text-muted-foreground">{t('customFields.deleteWarning')}</p>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => {
               setDirty(false)
               setDraft(fields.map(({ sort_order: _sort, ...rest }) => ({ ...rest, uid: rest.key })))
             }}
           >
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>
+            <Save className="size-4" />
             {save.isPending ? t('actions.saving') : t('actions.save')}
           </Button>
         </div>

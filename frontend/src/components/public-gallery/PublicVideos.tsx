@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ExternalLink, Loader2, Play, Video } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { fetchPublicGalleryVideos, type PublicGalleryVideo } from '@/api/publicProfile'
 import type { VideoPlatform } from '@/api/videos'
 import { isAllowedEmbed } from '@/lib/embed'
@@ -106,14 +107,10 @@ export function PublicVideos({ username }: { username: string }) {
 
                 <div className="mt-auto flex items-center gap-1 pt-1.5">
                   {playable && (
-                    <button
-                      type="button"
-                      onClick={() => setWatching(video)}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground"
-                    >
+                    <Button type="button" variant="outline" size="xs" onClick={() => setWatching(video)}>
                       <Play className="size-3.5" />
                       {t('publicProfile.gallery.watch')}
-                    </button>
+                    </Button>
                   )}
                   <a
                     href={video.url}

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BellPlus, NotebookPen, Plus } from 'lucide-react'
+import { BellPlus, NotebookPen, Plus, FilterX } from 'lucide-react'
 import {
   deleteNoteReminder,
   fetchAllNoteReminders,
@@ -136,6 +136,7 @@ export function NoteRemindersPage() {
           actions={
             reminders.length ? (
               <Button variant="outline" onClick={() => setCut('all')}>
+                <FilterX className="size-4" />
                 {t('filter.clear')}
               </Button>
             ) : (

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SquarePen, Trash2 } from 'lucide-react'
+import { SquarePen, Trash2, X, Save } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { NOTE_TEXT_MAX } from '@/lib/richText'
 import { useDateFormat } from '@/lib/dates'
@@ -160,9 +160,11 @@ export function RecordNoteDialog({
                     setEditing(false)
                   }}
                 >
+                  <X className="size-4" />
                   {t('actions.cancel')}
                 </Button>
                 <Button disabled={!body.trim() || busy} onClick={save}>
+                  <Save className="size-4" />
                   {t('actions.save')}
                 </Button>
               </>

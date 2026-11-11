@@ -184,10 +184,12 @@ export function PlaylistPage() {
             placeholder={poolQ.isLoading ? t('api.loading') : t('playlists.pickSongs')}
           />
           <div className="mt-3 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setAdding(false)}>
+            <Button variant="outline" onClick={() => setAdding(false)}>
+              <X className="size-4" />
               {t('actions.cancel')}
             </Button>
             <Button disabled={!toAdd.length || save.isPending} onClick={add}>
+              <Plus className="size-4" />
               {t('actions.add')}
             </Button>
           </div>

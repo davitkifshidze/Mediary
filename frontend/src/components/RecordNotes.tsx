@@ -1,7 +1,7 @@
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
-import { NotebookPen, Plus, Quote, Search, Trash2 } from 'lucide-react'
+import { NotebookPen, Plus, Quote, Search, Trash2, X } from 'lucide-react'
 import { errorMessage } from '@/lib/errors'
 import { NOTE_TEXT_MAX, plainText } from '@/lib/richText'
 import { highlightParts } from '@/lib/searchResults'
@@ -202,6 +202,7 @@ export function RecordNotes({
           actions={
             term ? (
               <Button variant="outline" size="sm" onClick={() => setQ('')}>
+                <X className="size-4" />
                 {t('recordNotes.clearSearch')}
               </Button>
             ) : undefined
@@ -223,6 +224,7 @@ export function RecordNotes({
             {/* ⚠️ სტრიქონი **ღილაკია** — ფაილის სახელის იგივე იდიომა. სამ
                 ხაზზე იკვეცება, თორემ გრძელი ციტატა სიას გამოუსადეგარს ხდის. */}
             <button
+              data-kind="row"
               type="button"
               onClick={() => setOpenId(note.id)}
               className="min-w-0 flex-1 cursor-pointer text-left transition-colors hover:text-primary"

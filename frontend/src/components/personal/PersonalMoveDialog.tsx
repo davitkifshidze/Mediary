@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { MoveRight } from 'lucide-react'
+import { MoveRight, X } from 'lucide-react'
 import { fetchPeople, fetchPersonalAlbums, isHidden, movePersonalMedia, PERSONAL_KEY } from '@/api/personal'
 import { errorMessage } from '@/lib/errors'
 import { invalidatePersonal } from '@/lib/personal'
@@ -110,6 +110,7 @@ export function PersonalMoveDialog({
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button disabled={(person === KEEP && album === KEEP) || move.isPending} onClick={() => move.mutate()}>

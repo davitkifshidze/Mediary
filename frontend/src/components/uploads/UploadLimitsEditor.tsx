@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Lock, RotateCcw, Save } from 'lucide-react'
+import { Lock, RotateCcw, Save, X } from 'lucide-react'
 import {
   saveInstallationUploadLimits,
   type UploadKind,
@@ -140,7 +140,7 @@ export function UploadLimitsEditor({ limits, onClose }: { limits: UploadLimits; 
                 {!isDefault && <Badge className="bg-secondary">{t('uploads.customized')}</Badge>}
                 <Button
                   size="sm"
-                  variant="ghost"
+                  variant="outline"
                   className="ml-auto"
                   disabled={isDefault}
                   onClick={() => setDrafts((cur) => ({ ...cur, [k.kind]: toDraft(k.default) }))}
@@ -210,6 +210,7 @@ export function UploadLimitsEditor({ limits, onClose }: { limits: UploadLimits; 
 
         <ModalFooter>
           <Button variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           <Button disabled={broken || changed.length === 0 || save.isPending} onClick={() => save.mutate()}>

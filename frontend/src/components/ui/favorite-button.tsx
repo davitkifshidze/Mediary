@@ -39,6 +39,7 @@ export function FavoriteButton({
 
   return (
     <button
+      data-kind="toggle"
       type="button"
       aria-pressed={active}
       aria-label={t(active ? 'actions.unfavorite' : 'actions.favorite')}

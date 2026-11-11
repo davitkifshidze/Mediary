@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
-import { Check, Loader2 } from 'lucide-react'
+import { Check, Loader2, X } from 'lucide-react'
 import { updateRecordCast } from '@/api/cast'
 import type { CastMember } from '@/api/types'
 import { errorMessage } from '@/lib/errors'
@@ -75,7 +75,8 @@ export function CastRoleDialog({
       </div>
 
       <ModalFooter>
-        <Button type="button" variant="ghost" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button type="button" onClick={() => save.mutate()} disabled={save.isPending}>

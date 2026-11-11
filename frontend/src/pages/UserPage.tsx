@@ -16,6 +16,7 @@ import {
   Tv,
   Video as VideoIcon,
   X,
+  Save,
 } from 'lucide-react'
 import {
   approveRequest,
@@ -255,6 +256,7 @@ export function UserPage() {
             }}
             disabled={patch.isPending || Number(quotaMb) * 1024 * 1024 === storage.quota}
           >
+            <Save className="size-4" />
             {t('actions.save')}
           </Button>
         </div>

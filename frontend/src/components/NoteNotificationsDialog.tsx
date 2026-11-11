@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BellRing, Check, Send, TriangleAlert } from 'lucide-react'
+import { BellRing, Check, Send, TriangleAlert, X } from 'lucide-react'
 import { fetchNotificationLog, markNotificationRead, type NoteNotification } from '@/api/notes'
 import { useDateFormat } from '@/lib/dates'
 import { cn } from '@/lib/utils'
@@ -59,7 +59,8 @@ export function NoteNotificationsDialog({ onClose }: { onClose: () => void }) {
       </div>
 
       <ModalFooter>
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
       </ModalFooter>

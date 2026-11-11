@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ArrowRight, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Loader2, RefreshCw, X } from 'lucide-react'
 import {
   fetchGenres,
   lookupCandidates,
@@ -429,6 +429,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
                   {t(`lookupHint.go.${suggest.type}`)}
                 </Button>
                 <Button type="button" size="sm" variant="outline" onClick={() => setSuggest(null)}>
+                  <X className="size-4" />
                   {t(`lookupHint.stay.${type}`)}
                 </Button>
               </div>

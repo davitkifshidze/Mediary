@@ -1,7 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Folder, FolderPlus, Inbox, Lock, LockOpen, Minus, SquarePen } from 'lucide-react'
+import { Check, Folder, FolderPlus, Inbox, Lock, LockOpen, Minus, SquarePen, X } from 'lucide-react'
 import {
   createGalleryAlbum,
   fetchGalleryAlbums,
@@ -226,7 +226,8 @@ export function AlbumPicker({
           )}
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={resetDraft}>
+            <Button type="button" variant="outline" size="sm" onClick={resetDraft}>
+              <X className="size-4" />
               {t('actions.cancel')}
             </Button>
             <Button type="button" size="sm" disabled={!canCreate} onClick={() => create.mutate()}>
@@ -307,6 +308,7 @@ function PickerRow({
 }) {
   return (
     <button
+      data-kind="row"
       type="button"
       onClick={onClick}
       className={cn(

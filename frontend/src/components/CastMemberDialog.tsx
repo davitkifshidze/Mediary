@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Check, Loader2, Search, UserPlus, UserRound } from 'lucide-react'
+import { AlertTriangle, Check, Loader2, Search, UserPlus, UserRound, X } from 'lucide-react'
 import {
   attachCastMember,
   searchCastMembers,
@@ -304,7 +304,8 @@ export function CastMemberDialog({
       </div>
 
       <ModalFooter>
-        <Button type="button" variant="ghost" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button type="button" onClick={submit} disabled={!canSave || add.isPending}>
@@ -346,6 +347,7 @@ function CandidateGroup({
           return (
             <li key={key}>
               <button
+                data-kind="row"
                 type="button"
                 disabled={c.attached}
                 onClick={() => onPick(c)}

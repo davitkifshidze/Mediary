@@ -165,6 +165,7 @@ export function PhotoStack({
       {/* მოდულის ფერის ზოლი ზემოთ */}
       {accent && <span aria-hidden className="absolute inset-x-0 top-0 h-1" style={{ background: accent }} data-testid="stack-accent" />}
       <button
+        data-kind="tile"
         type="button"
         onFocus={() => setSpread(true)}
         onBlur={() => setSpread(false)}

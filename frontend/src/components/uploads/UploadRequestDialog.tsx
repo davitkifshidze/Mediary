@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Send } from 'lucide-react'
+import { Send, X } from 'lucide-react'
 import { requestUploadLimit, type UploadKindLimit, type UploadLimits } from '@/api/account'
 import { errorMessage } from '@/lib/errors'
 import { byFamily, formatList, kbLabel, mbToKb, requestableFormats } from '@/lib/uploadLimits'
@@ -160,6 +160,7 @@ export function UploadRequestDialog({
         <ModalFooter>
           {!ready && <span className="mr-auto text-xs text-muted-foreground">{t('uploads.requestNothing')}</span>}
           <Button variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           <Button disabled={!ready || send.isPending} onClick={() => send.mutate()}>

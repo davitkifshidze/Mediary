@@ -431,7 +431,8 @@ export function WebImageDialog({
           <p className="mt-4 text-sm text-muted-foreground">{t('errors.serpapi_unavailable')}</p>
         )}
         <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
         </ModalFooter>
@@ -469,7 +470,7 @@ export function WebImageDialog({
               {/* ველი იცლება, ჩიპები რჩება; ფოკუსი ველში ბრუნდება */}
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 disabled={!query}
                 onClick={() => {
                   setQuery('')
@@ -599,11 +600,12 @@ export function WebImageDialog({
                     <Button
                       type="button"
                       size="sm"
-                      variant="ghost"
+                      variant="outline"
                       onClick={() =>
                         setDistribute((cur) => (cur.length === people.length ? [] : people.map((p) => p.id)))
                       }
                     >
+                      {distribute.length === people.length ? <Square className="size-4" /> : <CheckSquare className="size-4" />}
                       {distribute.length === people.length ? t('photos.clear') : t('photos.selectAll')}
                     </Button>
                   )}
@@ -650,7 +652,7 @@ export function WebImageDialog({
                   <Button
                     type="button"
                     size="sm"
-                    variant="ghost"
+                    variant="outline"
                     onClick={() => setPicked(allPicked ? new Set() : new Set(items.map(keyOf)))}
                   >
                     {allPicked ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
@@ -747,6 +749,7 @@ export function WebImageDialog({
                       )}
                     >
                       <button
+                        data-kind="tile"
                         type="button"
                         onClick={() => toggle(item)}
                         className="flex flex-1 cursor-pointer flex-col text-left"
@@ -847,7 +850,8 @@ export function WebImageDialog({
               {t('web.attachesTo', { name: context.attachesTo })}
             </p>
           )}
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           {onPick ? (

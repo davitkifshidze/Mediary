@@ -191,6 +191,7 @@ export function DutyCalendar({
 
             const cell = (
               <button
+                data-kind="calendar"
                 key={day}
                 type="button"
                 data-day={day}
@@ -278,6 +279,7 @@ export function DutyCalendar({
             return (
               <li key={day}>
                 <button
+                  data-kind="calendar"
                   type="button"
                   aria-pressed={selecting ? isSelected : undefined}
                   onClick={() => (selecting ? press(day, false) : onOpenDay(day))}

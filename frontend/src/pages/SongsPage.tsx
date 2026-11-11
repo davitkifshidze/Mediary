@@ -6,7 +6,20 @@ import { usePagedList } from '@/lib/paged'
 import { usePageSize } from '@/lib/pageSize'
 import { useDrillParams } from '@/lib/statsLinks'
 import { Pagination } from '@/components/ui/pagination'
-import { Disc3, ExternalLink, Headphones, Link2, ListMusic, Loader2, Music, Play, Plus, Search, Tags } from 'lucide-react'
+import {
+  Disc3,
+  ExternalLink,
+  Headphones,
+  Link2,
+  ListMusic,
+  Loader2,
+  Music,
+  Play,
+  Plus,
+  Search,
+  Tags,
+  FilterX,
+} from 'lucide-react'
 import {
   createSong,
   deleteSong,
@@ -327,6 +340,7 @@ export function SongsPage() {
                 <>
                   {activeCount > 0 && (
                     <Button variant="outline" onClick={clear}>
+                      <FilterX className="size-4" />
                       {t('filter.clear')}
                     </Button>
                   )}

@@ -232,6 +232,7 @@ export function PublicProfilePage() {
           <div className="flex gap-2 pt-5">
             {(['records', 'matches'] as const).map((v) => (
               <button
+                data-kind="tab"
                 key={v}
                 type="button"
                 onClick={() => setView(v)}
@@ -400,7 +401,7 @@ function PublicPlaylistTile({
   // ⚠️ ნიშნები გახსნის ღილაკის **გვერდით** დგას და არა შიგნით (`ImportMarks`-ის წესი)
   return (
     <div className="relative min-w-0">
-      <button type="button" onClick={onOpen} className="group block w-full cursor-pointer text-left">
+      <button data-kind="card" type="button" onClick={onOpen} className="group block w-full cursor-pointer text-left">
         <div
           className={cn(
             'grid aspect-[2/3] w-full place-items-center overflow-hidden rounded-lg border border-border bg-muted transition-colors group-hover:border-primary/50',

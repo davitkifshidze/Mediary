@@ -289,6 +289,7 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
                     </span>
                   )}
                   <button
+                    data-kind="row"
                     type="button"
                     onClick={() => playFrom(item.position - 1)}
                     aria-current={current || undefined}

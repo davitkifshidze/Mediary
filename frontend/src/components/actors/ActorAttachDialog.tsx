@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/feedback'
 import { FormField } from '@/components/ui/form-layout'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { MediaRecordPicker } from '@/components/MediaRecordPicker'
+import { X, Link2 } from 'lucide-react'
 
 /* ============================================================
    **მსახიობის მიმაგრება ჩემს ჩანაწერებზე — მისივე გვერდიდან.**
@@ -71,9 +72,11 @@ export function ActorAttachDialog({ actorId, name, onClose }: { actorId: number;
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button onClick={() => attach.mutate()} disabled={!picked || attach.isPending}>
+          <Link2 className="size-4" />
           {t('actors.attach.submit', { count: picked })}
         </Button>
       </ModalFooter>

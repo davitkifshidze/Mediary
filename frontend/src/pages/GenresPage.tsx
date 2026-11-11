@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Languages, SquarePen, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Languages, SquarePen, Plus, Trash2, X, Save } from 'lucide-react'
 import { createGenre, deleteGenre, fetchGenres, updateGenre, updateGenreItems } from '@/api/movies'
 import type { Genre } from '@/api/types'
 import { emptyMediaIds, type MediaType } from '@/lib/media'
@@ -247,14 +247,10 @@ function GenreFormDialog({
                     {t(`lang.${lang}`)}
                   </span>
                 </Label>
-                <button
-                  type="button"
-                  onClick={() => setLang((l) => (l === 'ka' ? 'en' : 'ka'))}
-                  className="flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
+                <Button type="button" variant="outline" size="xs" onClick={() => setLang((l) => (l === 'ka' ? 'en' : 'ka'))}>
                   <Languages className="size-3.5" />
                   {t('genres.switchLang')}
-                </button>
+                </Button>
               </div>
               {lang === 'ka' ? (
                 <Input key="ka" value={nameKa} onChange={(e) => setNameKa(e.target.value)} autoFocus />
@@ -280,6 +276,7 @@ function GenreFormDialog({
       {tab === 'names' && (
         <ModalFooter>
           <Button variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('confirm.cancel')}
           </Button>
           {/* განმარტება tooltip-ია და არა `title`: hover-ზე მაშინვე ჩანს */}
@@ -289,6 +286,7 @@ function GenreFormDialog({
                 onClick={() => mut.mutate()}
                 disabled={mut.isPending || (!nameKa.trim() && !nameEn.trim())}
               >
+                <Save className="size-4" />
                 {t('genres.save')}
               </Button>
             </TooltipTrigger>
@@ -402,9 +400,11 @@ function GenreDeleteDialog({
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('confirm.cancel')}
         </Button>
         <Button variant="destructive" onClick={() => mut.mutate()} disabled={confirmDisabled}>
+          <Trash2 className="size-4" />
           {t('confirm.delete')}
         </Button>
       </ModalFooter>

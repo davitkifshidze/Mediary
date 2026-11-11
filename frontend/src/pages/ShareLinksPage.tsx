@@ -14,6 +14,7 @@ import {
   SquarePen,
   Trash2,
   UserPlus,
+  X,
 } from 'lucide-react'
 import {
   deleteShareLink,
@@ -132,6 +133,7 @@ export function ShareLinksPage() {
             </div>
             <ModalFooter>
               <Button type="button" onClick={() => setQrFor(null)}>
+                <X className="size-4" />
                 {t('actions.close')}
               </Button>
             </ModalFooter>

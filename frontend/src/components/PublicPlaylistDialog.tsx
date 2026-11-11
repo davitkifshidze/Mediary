@@ -274,6 +274,7 @@ export function PlaylistPlayerDialog({
                   {/* ⚠️ წყაროს ბმული ღილაკის **გარეთაა** — ჩადგმული ინტერაქტიული
                       ელემენტი არასწორი HTML-ია და ერთი დაჭერა ორივეს გაუშვებდა */}
                   <button
+                    data-kind="row"
                     type="button"
                     disabled={!canPlay}
                     onClick={() => start(i)}

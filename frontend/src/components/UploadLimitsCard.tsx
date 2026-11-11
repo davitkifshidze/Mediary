@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Clock, HardDriveUpload, SquarePen, UserCheck } from 'lucide-react'
+import { Clock, HardDriveUpload, SquarePen, UserCheck, Send } from 'lucide-react'
 import { fetchMyRequests, type UploadKindLimit } from '@/api/account'
 import { formatList, kbLabel, requestableFormats, useUploadLimits } from '@/lib/uploadLimits'
 import { cn, formatBytes } from '@/lib/utils'
@@ -182,6 +182,7 @@ function Row({
         ) : (
           requestable && (
             <Button size="sm" variant="outline" onClick={onRequest}>
+              <Send className="size-4" />
               {t('uploads.request')}
             </Button>
           )

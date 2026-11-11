@@ -202,19 +202,19 @@ function MediaGallery({ type, id, bare }: { type: MediaType; id: number; bare?: 
              დახრამულ საზღვრებს იძლევა. */
           <>
             {/* ⚠️ **ჩამოტვირთვა აქვეა** — სკოუპი ამ ჩანაწერზეა მიბმული */}
-            <Button type="button" variant="ghost" size="sm" className="rounded-none" onClick={() => setDownloadOpen(true)}>
+            <Button type="button" variant="outline" size="sm" className="rounded-none border-0" onClick={() => setDownloadOpen(true)}>
               <DownloadCloud className="size-4" />
               {t('gallery.fetch')}
             </Button>
 
             {/* ⚠️ **TMDB-ის გვერდით და არა მის ნაცვლად**: TMDB უფასოა და
                 ლიმიტის გარეშე, ვებძებნა კი 250-იან ბიუჯეტს ხარჯავს. */}
-            <Button type="button" variant="ghost" size="sm" className="rounded-none" onClick={() => setWebOpen(true)}>
+            <Button type="button" variant="outline" size="sm" className="rounded-none border-0" onClick={() => setWebOpen(true)}>
               <Globe className="size-4" />
               {t('web.searchPhotos')}
             </Button>
 
-            <Button type="button" variant="ghost" size="sm" className="rounded-none" onClick={() => setVideoOpen(true)}>
+            <Button type="button" variant="outline" size="sm" className="rounded-none border-0" onClick={() => setVideoOpen(true)}>
               <Video className="size-4" />
               {t('web.searchVideos')}
             </Button>
@@ -354,15 +354,15 @@ export function ActorGallery({
           <>
             <Button
               size="sm"
-              variant="ghost"
-              className="rounded-none"
+              variant="outline"
+              className="rounded-none border-0"
               disabled={detail?.actor.has_tmdb === false}
               onClick={() => setDownloadOpen(true)}
             >
               <DownloadCloud className="size-4" />
               {t('gallery.fetch')}
             </Button>
-            <Button size="sm" variant="ghost" className="rounded-none" onClick={() => setVideoOpen(true)}>
+            <Button size="sm" variant="outline" className="rounded-none border-0" onClick={() => setVideoOpen(true)}>
               <Video className="size-4" />
               {t('web.searchVideos')}
             </Button>

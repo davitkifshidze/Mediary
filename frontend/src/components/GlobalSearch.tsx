@@ -184,6 +184,7 @@ export function GlobalSearch() {
 
               {group.items.map((item) => (
                 <button
+                  data-kind="row"
                   key={`${item.domain}-${item.id}`}
                   type="button"
                   onClick={() => go(item)}
@@ -214,6 +215,7 @@ export function GlobalSearch() {
                   აქ ეტევა — ბმული პირდაპირ ამ ჯგუფის სრულ სიაზე მიდის */}
               {group.total > group.items.length && (
                 <button
+                  data-kind="row"
                   type="button"
                   onClick={() => goToPage(group.key)}
                   className="flex w-full cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-left text-xs text-primary transition-colors hover:bg-muted"
@@ -227,6 +229,7 @@ export function GlobalSearch() {
 
           {total > 0 && (
             <button
+              data-kind="row"
               type="button"
               onClick={() => goToPage()}
               className="mt-1 flex w-full cursor-pointer items-center justify-between gap-2 rounded-md border-t border-border px-2.5 py-2 text-sm text-primary transition-colors hover:bg-muted"

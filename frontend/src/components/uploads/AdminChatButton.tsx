@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { MessageSquareText } from 'lucide-react'
+import { MessageSquareText, MessageSquare } from 'lucide-react'
 import { fetchChatAdmins, openConversation } from '@/api/chat'
 import { errorMessage } from '@/lib/errors'
 import { ActionMenu, actionItemClass } from '@/components/ui/action-menu'
@@ -47,6 +47,7 @@ export function AdminChatButton() {
     <span className="inline-flex items-center gap-1.5">
       {admins.length === 1 ? (
         <Button size="sm" variant="outline" disabled={open.isPending} onClick={() => open.mutate(admins[0].username)}>
+          <MessageSquare className="size-4" />
           {label}
         </Button>
       ) : (
@@ -54,6 +55,7 @@ export function AdminChatButton() {
           label={t('uploads.writeAdminPick')}
           trigger={
             <Button size="sm" variant="outline" disabled={open.isPending}>
+              <MessageSquare className="size-4" />
               {label}
             </Button>
           }

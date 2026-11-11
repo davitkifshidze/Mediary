@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { TagSelect } from '@/components/TagSelect'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { Check } from 'lucide-react'
 
 /* ============================================================
    **ვიდეოების მასობრივი ოპერაცია.**
@@ -178,6 +179,7 @@ export function VideoBulkPanel() {
         <div className="flex flex-wrap gap-2">
           {ACTIONS.map((a) => (
             <button
+              data-kind="chip"
               key={a}
               onClick={() => {
                 setAction(a)
@@ -344,6 +346,7 @@ export function VideoBulkPanel() {
           )}
         </span>
         <Button onClick={apply} disabled={!canApply || mut.isPending}>
+          <Check className="size-4" />
           {mut.isPending ? t('actions.saving') : t('bulkStatus.apply')}
         </Button>
       </div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Dices, ExternalLink, Loader2, PlayCircle, RotateCcw } from 'lucide-react'
+import { Dices, ExternalLink, Loader2, PlayCircle, RotateCcw, X } from 'lucide-react'
 import type { ModuleInfo } from '@/api/account'
 import { saveModuleSettings } from '@/api/videos'
 import type { Status } from '@/api/types'
@@ -226,6 +226,7 @@ export function RandomPickDialog({ source, onClose }: { source: PickSource; onCl
               hint={t('pick.emptyHint')}
               actions={
                 <Button variant="outline" onClick={onClose}>
+                  <X className="size-4" />
                   {t('actions.close')}
                 </Button>
               }
@@ -319,6 +320,7 @@ function PickCard({
       </button>
       <div className="flex flex-1 flex-col gap-1 p-3">
         <button
+          data-kind="link"
           type="button"
           onClick={onOpen}
           className="line-clamp-2 cursor-pointer text-left text-sm font-semibold leading-tight hover:text-primary"

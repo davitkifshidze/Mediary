@@ -17,6 +17,7 @@ import {
   Search,
   Tags,
   Trash2,
+  FilterX,
 } from 'lucide-react'
 import {
   deleteNote,
@@ -311,6 +312,7 @@ export function NotesPage() {
                 <>
                   {activeCount > 0 && (
                     <Button variant="outline" onClick={clear}>
+                      <FilterX className="size-4" />
                       {t('filter.clear')}
                     </Button>
                   )}

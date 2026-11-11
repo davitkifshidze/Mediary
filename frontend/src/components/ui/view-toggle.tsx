@@ -44,6 +44,7 @@ export function ViewToggle({
     >
       {MODES.map(({ key, icon: Icon }) => (
         <button
+          data-kind="tab"
           key={key}
           type="button"
           aria-pressed={value === key}

@@ -206,6 +206,7 @@ export function NoteRemindersButton({
   return (
     <>
       <button
+        data-kind="card"
         type="button"
         disabled={!note}
         onClick={onOpen}

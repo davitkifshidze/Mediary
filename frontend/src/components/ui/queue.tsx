@@ -6,6 +6,7 @@ import { purgeItem, type PurgePlanItem, type PurgeTargetKey } from '@/api/accoun
 import { fetchBatch, startBatch, type BatchItemResult, type BatchKind } from '@/api/batches'
 import { errorMessage, isApiCode, translateCode } from '@/lib/errors'
 import { useToast } from '@/components/ui/feedback'
+import { Button } from '@/components/ui/button'
 import {
   fetchActorGalleryImages,
   fetchGalleryItem,
@@ -1255,6 +1256,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           {/* header — ერთ ხაზზე; მთელი ზოლი ჩაკეცვა/ამოკეცვის ტოგლია */}
           <div className="flex items-center gap-2 pr-2">
             <button
+              data-kind="row"
               type="button"
               onClick={() => setExpanded((e) => !e)}
               aria-expanded={expanded}
@@ -1359,24 +1361,23 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   </span>
                   {/* „აღარ განაახლო": შემდეგ გეგმებში ეს ჩანაწერი აღარ ჩანს */}
                   {canPause(it) && (
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="xs"
+                      className="shrink-0"
                       onClick={() => void pauseOne(it)}
                       title={t('queue.pauseOne')}
-                      className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
                     >
                       <Pause className="size-3" />
                       {t('queue.pauseOne')}
-                    </button>
+                    </Button>
                   )}
                   {it.status === 'error' && it.trashedId != null && (
-                    <button
-                      onClick={() => restoreTrashed(it)}
-                      className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:text-foreground"
-                    >
+                    <Button type="button" variant="outline" size="xs" className="shrink-0" onClick={() => restoreTrashed(it)}>
                       <RotateCcw className="size-3" />
                       {t('queue.restoreFromTrash')}
-                    </button>
+                    </Button>
                   )}
                   {it.status === 'pending' && (
                     <button
@@ -1444,35 +1445,26 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   ფონურად არ მიდის (პირველი მყისიერია, მეორე დესტრუქციული). */}
               {handoffKind && (
                 <div className="border-t border-border p-2">
-                  <button
-                    onClick={handOff}
-                    disabled={handingOff}
-                    className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-60"
-                  >
+                  <Button type="button" variant="outline" size="sm" className="w-full" onClick={handOff} disabled={handingOff}>
                     {handingOff ? <Loader2 className="size-3.5 animate-spin" /> : <Server className="size-3.5" />}
                     {t('queue.handOff')}
-                  </button>
+                  </Button>
                 </div>
               )}
 
               {(active > 0 || errors > 0) && (
                 <div className="flex gap-2 border-t border-border p-2">
                   {errors > 0 && (
-                    <button
-                      onClick={retryFailed}
-                      className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
+                    <Button type="button" variant="outline" size="sm" className="flex-1" onClick={retryFailed}>
                       <RotateCcw className="size-3.5" />
                       {t('queue.retryFailed', { count: errors })}
-                    </button>
+                    </Button>
                   )}
                   {active > 0 && (
-                    <button
-                      onClick={cancelPending}
-                      className="flex-1 cursor-pointer rounded-md px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    >
+                    <Button type="button" variant="destructiveOutline" size="sm" className="flex-1" onClick={cancelPending}>
+                      <X className="size-3.5" />
                       {t('queue.cancel')}
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}

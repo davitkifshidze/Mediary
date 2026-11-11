@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Copy, ExternalLink, Link2, Loader2 } from 'lucide-react'
+import { Check, Copy, ExternalLink, Link2, Loader2, X } from 'lucide-react'
 import {
   createShareLink,
   previewShareLink,
@@ -202,6 +202,7 @@ export function ShareLinkDialog({
 
         <ModalFooter>
           <Button type="button" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.close')}
           </Button>
         </ModalFooter>
@@ -332,6 +333,7 @@ export function ShareLinkDialog({
 
       <ModalFooter>
         <Button type="button" variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button type="button" disabled={!complete || save.isPending} onClick={() => save.mutate()}>

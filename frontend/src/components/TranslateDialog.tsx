@@ -3,7 +3,7 @@ import { useContentLang } from '@/lib/settings'
 import { statusName, useMergedStatuses } from '@/lib/statuses'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Check, Languages, Loader2, Sparkles } from 'lucide-react'
+import { Check, Languages, Loader2, Sparkles, X } from 'lucide-react'
 import { fetchGenres } from '@/api/media'
 import {
   fetchTranslationPlan,
@@ -166,6 +166,7 @@ export function TranslateDialog({
 
               return (
                 <button
+                  data-kind="chip"
                   key={source}
                   type="button"
                   aria-pressed={on}
@@ -319,6 +320,7 @@ export function TranslateDialog({
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <X className="size-4" />
             {t('confirm.cancel')}
           </Button>
           <Button onClick={run} disabled={!canRun}>

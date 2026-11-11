@@ -237,6 +237,7 @@ export function DutyPage() {
       </Button>
       {anchor && (
         <Button variant="outline" size="sm" onClick={() => setParam('date', null)}>
+          <CalendarCheck className="size-4" />
           {t('duty.period.today')}
         </Button>
       )}
@@ -357,7 +358,7 @@ export function DutyPage() {
               <Repeat className="size-4" />
               {t('duty.pattern.fromSelection')}
             </Button>
-            <Button size="sm" variant="ghost" disabled={!selected.size} onClick={() => setSelected(new Set())}>
+            <Button size="sm" variant="outline" disabled={!selected.size} onClick={() => setSelected(new Set())}>
               <X className="size-4" />
               {t('duty.select.clear')}
             </Button>

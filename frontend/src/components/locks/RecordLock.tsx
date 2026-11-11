@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
-import { KeyRound, Lock, LockOpen, ShieldAlert } from 'lucide-react'
+import { KeyRound, Lock, LockOpen, ShieldAlert, X } from 'lucide-react'
 import { isHidden, putRecordLock, relockRecord, unlockRecord, type RecordLockState } from '@/api/locks'
 import { albumPasswordProblem } from '@/lib/albumPassword'
 import { useDateFormat } from '@/lib/dates'
@@ -112,6 +112,7 @@ export function RecordUnlockDialog({
 
       <ModalFooter>
         <Button type="button" variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button type="submit" form="record-unlock-form" disabled={!password || unlock.isPending}>
@@ -205,7 +206,8 @@ export function RecordLockDialog({
             <div className="flex flex-wrap items-center gap-2 rounded-md bg-destructive/10 p-2.5 text-xs text-destructive">
               <ShieldAlert className="size-4 shrink-0" />
               <span className="min-w-0 flex-1">{t('lock.removeHint')}</span>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setRemoving(false)}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setRemoving(false)}>
+                <X className="size-4" />
                 {t('actions.cancel')}
               </Button>
             </div>
@@ -237,6 +239,7 @@ export function RecordLockDialog({
 
       <ModalFooter>
         <Button type="button" variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button type="submit" form="record-lock-form" variant={removing ? 'destructive' : 'default'} disabled={!ready || save.isPending}>

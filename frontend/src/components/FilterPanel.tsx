@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronDown, Search, SlidersHorizontal, X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Chip, ChipRow } from '@/components/ui/chip'
@@ -92,6 +92,7 @@ export function FilterGroup({
     <div className="border-b border-border py-3 first:pt-0 last:border-b-0">
       <div className="flex items-center gap-1">
         <button
+          data-kind="accordion"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-0.5 text-left text-xs font-semibold tracking-wide text-muted-foreground transition-colors hover:text-foreground"
@@ -444,6 +445,7 @@ export function FilterPanel({
 
       <div className="mt-3 space-y-2 border-t border-border pt-3">
         <Button className="w-full" onClick={onApply} disabled={!dirty}>
+          <Check className="size-4" />
           {t('filter.apply')}
         </Button>
         {/* ⚠️ **გასუფთავება წითელია** (შენი მითითება, 2026-09-14): ის ერთადერთი

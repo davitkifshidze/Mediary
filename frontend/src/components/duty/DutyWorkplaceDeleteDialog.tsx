@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Trash2 } from 'lucide-react'
+import { AlertTriangle, Trash2, X } from 'lucide-react'
 import { deleteDutyWorkplace, type DutyWorkplace } from '@/api/duty'
 import { errorMessage } from '@/lib/errors'
 import { invalidateDuty } from '@/lib/duty'
@@ -145,7 +145,8 @@ export function DutyWorkplaceDeleteDialog({
       )}
 
       <ModalFooter>
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button variant="destructive" disabled={disabled} onClick={() => remove.mutate()}>

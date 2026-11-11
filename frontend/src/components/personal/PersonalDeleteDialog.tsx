@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { FolderOutput, Trash2 } from 'lucide-react'
+import { FolderOutput, Trash2, X } from 'lucide-react'
 import { deletePerson, deletePersonalAlbum, type Person, type PersonalAlbum } from '@/api/personal'
 import { errorMessage } from '@/lib/errors'
 import { countLabel, invalidatePersonal } from '@/lib/personal'
@@ -94,6 +94,7 @@ export function PersonalDeleteDialog({
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button variant="destructive" disabled={remove.isPending} onClick={() => remove.mutate()}>

@@ -85,6 +85,7 @@ export function PersonalAlbumsCut() {
           <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
             <UserRound className="size-4 text-muted-foreground" />
             <button
+              data-kind="link"
               type="button"
               className="cursor-pointer text-left hover:text-primary"
               onClick={() => navigate(`/personal/people/${personId}`)}

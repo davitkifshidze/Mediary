@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Cake, ExternalLink, Globe, Link2, Loader2, Lock, MapPin, RefreshCw, SquarePen, Star, Trash2 } from 'lucide-react'
+import { Cake, ChevronDown, ChevronUp, ExternalLink, Globe, Link2, Loader2, Lock, MapPin, RefreshCw, SquarePen, Star, Trash2 } from 'lucide-react'
 import { resyncActor, type Actor } from '@/api/media'
 import { errorMessage } from '@/lib/errors'
 import { useDateFormat } from '@/lib/dates'
@@ -193,13 +193,10 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
                 {bio}
               </p>
               {longBio && (
-                <button
-                  type="button"
-                  onClick={() => setExpanded((v) => !v)}
-                  className="mt-1 cursor-pointer text-xs font-medium text-primary hover:text-primary/70"
-                >
+                <Button type="button" variant="outline" size="xs" className="mt-1.5" onClick={() => setExpanded((v) => !v)}>
+                  {expanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
                   {t(expanded ? 'actions.less' : 'actions.more')}
-                </button>
+                </Button>
               )}
             </div>
           )}

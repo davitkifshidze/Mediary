@@ -102,6 +102,7 @@ export function MatchPanel({ username }: { username: string }) {
         {domains.map((row) => (
           <div key={row.domain} className="rounded-lg border border-border">
             <button
+              data-kind="accordion"
               type="button"
               onClick={() => setOpen((d) => (d === row.domain ? null : row.domain))}
               disabled={row.shared === 0}

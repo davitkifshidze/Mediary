@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Ban, BellOff, BellRing, Check, Palette, ShieldOff, SquarePen } from 'lucide-react'
+import { Ban, BellOff, BellRing, Check, Palette, ShieldOff, SquarePen, Save } from 'lucide-react'
 import { setChatMuted, setChatNickname, setChatTheme, setBlocked, type ChatThread } from '@/api/chat'
 import { CHAT_THEMES, chatThemeSwatch, type ChatTheme } from '@/lib/chatThemes'
 import { errorMessage } from '@/lib/errors'
@@ -149,6 +149,7 @@ export function ChatThreadMenu({
               onChange={(e) => setNickname(e.target.value)}
             />
             <Button variant="outline" disabled={rename.isPending} onClick={() => rename.mutate()}>
+              <Save className="size-4" />
               {t('actions.save')}
             </Button>
           </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Check, Loader2, Plus, Search, X } from 'lucide-react'
+import { AlertTriangle, Check, Loader2, Plus, Search, X, Save } from 'lucide-react'
 import {
   createGame,
   fetchGameFranchises,
@@ -224,6 +224,7 @@ export function GameFranchiseDialog({
             <div className="mt-2 flex flex-wrap gap-1.5">
               {franchises.map((f) => (
                 <button
+                  data-kind="chip"
                   key={f.name}
                   type="button"
                   onClick={() => setName(f.name)}
@@ -342,6 +343,7 @@ export function GameFranchiseDialog({
                   )}
                   {candidates.map((candidate) => (
                     <button
+                      data-kind="row"
                       key={`${candidate.source ?? 'rawg'}-${candidate.rawg_id ?? candidate.igdb_id}`}
                       type="button"
                       disabled={add.isPending}
@@ -378,7 +380,7 @@ export function GameFranchiseDialog({
               {!!query.trim() && (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   className="mt-2"
                   disabled={add.isPending}
@@ -393,7 +395,8 @@ export function GameFranchiseDialog({
         )}
 
         <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           <Button
@@ -403,6 +406,7 @@ export function GameFranchiseDialog({
               onClose()
             }}
           >
+            <Save className="size-4" />
             {t('actions.save')}
           </Button>
         </ModalFooter>

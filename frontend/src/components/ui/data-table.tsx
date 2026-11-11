@@ -156,6 +156,7 @@ export function DataTable<T>({
                 <th key={c.key} className={cn('px-3 py-2.5 text-left font-medium', c.className)}>
                   {c.value ? (
                     <button
+                      data-kind="header"
                       type="button"
                       onClick={() => toggleSort(c.key)}
                       className={cn(

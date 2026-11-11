@@ -17,6 +17,7 @@ import {
   Tags,
   BookOpenCheck,
   Images,
+  FilterX,
 } from 'lucide-react'
 import {
   BOOK_STATUSES,
@@ -300,6 +301,7 @@ export function BooksPage() {
                 <>
                   {activeCount > 0 && (
                     <Button variant="outline" onClick={clear}>
+                      <FilterX className="size-4" />
                       {t('filter.clear')}
                     </Button>
                   )}

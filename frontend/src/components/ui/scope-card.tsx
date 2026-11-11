@@ -82,6 +82,7 @@ export function ScopeCard({
 
   const card = (
     <button
+      data-kind="card"
       type="button"
       aria-pressed={active}
       disabled={disabled}

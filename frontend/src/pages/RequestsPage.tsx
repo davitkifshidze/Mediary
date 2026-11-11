@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Boxes, Check, HardDrive, HardDriveUpload, Inbox, Tags, X } from 'lucide-react'
+import { Boxes, Check, HardDrive, HardDriveUpload, Inbox, Tags, X, Eye } from 'lucide-react'
 import {
   approveRequest,
   cancelRequest,
@@ -167,6 +167,7 @@ export function RequestsPage() {
         value: (r) => label(r),
         render: (r) => (
           <button
+            data-kind="link"
             type="button"
             onClick={() => setOpen(r)}
             className="cursor-pointer text-left font-medium transition-colors hover:text-primary"
@@ -222,6 +223,7 @@ export function RequestsPage() {
         className: 'w-32 text-right',
         render: (r) => (
           <Button size="sm" variant="outline" onClick={() => setOpen(r)}>
+            <Eye className="size-4" />
             {r.status === 'pending' ? t('requests.review') : t('requests.details')}
           </Button>
         ),
@@ -523,6 +525,7 @@ function ReviewDialog({
 
             <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
               <Button variant="outline" onClick={onClose}>
+                <X className="size-4" />
                 {t('actions.cancel')}
               </Button>
               <Button variant="outline" disabled={busy} onClick={() => onReject(note || undefined)}>
@@ -547,6 +550,7 @@ function ReviewDialog({
             )}
             <div className="flex justify-end border-t border-border pt-4">
               <Button variant="outline" onClick={onClose}>
+                <X className="size-4" />
                 {t('actions.close')}
               </Button>
             </div>

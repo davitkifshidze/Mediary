@@ -3,7 +3,7 @@ import { useContentLang } from '@/lib/settings'
 import { statusName, useMergedStatuses } from '@/lib/statuses'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Loader2, Play } from 'lucide-react'
+import { Loader2, Play, X } from 'lucide-react'
 import {
   fetchGenres,
   fetchSyncPlan,
@@ -345,6 +345,7 @@ function RecordsFlow({
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('confirm.cancel')}
           </Button>
           <Button onClick={run} disabled={!canRun}>

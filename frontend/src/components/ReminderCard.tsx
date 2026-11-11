@@ -194,6 +194,7 @@ export function ReminderCard({
         </span>
 
         <button
+          data-kind="card"
           type="button"
           onClick={onEdit}
           className="min-w-0 flex-1 cursor-pointer text-left"

@@ -13,6 +13,7 @@ import {
   Star,
   User as UserIcon,
   UserPlus,
+  FilterX,
 } from 'lucide-react'
 import {
   fetchPublicShare,
@@ -358,6 +359,7 @@ export function SharePage() {
                         setGenre(ALL_GENRES)
                       }}
                     >
+                      <FilterX className="size-4" />
                       {t('filter.clear')}
                     </Button>
                   )
@@ -528,6 +530,7 @@ function SharePlaylistTile({
     <div className="min-w-0" data-testid="share-card">
       <div className={cn('relative rounded-lg', selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
         <button
+          data-kind="tile"
           type="button"
           onClick={onOpen}
           aria-label={t('share.page.openPlaylist', { title })}

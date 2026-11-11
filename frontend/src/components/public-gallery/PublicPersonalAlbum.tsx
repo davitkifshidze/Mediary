@@ -48,7 +48,7 @@ export function PublicPersonalAlbumTile({
   const cover = card.cover_id ? publicPersonalThumb(username, card.cover_id) : null
 
   return (
-    <button type="button" onClick={onOpen} className="group block w-full cursor-pointer text-left">
+    <button data-kind="card" type="button" onClick={onOpen} className="group block w-full cursor-pointer text-left">
       <div className="grid aspect-[2/3] w-full place-items-center overflow-hidden rounded-lg border border-border bg-muted transition-colors group-hover:border-primary/50">
         {cover ? (
           <img src={cover} alt="" loading="lazy" className="size-full object-cover" />

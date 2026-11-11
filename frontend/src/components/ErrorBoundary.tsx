@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, RotateCw } from 'lucide-react'
+import { AlertTriangle, RotateCw, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -81,6 +81,7 @@ function RouteError({ error, onRetry }: { error: Error; onRetry: () => void }) {
             {t('boundary.retry')}
           </Button>
           <Button type="button" variant="outline" onClick={() => window.location.reload()}>
+            <RefreshCw className="size-4" />
             {t('boundary.reload')}
           </Button>
         </>

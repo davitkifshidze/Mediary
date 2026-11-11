@@ -12,6 +12,7 @@ import {
   RotateCcw,
   SquarePen,
   Trash2,
+  X,
 } from 'lucide-react'
 import type { ModuleInfo } from '@/api/account'
 import { saveStatusSections, type SectionsLayout } from '@/api/statuses'
@@ -399,6 +400,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
         actions={
           <>
             <Button variant="outline" onClick={() => navigate(def.recordsRoute)}>
+              <ArrowLeft className="size-4" />
               {t('dictionaries.backToRecords')}
             </Button>
             {def.restoreDefaults && (
@@ -732,7 +734,8 @@ function DeleteDictionaryEntry({
       )}
 
       <ModalFooter>
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button variant="destructive" disabled={confirmDisabled} onClick={() => remove.mutate()}>

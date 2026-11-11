@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, RotateCcw, Save, SquarePen } from 'lucide-react'
+import { AlertTriangle, RotateCcw, Save, SquarePen, X } from 'lucide-react'
 import { fetchTrashRetention, updateTrashMaxDays } from '@/api/trash'
 import { useAuth } from '@/lib/auth'
 import { errorMessage } from '@/lib/errors'
@@ -153,7 +153,7 @@ function CeilingDialog({
           />
           <span className="text-sm text-muted-foreground">{t('settings.trashCeilingUnit')}</span>
           <InfoHint critical={t('settings.trashCeilingWarn')} />
-          <Button size="sm" variant="ghost" disabled={days === fallback} onClick={() => setValue(String(fallback))}>
+          <Button size="sm" variant="outline" disabled={days === fallback} onClick={() => setValue(String(fallback))}>
             <RotateCcw className="size-4" />
             {t('settings.trashCeilingDefault', { days: fallback })}
           </Button>
@@ -163,6 +163,7 @@ function CeilingDialog({
 
         <ModalFooter>
           <Button variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           <Button disabled={!valid || days === current || save.isPending} onClick={() => save.mutate()}>

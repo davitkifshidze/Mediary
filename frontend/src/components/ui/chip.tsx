@@ -68,6 +68,7 @@ export function Chip({
 } & Omit<ComponentProps<'button'>, 'children'>) {
   return (
     <button
+      data-kind="chip"
       type="button"
       aria-pressed={active}
       className={cn(

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Film } from 'lucide-react'
+import { Film, X } from 'lucide-react'
 import { fetchPersonalMedia, PERSONAL_KEY, reorderPersonalMedia, type PersonalMediaFilters } from '@/api/personal'
 import { errorMessage } from '@/lib/errors'
 import { invalidatePersonal } from '@/lib/personal'
@@ -81,7 +81,10 @@ export function PersonalReorderDialog({
       </ul>
 
       <ModalFooter>
-        <Button onClick={onClose}>{t('actions.close')}</Button>
+        <Button onClick={onClose}>
+          <X className="size-4" />
+          {t('actions.close')}
+        </Button>
       </ModalFooter>
     </ModalShell>
   )

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Check, Loader2, Minus, Pencil, Plus, Target } from 'lucide-react'
+import { Check, Loader2, Minus, Pencil, Plus, Target, X } from 'lucide-react'
 import { fetchStatsSummary } from '@/api/stats'
 import { MODULE_ACCENT_FALLBACK, modAccent, moduleName, useModules } from '@/lib/modules'
 import { useSettings } from '@/lib/settings'
@@ -225,7 +225,8 @@ export function YearGoals() {
           </div>
 
           <ModalFooter>
-            <Button type="button" variant="ghost" onClick={close}>
+            <Button type="button" variant="outline" onClick={close}>
+              <X className="size-4" />
               {t('actions.cancel')}
             </Button>
             <Button type="button" onClick={() => void commit()} disabled={busy}>
@@ -271,6 +272,7 @@ function GoalTile({
 
   return (
     <button
+      data-kind="card"
       type="button"
       onClick={onOpen}
       aria-label={t('goals.openCard', { module: name })}

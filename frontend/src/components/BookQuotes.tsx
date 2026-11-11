@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, Plus, Quote, Search, SquarePen, Trash2 } from 'lucide-react'
+import { Copy, Plus, Quote, Search, SquarePen, Trash2, X, Save } from 'lucide-react'
 import { createBookNote, deleteBookNote, fetchBookNotes, updateBookNote, type Book, type BookNote } from '@/api/books'
 import { copyText } from '@/lib/clipboard'
 import { useDateFormat } from '@/lib/dates'
@@ -101,9 +101,11 @@ export function QuoteDialog({ book, quote, onClose }: { book: Book; quote?: Book
         </div>
         <ModalFooter>
           <Button type="button" variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={!body.trim() || pageInvalid || save.isPending}>
+            <Save className="size-4" />
             {save.isPending ? t('actions.saving') : t('actions.save')}
           </Button>
         </ModalFooter>
@@ -174,6 +176,7 @@ export function BookQuotes({ book, onAdd }: { book: Book; onAdd: () => void }) {
           actions={
             term ? (
               <Button variant="outline" size="sm" onClick={() => setQ('')}>
+                <X className="size-4" />
                 {t('recordNotes.clearSearch')}
               </Button>
             ) : (

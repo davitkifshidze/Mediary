@@ -1,7 +1,18 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Database, Download, Table2, Loader2, Play, RotateCcw, TriangleAlert, Upload } from 'lucide-react'
+import {
+  CalendarClock,
+  Database,
+  Download,
+  Table2,
+  Loader2,
+  Play,
+  RotateCcw,
+  TriangleAlert,
+  Upload,
+  X,
+} from 'lucide-react'
 import {
   createBackup,
   deleteBackup,
@@ -330,6 +341,7 @@ export function BackupsPanel() {
 
             <ModalFooter>
               <Button variant="outline" onClick={() => setRestoring(null)}>
+                <X className="size-4" />
                 {t('actions.cancel')}
               </Button>
               <Button

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Check } from 'lucide-react'
 import { fetchDashboard } from '@/api/dashboard'
 import { bulkCustomStatus, fetchCustomRecords } from '@/api/customRecords'
 import { mediaApi, type BulkStatusInput } from '@/api/media'
@@ -383,6 +383,7 @@ function BulkStatusPanel({
           {t(text('bulkStatus.affected'), { count: affectedCount })}
         </span>
         <Button onClick={apply} disabled={!canApply || mut.isPending}>
+          <Check className="size-4" />
           {mut.isPending ? t('actions.saving') : t('bulkStatus.apply')}
         </Button>
       </div>

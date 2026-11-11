@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { CalendarPlus } from 'lucide-react'
+import { CalendarPlus, X } from 'lucide-react'
 import { batchDutyShifts, type DutySettingsData, type DutyShiftType, type DutyWorkplace } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
@@ -242,6 +242,7 @@ export function DutyBatchDialog({
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.cancel')}
         </Button>
         <Button onClick={() => save.mutate()} disabled={!valid || save.isPending || rows.length === 0}>

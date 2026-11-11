@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, X, Save } from 'lucide-react'
 import {
   CUSTOM_CLASSIFICATIONS,
   CUSTOM_FIELD_TYPES,
@@ -340,10 +340,12 @@ export function CustomModuleDialog({
         )}
 
         <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={save.isPending || nameMissing}>
+            <Save className="size-4" />
             {save.isPending
               ? t('actions.saving')
               : t(editing ? 'actions.save' : 'customModules.create')}

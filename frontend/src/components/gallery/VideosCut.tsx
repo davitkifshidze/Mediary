@@ -317,6 +317,7 @@ export function VideosCut() {
             </p>
             {/* მფლობელის ჩიპი — მოდულის ფერით და ხატულით */}
             <button
+              data-kind="chip"
               type="button"
               onClick={() => openOwner(video)}
               className="inline-flex max-w-full cursor-pointer items-center gap-1.5 self-start rounded-md border px-2 py-0.5 text-[11px] font-medium"
@@ -328,11 +329,11 @@ export function VideosCut() {
             </button>
 
             <div className="mt-auto flex items-center gap-1 border-t border-border pt-2">
-              <Button variant="ghost" size="sm" onClick={play}>
+              <Button variant="outline" size="sm" onClick={play}>
                 <Play className="size-3.5" />
                 {t('playback.play')}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => openOwner(video)}>
+              <Button variant="outline" size="sm" onClick={() => openOwner(video)}>
                 {video.owner.kind === 'actor' ? <User className="size-3.5" /> : <Images className="size-3.5" />}
                 {t(video.owner.kind === 'actor' ? 'gallery.videoOwnerActor' : 'gallery.videoOwnerRecord')}
               </Button>
@@ -340,7 +341,7 @@ export function VideosCut() {
                 href={video.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'ml-auto text-muted-foreground')}
+                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'ml-auto')}
               >
                 <ExternalLink className="size-3.5" />
                 {t('photos.infoOpen')}

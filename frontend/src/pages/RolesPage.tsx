@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Lock, Plus, ShieldCheck, Trash2, Users } from 'lucide-react'
+import { Lock, Plus, ShieldCheck, Trash2, Users, X, Save } from 'lucide-react'
 import { createRole, deleteRole, fetchRoles, type Role } from '@/api/account'
 import { useAuth } from '@/lib/auth'
 import { errorMessage } from '@/lib/errors'
@@ -278,10 +278,12 @@ function AddRoleDialog({ onClose }: { onClose: () => void }) {
         <p className="text-xs text-muted-foreground">{t('roles.addHint')}</p>
 
         <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
+            <X className="size-4" />
             {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={save.isPending || !form.name_ka.trim() || !form.name_en.trim()}>
+            <Save className="size-4" />
             {save.isPending ? t('actions.saving') : t('actions.save')}
           </Button>
         </ModalFooter>

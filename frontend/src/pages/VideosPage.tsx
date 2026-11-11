@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Search,
   Tags,
+  FilterX,
 } from 'lucide-react'
 import {
   createVideo,
@@ -603,6 +604,7 @@ export function VideosPage() {
                 <>
                   {activeCount > 0 && (
                     <Button variant="outline" onClick={clear}>
+                      <FilterX className="size-4" />
                       {t('filter.clear')}
                     </Button>
                   )}

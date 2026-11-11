@@ -7,6 +7,7 @@ import { FormField, FormSection } from '@/components/ui/form-layout'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PersonalUploadButton, PersonalUploader, type PersonalUploaderHandle } from '@/components/personal/PersonalUploader'
+import { X } from 'lucide-react'
 
 /* ============================================================
    **ატვირთვა გვერდის სათაურიდან** — სად ჩავარდეს: პიროვნება
@@ -87,6 +88,7 @@ export function PersonalUploadDialog({
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>
+          <X className="size-4" />
           {t('actions.close')}
         </Button>
       </ModalFooter>

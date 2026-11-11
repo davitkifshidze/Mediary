@@ -2,7 +2,20 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FileText, Image as ImageIcon, Link2, Loader2, Map as MapIcon, MapPin, Plus, Search, Star } from 'lucide-react'
+import {
+  FileText,
+  Image as ImageIcon,
+  Link2,
+  Loader2,
+  Map as MapIcon,
+  MapPin,
+  Plus,
+  Search,
+  Star,
+  FilterX,
+  Check,
+  X,
+} from 'lucide-react'
 import {
   PLACE_STATUSES,
   createPlace,
@@ -305,6 +318,7 @@ export function PlacesPage() {
               actions={
                 activeCount > 0 || term ? (
                   <Button variant="outline" onClick={() => { setQ(''); clear() }}>
+                    <FilterX className="size-4" />
                     {t('filter.clear')}
                   </Button>
                 ) : (
@@ -1181,9 +1195,11 @@ function PlaceForm({
                     setAddressOffer(null)
                   }}
                 >
+                  <Check className="size-4" />
                   {t('places.addressUpdate')}
                 </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => setAddressOffer(null)}>
+                <Button type="button" size="sm" variant="outline" onClick={() => setAddressOffer(null)}>
+                  <X className="size-4" />
                   {t('places.addressKeep')}
                 </Button>
               </div>

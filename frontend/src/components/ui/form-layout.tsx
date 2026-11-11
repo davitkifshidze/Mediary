@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2 } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { FieldLabel } from '@/components/ui/field-label'
@@ -248,7 +248,8 @@ export function FormFooter({
   return (
     <ModalFooter>
       {children && <div className="mr-auto flex flex-wrap items-center gap-2">{children}</div>}
-      <Button type="button" variant="ghost" onClick={onCancel}>
+      <Button type="button" variant="outline" onClick={onCancel}>
+        <X className="size-4" />
         {t('actions.cancel')}
       </Button>
       <Button type="submit" form={formId} disabled={saving}>

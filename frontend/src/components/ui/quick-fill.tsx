@@ -168,6 +168,7 @@ export function QuickFillCandidate({
 }) {
   return (
     <button
+      data-kind="card"
       type="button"
       disabled={disabled}
       onClick={onPick}

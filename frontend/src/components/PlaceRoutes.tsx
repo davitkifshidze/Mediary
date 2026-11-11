@@ -17,6 +17,7 @@ import {
   SquarePen,
   Trash2,
   type LucideIcon,
+  X,
 } from 'lucide-react'
 import type { ModuleInfo } from '@/api/account'
 import { saveModuleSettings } from '@/api/videos'
@@ -477,6 +478,7 @@ export function PlaceRoutes({ place }: { place: Place }) {
                       {candidates.map((c) => (
                         <li key={`${c.source}-${c.source_id}`}>
                           <button
+                            data-kind="row"
                             type="button"
                             disabled={c.lat == null || c.lng == null}
                             onClick={() => run({ at: [Number(c.lat), Number(c.lng)], label: c.name, mode: 'address' })}
@@ -572,6 +574,7 @@ export function PlaceRoutes({ place }: { place: Place }) {
                   return (
                     <li key={r.index}>
                       <button
+                        data-kind="row"
                         type="button"
                         aria-pressed={isActive}
                         onClick={() => {
@@ -661,9 +664,11 @@ export function PlaceRoutes({ place }: { place: Place }) {
                         aria-label={t('places.route.saveName')}
                       />
                       <Button type="submit" size="sm" disabled={rename.isPending}>
+                        <Save className="size-4" />
                         {t('actions.save')}
                       </Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => setRenaming(null)}>
+                      <Button type="button" size="sm" variant="outline" onClick={() => setRenaming(null)}>
+                        <X className="size-4" />
                         {t('actions.cancel')}
                       </Button>
                     </form>
