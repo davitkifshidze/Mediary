@@ -148,9 +148,14 @@ describe('RecordView', () => {
     expect(el.querySelector('[data-testid="bar"]')).toBeNull()
     expect(el.textContent).not.toContain('1965')
 
+    // ფოტოს ქვედა ზოლი: „რედაქტირება" წარწერით, მენიუ — ⋯ აიქონით (სახელი `aria-label`-შია)
     const hover = el.querySelector('[data-testid="record-tile-actions"]')!
+    expect(hover.className).toContain('fb-photo-bar')
+    expect(hover.className).toContain('bottom-0')
+    expect(el.querySelector('li')!.className).toContain('fb-photo-host')
     const buttons = [...hover.querySelectorAll('button')]
-    expect(buttons.map((b) => b.textContent)).toEqual([i18n.t('actions.edit'), i18n.t('actions.more')])
+    expect(buttons.map((b) => b.textContent)).toEqual([i18n.t('actions.edit'), ''])
+    expect(buttons[1].getAttribute('aria-label')).toBe(i18n.t('actions.more'))
     await act(async () => buttons[0].click())
     expect(onEdit).toHaveBeenCalledTimes(1)
   })

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { MoreHorizontal, SquarePen, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { PHOTO_HOST, PhotoBar } from '@/components/ui/photo-bar'
 import { RecordActionMenu, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Sortable, SortableHandle, SortableItem, type SortableId } from '@/components/ui/sortable'
 import { openOnClick } from '@/lib/recordClick'
@@ -176,7 +177,8 @@ export function RecordView(props: RecordViewProps) {
 const ROOT: Record<RecordLayout, string> = {
   rows: 'flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2',
   cards: 'flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card',
-  grid: 'group/tile flex flex-col overflow-hidden rounded-xl border border-border bg-card',
+  // `PHOTO_HOST` — ფილაზე ჰოვერი ფოტოს ქვედა ზოლს აჩენს (`ui/photo-bar.tsx`)
+  grid: `${PHOTO_HOST} flex flex-col overflow-hidden rounded-xl border border-border bg-card`,
 }
 
 /* ---------- ნაწილები ---------- */
@@ -396,33 +398,37 @@ function TileBody(props: RecordViewProps) {
         <Photo props={props} className={cn('block w-full', GRID_PHOTO[shape])} big />
         {sortId != null && <SortableHandle className="absolute left-1.5 top-1.5 bg-background/90" />}
 
-        {/* მოქმედებები ჰოვერზე/ფოკუსზე; გახსნილ მენიუსთან ფენა ჩანს (`data-state=open`) */}
-        <div
-          className={cn(
-            'pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/55 p-2 opacity-0 transition-opacity',
-            'group-hover/tile:opacity-100 group-focus-within/tile:opacity-100 has-[[data-state=open]]:opacity-100',
+        {/* მოქმედებები ფოტოს ქვედა ზოლში — იგივე კომპონენტი, რაც ფორმის მთავარ ფოტოზე:
+            ჰოვერზე/ფოკუსზე და ღია მენიუსთან ჩანს, სენსორულ ეკრანზე — ყოველთვის.
+            ფოტოს დანარჩენი ნაწილი თავისუფალია — მასზე დაჭერა ჩანაწერს ხსნის.
+            ⚠️ „რედაქტირება" სიგანეს იღებს, მენიუ კი ⋯ აიქონია: ვიწრო ფილაზე ორი
+            წარწერა ერთ რიგში არ ეტევა. */}
+        <PhotoBar layout="lead" data-testid="record-tile-actions">
+          {onEdit ? (
+            <Button type="button" variant="edit" size="xs" className="bg-background" onClick={onEdit}>
+              <SquarePen className="size-3.5 shrink-0" />
+              <span className="truncate">{t('actions.edit')}</span>
+            </Button>
+          ) : (
+            // რედაქტირების გარეშე ⋯ მაინც მარჯვენა კიდეზე რჩება
+            <span />
           )}
-          data-testid="record-tile-actions"
-        >
-          {/* ⚠️ `grid` — ორივე ღილაკი უგრძესის სიგანისაა (ფოტოს გადაფარვის წესი, `PosterUploader`) */}
-          <div className="pointer-events-none grid max-w-full gap-2 group-hover/tile:pointer-events-auto group-focus-within/tile:pointer-events-auto">
-            {onEdit && (
-              <Button type="button" variant="edit" size="sm" className="w-full bg-background" onClick={onEdit}>
-                <SquarePen className="size-3.5" />
-                {t('actions.edit')}
+          <RecordActionMenu
+            actions={actions}
+            trigger={
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="w-7 bg-background"
+                aria-label={t('actions.more')}
+                title={t('actions.more')}
+              >
+                <MoreHorizontal className="size-3.5" />
               </Button>
-            )}
-            <RecordActionMenu
-              actions={actions}
-              trigger={
-                <Button type="button" variant="outline" size="sm" className="w-full bg-background">
-                  <MoreHorizontal className="size-3.5" />
-                  {t('actions.more')}
-                </Button>
-              }
-            />
-          </div>
-        </div>
+            }
+          />
+        </PhotoBar>
       </div>
 
       <div className="px-2.5 py-2">

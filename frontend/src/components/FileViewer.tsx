@@ -37,12 +37,16 @@ export interface ViewableFile {
   size?: number | null
   /** ⚠️ პრივატულ დისკზეა თუ არა — backend-ის სათქმელი */
   private?: boolean
+  /** გამომძახებელმა იცის, რა არის — `blob:` მისამართს არც `mime` აქვს, არც გაფართოება */
+  kind?: Kind
 }
 
 type Kind = 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'other'
 
 /** `mime` პირველი, გაფართოება — სათადარიგო */
 export function kindOf(file: ViewableFile): Kind {
+  if (file.kind) return file.kind
+
   const mime = (file.mime ?? '').toLowerCase()
 
   if (mime.startsWith('image/')) return 'image'

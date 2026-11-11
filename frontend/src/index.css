@@ -1386,3 +1386,25 @@
   .ea-d1 { animation-delay: 0.5s; }
   .ea-d2 { animation-delay: 1s; }
 }
+
+/* ============================================================
+   ფოტოს ქვედა ზოლი და შუა ღილაკი (`ui/photo-bar.tsx`)
+
+   ⚠️ დამალული ზოლი **შეხებას არ იღებს** (`pointer-events: none`) — უხილავ
+   „წაშლაზე" შემთხვევით ვერ დააჭერ. ჩანს მასპინძელზე ჰოვერისას, შიგნით
+   ფოკუსისას და ღია მენიუსთან (`data-state=open`).
+   ⚠️ **სენსორულ ეკრანზე (`hover: none`) ყოველთვის ჩანს** — იქ ჰოვერი არ
+   არსებობს, პირველი შეხება კი ღილაკს მხოლოდ გამოაჩენდა და არ დააჭერდა.
+   ============================================================ */
+.fb-photo-bar,
+.fb-photo-eye { opacity: 0; pointer-events: none; transition: opacity 150ms ease, background-color 150ms ease; }
+.fb-photo-host:hover .fb-photo-bar,
+.fb-photo-host:hover .fb-photo-eye,
+.fb-photo-host:focus-within .fb-photo-bar,
+.fb-photo-host:focus-within .fb-photo-eye,
+.fb-photo-host:has([data-state='open']) .fb-photo-bar,
+.fb-photo-host:has([data-state='open']) .fb-photo-eye { opacity: 1; pointer-events: auto; }
+@media (hover: none) {
+  .fb-photo-bar,
+  .fb-photo-eye { opacity: 1; pointer-events: auto; }
+}

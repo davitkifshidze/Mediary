@@ -1,9 +1,11 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import { ImageUp, Trash2 } from 'lucide-react'
 import { PosterImage } from './PosterImage'
+import { FileViewer } from './FileViewer'
 import { Button } from '@/components/ui/button'
+import { PHOTO_HOST, PhotoBar, PhotoEye } from '@/components/ui/photo-bar'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -23,11 +25,12 @@ import { cn } from '@/lib/utils'
    წყვეტენ, ჩარჩო ლეიბლის ქვემოთ დარჩენილს ავსებს და ფოტო `object-cover`-ით
    ჩარჩოში ჩანს. ვიწრო ეკრანზე (სვეტი ველებს ზემოდან ადგება) ფიქსირებული
    ფორმა რჩება.
-   ⚠️ **ფოტოიან ჩარჩოს ჰოვერზე „შეცვლა" და „წაშლა" აქვს** (ადრე
-   მხოლოდ ✕ — შესაცვლელად ჯერ უნდა წაგეშალა), ახალი ფაილი კი ჩარჩოზე
-   ჩაგდებითაც ცვლის. ⚠️ დაფარული ღილაკები `pointer-events-none`-ია: სენსორულ
-   ეკრანზე პირველი შეხება მხოლოდ აჩენს მათ — უხილავ „წაშლაზე" შემთხვევით
-   არ დააჭერ.
+   ⚠️ **ფოტოიან ჩარჩოს „შეცვლა" და „წაშლა" ქვედა კიდეზე აქვს** — ერთ ზოლში,
+   თანაბარი სიგანით (`PhotoBar`); ახალი ფაილი ჩარჩოზე ჩაგდებითაც ცვლის.
+   ადრე ორივე ფოტოს შუაში, ერთმანეთის ქვეშ იდგა მთელ ფოტოზე გადაფარებულ
+   მუქ ფენაზე. **შუაში თვალია** — ფოტოს დიდად ხსნის (`FileViewer`): ატვირთული
+   ფოტოს ნახვა შენახვამდე სხვაგვარად არ შეიძლებოდა. ზოლი ჰოვერზე ჩანს,
+   სენსორულ ეკრანზე — ყოველთვის (`index.css`).
    ============================================================ */
 
 const SHAPE = {
@@ -72,43 +75,50 @@ export function PosterUploader({
   })
 
   const shape = cn(SHAPE[variant], fill && FILL)
+  const [viewing, setViewing] = useState(false)
 
   if (preview) {
     return (
-      <div
-        {...getRootProps()}
-        className={cn('group relative overflow-hidden rounded-lg border border-border', shape, isDragActive && 'border-primary')}
-        data-testid="poster-preview"
-      >
-        <input {...getInputProps()} />
-        <PosterImage src={preview} alt="preview" className="size-full object-cover" />
-
+      <>
         <div
-          className={cn(
-            'pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/55 p-2 text-center opacity-0 transition-opacity',
-            'group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100',
-            isDragActive && 'opacity-100',
-          )}
+          {...getRootProps()}
+          className={cn(PHOTO_HOST, 'relative overflow-hidden rounded-lg border border-border', shape, isDragActive && 'border-primary')}
+          data-testid="poster-preview"
         >
+          <input {...getInputProps()} />
+          <PosterImage src={preview} alt="preview" className="size-full object-cover" />
+
           {isDragActive ? (
-            <span className="text-xs font-medium text-white">{t('form.photoDropReplace')}</span>
-          ) : (
-            /* ⚠️ ორი ღილაკი **ერთი სიგანისაა** — `grid`-ის სვეტი უგრძესს
-               („შეცვლა") ერგება, `w-full` მეორესაც იმავემდე წევს; ცალ-ცალკე ისინი
-               თავისი ტექსტის სიგანისა იყო და ერთმანეთის ქვეშ ასიმეტრიულად იდგა. */
-            <div className="grid max-w-full gap-2">
-              <Button type="button" variant="edit" size="sm" className="w-full bg-background" onClick={open}>
-                <ImageUp className="size-3.5" />
-                {t('form.photoChange')}
-              </Button>
-              <Button type="button" variant="destructive" size="sm" className="w-full" onClick={onClear} aria-label="remove">
-                <Trash2 className="size-3.5" />
-                {t('actions.delete')}
-              </Button>
+            // ჩაგდებისას მთელი ფოტო ამბობს, რა მოხდება — ღილაკები ამ დროს არ ჩანს
+            <div className="absolute inset-0 grid place-items-center bg-black/55 p-2 text-center" data-testid="poster-drop">
+              <span className="text-xs font-medium text-white">{t('form.photoDropReplace')}</span>
             </div>
+          ) : (
+            <>
+              <PhotoEye label={t('form.photoView')} onClick={() => setViewing(true)} data-testid="poster-view" />
+              <PhotoBar data-testid="poster-actions">
+                <Button type="button" variant="edit" size="xs" className="bg-background" onClick={open}>
+                  <ImageUp className="size-3.5 shrink-0" />
+                  <span className="truncate">{t('form.photoChange')}</span>
+                </Button>
+                <Button type="button" variant="destructive" size="xs" onClick={onClear} aria-label="remove">
+                  <Trash2 className="size-3.5 shrink-0" />
+                  <span className="truncate">{t('actions.delete')}</span>
+                </Button>
+              </PhotoBar>
+            </>
           )}
         </div>
-      </div>
+
+        {/* ⚠️ ჩარჩოს გარეთ: მნახველში დაჭერა და ჩაგდება dropzone-ს არ უნდა მისწვდეს.
+            `kind` — ახლად არჩეული ფაილი `blob:` მისამართია, გაფართოებისა და `mime`-ის გარეშე */}
+        {viewing && (
+          <FileViewer
+            file={{ id: 0, url: preview, name: t('form.photoMain'), kind: 'image' }}
+            onClose={() => setViewing(false)}
+          />
+        )}
+      </>
     )
   }
 

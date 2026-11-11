@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import '@/i18n'
+import css from '@/index.css?raw'
 
 /* ============================================================
    **მთავარი ფოტოს ჩარჩო**.
@@ -9,7 +10,9 @@ import '@/i18n'
    ⚠️ მოწმდება კლასებით (snapshot-ის გარეშე; jsdom განლაგებას არ ითვლის):
    `fill` ჩარჩო `sm`-დან `absolute inset-0`-ია — ზომას სვეტი (`MediaRow`)
    წყვეტს და არა ფოტო; ვიწროზე ფიქსირებული ფორმა რჩება; ფოტოიან ჩარჩოს
-   „შეცვლა" და „წაშლა" აქვს, ახალი ფაილი კი ჩაგდებითაც იცვლება.
+   „შეცვლა" და „წაშლა" ქვედა ზოლში აქვს (ერთ რიგში, თანაბრად), შუაში კი
+   თვალი ფოტოს დიდად ხსნის; ახალი ფაილი ჩაგდებითაც იცვლება. ზოლის ხილვადობა
+   CSS-ისაა (`index.css`) და ტექსტად მოწმდება.
    ============================================================ */
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -65,19 +68,48 @@ describe('PosterUploader', () => {
     expect(frame.querySelector('img')?.className).toContain('object-cover')
   })
 
-  it('a photo frame offers Change and Delete on hover — hidden buttons take no taps', async () => {
+  it('a photo frame keeps Change and Delete in one strip at the bottom edge, equally wide', async () => {
     const onClear = vi.fn()
     const el = await mount({ fill: true, preview: 'https://img.test/p.jpg', onClear })
     const frame = el.querySelector('[data-testid="poster-preview"]')!
-    const overlay = frame.querySelector('.pointer-events-none')!
-    expect(overlay.className).toContain('group-hover:pointer-events-auto')
-    expect(overlay.className).toContain('opacity-0')
+    // ჩარჩო ზოლის მასპინძელია — მასზე ჰოვერი ზოლს აჩენს
+    expect(frame.className).toContain('fb-photo-host')
 
-    const buttons = [...frame.querySelectorAll('button')].map((b) => b.textContent?.trim())
+    const bar = frame.querySelector('[data-testid="poster-actions"]')!
+    for (const cls of ['fb-photo-bar', 'absolute', 'inset-x-0', 'bottom-0', 'grid', 'grid-cols-2']) {
+      expect(bar.className).toContain(cls)
+    }
+    // მთელ ფოტოზე გადაფარებული მუქი ფენა აღარ არის
+    expect([...frame.querySelectorAll('div')].some((d) => d.className.includes('inset-0') && d.className.includes('bg-black'))).toBe(false)
+
+    const buttons = [...bar.querySelectorAll('button')].map((b) => b.textContent?.trim())
     expect(buttons).toEqual(['შეცვლა', 'წაშლა'])
 
     act(() => (frame.querySelector('button[aria-label="remove"]') as HTMLButtonElement).click())
     expect(onClear).toHaveBeenCalledTimes(1)
+  })
+
+  it('the eye in the middle opens the photo large', async () => {
+    const el = await mount({ fill: true, preview: 'blob:http://localhost/abc' })
+    const eye = el.querySelector<HTMLButtonElement>('[data-testid="poster-view"]')!
+
+    expect(eye.className).toContain('fb-photo-eye')
+    expect(eye.getAttribute('aria-label')).toBe('ფოტოს გადიდება')
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+
+    await act(async () => eye.click())
+
+    // ⚠️ `blob:` მისამართს არც გაფართოება აქვს, არც `mime` — მნახველი მაინც ფოტოს ხატავს
+    const dialog = document.querySelector('[role="dialog"]')!
+    expect(dialog.textContent).toContain('მთავარი ფოტო')
+    expect(dialog.querySelector('img')?.getAttribute('src')).toBe('blob:http://localhost/abc')
+  })
+
+  it('the strip shows on hover and focus, and always on a touch screen', () => {
+    expect(css).toMatch(/\.fb-photo-bar,\s*\.fb-photo-eye \{ opacity: 0; pointer-events: none;/)
+    expect(css).toContain('.fb-photo-host:hover .fb-photo-bar,')
+    expect(css).toContain('.fb-photo-host:focus-within .fb-photo-bar,')
+    expect(css).toMatch(/@media \(hover: none\) \{\s*\.fb-photo-bar,\s*\.fb-photo-eye \{ opacity: 1; pointer-events: auto; \}/)
   })
 
   it('dropping a new file on a photo frame replaces the photo', async () => {
