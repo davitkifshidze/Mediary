@@ -147,7 +147,7 @@ describe('CoursesPage row', () => {
     // სტატუსი ერთხელ და ჩამოსაშლელად — `Select` რიგში აღარ არის
     expect(first.querySelectorAll(`[aria-label="${i18n.t('courses.status')}"]`)).toHaveLength(1)
     expect(first.querySelector('[role="combobox"]')).toBeNull()
-    expect(first.querySelector('.min-w-36')?.textContent).toContain(i18n.t('courses.statuses.to_take'))
+    expect(first.querySelector('[data-status-menu]')?.textContent).toBe(i18n.t('courses.statuses.to_take'))
 
     // ფაილები რიცხვით, ბმული ტექსტით
     expect(first.querySelector('[data-testid="files-button"]')?.textContent).toContain(i18n.t('actions.files'))

@@ -23,6 +23,12 @@
       დანარჩენ ღილაკებზე მაღალი იყო და მხოლოდ-აიქონი; ის `size="sm"`-ია
       ტექსტით („წაშლა").
 
+   5. **სტრიქონში სტატუსი მხოლოდ `StatusMenu`-ით** (`DictionaryStatusMenu` /
+      `EnumStatusMenu`) — მისი სიგანე მოდულის ყველაზე გრძელი სტატუსის სახელიდან
+      ითვლება. ხელით აწყობილი ტრიგერი (`StatusBadge … trailing=` ან `min-w-36`)
+      და ზოლში ჩადებული შიშველი `StatusBadge` სხვა სიგანისაა, ე.ი. რიგები
+      ერთმანეთს აცდება.
+
    ⚠️ `VisibilityBadge`-ს პატარა ვარიანტი აღარ აქვს (ყოველთვის `h-9`) — მას
    ეს სკრიპტი აღარ სჭირდება. შესვლების ბეჯი (`VisitBadge`, `h-7`) აღარ არსებობს.
    ⚠️ სკრიპტი და არა Vitest-ის ტესტი — `error-codes.mjs`-ის მიზეზით
@@ -33,6 +39,8 @@ import path from 'node:path'
 
 const SRC = path.resolve(import.meta.dirname, '..', 'src')
 const ALLOW_XS_FAVORITE = new Set([path.join('components', 'VideoCard.tsx')])
+/** სტატუსის ჩამოსაშლელის ერთადერთი სახლი — ტრიგერს მხოლოდ ის აწყობს */
+const STATUS_MENU = path.join('components', 'StatusMenu.tsx')
 
 const problems = []
 
@@ -85,6 +93,27 @@ function check(file) {
     }
   }
 
+  if (rel !== STATUS_MENU) {
+    // ხელით აწყობილი ტრიგერი: ბეჯი ისრით ან `min-w-36`-ით
+    for (const m of text.matchAll(/<(StatusBadge|EnumStatusBadge|Badge)\b/g)) {
+      const tag = tagAt(text, m.index)
+      if (/\btrailing=/.test(tag) || (/\bmin-w-36\b/.test(tag) && /\bsize="row"/.test(tag))) {
+        problems.push(`${rel}:${lineOf(text, m.index)}  ${m[1]} ჩამოსაშლელის ტრიგერად — DictionaryStatusMenu / EnumStatusMenu`)
+      }
+    }
+
+    // ზოლში (`bar={…}`, `RecordActionBar status={…}`) ჩადებული შიშველი სტატუსის ბეჯი
+    for (const m of text.matchAll(/\b(bar|status)=\{/g)) {
+      const open = m.index + m[0].length - 1
+      const body = propBody(text, open)
+      // `status={…}` ბევრგან ჩვეულებრივი პროპია (`<StatusBadge status={x}>`) — ზოლისაა მხოლოდ JSX-იანი
+      if (m[1] === 'status' && !body.startsWith('{\n') && !/^\{\s*</.test(body)) continue
+      for (const tag of body.matchAll(/<(StatusBadge|EnumStatusBadge)\b/g)) {
+        problems.push(`${rel}:${lineOf(text, open + tag.index)}  ${tag[1]} სტრიქონის ზოლში — DictionaryStatusMenu / EnumStatusMenu`)
+      }
+    }
+  }
+
   if (!text.includes('<DetailHero')) return
   for (const m of text.matchAll(/\bbadges=\{/g)) {
     const open = m.index + m[0].length - 1
@@ -108,7 +137,7 @@ function walk(dir) {
 walk(SRC)
 
 if (problems.length) {
-  console.error('მოქმედებების რიგში ყველაფერი h-9 უნდა იყოს, წაშლა — წაშლის ოჯახით:\n  ' + problems.join('\n  '))
+  console.error('მოქმედებების რიგში ყველაფერი h-9 უნდა იყოს, წაშლა — წაშლის ოჯახით, სტატუსი — StatusMenu-ით:\n  ' + problems.join('\n  '))
   process.exit(1)
 }
-console.log('მოქმედებების რიგები ერთი სიმაღლისაა (h-9), წაშლა ერთი ოჯახისაა.')
+console.log('მოქმედებების რიგები ერთი სიმაღლისაა (h-9), წაშლა ერთი ოჯახისაა, სტატუსი — StatusMenu-ით.')

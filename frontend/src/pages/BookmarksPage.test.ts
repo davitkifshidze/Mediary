@@ -290,7 +290,9 @@ describe('BookmarksPage row — status width and favourite', () => {
     const el = await mount()
 
     const mark = el.querySelector<HTMLButtonElement>(`button[aria-label="${i18n.t('bookmarks.statusChange')}"]`)!
-    expect(mark.querySelector('.min-w-36')).not.toBeNull()
+    // სიგანეს მოდულის ყველაზე გრძელი სტატუსის სახელი ადგენს (`StatusMenu`) და არა ფიქსირებული მინიმუმი
+    expect(mark.matches('[data-status-menu]')).toBe(true)
+    expect(mark.querySelectorAll('[data-status-sizer] [data-label]').length).toBeGreaterThan(1)
 
     const favorite = el.querySelector<HTMLButtonElement>(`button[aria-label="${i18n.t('actions.favorite')}"]`)!
     expect(favorite.textContent).toContain(i18n.t('filter.favorite'))

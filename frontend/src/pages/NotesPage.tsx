@@ -61,6 +61,7 @@ import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/StatusBadge'
+import { DictionaryStatusMenu } from '@/components/StatusMenu'
 
 /* ============================================================
    ჩანაწერების მოდული (`note`).
@@ -420,8 +421,14 @@ export function NotesPage() {
                         <ExternalLink className="size-3.5" />
                         {t('notes.linkButton')}
                       </a>
-                      {/* აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
-                      <StatusBadge status={note.status} size="row" />
+                      {/* ერთი სიგანის ჩამოსაშლელი, როგორც ყველა სტრიქონულ სიაში (`StatusMenu`) */}
+                      <DictionaryStatusMenu
+                        status={note.status}
+                        statuses={statuses}
+                        label={t('form.status')}
+                        emptyLabel={t('library.noStatus')}
+                        onChange={(key) => status.mutate({ id: note.id, next: key })}
+                      />
                       <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(note)} />
                       <FavoriteButton active={fav.active} pending={fav.pending} onToggle={fav.onToggle} />
                       <Button variant="edit" size="sm" onClick={() => setEditing(note)}>

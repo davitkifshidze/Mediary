@@ -10,8 +10,6 @@ import { RICH_TEXT_MAX } from '@/lib/richText'
 import { Pagination } from '@/components/ui/pagination'
 import { RichText } from '@/components/ui/rich-text'
 import {
-  Check,
-  ChevronDown,
   ExternalLink,
   Globe,
   Image as ImageIcon,
@@ -81,8 +79,6 @@ import {
 } from '@/components/FilterPanel'
 import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
 import { favoriteAction, MENU_ICONS, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { Input } from '@/components/ui/input'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
@@ -98,7 +94,8 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
-import { StatusBadge, StatusLabel } from '@/components/StatusBadge'
+import { StatusLabel } from '@/components/StatusBadge'
+import { DictionaryStatusMenu } from '@/components/StatusMenu'
 
 /* ============================================================
    ბუკმარკების მოდული (`bookmark`).
@@ -530,43 +527,13 @@ export function BookmarksPage() {
                     <RecordActionBar
                       before={badges}
                       status={
-                        <ActionMenu
+                        <DictionaryStatusMenu
+                          status={bookmark.status}
+                          statuses={statuses}
                           label={t('bookmarks.statusChange')}
-                          trigger={
-                            <button type="button" className="cursor-pointer rounded-md">
-                              {/* ერთი სიგანის ჩამოსაშლელი: `StatusBadge` აიქონითა და ფერით, ისარი ბოლოში */}
-                              {bookmark.status ? (
-                                <StatusBadge
-                                  status={bookmark.status}
-                                  size="row"
-                                  className="min-w-36 justify-between"
-                                  trailing={<ChevronDown className="size-3.5 shrink-0 opacity-70" />}
-                                />
-                              ) : (
-                                <Badge size="row" className="min-w-36 justify-between bg-secondary">
-                                  {t('bookmarks.noStatus')}
-                                  <ChevronDown className="size-3.5 shrink-0 opacity-70" />
-                                </Badge>
-                              )}
-                            </button>
-                          }
-                        >
-                          {/* სია ლექსიკონიდან */}
-                          {statuses.map((s) => (
-                            <ActionMenuClose key={s.id} asChild>
-                              <button
-                                type="button"
-                                className={actionItemClass()}
-                                onClick={() => status.mutate({ id: bookmark.id, next: s.key })}
-                              >
-                                <Check
-                                  className={cn('size-3.5', bookmark.status?.id === s.id ? 'opacity-100' : 'opacity-0')}
-                                />
-                                <StatusLabel status={s} />
-                              </button>
-                            </ActionMenuClose>
-                          ))}
-                        </ActionMenu>
+                          emptyLabel={t('bookmarks.noStatus')}
+                          onChange={(key) => status.mutate({ id: bookmark.id, next: key })}
+                        />
                       }
                       favorite={fav}
                       // ჩემი ფოტოები + ვებიდან მოტანილი: ფანჯარა გალერეის სექციაზე იხსნება

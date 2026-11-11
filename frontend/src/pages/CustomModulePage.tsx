@@ -3,8 +3,6 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Check,
-  ChevronDown,
   ExternalLink,
   Link2,
   ListVideo,
@@ -66,9 +64,7 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { PosterUploader } from '@/components/PosterUploader'
 import { TagSelect } from '@/components/TagSelect'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
-import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
 import { RichText } from '@/components/ui/rich-text'
-import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { favoriteAction, MENU_ICONS, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -87,8 +83,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Pagination } from '@/components/ui/pagination'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { cn } from '@/lib/utils'
-import { StatusBadge, StatusLabel } from '@/components/StatusBadge'
+import { StatusLabel } from '@/components/StatusBadge'
+import { DictionaryStatusMenu } from '@/components/StatusMenu'
 
 /* ============================================================
    **ინტერფეისიდან შექმნილი მოდულის გვერდი.**
@@ -512,40 +508,13 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
                       )}
 
                       {statuses.length > 0 && (
-                        <ActionMenu
+                        <DictionaryStatusMenu
+                          status={record.status}
+                          statuses={statuses}
                           label={t('customModules.statusChange')}
-                          trigger={
-                            <button type="button" className="cursor-pointer rounded-md">
-                              {/* ერთი სიგანის ჩამოსაშლელი: `StatusBadge` აიქონითა და ფერით */}
-                              {record.status ? (
-                                <StatusBadge
-                                  status={record.status}
-                                  size="row"
-                                  className="min-w-36 justify-between"
-                                  trailing={<ChevronDown className="size-3.5 shrink-0 opacity-70" />}
-                                />
-                              ) : (
-                                <Badge size="row" className="min-w-36 justify-between bg-secondary">
-                                  {t('customModules.noStatus')}
-                                  <ChevronDown className="size-3.5 shrink-0 opacity-70" />
-                                </Badge>
-                              )}
-                            </button>
-                          }
-                        >
-                          {statuses.map((s) => (
-                            <ActionMenuClose key={s.id} asChild>
-                              <button
-                                type="button"
-                                className={actionItemClass()}
-                                onClick={() => status.mutate({ id: record.id, next: s.key })}
-                              >
-                                <Check className={cn('size-3.5', record.status?.id === s.id ? 'opacity-100' : 'opacity-0')} />
-                                <StatusLabel status={s} />
-                              </button>
-                            </ActionMenuClose>
-                          ))}
-                        </ActionMenu>
+                          emptyLabel={t('customModules.noStatus')}
+                          onChange={(key) => status.mutate({ id: record.id, next: key })}
+                        />
                       )}
 
                       <VisibilityBadge value={record.visibility} />
