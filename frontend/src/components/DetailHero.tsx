@@ -23,6 +23,7 @@ import { useConfirm } from '@/components/ui/feedback'
 
 export function DetailHero({
   image,
+  onImageError,
   alt,
   shape = 'poster',
   fallback,
@@ -30,6 +31,8 @@ export function DetailHero({
   children,
 }: {
   image: string | null
+  /** ფოტო ვერ ჩაიტვირთა (მკვდარი გარე მისამართი) — ფანჯარა წყვეტს; ჩვეულებრივ `image`-ს აცლის */
+  onImageError?: () => void
   alt: string
   /** `poster` — წიგნი, თამაში, ფილმი; `wide` — ფოტოიანი ჩანაწერი (სამაგიდო, კურსი, ადგილი) */
   shape?: 'poster' | 'wide'
@@ -49,7 +52,7 @@ export function DetailHero({
           shape === 'poster' ? 'aspect-[3/4] h-40' : 'aspect-video h-40',
         )}
       >
-        {image ? <img src={image} alt={alt} className="size-full object-cover" /> : fallback}
+        {image ? <img src={image} alt={alt} onError={onImageError} className="size-full object-cover" /> : fallback}
       </div>
 
       <div className="min-w-0 flex-1 space-y-2.5">

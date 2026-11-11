@@ -117,6 +117,17 @@ describe('RecordView', () => {
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
+  it.each(['rows', 'cards', 'grid'] as const)('%s: tells the page when the photo fails to load', async (layout) => {
+    // ბუკმარკის მკვდარი გარე ფოტო: გვერდი მას ბმულიდან ახლებს ან ცარიელ მდგომარეობას ხატავს
+    const onPhotoError = vi.fn()
+    const { el } = await view(layout, { onPhotoError })
+
+    const img = el.querySelector('[data-testid="photo"] img')!
+    await act(async () => img.dispatchEvent(new Event('error')))
+
+    expect(onPhotoError).toHaveBeenCalledTimes(1)
+  })
+
   it('cards: a wide photo on top with the whole poster, and the bar below', async () => {
     const { el } = await view('cards')
 

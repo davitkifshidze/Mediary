@@ -103,6 +103,8 @@ export interface RecordViewProps {
   /** სათაური ტექსტია და არა ღილაკი (სიმღერას ფანჯარა არ აქვს — ფოტო უკრავს) */
   staticTitle?: boolean
   photo?: string | null
+  /** ფოტო ვერ ჩაიტვირთა (მკვდარი გარე მისამართი) — გვერდი წყვეტს, რა ქნას; ჩვეულებრივ `photo`-ს აცლის */
+  onPhotoError?: () => void
   shape?: Shape
   /** რიგის ფოტოს ზომის გადაფარვა (სამაგიდოს `size-14`, კურსის `size-16`) */
   rowPhotoClassName?: string
@@ -189,7 +191,7 @@ function Photo({
   /** ბარათი/ბადე: დიდი აიქონი და პოსტერი მთლიანად */
   big?: boolean
 }) {
-  const { photo, placeholder, photoHover, onOpen, openLabel, photoTestId, shape = 'square' } = props
+  const { photo, onPhotoError, placeholder, photoHover, onOpen, openLabel, photoTestId, shape = 'square' } = props
 
   return (
     <button
@@ -204,6 +206,7 @@ function Photo({
           src={photo}
           alt=""
           loading="lazy"
+          onError={onPhotoError}
           className={cn('size-full', big && shape === 'poster' ? 'object-contain' : 'object-cover')}
         />
       ) : (

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, ExternalLink, Globe, Plus, SquarePen, Trash2 } from 'lucide-react'
+import { Copy, ExternalLink, Globe, Plus, RefreshCw, SquarePen, Trash2 } from 'lucide-react'
 import {
   deleteBookmarkFile,
   fetchBookmarkFiles,
@@ -13,8 +13,8 @@ import {
   type Bookmark,
 } from '@/api/bookmarks'
 import { useRecordOpen } from '@/lib/audit'
-import { storageUrl } from '@/lib/api'
 import { BOOKMARK_WEB_TERMS, useBookmarkRefresh } from '@/lib/bookmarks'
+import { useBookmarkPhoto, useRefreshFromLink } from '@/lib/bookmarkPhoto'
 import { copyText } from '@/lib/clipboard'
 import { useDateFormat } from '@/lib/dates'
 import { videoTypeName as dictionaryName } from '@/lib/display'
@@ -109,6 +109,10 @@ export function BookmarkDetail({
     visited.mutate()
   }
 
+  /* მთავარი ფოტო ბმულიდან: გატეხილი ერთხელ ჩუმად ახლდება (`onImageError`), ხელით — ღილაკით */
+  const photo = useBookmarkPhoto()
+  const fromLink = useRefreshFromLink()
+
   const copy = async () => {
     const ok = await copyText(bookmark.url)
     toast({ title: t(ok ? 'bookmarks.linkCopied' : 'bookmarks.copyFailed'), variant: ok ? 'success' : 'error' })
@@ -120,11 +124,13 @@ export function BookmarkDetail({
     statusActions(t('bookmarks.status'), statuses, bookmark.status, lang, (key) => status.mutate(key)),
     favoriteAction(bookmark.is_favorite, () => favorite.mutate(), t),
     { key: 'add-link', label: t('bookmarks.addLink'), icon: Plus, run: () => setLinkEdit('new') },
+    { key: 'refresh', label: t('bookmarks.refresh.one'), icon: RefreshCw, run: () => fromLink.mutate(bookmark.id) },
     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: onEdit },
     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: onDelete },
   ]
 
-  const image = storageUrl(bookmark.image)
+  // გატეხილად ნაცნობი მისამართი აღარ იხატება — მის ადგილას ფავიკონი / გლობუსია
+  const image = photo.photoOf(bookmark)
 
   return (
     <ModalShell title={bookmark.title} onClose={onClose} wide>
@@ -133,6 +139,7 @@ export function BookmarkDetail({
         <RecordContextMenu actions={heroActions}>
           <DetailHero
             image={image}
+            onImageError={() => photo.onError(bookmark)}
             alt={bookmark.title}
             shape="wide"
             fallback={
@@ -194,6 +201,18 @@ export function BookmarkDetail({
               <Button type="button" variant="outline" size="sm" onClick={() => void copy()}>
                 <Copy className="size-3.5" />
                 {t('actions.copy')}
+              </Button>
+              {/* ფოტო ყოველთვის იცვლება იმით, რასაც გვერდი ახლა იძლევა; ცარიელ ფოტოზეც ეს ღილაკია */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={fromLink.isPending}
+                onClick={() => fromLink.mutate(bookmark.id)}
+                data-testid="bookmark-refresh"
+              >
+                <RefreshCw className={cn('size-3.5', fromLink.isPending && 'animate-spin')} />
+                {t('bookmarks.refresh.one')}
               </Button>
               <Button type="button" variant="edit" size="sm" onClick={onEdit}>
                 <SquarePen className="size-3.5" />

@@ -2749,6 +2749,17 @@
     "addedOn": "Added {{date}}",
     "lastOpened": "Last opened {{date}}",
     "linkCopied": "Link copied",
+    "refresh": {
+      "one": "Refresh from link",
+      "done": "Photo refreshed from the link",
+      "same": "The page still offers the same photo — nothing changed",
+      "none": "The page offered no photo — the old one stays",
+      "bulk": "Refresh photos",
+      "bulkHint": "The photos of {{count}} bookmarks in this list will be fetched again from their links. Uploaded photos stay as they are; titles and descriptions are filled only where empty.",
+      "bulkProgress": "Refreshing {{done}} / {{total}}",
+      "bulkDone": "Refreshed {{changed}} photos out of {{total}} bookmarks",
+      "bulkEmpty": "No photo in this list comes from a link"
+    },
     "copyFailed": "Could not copy — select it and copy by hand",
     "linksTitle": "Links",
     "linksHint": "Extra links — shop, price, review, video, docs. The bookmark's own link is above; a price is written on shop and price links.",

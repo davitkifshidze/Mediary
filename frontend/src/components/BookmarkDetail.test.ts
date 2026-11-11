@@ -52,6 +52,7 @@ const mocks = vi.hoisted(() => ({
   fetchBookmarkFiles: vi.fn(),
   markBookmarkVisited: vi.fn(),
   setBookmarkLinks: vi.fn(),
+  refreshBookmarkFromLink: vi.fn(),
   fetchGalleryPhotos: vi.fn(),
   fetchGalleryVideos: vi.fn(),
   gallery: true,
@@ -62,6 +63,7 @@ vi.mock('@/api/bookmarks', async (original) => ({
   fetchBookmarkFiles: mocks.fetchBookmarkFiles,
   markBookmarkVisited: mocks.markBookmarkVisited,
   setBookmarkLinks: mocks.setBookmarkLinks,
+  refreshBookmarkFromLink: mocks.refreshBookmarkFromLink,
 }))
 
 vi.mock('@/api/gallery', async (original) => ({
@@ -163,6 +165,31 @@ async function mount(gallery = true) {
 const button = (label: string) => [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)
 
 describe('BookmarkDetail', () => {
+  it('refreshes the photo from the link and says what happened', async () => {
+    mocks.refreshBookmarkFromLink.mockResolvedValue({ bookmark, imageFound: true, imageChanged: true })
+    await mount()
+
+    const refresh = document.querySelector<HTMLButtonElement>('[data-testid="bookmark-refresh"]')!
+    expect(refresh.textContent?.trim()).toBe(i18n.t('bookmarks.refresh.one'))
+
+    await act(async () => refresh.click())
+    await flush()
+
+    expect(mocks.refreshBookmarkFromLink).toHaveBeenCalledWith(bookmark.id)
+    expect(document.body.textContent).toContain(i18n.t('bookmarks.refresh.done'))
+  })
+
+  it('tells the difference between a page with the same photo and one with none', async () => {
+    mocks.refreshBookmarkFromLink.mockResolvedValue({ bookmark, imageFound: false, imageChanged: false })
+    await mount()
+
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-testid="bookmark-refresh"]')!.click())
+    await flush()
+
+    expect(document.body.textContent).toContain(i18n.t('bookmarks.refresh.none'))
+    expect(document.body.textContent).not.toContain(i18n.t('bookmarks.refresh.done'))
+  })
+
   it('opens the link in a new tab from inside the window and counts the visit', async () => {
     await mount()
 

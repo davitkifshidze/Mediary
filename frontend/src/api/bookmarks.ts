@@ -134,10 +134,37 @@ function toFormData(input: BookmarkInput): FormData {
   return fd
 }
 
-/** გვერდის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის */
-export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
-  const { data } = await api.post('/bookmarks/metadata', { url })
+/**
+ * გვერდის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის.
+ * `fresh` — ქეშის გარეშე („ბმულიდან განახლება" ფორმაში: მკვდარი ფოტოს ძველი
+ * მისამართი ქეშიდან ისევ იმავეს დააბრუნებდა).
+ */
+export async function fetchLinkMetadata(url: string, fresh = false): Promise<LinkMetadata> {
+  const { data } = await api.post('/bookmarks/metadata', fresh ? { url, fresh: 1 } : { url })
   return data
+}
+
+/** „ბმულიდან განახლების" შედეგი: ბუკმარკი და რა მოხდა ფოტოზე */
+export interface BookmarkRefreshResult {
+  bookmark: Bookmark
+  /** გვერდმა ფოტო მოგვცა */
+  imageFound: boolean
+  /** მისამართი ძველისგან განსხვავდება */
+  imageChanged: boolean
+}
+
+/**
+ * **„ბმულიდან განახლება"** — ფოტო ყოველთვის იცვლება იმით, რასაც გვერდი ახლა
+ * იძლევა; სათაური და აღწერა — მხოლოდ ცარიელი. ატვირთულ მთავარ ფოტოს არ ეხება.
+ */
+export async function refreshBookmarkFromLink(id: number): Promise<BookmarkRefreshResult> {
+  const { data } = await api.post(`/bookmarks/${id}/refresh`)
+
+  return {
+    bookmark: data.data,
+    imageFound: !!data.meta?.image_found,
+    imageChanged: !!data.meta?.image_changed,
+  }
 }
 
 export async function fetchBookmarks(filters: BookmarkFilters = {}): Promise<Page<Bookmark>> {

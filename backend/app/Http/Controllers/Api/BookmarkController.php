@@ -98,9 +98,13 @@ class BookmarkController extends Controller
     /** ერთი წყარო (`LinkResolver`): YouTube-ის ბმულზეც სრული ინფო */
     public function metadata(Request $request, LinkResolver $links)
     {
-        $data = $request->validate(['url' => ['required', 'string', 'max:1000', 'url']]);
+        $data = $request->validate([
+            'url' => ['required', 'string', 'max:1000', 'url'],
+            // „ბმულიდან განახლება" ფორმაში — ქეშის გარეშე: მკვდარი ფოტოს მისამართი ქეშში ისევ იდო
+            'fresh' => ['nullable', 'boolean'],
+        ]);
 
-        return response()->json($links->resolve($data['url']));
+        return response()->json($links->resolve($data['url'], $request->boolean('fresh')));
     }
 
     public function store(Request $request)
@@ -164,6 +168,48 @@ class BookmarkController extends Controller
         ])->save();
 
         return new BookmarkResource($bookmark->load('category'));
+    }
+
+    /**
+     * **„ბმულიდან განახლება"** — გვერდის მეტამონაცემი თავიდან, ქეშის გარეშე.
+     *
+     * ⚠️ ბმულიდან წამოღებული ფოტო მხოლოდ **მისამართია** (`image_url`), ფაილი არ
+     * იწერება: როცა საიტი მას წაშლის ან გადაარქმევს, ბარათი ცარიელი რჩება, შენახვის
+     * ავტოშევსება კი მხოლოდ **ცარიელ** ველს ავსებს — ე.ი. ფოტოს დასაბრუნებლად მისი
+     * წაშლა და ბმულის თავიდან ჩასმა იყო საჭირო. აქ ფოტო **ყოველთვის** იცვლება იმით,
+     * რასაც გვერდი ახლა იძლევა; სათაური და აღწერა — მხოლოდ მაშინ, როცა ცარიელია.
+     *
+     * ⚠️ **ატვირთული მთავარი ფოტო (`thumbnail_path`) ხელუხლებელია** — ბარათზე ის
+     * `image_url`-ზე უპირატესია და ამ მოქმედებით ვერ დაიკარგება.
+     *
+     * ⚠️ გვერდი მიუწვდომელია ან ფოტოს აღარ იძლევა → ძველი მისამართი რჩება
+     * (`image_found: false`): დროებით გათიშული საიტი ბარათს ფოტოს არ უნდა ართმევდეს.
+     */
+    public function refresh(Bookmark $bookmark, LinkResolver $links)
+    {
+        $meta = $links->resolve($bookmark->url, fresh: true);
+
+        $image = $meta['image_url'] ?: null;
+        $changed = $image !== null && $image !== $bookmark->image_url;
+
+        if ($image !== null) {
+            $bookmark->image_url = $image;
+        }
+        if ($meta['favicon_url']) {
+            $bookmark->favicon_url = $meta['favicon_url'];
+        }
+        if (! $bookmark->title && $meta['title']) {
+            $bookmark->title = $meta['title'];
+        }
+        if (! $bookmark->description && $meta['description']) {
+            $bookmark->description = $meta['description'];
+        }
+
+        $bookmark->save();
+
+        return (new BookmarkResource($bookmark->load('category')))->additional([
+            'meta' => ['image_found' => $image !== null, 'image_changed' => $changed],
+        ]);
     }
 
     /* ---------- დამხმარეები ---------- */

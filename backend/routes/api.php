@@ -869,6 +869,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // ⚠️ „visited" `EnsureModulePermission::UPDATE_ENDPOINTS`-შიც უნდა იყოს,
         // თორემ POST-იდან `create` გამოვიდოდა და view+update უფლება 403-ს მიიღებდა
         Route::post('/bookmarks/{bookmark}/visited', [BookmarkController::class, 'markVisited']);
+        // „ბმულიდან განახლება" — ⚠️ „refresh"-იც `UPDATE_ENDPOINTS`-შია (იგივე მიზეზით)
+        Route::post('/bookmarks/{bookmark}/refresh', [BookmarkController::class, 'refresh']);
 
         /* ჩემი ფოტოები („შოპინგის" სკრინშოტი); ვებიდან მოტანილი გალერეაშია */
         Route::get('/bookmarks/{bookmark}/files', [BookmarkFileController::class, 'index']);

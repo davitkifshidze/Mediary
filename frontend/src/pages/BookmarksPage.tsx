@@ -19,6 +19,7 @@ import {
   Link2,
   Loader2,
   Plus,
+  RefreshCw,
   Search,
   Tags,
 } from 'lucide-react'
@@ -28,6 +29,7 @@ import {
   fetchBookmark,
   fetchBookmarkCategories,
   fetchBookmarks,
+  fetchLinkMetadata,
   markBookmarkVisited,
   setBookmarkStatus,
   toggleBookmarkFavorite,
@@ -42,6 +44,7 @@ import {
 } from '@/api/bookmarks'
 import { storageUrl } from '@/lib/api'
 import { BOOKMARK_WEB_TERMS, bookmarkKey, bookmarkWebQuery, useBookmarkRefresh } from '@/lib/bookmarks'
+import { useBookmarkPhoto, useRefreshFromLink, useRefreshPhotos } from '@/lib/bookmarkPhoto'
 import { NO_PENDING_WEB, sendPendingWeb, type PendingWeb } from '@/lib/pendingWeb'
 import { useModules } from '@/lib/modules'
 import type { LinkPreview } from '@/api/links'
@@ -227,6 +230,33 @@ export function BookmarksPage() {
   // ⚠️ სიაც და ცალკე წაკითხული ჩანაწერიც (`lib/bookmarks.ts`)
   const invalidate = useBookmarkRefresh()
 
+  /* მთავარი ფოტო ბმულიდან: გატეხილი ერთხელ ჩუმად ახლდება, ხელით — მენიუდან და
+     ფანჯრიდან, მთელ მიმდინარე სიაზე — სათაურის ღილაკით (`lib/bookmarkPhoto.ts`) */
+  const photo = useBookmarkPhoto()
+  const fromLink = useRefreshFromLink()
+  const photos = useRefreshPhotos()
+
+  /** „ფოტოების განახლება" — მიმდინარე ფილტრის ყველა ბუკმარკზე, დადასტურებით */
+  const askRefreshPhotos = async () => {
+    const list = await photos.targets(filters).catch((e) => {
+      toast({ title: errorMessage(e), variant: 'error' })
+      return null
+    })
+    if (!list) return
+
+    if (!list.length) {
+      toast({ title: t('bookmarks.refresh.bulkEmpty'), variant: 'info' })
+      return
+    }
+
+    const ok = await confirm({
+      title: t('bookmarks.refresh.bulk'),
+      description: t('bookmarks.refresh.bulkHint', { count: list.length }),
+      confirmText: t('bookmarks.refresh.bulk'),
+    })
+    if (ok) void photos.run(list)
+  }
+
   const favorite = useMutation({
     mutationFn: toggleBookmarkFavorite,
     onSuccess: invalidate,
@@ -368,6 +398,13 @@ export function BookmarksPage() {
               <Tags className="size-4" />
               {t('bookmarkCategories.manage')}
             </Link>
+            {/* მიმდინარე სიის ფოტოები ბმულებიდან თავიდან — მკვდარი მისამართების ერთიანი შეკეთება */}
+            <Button variant="outline" onClick={() => void askRefreshPhotos()} disabled={photos.progress !== null}>
+              <RefreshCw className={cn('size-4', photos.progress && 'animate-spin')} />
+              {photos.progress
+                ? t('bookmarks.refresh.bulkProgress', photos.progress)
+                : t('bookmarks.refresh.bulk')}
+            </Button>
             <Button onClick={() => setEditing('new')}>
               <Plus className="size-4" />
               {t('bookmarks.add')}
@@ -403,7 +440,8 @@ export function BookmarksPage() {
 
           <RecordList layout={layout}>
             {bookmarks.map((bookmark) => {
-              const image = storageUrl(bookmark.image)
+              // გატეხილად ნაცნობი მისამართი აღარ იხატება — ჩანს ფავიკონი / გლობუსი
+              const image = photo.photoOf(bookmark)
               const fav = {
                 active: bookmark.is_favorite,
                 pending: favorite.isPending && favorite.variables === bookmark.id,
@@ -434,6 +472,7 @@ export function BookmarksPage() {
                 favoriteAction(bookmark.is_favorite, () => favorite.mutate(bookmark.id), t),
                 { key: 'add-link', label: t('bookmarks.addLink'), icon: Plus, run: () => setLinkFor(bookmark) },
                 { key: 'gallery', label: t('bookmarks.galleryTitle'), icon: Images, run: () => openDetail(bookmark, 'gallery') },
+                { key: 'refresh', label: t('bookmarks.refresh.one'), icon: RefreshCw, run: () => fromLink.mutate(bookmark.id) },
                 { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(bookmark) },
                 { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete(bookmark) },
               ]
@@ -445,6 +484,7 @@ export function BookmarksPage() {
                   onOpen={() => openDetail(bookmark)}
                   openLabel={t('actions.open')}
                   photo={image}
+                  onPhotoError={() => photo.onError(bookmark)}
                   placeholder={
                     bookmark.favicon_url ? <img src={bookmark.favicon_url} alt="" className="size-6" /> : <Globe className="size-5" />
                   }
@@ -713,6 +753,36 @@ function BookmarkForm({
     if (preview.favicon_url && (overwrite || !faviconUrl)) setFaviconUrl(preview.favicon_url)
   }
 
+  /**
+   * **„ბმულიდან განახლება" ფორმაში** — გვერდი ქეშის გარეშე იკითხება. ფოტოს მისამართი
+   * **ყოველთვის** იცვლება (სწორედ მკვდარი მისამართის გამო არსებობს ეს ღილაკი), სათაური
+   * და აღწერა — მხოლოდ ცარიელი. ⚠️ ატვირთული ფოტო (`thumbPreview`) ისევ უპირატესია.
+   * ცვლილება ფორმაშია და შენახვამდე ბაზაში არ მიდის.
+   */
+  const refreshMeta = useMutation({
+    mutationFn: () => fetchLinkMetadata(form.url.trim(), true),
+    onSuccess: (preview) => {
+      setForm((f) => ({
+        ...f,
+        title: f.title || (preview.title ?? ''),
+        description: f.description || (preview.description ?? ''),
+      }))
+      if (preview.favicon_url) setFaviconUrl(preview.favicon_url)
+
+      const changed = !!preview.image_url && preview.image_url !== imageUrl
+      if (preview.image_url) setImageUrl(preview.image_url)
+
+      toast(
+        changed
+          ? { title: t('bookmarks.refresh.done'), variant: 'success' }
+          : preview.image_url
+            ? { title: t('bookmarks.refresh.same'), variant: 'info' }
+            : { title: t('bookmarks.refresh.none'), variant: 'error' },
+      )
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
   const save = useMutation({
     mutationFn: (input: BookmarkInput) =>
       extras.current ? updateBookmark(extras.current.id, input) : createBookmark(input),
@@ -857,6 +927,21 @@ function BookmarkForm({
             />
           </div>
           {errors.url && <p className="mt-1 text-xs text-destructive">{errors.url}</p>}
+          {/* არსებულ ბუკმარკზე: ახალს ველი ჩასმისთანავე თვითონ კითხულობს */}
+          {bookmark && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              disabled={!form.url.trim() || refreshMeta.isPending}
+              onClick={() => refreshMeta.mutate()}
+              data-testid="bookmark-refresh-meta"
+            >
+              <RefreshCw className={cn('size-3.5', refreshMeta.isPending && 'animate-spin')} />
+              {t('bookmarks.refresh.one')}
+            </Button>
+          )}
         </QuickFill>
 
         {/* მარცხნივ მთავარი ფოტო, მარჯვნივ — სათაური, კლასიფიკატორი · სტატუსი */}
