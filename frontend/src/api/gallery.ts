@@ -1,4 +1,4 @@
-import { api } from '@/lib/api'
+import { api, API_URL } from '@/lib/api'
 import type { ModuleInfo, StorageUsage } from './account'
 import type { Status } from './types'
 import { isCustomModule, type CustomModuleKey } from '@/lib/customModules'
@@ -875,6 +875,18 @@ export async function fetchGalleryItem(
 
 export async function deleteGalleryImage(id: number): Promise<void> {
   await api.delete(`/gallery/images/${id}`)
+}
+
+/**
+ * **ფოტოს კომპიუტერში შენახვის მისამართი** — სერვერი `attachment`-ით და ორიგინალი
+ * სახელით პასუხობს, საჯარო და ჩაკეტილი ალბომის ფოტოზე ერთნაირად.
+ *
+ * ⚠️ ფაილის საჯარო მისამართზე (`/storage/…`) `<a download>` არ მუშაობს: აპი და
+ * ფაილი სხვადასხვა პორტზეა, ბრაუზერი ასეთ ბმულზე `download`-ს უგულებელყოფს და
+ * ფოტოს უბრალოდ ხსნის.
+ */
+export function galleryDownloadUrl(id: number): string {
+  return `${API_URL}/api/gallery/images/${id}/file?download=1`
 }
 
 /**

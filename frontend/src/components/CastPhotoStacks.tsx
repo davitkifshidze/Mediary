@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Trash2, User } from 'lucide-react'
-import type { GalleryCastImage, GalleryCastMember, GalleryImage } from '@/api/gallery'
+import { galleryDownloadUrl, type GalleryCastImage, type GalleryCastMember, type GalleryImage } from '@/api/gallery'
 import { AlbumUnlockById } from '@/components/gallery/AlbumUnlockById'
 import { GalleryMoveDialog } from '@/components/gallery/GalleryMoveDialog'
 import { castName } from '@/lib/display'
@@ -135,6 +135,7 @@ export function CastPhotoStacks({
           width: image.width,
           height: image.height,
           info: galleryPhotoInfo(image, t, { owner }),
+          downloadUrl: galleryDownloadUrl(image.id),
         }
 
   /** ⚠️ წაშლა ჩაკეტილს ვერ ეხება — `PhotoGrid` მას მონიშვნაშიც არ უშვებს */

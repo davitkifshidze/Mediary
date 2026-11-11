@@ -25,6 +25,7 @@ use App\Support\Like;
 use App\Support\LockedPhotos;
 use App\Support\MediaDomain;
 use App\Support\MissingCredential;
+use App\Support\SafeMime;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -1685,7 +1686,7 @@ class GalleryController extends Controller
      * ⚠️ **ლოკი აქაც მოწმდება**: მარშრუტზე მისვლა ალბომის გახსნას არ
      * ნიშნავს, ე.ი. სესიაში ჩაკეტილი ალბომის ფაილი აქედანაც არ გამოდის.
      */
-    public function imageFile(GalleryImage $galleryImage)
+    public function imageFile(Request $request, GalleryImage $galleryImage)
     {
         $album = $galleryImage->album_id
             ? GalleryAlbum::withoutGlobalScope('owner')->find($galleryImage->album_id)
@@ -1693,10 +1694,34 @@ class GalleryController extends Controller
 
         abort_if($album && ! AlbumLock::isUnlocked($album), 404);
 
-        $disk = Storage::disk(StorageFolder::diskFor((string) $galleryImage->path));
-        abort_unless($disk->exists($galleryImage->path), 404);
+        /* ⚠️ დამალული ან ურნაში მყოფი ჩანაწერის ფოტო აქედანაც არ გამოდის: სიაში ის
+           არ ჩანს (`scopeListed()`), ე.ი. id-ის გამოცნობით მისი გზაც არ უნდა იკითხებოდეს. */
+        abort_unless(GalleryImage::query()->listed()->whereKey($galleryImage->getKey())->exists(), 404);
 
-        return $disk->response($galleryImage->path);
+        $path = (string) $galleryImage->path;
+        $disk = Storage::disk(StorageFolder::diskFor($path));
+        abort_unless($disk->exists($path), 404);
+
+        /* `?download=1` — „კომპიუტერში შენახვა": `attachment`, ორიგინალი სახელით.
+           ⚠️ ფაილის საჯარო მისამართზე (`/storage/…`) ბრაუზერი `<a download>`-ს
+           უგულებელყოფს (აპი სხვა პორტზეა) და ფოტოს უბრალოდ ხსნის, ამიტომ შენახვა
+           საჯარო და ჩაკეტილი ალბომის ფოტოზე ერთნაირად ამ კარიდან გადის. */
+        return $request->boolean('download')
+            ? SafeMime::download($disk, $path, $this->downloadName($galleryImage))
+            : SafeMime::response($disk, $path, $this->downloadName($galleryImage));
+    }
+
+    /**
+     * შესანახი ფაილის სახელი — ორიგინალი; ⚠️ გაფართოება გზიდან ემატება, თუ სახელს
+     * არ აქვს (ვებიდან წამოღებულს ხშირად არ აქვს), თორემ ფაილი ვერ გაიხსნებოდა.
+     */
+    private function downloadName(GalleryImage $image): string
+    {
+        $path = (string) $image->path;
+        $name = trim((string) $image->original_name) ?: basename($path);
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+
+        return pathinfo($name, PATHINFO_EXTENSION) === '' && $extension !== '' ? "{$name}.{$extension}" : $name;
     }
 
     public function destroyImage(GalleryImage $galleryImage)

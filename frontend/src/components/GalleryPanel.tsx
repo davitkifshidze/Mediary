@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { GalleryAnyImage, GalleryCastImage, GalleryImage } from '@/api/gallery'
+import { galleryDownloadUrl, type GalleryAnyImage, type GalleryCastImage, type GalleryImage } from '@/api/gallery'
 import { formatBytes } from '@/lib/utils'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { PhotoGrid } from '@/components/ui/photo-grid'
@@ -187,6 +187,7 @@ export function GalleryPanel({
                 height: image.height,
                 // „რა ვიცით ამ ფოტოზე": ერთი ფუნქცია ყველგან
                 info: galleryPhotoInfo(image, t, { owner: actorOf(image) }),
+                downloadUrl: galleryDownloadUrl(image.id),
               },
         )}
         emptyText={emptyText ?? t('gallery.emptyRecord')}

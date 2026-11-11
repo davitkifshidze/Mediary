@@ -97,6 +97,28 @@ final class SafeMime
     }
 
     /**
+     * **ფაილის კომპიუტერში შენახვა** — ყოველთვის `attachment`, `$name` სახელით.
+     *
+     * ⚠️ `response()` უსაფრთხო ტიპს `inline`-ით აბრუნებს, ე.ი. სურათი ბრაუზერში
+     * იხსნება; „შენახვას" კი სწორედ საპირისპირო სჭირდება. ტიპი იგივე წესით
+     * დგინდება — სახიფათო ფაილი აქაც `application/octet-stream`-ია.
+     */
+    public static function download(FilesystemAdapter $disk, string $path, ?string $name = null): StreamedResponse
+    {
+        $mime = self::detect($disk, $path);
+
+        return $disk->response(
+            $path,
+            $name,
+            [
+                'Content-Type' => self::isInline($mime) ? $mime : self::DOWNLOAD,
+                'X-Content-Type-Options' => 'nosniff',
+            ],
+            'attachment',
+        );
+    }
+
+    /**
      * **იგივე წესები, ოღონდ HTTP Range-ით** — ვიდეოსა და აუდიოსთვის.
      *
      * ⚠️ `StreamedResponse` (ზემოთა `response()`) Range-ს არ იცნობს: ბრაუზერი

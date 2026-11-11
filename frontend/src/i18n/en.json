@@ -2834,8 +2834,8 @@
     "selectAll": "Select all",
     "clear": "Clear selection",
     "selected": "{{count}} selected",
-    "downloadAll": "Download all ({{count}})",
-    "downloadSelected": "Download selected ({{count}})",
+    "downloadAll": "Save all to computer ({{count}})",
+    "downloadSelected": "Save selected to computer ({{count}})",
     "deleteAll": "Delete all ({{count}})",
     "deleteSelected": "Delete selected ({{count}})",
     "empty": "No photos yet.",
@@ -2858,7 +2858,7 @@
       "manual": "Manual"
     },
     "open": "Open",
-    "download": "Download",
+    "download": "Save to computer",
     "openOriginal": "Original in a new tab",
     "select": "Select",
     "deselect": "Deselect"

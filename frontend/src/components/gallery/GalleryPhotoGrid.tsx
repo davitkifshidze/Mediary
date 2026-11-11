@@ -5,6 +5,7 @@ import { Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   deleteGalleryImage,
+  galleryDownloadUrl,
   lockGalleryPhotos,
   type GalleryLockedImage,
   type GalleryOwnedImage,
@@ -142,6 +143,7 @@ export function GalleryPhotoGrid({
     height: image.height,
     // ზომა, სახელი, ვისია, წყარო, ორიგინალის ბმული, თარიღი
     info: galleryPhotoInfo(image, t, { owner: ownerOf(image) }),
+    downloadUrl: galleryDownloadUrl(image.id),
   })
 
   if (loading) return <GallerySkeletonGrid />

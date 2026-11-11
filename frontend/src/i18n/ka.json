@@ -2834,8 +2834,8 @@
     "selectAll": "ყველას მონიშვნა",
     "clear": "მონიშვნის მოხსნა",
     "selected": "მონიშნულია {{count}}",
-    "downloadAll": "ყველას ჩამოტვირთვა ({{count}})",
-    "downloadSelected": "მონიშნულების ჩამოტვირთვა ({{count}})",
+    "downloadAll": "ყველას შენახვა კომპიუტერში ({{count}})",
+    "downloadSelected": "მონიშნულების შენახვა კომპიუტერში ({{count}})",
     "deleteAll": "ყველას წაშლა ({{count}})",
     "deleteSelected": "მონიშნულების წაშლა ({{count}})",
     "empty": "ფოტო ჯერ არ არის.",
@@ -2858,7 +2858,7 @@
       "manual": "ხელით"
     },
     "open": "გახსნა",
-    "download": "ჩამოტვირთვა",
+    "download": "კომპიუტერში შენახვა",
     "openOriginal": "ორიგინალი ახალ ტაბში",
     "select": "მონიშვნა",
     "deselect": "მონიშვნის მოხსნა"

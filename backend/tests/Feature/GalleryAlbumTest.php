@@ -744,6 +744,91 @@ class GalleryAlbumTest extends TestCase
             ->assertJsonPath('data.0.id', $image->id);
     }
 
+    /* ================= ფოტოს კომპიუტერში შენახვა ================= */
+
+    /**
+     * **„კომპიუტერში შენახვა" ფაილს `attachment`-ით აბრუნებს, ორიგინალი სახელით.**
+     *
+     * ⚠️ ფაილის საჯარო მისამართზე ბრაუზერი `<a download>`-ს უგულებელყოფს (აპი და
+     * ფაილი სხვადასხვა პორტზეა) და ფოტოს უბრალოდ ხსნის — შენახვა ამიტომ აქედან გადის.
+     */
+    public function test_a_photo_is_saved_to_the_computer_under_its_original_name(): void
+    {
+        Storage::fake('public');
+        $image = $this->photo(null, 'gallery/images/abc123.jpg');
+        $image->update(['original_name' => 'ზღვა 2025.jpg']);
+
+        $res = $this->actingAs($this->user)->get("/api/gallery/images/{$image->id}/file?download=1")->assertOk();
+
+        $disposition = (string) $res->headers->get('Content-Disposition');
+        $this->assertStringStartsWith('attachment;', $disposition);
+        // ქართული სახელი UTF-8-ით მიდის, ლათინური სათადარიგოთი
+        $this->assertStringContainsString("filename*=utf-8''".rawurlencode('ზღვა 2025.jpg'), $disposition);
+        $this->assertSame('nosniff', $res->headers->get('X-Content-Type-Options'));
+
+        // იგივე მისამართი `download`-ის გარეშე ფოტოს ბრაუზერში ხსნის
+        $inline = $this->actingAs($this->user)->get("/api/gallery/images/{$image->id}/file")->assertOk();
+        $this->assertStringStartsWith('inline;', (string) $inline->headers->get('Content-Disposition'));
+    }
+
+    /** ვებიდან წამოღებულ ფოტოს სახელში გაფართოება ხშირად არ აქვს — ის ფაილის გზიდან ემატება */
+    public function test_a_saved_photo_always_gets_a_file_extension(): void
+    {
+        Storage::fake('public');
+        $image = $this->photo(null, 'gallery/images/abc123.webp');
+        $image->update(['original_name' => 'poster']);
+
+        $res = $this->actingAs($this->user)->get("/api/gallery/images/{$image->id}/file?download=1")->assertOk();
+
+        $this->assertStringContainsString('filename=poster.webp', (string) $res->headers->get('Content-Disposition'));
+    }
+
+    /** ჩაკეტილი ალბომის ფოტო ინახება მხოლოდ გახსნილ სესიაში — იგივე კარით, რითაც საჯარო */
+    public function test_a_locked_photo_is_saved_only_while_its_album_is_open(): void
+    {
+        Storage::fake('private');
+        $album = $this->lockedAlbum();
+        $image = $this->lockedPhoto($album, 'gallery/locked/secret.jpg');
+
+        $this->spa()->get("/api/gallery/images/{$image->id}/file?download=1")->assertNotFound();
+
+        $res = $this->unlocked($album)->get("/api/gallery/images/{$image->id}/file?download=1")->assertOk();
+        $this->assertStringStartsWith('attachment;', (string) $res->headers->get('Content-Disposition'));
+    }
+
+    /** სხვისი, დამალული ან ურნაში მყოფი ჩანაწერის ფოტო id-ით ვერ ჩამოიტვირთება — 404 */
+    public function test_a_photo_that_the_gallery_does_not_list_cannot_be_saved(): void
+    {
+        Storage::fake('public');
+
+        $hidden = $this->makeMovie('Hidden');
+        $ofHidden = $this->photo($hidden, 'gallery/images/hidden.jpg');
+        RecordLock::create([
+            'user_id' => $this->user->id,
+            'lockable_type' => $hidden->getMorphClass(),
+            'lockable_id' => $hidden->getKey(),
+            'password_hash' => Hash::make('secret1'),
+        ]);
+
+        $binned = $this->makeMovie('Binned');
+        $ofBinned = $this->photo($binned, 'gallery/images/binned.jpg');
+        $binned->moveToTrash();
+
+        $stranger = User::create(['name' => 'gio', 'username' => 'gio', 'email' => 'gio@example.com', 'password' => 'password']);
+        $foreign = GalleryImage::withoutGlobalScopes()->create([
+            'user_id' => $stranger->id,
+            'source' => 'tmdb',
+            'category' => 'backdrop',
+            'path' => 'gallery/images/foreign.jpg',
+            'size' => 100,
+        ]);
+        Storage::disk('public')->put('gallery/images/foreign.jpg', 'x');
+
+        foreach ([$ofHidden, $ofBinned, $foreign] as $image) {
+            $this->spa()->get("/api/gallery/images/{$image->id}/file?download=1")->assertNotFound();
+        }
+    }
+
     /**
      * **ალბომის წაშლა ლოკის შემოვლა ვერ იქნება.**
      *
