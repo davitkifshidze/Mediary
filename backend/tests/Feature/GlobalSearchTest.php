@@ -6,12 +6,17 @@ use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\BookNote;
 use App\Models\CastMember;
+use App\Models\CustomRecord;
+use App\Models\Game;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\Song;
 use App\Models\User;
+use App\Services\Search\GlobalSearch;
 use Database\Seeders\ModulesSeeder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -350,6 +355,153 @@ class GlobalSearchTest extends TestCase
 
         $this->assertSame(['song'], array_column($res->json('groups'), 'key'));
         $this->assertSame(1, $res->json('total'));
+    }
+
+    /* ================= რეესტრი და რიგი ================= */
+
+    /** ყველა მოდული ჩართული + ერთი პირადი მოდული — რეესტრის სრული სია */
+    private function userWithEverything(): User
+    {
+        $user = $this->makeUser('carol', Module::pluck('key')->all());
+
+        $this->actingAs($user)->postJson('/api/modules', [
+            'name_ka' => 'რეცეპტები',
+            'name_en' => 'Recipes',
+            'icon' => 'Utensils',
+            'color' => '#22c55e',
+            'classification' => 'genre',
+            'statuses' => 'default',
+        ])->assertCreated();
+
+        return $user->refresh();
+    }
+
+    /**
+     * ⚠️ **ერთი დომენის გატეხილი აღწერა მთელ ძებნას აგდებს.** თამაშის
+     * ჩანიშვნების კავშირი წაიშალა, აღწერაში კი დარჩა — და ვისაც თამაშების
+     * მოდული ჩართული ჰქონდა, ნებისმიერ სიტყვაზე 500-ს იღებდა. ეს ტესტი
+     * მხოლოდ სამ მოდულს რთავდა, ამიტომ ვერ დაინახა.
+     */
+    public function test_a_search_answers_with_every_module_enabled(): void
+    {
+        $user = $this->userWithEverything();
+        Game::create(['user_id' => $user->id, 'title_en' => 'Halo Infinite', 'status' => 'finished']);
+
+        $res = $this->actingAs($user)->getJson('/api/search?q=halo')->assertOk();
+
+        $this->assertSame(['game'], array_column($res->json('groups'), 'key'));
+        $this->assertSame('Halo Infinite', $res->json('groups.0.items.0.title'));
+    }
+
+    /**
+     * **ყოველი დომენის აღწერა ნამდვილ მოდელს ემთხვევა.**
+     *
+     * ⚠️ კავშირის წაშლა ძებნას ჩუმად ტეხს: `whereHas('notes')` მხოლოდ
+     * მოთხოვნისას ვარდება, წინასწარ-ჩატვირთვა კი — მხოლოდ მაშინ, როცა შედეგი
+     * არის. ⚠️ სვეტიც აქ მოწმდება: sqlite უცნობ სვეტს სტრიქონად კითხულობს,
+     * ე.ი. შეცდომით დაწერილი სახელი ტესტებში უბრალოდ „ვერაფერს პოულობს".
+     */
+    public function test_every_source_describes_real_relations_and_columns(): void
+    {
+        $user = $this->userWithEverything();
+
+        $sources = (new \ReflectionMethod(GlobalSearch::class, 'sources'))
+            ->invoke(app(GlobalSearch::class), $user);
+
+        // რეესტრი სრულია: ჩაშენებული დომენები + პირადი მოდული
+        $this->assertGreaterThan(18, count($sources));
+        $this->assertContains(CustomRecord::class, array_column($sources, 'model'));
+
+        foreach ($sources as $domain => $spec) {
+            $model = new $spec['model'];
+            $own = array_merge(
+                array_merge([], ...array_values($spec['columns'] ?? [])),
+                array_values($spec['json'] ?? []),
+                $spec['title_rank']['columns'] ?? [],
+            );
+
+            foreach ($own as $column) {
+                $this->assertTrue(
+                    Schema::hasColumn($model->getTable(), $column),
+                    "{$domain}: `{$model->getTable()}.{$column}` არ არსებობს",
+                );
+            }
+
+            $relations = $spec['relations'] ?? [];
+            if (isset($spec['title_rank']['relation'])) {
+                $relations[] = [
+                    'relation' => $spec['title_rank']['relation'],
+                    'where' => [$spec['title_rank']['column']],
+                ];
+            }
+
+            foreach ($relations as $rel) {
+                $name = $rel['relation'];
+                $this->assertTrue(method_exists($model, $name), "{$domain}: კავშირი `{$name}` მოდელზე არ არის");
+
+                $relation = $model->{$name}();
+                $this->assertInstanceOf(Relation::class, $relation, "{$domain}: `{$name}` კავშირი არაა");
+
+                $related = $relation->getRelated();
+                // SQL-ში მხოლოდ ნამდვილი სვეტები მონაწილეობს (`where`), ნაჭერში — აქსესორებიც
+                $columns = $rel['where'] ?? array_unique(array_merge([], ...array_values($rel['fields'])));
+
+                foreach ($columns as $column) {
+                    $this->assertTrue(
+                        Schema::hasColumn($related->getTable(), $column),
+                        "{$domain}.{$name}: `{$related->getTable()}.{$column}` არ არსებობს",
+                    );
+                }
+
+                if (! empty($rel['translated'])) {
+                    $this->assertInstanceOf(Relation::class, $related->translations(), "{$domain}.{$name}: თარგმანების კავშირი");
+                }
+            }
+        }
+    }
+
+    /**
+     * **ზუსტი სათაური → სათაურის დასაწყისი → სათაურში სადმე → დანარჩენი.**
+     *
+     * ⚠️ ყველაზე ახალი ჩანაწერი (`id desc`) აქ განზრახ ყველაზე სუსტი
+     * დამთხვევაა — ძველი წესით ის პირველი იქნებოდა.
+     */
+    public function test_an_exact_title_comes_before_a_prefix_and_a_substring(): void
+    {
+        $url = fn (string $slug) => "https://example.com/{$slug}";
+
+        Song::create(['user_id' => $this->alice->id, 'title' => 'Love', 'url' => $url('exact')]);
+        Song::create(['user_id' => $this->alice->id, 'title' => 'Love Story', 'url' => $url('prefix')]);
+        Song::create(['user_id' => $this->alice->id, 'title' => 'Endless Love', 'url' => $url('inside')]);
+        Song::create(['user_id' => $this->alice->id, 'title' => 'Ballad', 'album' => 'Love Songs', 'url' => $url('album')]);
+
+        $res = $this->actingAs($this->alice)->getJson('/api/search?q=love&domain=song')->assertOk();
+
+        $this->assertSame(
+            ['Love', 'Love Story', 'Endless Love', 'Ballad'],
+            array_column($res->json('groups.0.items'), 'title'),
+        );
+    }
+
+    /** იგივე რიგი იქ, სადაც სათაური თარგმანების ცხრილშია (ფილმი, სერიალი, ანიმე) */
+    public function test_the_title_order_holds_for_translated_titles(): void
+    {
+        $make = function (string $title, ?string $description = null): void {
+            Movie::create(['user_id' => $this->alice->id, 'year' => 2015])
+                ->setTranslation('en', ['title' => $title, 'description' => $description]);
+        };
+
+        $make('Love');
+        $make('Love Actually');
+        $make('Crazy, Stupid, Love');
+        $make('Amour', 'A film about love and old age');
+
+        $res = $this->actingAs($this->alice)->getJson('/api/search?q=love&domain=movie')->assertOk();
+
+        $this->assertSame(
+            ['Love', 'Love Actually', 'Crazy, Stupid, Love', 'Amour'],
+            array_column($res->json('groups.0.items'), 'title'),
+        );
     }
 
     public function test_the_endpoint_requires_a_session(): void

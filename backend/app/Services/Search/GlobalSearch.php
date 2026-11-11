@@ -266,8 +266,8 @@ class GlobalSearch
                     'franchise' => ['franchise'],
                 ],
                 'json' => ['platform' => 'platforms'],
+                // ⚠️ თამაშს ჩანიშვნები აღარ აქვს — აქ დარჩენილი კავშირი მთელ ძებნას აგდებდა
                 'relations' => [
-                    ['relation' => 'notes', 'fields' => ['note' => ['body']]],
                     ['relation' => 'videos', 'fields' => ['video' => ['title']]],
                     ['relation' => 'files', 'fields' => ['file' => ['original_name']]],
                 ],
@@ -632,22 +632,38 @@ class GlobalSearch
     }
 
     /**
-     * ⚠️ **სათაურის დამთხვევა პირველ რიგში.** `id desc`-ით დალაგებული სია
-     * ჩანაწერს, რომლის **სათაურიც** ზუსტად ეს სიტყვაა, მეექვსე ადგილზე
-     * გადააგდებდა — მაშინ, როცა ჩამოსაშლელში ხუთი ეტევა.
+     * ⚠️ **სათაურის დამთხვევა პირველ რიგში — სამი საფეხურით.** ჯერ ჩანაწერი,
+     * რომლის სათაურიც **ზუსტად** ეს სიტყვაა, მერე ის, რომლის სათაურიც ამით
+     * **იწყება**, მერე ის, რომლის სათაურშიც სიტყვა **სადმე** დგას, და ბოლოს
+     * დანარჩენი (აღწერა, მსახიობი, ტეგი…). მხოლოდ „სათაურში არის"-ით
+     * დალაგებული სია ფილმს „Love" ათეულობით „…Love…"-ს შორის `id desc`-ით
+     * ფანტავდა — ჩამოსაშლელში კი სამი ეტევა.
+     *
+     * ⚠️ **„ზუსტი" `LIKE`-ია მასკის გარეშე და არა `=`**: sqlite-ზე `=`
+     * რეგისტრს არჩევს, `LIKE` — არა, ე.ი. ორივე ბაზა ერთ პასუხს იძლევა.
      */
     private function applyOrder(Builder $query, array $spec, string $term): void
     {
         $rank = $spec['title_rank'] ?? null;
-        $like = $this->like($term);
+        $patterns = [Like::escape($term), Like::escape($term).'%', $this->like($term)];
 
         if (isset($rank['relation'])) {
-            $query->withCount([
-                $rank['relation'].' as title_hit' => fn (Builder $t) => $t->where($rank['column'], 'like', $like),
-            ])->orderByDesc('title_hit');
+            foreach ($patterns as $step => $pattern) {
+                $query->withExists([
+                    "{$rank['relation']} as title_rank_{$step}" => fn (Builder $t) => $t->where($rank['column'], 'like', $pattern),
+                ])->orderByDesc("title_rank_{$step}");
+            }
         } elseif (isset($rank['columns'])) {
-            $sql = implode(' or ', array_map(fn (string $c) => "$c like ?", $rank['columns']));
-            $query->orderByRaw("case when ($sql) then 0 else 1 end", array_fill(0, count($rank['columns']), $like));
+            $cases = [];
+            $bindings = [];
+
+            foreach ($patterns as $step => $pattern) {
+                $any = implode(' or ', array_map(fn (string $c) => "$c like ?", $rank['columns']));
+                $cases[] = "when ($any) then $step";
+                array_push($bindings, ...array_fill(0, count($rank['columns']), $pattern));
+            }
+
+            $query->orderByRaw('case '.implode(' ', $cases).' else '.count($patterns).' end', $bindings);
         }
 
         $query->orderByDesc($query->getModel()->getTable().'.id');

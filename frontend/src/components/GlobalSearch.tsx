@@ -103,11 +103,12 @@ export function GlobalSearch() {
     navigate(to)
   }
 
-  /** სრული პასუხი — ძებნის გვერდი */
-  const goToPage = () => {
+  /** სრული პასუხი — ძებნის გვერდი; `domain`-ით პირდაპირ ერთი ჯგუფის სრული სია */
+  const goToPage = (domain?: string) => {
     if (debounced.length < 2) return
     close()
-    navigate(`/search?q=${encodeURIComponent(debounced)}`)
+    const scope = domain ? `&domain=${encodeURIComponent(domain)}` : ''
+    navigate(`/search?q=${encodeURIComponent(debounced)}${scope}`)
   }
 
   /** ჯგუფის სახელი: მოდულისა — ბაზიდან, სამი „უმოდულო" დომენისა — i18n-იდან */
@@ -179,10 +180,6 @@ export function GlobalSearch() {
               <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-muted-foreground">
                 <ModuleIcon name={icons[group.module ?? '']} className="size-3.5" />
                 {labelOf(group)}
-                {/* ⚠️ **ჯამი და არა ნაჩვენებთა რიცხვი** — „კიდევ N არის" */}
-                {group.total > group.items.length && (
-                  <span className="tabular-nums">· {group.total}</span>
-                )}
               </div>
 
               {group.items.map((item) => (
@@ -212,13 +209,26 @@ export function GlobalSearch() {
                   ))}
                 </button>
               ))}
+
+              {/* ⚠️ **ჯამი და არა ნაჩვენებთა რიცხვი**: ჯგუფში მეტია, ვიდრე
+                  აქ ეტევა — ბმული პირდაპირ ამ ჯგუფის სრულ სიაზე მიდის */}
+              {group.total > group.items.length && (
+                <button
+                  type="button"
+                  onClick={() => goToPage(group.key)}
+                  className="flex w-full cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-left text-xs text-primary transition-colors hover:bg-muted"
+                >
+                  {t('search.groupAll', { count: group.total })}
+                  <ArrowRight className="size-3" />
+                </button>
+              )}
             </div>
           ))}
 
           {total > 0 && (
             <button
               type="button"
-              onClick={goToPage}
+              onClick={() => goToPage()}
               className="mt-1 flex w-full cursor-pointer items-center justify-between gap-2 rounded-md border-t border-border px-2.5 py-2 text-sm text-primary transition-colors hover:bg-muted"
             >
               {t('search.allResults', { count: total })}

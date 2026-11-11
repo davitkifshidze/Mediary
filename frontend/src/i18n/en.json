@@ -427,6 +427,7 @@
     "found": "{{count}} results",
     "allDomains": "Everywhere",
     "allResults": "All results ({{count}})",
+    "groupAll": "All {{count}} results",
     "showAllIn": "{{name}} — all {{count}} results",
     "capped": "Showing the first {{count}} — the rest is in the section's own list",
     "group": {

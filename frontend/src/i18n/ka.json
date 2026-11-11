@@ -427,6 +427,7 @@
     "found": "ნაპოვნია {{count}} შედეგი",
     "allDomains": "ყველგან",
     "allResults": "ყველა შედეგი ({{count}})",
+    "groupAll": "ყველა {{count}} შედეგი",
     "showAllIn": "{{name}} — ყველა {{count}} შედეგი",
     "capped": "ნაჩვენებია პირველი {{count}} — დანარჩენი სექციის საკუთარ სიაშია",
     "group": {
