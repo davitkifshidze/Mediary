@@ -1,11 +1,13 @@
 import { useRef, useState } from 'react'
+import { SelectWithAdd } from '@/components/ui/inline-add'
+import { addAlbum, addPerson } from '@/components/personal/personalAdd'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { fetchPeople, fetchPersonalAlbums, PERSONAL_KEY } from '@/api/personal'
 import { Button } from '@/components/ui/button'
 import { FormField, FormSection } from '@/components/ui/form-layout'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SelectItem } from '@/components/ui/select'
 import { PersonalUploadButton, PersonalUploader, type PersonalUploaderHandle } from '@/components/personal/PersonalUploader'
 import { X } from 'lucide-react'
 
@@ -42,35 +44,35 @@ export function PersonalUploadDialog({
     <ModalShell title={t('personal.upload.title')} onClose={onClose} size="wide" hint={t('personal.upload.hint')}>
       <FormSection>
         <FormField label={t('personal.move.person')} size="half">
-          <Select value={person} onValueChange={setPerson}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>{t('personal.move.noPerson')}</SelectItem>
-              {(peopleQ.data ?? []).map((p) => (
-                <SelectItem key={p.id} value={String(p.id)}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SelectWithAdd
+            value={person}
+            onValueChange={setPerson}
+            addLabel={t('personal.person.add')}
+            dialog={addPerson}
+          >
+            <SelectItem value={NONE}>{t('personal.move.noPerson')}</SelectItem>
+            {(peopleQ.data ?? []).map((p) => (
+              <SelectItem key={p.id} value={String(p.id)}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectWithAdd>
         </FormField>
 
         <FormField label={t('personal.move.album')} size="half">
-          <Select value={album} onValueChange={setAlbum}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>{t('personal.move.noAlbum')}</SelectItem>
-              {(albumsQ.data ?? []).map((a) => (
-                <SelectItem key={a.id} value={String(a.id)}>
-                  {a.person ? `${a.name} · ${a.person.name}` : a.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SelectWithAdd
+            value={album}
+            onValueChange={setAlbum}
+            addLabel={t('personal.album.add')}
+            dialog={addAlbum(person === NONE ? null : Number(person))}
+          >
+            <SelectItem value={NONE}>{t('personal.move.noAlbum')}</SelectItem>
+            {(albumsQ.data ?? []).map((a) => (
+              <SelectItem key={a.id} value={String(a.id)}>
+                {a.person ? `${a.name} · ${a.person.name}` : a.name}
+              </SelectItem>
+            ))}
+          </SelectWithAdd>
         </FormField>
       </FormSection>
 

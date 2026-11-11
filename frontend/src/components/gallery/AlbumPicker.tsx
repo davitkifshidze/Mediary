@@ -1,4 +1,5 @@
 import { useState, type KeyboardEvent } from 'react'
+import { AddChip } from '@/components/ui/inline-add'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Folder, FolderPlus, Inbox, Lock, LockOpen, Minus, SquarePen, X } from 'lucide-react'
@@ -237,18 +238,14 @@ export function AlbumPicker({
         </div>
       ) : (
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
+          {/* სიის ბოლოს — იგივე „+", რაც ფორმების კლასიფიკატორებთან (`ui/inline-add`) */}
+          <AddChip
+            label={t('gallery.albumNew')}
             onClick={() => {
               resetDraft()
               setAdding(true)
             }}
-          >
-            <FolderPlus className="size-4" />
-            {t('gallery.albumNew')}
-          </Button>
+          />
 
           {/* არჩეული ალბომის პარამეტრები აქვე, გადატანის შუაგულში */}
           {picked && (

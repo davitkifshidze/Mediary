@@ -14,7 +14,10 @@ import {
   type DutyWorkplace,
 } from '@/api/duty'
 import { errorMessage } from '@/lib/errors'
-import { dutyPay, formatHours, invalidateDuty, shiftEnd, timeRange, typeName, workplaceColor } from '@/lib/duty'
+import { DUTY_COLORS, dutyPay, formatHours, invalidateDuty, shiftEnd, timeRange, typeName, workplaceColor } from '@/lib/duty'
+import { useDictionaryAdd } from '@/lib/dictionaries'
+import { AddChip, useInlineAdd } from '@/components/ui/inline-add'
+import { DutyWorkplaceDialog } from '@/components/duty/DutyWorkplaceDialog'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -128,6 +131,24 @@ export function DutyShiftDialog({
     if (w.default_start_time) setStartTime(w.default_start_time)
   }
 
+  /* „+" ორივე რიგის ბოლოს: სამსახურს პარამეტრების ფანჯარა ხსნის, ტიპს —
+     კლასიფიკატორებისა. შენახული მნიშვნელობა მაშინვე არჩეულია; სია მშობლიდან
+     მოდის და `invalidateDuty`-ის შემდეგ თვითონ ახლდება. */
+  const workplaceAdd = useInlineAdd(
+    (close, pick) => (
+      <DutyWorkplaceDialog
+        workplace={null}
+        types={types}
+        nextColor={DUTY_COLORS[workplaces.length % DUTY_COLORS.length]}
+        currency={currency}
+        onClose={close}
+        onSaved={(saved) => pick(String(saved.id))}
+      />
+    ),
+    (id) => setWorkplaceId(Number(id)),
+  )
+  const typeAdd = useInlineAdd(useDictionaryAdd('duty-types'), (id) => pickType(id))
+
   const range = timeRange(startTime, shiftEnd(startTime, hours))
 
   const save = useMutation({
@@ -205,6 +226,7 @@ export function DutyShiftDialog({
                   {w.name}
                 </Chip>
               ))}
+              <AddChip onClick={workplaceAdd.open} />
             </div>
           </FormField>
 
@@ -218,6 +240,7 @@ export function DutyShiftDialog({
               <Chip active={typeKey === CUSTOM} onClick={() => setTypeKey(CUSTOM)}>
                 {t('duty.shift.custom')}
               </Chip>
+              {typeAdd.available && <AddChip onClick={typeAdd.open} />}
             </div>
           </FormField>
 
@@ -283,6 +306,9 @@ export function DutyShiftDialog({
           </Button>
         )}
       </FormFooter>
+
+      {workplaceAdd.node}
+      {typeAdd.node}
     </ModalShell>
   )
 }

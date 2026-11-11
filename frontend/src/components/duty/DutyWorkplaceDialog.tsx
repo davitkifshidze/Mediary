@@ -52,6 +52,7 @@ export function DutyWorkplaceDialog({
   nextColor,
   currency,
   onClose,
+  onSaved,
 }: {
   /** `null` — ახალი სამსახური */
   workplace: DutyWorkplace | null
@@ -60,6 +61,8 @@ export function DutyWorkplaceDialog({
   nextColor: string
   currency: string
   onClose: () => void
+  /** შენახული სამსახური — მორიგეობის ფორმის „+" მას მაშინვე ირჩევს */
+  onSaved?: (saved: DutyWorkplace) => void
 }) {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
@@ -113,6 +116,7 @@ export function DutyWorkplaceDialog({
           : t(workplace ? 'duty.workplace.saved' : 'duty.workplace.created'),
         variant: 'success',
       })
+      onSaved?.(saved)
       onClose()
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),

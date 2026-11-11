@@ -71,8 +71,11 @@ export function useInlineAdd(dialog: AddDialog | undefined, pick: (value: string
   }
 }
 
-/** ჩიპების რიგის ბოლო — „+ ახლის დამატება" წყვეტილი ჩარჩოთი */
-export function AddChip({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+/**
+ * ჩიპების რიგის ან სიის ბოლო — „+ ახლის დამატება" წყვეტილი ჩარჩოთი.
+ * `label` — როცა რიგში ცხადი არ არის, *რა* ემატება („ახალი ალბომი").
+ */
+export function AddChip({ onClick, disabled, label }: { onClick: () => void; disabled?: boolean; label?: string }) {
   const { t } = useTranslation()
   return (
     <Button
@@ -85,7 +88,7 @@ export function AddChip({ onClick, disabled }: { onClick: () => void; disabled?:
       data-inline-add="chip"
     >
       <Plus className="size-3.5" />
-      {t('actions.addNew')}
+      {label ?? t('actions.addNew')}
     </Button>
   )
 }

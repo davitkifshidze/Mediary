@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { SelectWithAdd } from '@/components/ui/inline-add'
+import { addAlbum, addPerson } from '@/components/personal/personalAdd'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { MoveRight, X } from 'lucide-react'
@@ -9,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/feedback'
 import { FormField, FormSection } from '@/components/ui/form-layout'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SelectItem } from '@/components/ui/select'
 
 /* ============================================================
    **გადატანა ადამიანში და/ან ალბომში** — მრავალმონიშვნით.
@@ -69,37 +71,37 @@ export function PersonalMoveDialog({
     <ModalShell title={t('personal.move.title', { count: ids.length })} onClose={onClose} hint={t('personal.move.hint')}>
       <FormSection>
         <FormField label={t('personal.move.person')}>
-          <Select value={person} onValueChange={setPerson}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={KEEP}>{t('personal.move.keep')}</SelectItem>
-              <SelectItem value={NONE}>{t('personal.move.noPerson')}</SelectItem>
-              {(peopleQ.data ?? []).map((p) => (
-                <SelectItem key={p.id} value={String(p.id)} disabled={isHidden(p)}>
-                  {isHidden(p) ? `${p.name} · ${t('lock.badgeLocked')}` : p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SelectWithAdd
+            value={person}
+            onValueChange={setPerson}
+            addLabel={t('personal.person.add')}
+            dialog={addPerson}
+          >
+            <SelectItem value={KEEP}>{t('personal.move.keep')}</SelectItem>
+            <SelectItem value={NONE}>{t('personal.move.noPerson')}</SelectItem>
+            {(peopleQ.data ?? []).map((p) => (
+              <SelectItem key={p.id} value={String(p.id)} disabled={isHidden(p)}>
+                {isHidden(p) ? `${p.name} · ${t('lock.badgeLocked')}` : p.name}
+              </SelectItem>
+            ))}
+          </SelectWithAdd>
         </FormField>
 
         <FormField label={t('personal.move.album')}>
-          <Select value={album} onValueChange={setAlbum}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={KEEP}>{t('personal.move.keep')}</SelectItem>
-              <SelectItem value={NONE}>{t('personal.move.noAlbum')}</SelectItem>
-              {(albumsQ.data ?? []).map((a) => (
-                <SelectItem key={a.id} value={String(a.id)} disabled={isHidden(a)}>
-                  {[a.name, a.person?.name, isHidden(a) ? t('lock.badgeLocked') : null].filter(Boolean).join(' · ')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SelectWithAdd
+            value={album}
+            onValueChange={setAlbum}
+            addLabel={t('personal.album.add')}
+            dialog={addAlbum(person === NONE || person === KEEP ? null : Number(person))}
+          >
+            <SelectItem value={KEEP}>{t('personal.move.keep')}</SelectItem>
+            <SelectItem value={NONE}>{t('personal.move.noAlbum')}</SelectItem>
+            {(albumsQ.data ?? []).map((a) => (
+              <SelectItem key={a.id} value={String(a.id)} disabled={isHidden(a)}>
+                {[a.name, a.person?.name, isHidden(a) ? t('lock.badgeLocked') : null].filter(Boolean).join(' · ')}
+              </SelectItem>
+            ))}
+          </SelectWithAdd>
           {chosenAlbum?.person && (
             <p className="mt-1.5 text-xs text-muted-foreground">
               {t('personal.move.followsAlbum', { name: chosenAlbum.person.name })}
