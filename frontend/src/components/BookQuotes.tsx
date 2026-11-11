@@ -169,7 +169,7 @@ export function BookQuotes({ book, onAdd }: { book: Book; onAdd: () => void }) {
 
       {isLoading && <p className="text-xs text-muted-foreground">{t('common.loading')}</p>}
       {!isLoading && shown.length === 0 && (
-        <EmptyState
+        <EmptyState kind={term ? 'search' : undefined}
           icon={<Quote className="size-6" />}
           title={term ? t('recordNotes.noMatch') : t('books.quotesEmpty')}
           hint={term ? t('recordNotes.noMatchHint') : t('books.quotesEmptyHint')}

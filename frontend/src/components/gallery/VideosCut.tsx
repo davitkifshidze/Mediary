@@ -376,8 +376,7 @@ export function VideosCut() {
           ))}
         </ul>
       ) : !items.length ? (
-        <EmptyState
-          icon={<Video className="size-6" />}
+        <EmptyState kind={term || type !== 'all' ? 'search' : 'video'}
           title={term || type !== 'all' ? t('gallery.videoNoMatch') : t('gallery.noVideos')}
           hint={term || type !== 'all' ? t('gallery.videoNoMatchHint') : t('gallery.noVideosHint')}
         />

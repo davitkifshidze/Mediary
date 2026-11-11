@@ -10,7 +10,6 @@ import {
   Loader2,
   Play,
   Search,
-  VideoOff,
   X,
 } from 'lucide-react'
 import { updateModuleSettings } from '@/api/account'
@@ -423,8 +422,7 @@ export function WebVideoDialog({
 
           {items.length === 0 ? (
             /* ⚠️ სამი ცარიელი მდგომარეობა და სამივე სხვადასხვა ამბავია */
-            <EmptyState
-              icon={searched ? <VideoOff className="size-6" /> : <Search className="size-6" />}
+            <EmptyState kind={searched ? 'video' : 'search'}
               title={searched ? t('web.nothingFound') : t('web.notSearchedYet')}
               hint={
                 searched

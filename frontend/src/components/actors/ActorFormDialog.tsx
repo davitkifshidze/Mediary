@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/quick-fill'
 import { Textarea } from '@/components/ui/textarea'
 import { PosterUploader } from '@/components/PosterUploader'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **ახალი მსახიობი და ხელით შექმნილის რედაქტირება.**
@@ -145,7 +146,7 @@ export function ActorFormDialog({
           />
           {results?.tmdb === null && <QuickFillMessage tone="info">{t('cast.tmdbMissingKey')}</QuickFillMessage>}
           {results?.tmdb === false && <QuickFillMessage tone="warn">{t('cast.tmdbOffline')}</QuickFillMessage>}
-          {results && results.items.length === 0 && <QuickFillMessage>{t('cast.noResults')}</QuickFillMessage>}
+          {results && results.items.length === 0 && <EmptyState size="line" kind="search" className="mt-2" title={t('cast.noResults')} />}
           {results && results.items.length > 0 && (
             <QuickFillResults>
               {results.items.map((candidate) => (

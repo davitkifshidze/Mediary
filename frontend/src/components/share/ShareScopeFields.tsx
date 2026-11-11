@@ -32,6 +32,7 @@ import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { MODULE_ACCENT_FALLBACK, isMediaKey, modAccent } from '@/lib/modules'
 import type { ShareDomainLook } from '@/hooks/useShareDomains'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **ერთი სექციის ფარგლები** გაზიარების ბმულის ფანჯარაში.
@@ -301,7 +302,7 @@ function ClassifierChips({
   const toggle = (id: number) => onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id])
 
   if (q.isLoading) return <p className="text-xs text-muted-foreground">{t('api.loading')}</p>
-  if (!entries.length) return <p className="text-xs text-muted-foreground">{t('share.classifierEmpty')}</p>
+  if (!entries.length) return <EmptyState size="line" title={t('share.classifierEmpty')} />
 
   return (
     <ChipRow>

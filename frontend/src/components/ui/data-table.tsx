@@ -7,6 +7,7 @@ import { useClientPages } from '@/lib/paged'
 import { PageSizePick } from '@/components/ui/page-size-pick'
 import { cn } from '@/lib/utils'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **საერთო datatable.**
@@ -179,18 +180,15 @@ export function DataTable<T>({
           <tbody>
             {!shown.length ? (
               <tr>
-                {/* ⚠️ ცენტრირებული, ნაცრისფერი სტილი მხოლოდ **ტექსტს** ეხება —
-                    `EmptyState`-ს თავისი ტიპოგრაფია აქვს და მემკვიდრეობით
-                    მიღებული `text-muted-foreground` მის სათაურსაც გაფერმკრთალებდა. */}
-                <td
-                  colSpan={columns.length}
-                  className={
-                    empty === undefined || typeof empty === 'string'
-                      ? 'px-3 py-6 text-center text-muted-foreground'
-                      : 'p-3'
-                  }
-                >
-                  {empty ?? t('table.empty')}
+                {/* ⚠️ ტექსტად მოცემული (ან საერთოდ არმოცემული) ცარიელი მდგომარეობაც
+                    `EmptyState`-ით იხატება — ცხრილში უბრალო ნაცრისფერი სტრიქონი
+                    აღარ რჩება; მზა ბლოკი (`ReactNode`) ისე ჯდება, როგორც მოვიდა. */}
+                <td colSpan={columns.length} className="p-3">
+                  {empty === undefined || typeof empty === 'string' ? (
+                    <EmptyState size="compact" title={empty ?? t('table.empty')} />
+                  ) : (
+                    empty
+                  )}
                 </td>
               </tr>
             ) : (

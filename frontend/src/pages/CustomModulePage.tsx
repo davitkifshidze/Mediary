@@ -409,7 +409,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
         <div className="min-w-0 flex-1">
           {query.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
           {!query.isLoading && !records.length && (
-            <EmptyState
+            <EmptyState kind={term || activeCount > 0 ? 'search' : 'list'}
               title={term ? t('customModules.noResults', { q: term }) : t('customModules.empty')}
               hint={term || activeCount > 0 ? t('empty.filteredHint') : t('empty.addHint')}
               actions={

@@ -34,7 +34,6 @@ import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import {
   QuickFill,
   QuickFillCandidate,
-  QuickFillMessage,
   QuickFillResults,
   QuickFillSearch,
 } from '@/components/ui/quick-fill'
@@ -46,6 +45,7 @@ import { RatingSelect } from '@/components/ui/rating-select'
 import { TagSelect } from '@/components/TagSelect'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { LinkField } from '@/components/ui/link-field'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    წიგნის ფორმა.
@@ -301,9 +301,12 @@ export function BookForm({
 
           {/* ⚠️ „ქართული → ხელით" ცალკე მდგომარეობაა და არა ცარიელი სია */}
           {candidates && !candidates.length && (
-            <QuickFillMessage>
-              {lookupNotice === 'manual_only' ? t('books.lookupManualOnly') : t('books.lookupEmpty')}
-            </QuickFillMessage>
+            <EmptyState
+              size="line"
+              kind="search"
+              className="mt-2"
+              title={lookupNotice === 'manual_only' ? t('books.lookupManualOnly') : t('books.lookupEmpty')}
+            />
           )}
 
           {candidates && candidates.length > 0 && (

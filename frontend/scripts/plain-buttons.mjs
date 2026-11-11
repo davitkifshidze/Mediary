@@ -64,7 +64,11 @@ const OWN_KIND = /\bactionItemClass\(|\brole="(tab|option|radio|combobox|menuite
 const problems = []
 const report = process.argv.includes('--report')
 
-/** გამხსნელი ტეგის ბოლო — პირველი `>` ფრჩხილებისა და ბრჭყალების გარეთ */
+/**
+ * გამხსნელი ტეგის ბოლო — პირველი `>` ფრჩხილებისა და ბრჭყალების გარეთ.
+ * ⚠️ `{…}`-ის შიგნით კომენტარი გამოტოვებულია: მასში კენტი აპოსტროფი ან ბრჭყალი
+ * „სტრიქონს" გახსნიდა და ტეგი ფაილის ბოლომდე გაგრძელდებოდა.
+ */
 function tagEnd(text, start) {
   let depth = 0
   let quote = null
@@ -72,6 +76,12 @@ function tagEnd(text, start) {
     const c = text[i]
     if (quote) {
       if (c === quote) quote = null
+    } else if (depth > 0 && c === '/' && text[i + 1] === '*') {
+      const close = text.indexOf('*/', i + 2)
+      i = close === -1 ? text.length : close + 1
+    } else if (depth > 0 && c === '/' && text[i + 1] === '/' && text[i - 1] !== ':') {
+      const close = text.indexOf('\n', i)
+      i = close === -1 ? text.length : close
     } else if (c === '"' || c === "'" || c === '`') quote = c
     else if (c === '{') depth++
     else if (c === '}') depth--

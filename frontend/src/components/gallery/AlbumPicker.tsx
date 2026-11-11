@@ -18,6 +18,7 @@ import { InfoHint } from '@/components/ui/info-hint'
 import { useToast } from '@/components/ui/feedback'
 import { AlbumDialog } from '@/components/gallery/AlbumDialog'
 import { AlbumPasswordFields } from '@/components/gallery/AlbumPasswordFields'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **ალბომის ამრჩევი — „ფაილ-მენეჯერივით" (შენი მითითება, 2026-09-16).**
@@ -185,9 +186,7 @@ export function AlbumPicker({
         ))}
 
         {!albums.length && !albumsQ.isLoading && (
-          <p className="px-2 py-3 text-center text-xs text-muted-foreground">
-            {t('gallery.albumPickerEmpty')}
-          </p>
+          <EmptyState size="line" kind="photo" className="px-2 py-3" title={t('gallery.albumPickerEmpty')} />
         )}
       </div>
 

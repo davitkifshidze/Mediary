@@ -59,6 +59,7 @@ import { cn } from '@/lib/utils'
 import { RatingSelect } from '@/components/ui/rating-select'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { LinkField } from '@/components/ui/link-field'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    თამაშის ფორმა.
@@ -401,7 +402,7 @@ export function GameForm({
           {noKey && <CredentialMissingNotice provider="rawg" />}
 
           {!unavailable && !noKey && candidates && !candidates.length && (
-            <QuickFillMessage>{t('games.lookupEmpty')}</QuickFillMessage>
+            <EmptyState size="line" kind="search" className="mt-2" title={t('games.lookupEmpty')} />
           )}
 
           {!unavailable && !noKey && candidates && candidates.length > 0 && (

@@ -408,7 +408,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
           ) : (
             /* ⚠️ საერთო ბლოკი: ცალკე ითქვას „ფილტრმა ჩამოჭრა" და
                „ჯერ არაფერი გაქვს", თორემ ორივე ერთნაირად ცარიელი იყო. */
-            <EmptyState
+            <EmptyState kind={q || activeCount > 0 ? 'search' : 'video'}
               title={t(mediaKey('library.empty', type))}
               hint={q || activeCount > 0 ? t('empty.filteredHint') : t('empty.addHint')}
               actions={

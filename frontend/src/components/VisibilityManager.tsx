@@ -28,6 +28,7 @@ import { LIST_PAGE_SIZE, usePages } from '@/lib/paged'
 import { Switch } from '@/components/ui/switch'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **ხილვადობის მესამე ფენა — ერთ ადგილას.**
@@ -187,9 +188,11 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
 
   if (!domains.length) {
     return (
-      <p className={cn('rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground', !bare && 'mt-4')}>
-        {t('publicProfile.noShareable')}
-      </p>
+      <EmptyState
+        size="line"
+        className={cn('rounded-md bg-muted/50 px-3', !bare && 'mt-4')}
+        title={t('publicProfile.noShareable')}
+      />
     )
   }
 
@@ -319,7 +322,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
       {listQ.isLoading ? (
         <div className="h-10 animate-pulse rounded-md bg-muted" />
       ) : !rows.length ? (
-        <p className="text-sm text-muted-foreground">{t('visibility.empty')}</p>
+        <EmptyState size="line" title={t('visibility.empty')} />
       ) : (
         <ul className="space-y-1">
           {rows.map((card) => (

@@ -279,7 +279,7 @@ export function GamesPage() {
           {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !games.length && (
-            <EmptyState
+            <EmptyState kind={term || activeCount > 0 ? 'search' : 'list'}
               title={term ? t('games.noResults', { q: term }) : t('games.empty')}
               hint={term || activeCount > 0 ? t('empty.filteredHint') : t('empty.addHint')}
               actions={

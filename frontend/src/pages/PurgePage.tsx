@@ -53,6 +53,7 @@ import { ScopeCard, ScopeGroup } from '@/components/ui/scope-card'
 import { useQueue } from '@/components/ui/queue'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { PurgeItemList } from '@/components/purge/PurgeItemList'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    მასობრივი წაშლა — `/purge`, მხოლოდ super_admin-ს.
@@ -437,7 +438,7 @@ export function PurgePage() {
   if (!me?.is_super_admin) {
     return (
       <PageContainer>
-        <p className="text-sm text-muted-foreground">{t('roles.noAccess')}</p>
+        <EmptyState title={t('roles.noAccess')} />
       </PageContainer>
     )
   }
@@ -758,7 +759,7 @@ export function PurgePage() {
             )}
 
             {nothing ? (
-              <p className="mt-3 text-sm text-muted-foreground">{t('purge.nothing')}</p>
+              <EmptyState size="line" className="mt-3" title={t('purge.nothing')} />
             ) : (
               <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-border pt-4">
                 <div className="min-w-48">

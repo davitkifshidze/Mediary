@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BellPlus, NotebookPen, Plus, FilterX } from 'lucide-react'
+import { NotebookPen, Plus, FilterX } from 'lucide-react'
 import {
   deleteNoteReminder,
   fetchAllNoteReminders,
@@ -129,8 +129,7 @@ export function NoteRemindersPage() {
           დამიმატებია" ჩანაწერებზე მიგზავნის (შეხსენება ჩანაწერს ებმის),
           „ფილტრმა ჩამოჭრა" კი ფილტრს ხსნის. */}
       {!isLoading && !shown.length && (
-        <EmptyState
-          icon={<BellPlus className="size-6" />}
+        <EmptyState kind="bell"
           title={reminders.length ? t('notes.remindersNoneInCut') : t('notes.remindersEmpty')}
           hint={reminders.length ? undefined : t('notes.remindersHint')}
           actions={

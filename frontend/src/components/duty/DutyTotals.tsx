@@ -17,6 +17,7 @@ import { formatHours, formatMoney, parseDay, typeName, workplaceColor } from '@/
 import { BAR_RADIUS_Y, CHART_GRID, CHART_TICK, ChartFrame, ChartTip } from '@/components/ui/chart'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { InfoHint } from '@/components/ui/info-hint'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **ჯამები** — პერიოდის მორიგეობები · საათები · თანხა, **ყველაზე და
@@ -195,7 +196,7 @@ export function DutyTotals({
             })}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">{t('duty.empty')}</p>
+          <EmptyState size="line" title={t('duty.empty')} />
         )}
       </section>
 

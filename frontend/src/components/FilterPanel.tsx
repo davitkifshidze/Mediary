@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { DrillChips } from '@/components/DrillChips'
 import { AutoHeight } from '@/components/ui/auto-height'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    მარჯვენა ფილტრების პანელი.
@@ -268,7 +269,7 @@ export function FilterOptionList({
       <div className="fb-scroll -mr-1 space-y-1 overflow-y-auto pr-1" style={{ maxHeight }}>
         {shown}
         {!plain && !shown.length && (
-          <p className="px-1.5 py-2 text-xs text-muted-foreground">{t('filter.noMatches')}</p>
+          <EmptyState size="line" kind="search" className="px-1.5" title={t('filter.noMatches')} />
         )}
       </div>
     </>

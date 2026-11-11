@@ -306,8 +306,7 @@ export function NoteReminders({ noteId }: { noteId: number | null }) {
       {/* ⚠️ ცარიელი ბლოკი `EmptyState`-ია და არა ერთი ნაცრისფერი წინადადება:
           რა არის ცარიელი, რატომ და **რა ღილაკია შემდეგი**. */}
       {!isLoading && !reminders.length && (
-        <EmptyState
-          icon={<BellPlus className="size-6" />}
+        <EmptyState kind="bell"
           title={t('notes.remindersEmpty')}
           hint={t('notes.remindersHint')}
           actions={

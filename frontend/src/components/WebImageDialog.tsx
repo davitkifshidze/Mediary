@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   CheckSquare,
   Download,
-  ImageOff,
   Loader2,
   Plus,
   Search,
@@ -698,7 +697,7 @@ export function WebImageDialog({
               /* ⚠️ სამი ცარიელი მდგომარეობა და სამივე სხვადასხვა ამბავია:
                  ჯერ არ მოგიძებნია · იპოვა ლინკის გარეშე · ვერაფერი იპოვა */
               <EmptyState
-                icon={searched ? <ImageOff className="size-6" /> : <Search className="size-6" />}
+                kind={searched ? 'photo' : 'search'}
                 title={searched ? t('web.nothingFound') : t('web.notSearchedYet')}
                 hint={
                   searched

@@ -23,6 +23,7 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    ატვირთვების **მედია-ბიბლიოთეკა**.
@@ -333,7 +334,7 @@ export function StorageLibrary({
       )}
 
       {!shown.length ? (
-        <p className="text-sm text-muted-foreground">{t('storage.filesEmpty')}</p>
+        <EmptyState size="compact" kind="file" title={t('storage.filesEmpty')} />
       ) : (
         /* სია სქროლადია — ყველა ფაილი ჩანს და გვერდი არ იბერება */
         <div className="fb-scroll max-h-[70vh] overflow-y-auto rounded-lg border border-border p-2">

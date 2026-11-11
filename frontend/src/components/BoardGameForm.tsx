@@ -46,6 +46,7 @@ import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { RatingSelect } from '@/components/ui/rating-select'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { LinkField } from '@/components/ui/link-field'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    ბორდგეიმის ფორმა.
@@ -336,7 +337,7 @@ export function BoardGameForm({
           {unavailable && <QuickFillMessage tone="warn">{t('boardGames.lookupUnavailable')}</QuickFillMessage>}
 
           {!unavailable && candidates && !candidates.length && (
-            <QuickFillMessage>{t('boardGames.lookupEmpty')}</QuickFillMessage>
+            <EmptyState size="line" kind="search" className="mt-2" title={t('boardGames.lookupEmpty')} />
           )}
 
           {!unavailable && candidates && candidates.length > 0 && (
@@ -378,7 +379,7 @@ export function BoardGameForm({
               )}
 
               {offers !== null && !offers.length && !shopLookup.isPending && (
-                <QuickFillMessage>{t('boardGames.shopSearch.empty')}</QuickFillMessage>
+                <EmptyState size="line" kind="search" className="mt-2" title={t('boardGames.shopSearch.empty')} />
               )}
 
               <div className="mt-2 space-y-1.5">

@@ -26,6 +26,7 @@ import { LAYER_POPUP } from '@/lib/layers'
 import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/ui/feedback'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /**
  * **შეტყობინებების ცენტრი — ჰედერის ზარი.**
@@ -238,9 +239,7 @@ export function NotificationBell() {
 
           <div className="fb-scroll mt-1.5 max-h-96 space-y-0.5 overflow-y-auto">
             {items.length === 0 ? (
-              <p className="px-2.5 py-6 text-center text-sm text-muted-foreground">
-                {t('notifications.empty')}
-              </p>
+              <EmptyState size="compact" kind="bell" title={t('notifications.empty')} />
             ) : (
               items.map(row)
             )}

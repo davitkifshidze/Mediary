@@ -294,7 +294,7 @@ export function BooksPage() {
           {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !books.length && (
-            <EmptyState
+            <EmptyState kind={term || activeCount > 0 ? 'search' : 'list'}
               title={term ? t('books.noResults', { q: term }) : t('books.empty')}
               hint={term || activeCount > 0 ? t('empty.filteredHint') : t('empty.addHint')}
               actions={
@@ -493,7 +493,7 @@ export function BooksPage() {
                 ))}
               </FilterOptionList>
             ) : (
-              <p className="px-1.5 py-1 text-xs text-muted-foreground">{t('books.noTags')}</p>
+              <EmptyState size="line" className="px-1.5" title={t('books.noTags')} />
             )}
           </FilterGroup>
         </FilterPanel>

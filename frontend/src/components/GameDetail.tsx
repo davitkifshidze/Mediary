@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { LinkField } from '@/components/ui/link-field'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    თამაშის დეტალები — ვიდეოები და სქრინშოტები.
@@ -229,7 +230,7 @@ function Videos({ game }: { game: Game }) {
 
       {isLoading && <p className="text-xs text-muted-foreground">{t('common.loading')}</p>}
       {!isLoading && !videos.length && (
-        <p className="text-xs text-muted-foreground">{t('games.videosEmpty')}</p>
+        <EmptyState size="line" kind="video" title={t('games.videosEmpty')} />
       )}
 
       <ul className="space-y-4">

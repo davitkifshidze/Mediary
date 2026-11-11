@@ -304,7 +304,7 @@ export function ActorsPage() {
             <p className="text-sm text-muted-foreground">{t('api.loading')}</p>
           ) : items.length === 0 ? (
             query.isError ? null : (
-              <EmptyState
+              <EmptyState kind={filtered ? 'search' : undefined}
                 icon={<Drama className="size-6" />}
                 title={filtered ? t('actors.emptyFiltered') : t('actors.empty')}
                 hint={filtered ? t('empty.filteredHint') : t('actors.emptyHint')}

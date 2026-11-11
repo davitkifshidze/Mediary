@@ -597,7 +597,7 @@ export function VideosPage() {
           {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !videos.length && (
-            <EmptyState
+            <EmptyState kind={term || activeCount > 0 ? 'search' : 'video'}
               title={term ? t('videos.noResults', { q: term }) : t('videos.empty')}
               hint={term || activeCount > 0 ? t('empty.filteredHint') : t('empty.addHint')}
               actions={
@@ -759,7 +759,7 @@ export function VideosPage() {
                 ))}
               </FilterOptionList>
             ) : (
-              <p className="px-1.5 py-1 text-xs text-muted-foreground">{t('videos.noTags')}</p>
+              <EmptyState size="line" className="px-1.5" title={t('videos.noTags')} />
             )}
           </FilterGroup>
         </FilterPanel>

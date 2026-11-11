@@ -31,6 +31,7 @@ import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    „ჩემი საცავი" — **ერთი ბლოკი** (2026-09-13).
@@ -120,9 +121,12 @@ export function StorageCard() {
               ))}
             </ul>
           ) : (
-            <p className="mt-4 border-t border-border pt-4 text-sm text-muted-foreground">
-              {t('storage.empty')}
-            </p>
+            <EmptyState
+              size="line"
+              kind="file"
+              className="mt-4 border-t border-border pt-4"
+              title={t('storage.empty')}
+            />
           )}
 
           <div className="mt-4 flex items-center justify-end gap-2 border-t border-border pt-4">
@@ -458,7 +462,7 @@ function OrphanFiles() {
       {orphansQ.isLoading ? (
         <div className="h-10 animate-pulse rounded-md bg-muted" />
       ) : !orphans?.total ? (
-        <p className="text-sm text-muted-foreground">{t('storage.orphansEmpty')}</p>
+        <EmptyState size="line" kind="file" title={t('storage.orphansEmpty')} />
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm">

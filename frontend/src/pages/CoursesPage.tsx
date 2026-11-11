@@ -288,7 +288,7 @@ export function CoursesPage() {
           {query.isLoading ? (
             <p className="text-sm text-muted-foreground">{t('api.loading')}</p>
           ) : courses.length === 0 ? (
-            <EmptyState
+            <EmptyState kind={activeCount > 0 || term ? 'search' : undefined}
               icon={<GraduationCap className="size-6" />}
               title={activeCount > 0 || term ? t('courses.emptyFiltered') : t('courses.empty')}
               hint={activeCount > 0 || term ? t('courses.emptyFilteredHint') : t('courses.emptyHint')}

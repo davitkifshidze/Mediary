@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label'
 import { PageContainer } from '@/components/ui/page'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    როლის შიდა გვერდი.
@@ -386,7 +387,7 @@ export function RolePage() {
               </div>
 
               {!shown.length && (
-                <p className="mt-2 text-sm text-muted-foreground">{t('roles.noModulesFound')}</p>
+                <EmptyState size="line" kind="search" className="mt-2" title={t('roles.noModulesFound')} />
               )}
             </div>
 

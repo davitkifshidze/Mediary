@@ -195,7 +195,7 @@ export function RecordNotes({
       {/* ⚠️ „ჩანიშვნა არ მაქვს" და „ძებნამ დამალა" **ორი სხვადასხვა ფაქტია** —
           ერთი ტექსტი მეორეს ვერ იტყოდა და ცარიელი სია ტყუილად წაიკითხებოდა. */}
       {!isLoading && !shown.length && (
-        <EmptyState
+        <EmptyState kind={term ? 'search' : undefined}
           icon={<NotebookPen className="size-6" />}
           title={term ? t('recordNotes.noMatch') : emptyTitle}
           hint={term ? t('recordNotes.noMatchHint') : emptyHint}

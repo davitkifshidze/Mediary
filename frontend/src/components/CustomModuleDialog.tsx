@@ -30,6 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StepSection } from '@/components/ui/step-section'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **ახალი მოდულის ოსტატი.**
@@ -283,7 +284,7 @@ export function CustomModuleDialog({
               }
             >
               {fields.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('customModules.fieldsEmpty')}</p>
+                <EmptyState size="line" title={t('customModules.fieldsEmpty')} />
               ) : (
                 <ul className="space-y-2">
                   {fields.map((row) => (

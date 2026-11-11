@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { InfoHint } from '@/components/ui/info-hint'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **ატვირთვის პირადი გამონაკლისები `/users/{id}`-ზე.**
@@ -75,7 +76,7 @@ export function UploadOverridesSection({ userId, overrides }: { userId: number; 
       </h2>
 
       {kinds.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('uploads.overrides.empty')}</p>
+        <EmptyState size="line" kind="file" title={t('uploads.overrides.empty')} />
       ) : (
         <ul className="space-y-2">
           {kinds.map((kind) => {

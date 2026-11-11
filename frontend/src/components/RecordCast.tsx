@@ -28,6 +28,7 @@ import type { MediaType } from '@/lib/media'
 import { castActions, castOrderPayload, reorderCast, splitCast, type CastAction } from '@/lib/recordCast'
 import { useContentLang } from '@/lib/settings'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    ჩანაწერის მსახიობები — ფილმი, სერიალი, ანიმე.
@@ -260,9 +261,9 @@ export function RecordCast({
       {/* ბადის drag & drop; დამალულები სიაშია, მაგრამ `disabled` და რიგის გარეთ */}
       <Sortable ids={visibleIds} layout="grid" onReorder={reorderVisible}>
       {cast.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('cast.empty')}</p>
+        <EmptyState size="compact" className="col-span-full" title={t('cast.empty')} />
       ) : visible.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('cast.allHidden')}</p>
+        <EmptyState size="compact" className="col-span-full" title={t('cast.allHidden')} />
       ) : (
         <div className={GRID}>{visible.map((c, i) => card(c, i))}</div>
       )}

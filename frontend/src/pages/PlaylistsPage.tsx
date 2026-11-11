@@ -37,6 +37,7 @@ import { ViewToggle } from '@/components/ui/view-toggle'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { useToast } from '@/components/ui/feedback'
 import { MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    პლეილისტები — სიმღერების მოდულის ქვე-გვერდი (2026-09-03).
@@ -103,9 +104,7 @@ export function PlaylistsPage() {
 
       {isLoading && <p className="text-sm text-muted-foreground">{t('api.loading')}</p>}
       {!isLoading && !playlists.length && (
-        <p className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-          {t('playlists.empty')}
-        </p>
+        <EmptyState title={t('playlists.empty')} />
       )}
 
       {/* სამი განლაგება, გადათრევა სამივეში */}

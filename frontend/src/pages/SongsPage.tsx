@@ -333,7 +333,7 @@ export function SongsPage() {
           {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !songs.length && (
-            <EmptyState
+            <EmptyState kind={term || activeCount > 0 ? 'search' : 'list'}
               title={term ? t('songs.noResults', { q: term }) : t('songs.empty')}
               hint={term || activeCount > 0 ? t('empty.filteredHint') : t('empty.addHint')}
               actions={
@@ -515,7 +515,7 @@ export function SongsPage() {
                 ))}
               </FilterOptionList>
             ) : (
-              <p className="px-1.5 py-1 text-xs text-muted-foreground">{t('songs.noTags')}</p>
+              <EmptyState size="line" className="px-1.5" title={t('songs.noTags')} />
             )}
           </FilterGroup>
         </FilterPanel>

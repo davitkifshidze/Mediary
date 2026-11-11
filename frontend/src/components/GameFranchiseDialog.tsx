@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    ფრენჩაიზის მოდალი.
@@ -339,7 +340,7 @@ export function GameFranchiseDialog({
               {candidates && (
                 <div className="mt-2 space-y-1.5">
                   {!candidates.length && !unavailable && !noKey && (
-                    <p className="text-xs text-muted-foreground">{t('games.lookupEmpty')}</p>
+                    <EmptyState size="line" kind="search" title={t('games.lookupEmpty')} />
                   )}
                   {candidates.map((candidate) => (
                     <button

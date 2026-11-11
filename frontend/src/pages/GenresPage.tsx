@@ -24,6 +24,7 @@ import { genreName } from '@/lib/display'
 import { modAccent, moduleName, useModules } from '@/lib/modules'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /** დომენი → ჟანრის რესურსის მთვლელი და მისი წარწერა (⚠️ ანიმეს სვეტი `animes_count`-ია) */
 const DOMAIN_COUNT: Record<MediaType, { field: 'movies_count' | 'series_count' | 'animes_count'; label: string }> = {
@@ -104,9 +105,7 @@ export function GenresPage() {
       {genresQ.isLoading ? (
         <div className="text-muted-foreground">{t('api.loading')}</div>
       ) : genres.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">
-          {t('genres.empty')}
-        </div>
+        <EmptyState title={t('genres.empty')} />
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           {genres.map((g) => {

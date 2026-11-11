@@ -6,6 +6,7 @@ import { useDateFormat } from '@/lib/dates'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Pagination } from '@/components/ui/pagination'
 import { LIST_PAGE_SIZE, usePages } from '@/lib/paged'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **„ვინ რა გახსნა და რამდენჯერ"**.
@@ -62,8 +63,8 @@ export function AuditOpens({ filters, moduleName }: { filters: AuditFilters; mod
             )}
             {!isLoading && rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-6 text-center text-muted-foreground">
-                  {t('audit.opens.empty')}
+                <td colSpan={5} className="p-2">
+                  <EmptyState size="compact" title={t('audit.opens.empty')} />
                 </td>
               </tr>
             )}

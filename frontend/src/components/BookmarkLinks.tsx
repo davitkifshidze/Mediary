@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
-import { ExternalLink, Plus, SquarePen, Trash2, X } from 'lucide-react'
+import { Plus, SquarePen, Trash2, X } from 'lucide-react'
 import { BOOKMARK_LINK_KINDS, setBookmarkLinks, type Bookmark, type BookmarkLink, type BookmarkLinkKind } from '@/api/bookmarks'
 import { emptyLink, isPricedKind, LINK_KIND_LOOK, linkHost, usableFavicon, withPreview } from '@/lib/bookmarkLinks'
 import { useBookmarkRefresh } from '@/lib/bookmarks'
@@ -268,7 +268,7 @@ export function BookmarkLinkCards({
   const confirm = useConfirm()
 
   if (!links.length) {
-    return <EmptyState className="py-6" icon={<ExternalLink className="size-5" />} title={t('bookmarks.linksEmpty')} />
+    return <EmptyState kind="link" className="py-6" title={t('bookmarks.linksEmpty')} />
   }
 
   return (

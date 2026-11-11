@@ -38,6 +38,7 @@ import { PhotoGrid } from '@/components/ui/photo-grid'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    ვიდეოს დეტალური ხედი: ვიდეო · ფოტოები · დოკუმენტები · ჩანიშვნები.
@@ -307,9 +308,12 @@ export function VideoDetail({
             <TabInfo>{t('videos.docsInfo')}</TabInfo>
             <div className="mb-3">{uploadButton('doc')}</div>
             {docs.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-                {t('videos.noDocs')}
-              </p>
+              <EmptyState
+                size="compact"
+                kind="file"
+                className="rounded-lg border border-dashed border-border"
+                title={t('videos.noDocs')}
+              />
             ) : (
               <ul className="space-y-2">
                 {docs.map((a) => (

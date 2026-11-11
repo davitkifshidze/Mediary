@@ -34,6 +34,7 @@ import { LIST_PAGE_SIZE, usePages } from '@/lib/paged'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, type TabItem } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/feedback'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    აუდიტ-ლოგი — `/audit`, `admin:audit` უფლებით.
@@ -328,8 +329,8 @@ export function AuditPage() {
                     )}
                     {!isLoading && rows.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="p-6 text-center text-muted-foreground">
-                          {t('audit.empty')}
+                        <td colSpan={7} className="p-2">
+                          <EmptyState size="compact" title={t('audit.empty')} />
                         </td>
                       </tr>
                     )}
@@ -481,7 +482,7 @@ function DiffModal({ entry, onClose }: { entry: AuditEntry; onClose: () => void 
         </dl>
 
         {keys.length === 0 ? (
-          <p className="text-muted-foreground">{t('audit.noValues')}</p>
+          <EmptyState size="line" title={t('audit.noValues')} />
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-sm">

@@ -17,6 +17,7 @@ import { useContentLang } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
 import { InfoHint } from '@/components/ui/info-hint'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    დამთხვევები ორ საჯარო პროფილს შორის.
@@ -63,7 +64,7 @@ export function MatchPanel({ username }: { username: string }) {
   }
 
   if (summary.isError || !summary.data) {
-    return <p className="py-16 text-center text-sm text-muted-foreground">{t('matches.empty')}</p>
+    return <EmptyState size="compact" className="py-16" title={t('matches.empty')} />
   }
 
   const { domains, total, modules } = summary.data
@@ -78,7 +79,7 @@ export function MatchPanel({ username }: { username: string }) {
   }
 
   if (!domains.length || total.shared === 0) {
-    return <p className="py-16 text-center text-sm text-muted-foreground">{t('matches.empty')}</p>
+    return <EmptyState size="compact" className="py-16" title={t('matches.empty')} />
   }
 
   return (
@@ -156,7 +157,7 @@ function MatchItems({ username, domain }: { username: string; domain: MatchDomai
   }
 
   if (!data?.length) {
-    return <p className="px-4 pb-4 text-xs text-muted-foreground">{t('matches.empty')}</p>
+    return <EmptyState size="line" className="px-4 pb-4" title={t('matches.empty')} />
   }
 
   return (

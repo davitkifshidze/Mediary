@@ -221,7 +221,7 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
       ) : q.isError ? (
         <EmptyState className="py-6" icon={<ListVideo className="size-5" />} title={errorMessage(q.error)} />
       ) : items.length === 0 ? (
-        <EmptyState className="py-6" icon={<ListVideo className="size-5" />} title={t('courses.playlist.empty')} />
+        <EmptyState kind="video" className="py-6" title={t('courses.playlist.empty')} />
       ) : (
         <>
           <PlayerSpot

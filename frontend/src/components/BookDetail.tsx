@@ -337,8 +337,7 @@ function FilesCard({ book }: { book: Book }) {
       {!isLoading && !files.length && (
         /* ⚠️ ბარე ნაცრისფერი `<p>` იყო — ზუსტად ის შემთხვევა, რისთვისაც
            `EmptyState` დაიწერა (რა ცარიელია · რატომ · რა არის შემდეგი). */
-        <EmptyState
-          icon={<Paperclip className="size-6" />}
+        <EmptyState kind="file"
           title={t('books.filesEmpty')}
           hint={t('books.filesHint')}
           actions={

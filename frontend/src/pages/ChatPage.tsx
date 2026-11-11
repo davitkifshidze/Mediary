@@ -54,6 +54,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    ჩატი — `/chat` და `/chat/:id`.
@@ -117,9 +118,11 @@ export function ChatPage() {
           {list.isLoading && <div className="h-24 animate-pulse rounded-xl bg-muted" />}
 
           {list.data && list.data.data.length === 0 && (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              {t('chat.empty')}
-            </p>
+            <EmptyState
+              size="compact"
+              className="rounded-xl border border-dashed border-border"
+              title={t('chat.empty')}
+            />
           )}
 
           <ul className="space-y-1.5">
@@ -535,7 +538,7 @@ function Thread({ id }: { id: number }) {
         )}
 
         {messages.length === 0 && (
-          <p className="py-8 text-center text-sm text-muted-foreground">{t('chat.noMessages')}</p>
+          <EmptyState size="compact" title={t('chat.noMessages')} />
         )}
 
         {messages.map((m) => (
@@ -809,7 +812,7 @@ function SearchPanel({
         </div>
 
         {hits.isFetching && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
-        {hits.data?.length === 0 && <p className="text-sm text-muted-foreground">{t('chat.searchEmpty')}</p>}
+        {hits.data?.length === 0 && <EmptyState size="compact" kind="search" title={t('chat.searchEmpty')} />}
 
         <ul className="space-y-1.5">
           {hits.data?.map((hit) => (
@@ -865,7 +868,7 @@ function PinsPanel({
     <ModalShell title={t('chat.pins')} onClose={onClose}>
       <div className="mt-4 space-y-2">
         {pins.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
-        {pins.data?.length === 0 && <p className="text-sm text-muted-foreground">{t('chat.pinsEmpty')}</p>}
+        {pins.data?.length === 0 && <EmptyState size="compact" title={t('chat.pinsEmpty')} />}
 
         {pins.data?.map((m) => (
           <div key={m.id} className="flex items-start gap-2 rounded-md border border-border px-3 py-2">

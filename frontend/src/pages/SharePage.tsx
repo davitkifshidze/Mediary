@@ -347,7 +347,7 @@ export function SharePage() {
                 <Loader2 className="size-5 animate-spin text-muted-foreground" />
               </div>
             ) : items.length === 0 ? (
-              <EmptyState
+              <EmptyState kind={term || genre !== ALL_GENRES ? 'search' : 'list'}
                 className="my-10"
                 title={t(term || genre !== ALL_GENRES ? 'share.page.noMatch' : 'share.page.emptySection')}
                 actions={

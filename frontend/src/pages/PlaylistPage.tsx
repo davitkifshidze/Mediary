@@ -26,6 +26,7 @@ import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { useToast } from '@/components/ui/feedback'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { InfoHint } from '@/components/ui/info-hint'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    ერთი პლეილისტი — სიმღერების რიგი.
@@ -197,9 +198,7 @@ export function PlaylistPage() {
       )}
 
       {!songs.length && (
-        <p className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-          {t('playlists.noSongs')}
-        </p>
+        <EmptyState title={t('playlists.noSongs')} />
       )}
 
       <ol className="space-y-2">

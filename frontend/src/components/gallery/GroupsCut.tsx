@@ -710,8 +710,7 @@ export function GroupsCut({
           /* სერვერის ვარდნა ≠ „ფოტო ჯერ არ არის" */
           <QueryErrorState error={groupsQ.error} onRetry={() => void groupsQ.refetch()} retrying={groupsQ.isFetching} />
         ) : !groups.length ? (
-          <EmptyState
-            icon={<Images className="size-6" />}
+          <EmptyState kind={q ? 'search' : 'photo'}
             title={have === 'without' ? t('gallery.allHavePhotos') : t('gallery.noPhotosYet')}
             hint={q ? t('gallery.emptyFiltered') : t('gallery.emptyHint')}
           />

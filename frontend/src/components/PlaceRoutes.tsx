@@ -491,7 +491,7 @@ export function PlaceRoutes({ place }: { place: Place }) {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs text-muted-foreground">{t('places.route.noCandidates')}</p>
+                    <EmptyState size="line" kind="search" title={t('places.route.noCandidates')} />
                   ))}
               </div>
             )}
@@ -519,7 +519,7 @@ export function PlaceRoutes({ place }: { place: Place }) {
                   </SelectContent>
                 </Select>
               ) : (
-                <p className="text-xs text-muted-foreground">{t('places.route.noOtherPlaces')}</p>
+                <EmptyState size="line" title={t('places.route.noOtherPlaces')} />
               ))}
 
             {mode === 'pin' && <p className="text-xs text-muted-foreground">{t('places.route.pinHint')}</p>}
@@ -722,7 +722,7 @@ export function PlaceRoutes({ place }: { place: Place }) {
             })}
           </ul>
         ) : (
-          <p className="text-xs text-muted-foreground">{t('places.route.savedEmpty')}</p>
+          <EmptyState size="line" title={t('places.route.savedEmpty')} />
         )}
       </div>
     </DetailSection>

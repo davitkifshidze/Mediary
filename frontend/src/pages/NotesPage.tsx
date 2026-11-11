@@ -305,7 +305,7 @@ export function NotesPage() {
           {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !notes.length && (
-            <EmptyState
+            <EmptyState kind={term || activeCount > 0 ? 'search' : 'list'}
               title={term ? t('notes.noResults', { q: term }) : t('notes.empty')}
               hint={term || activeCount > 0 ? t('empty.filteredHint') : t('empty.addHint')}
               actions={
@@ -488,7 +488,7 @@ export function NotesPage() {
                 ))}
               </FilterOptionList>
             ) : (
-              <p className="px-1.5 py-1 text-xs text-muted-foreground">{t('notes.noTags')}</p>
+              <EmptyState size="line" className="px-1.5" title={t('notes.noTags')} />
             )}
           </FilterGroup>
         </FilterPanel>

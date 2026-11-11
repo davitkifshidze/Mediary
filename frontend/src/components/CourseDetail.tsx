@@ -138,7 +138,7 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
         }
       >
         {rows.length === 0 ? (
-          <EmptyState className="py-6" icon={<Icon className="size-5" />} title={t('courses.noFiles')} />
+          <EmptyState kind="file" className="py-6" title={t('courses.noFiles')} />
         ) : (
           <ul className="space-y-1">
             {rows.map((f: CourseFile) => (

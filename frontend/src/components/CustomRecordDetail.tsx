@@ -43,6 +43,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { cn, formatBytes } from '@/lib/utils'
 import { StatusBadge } from '@/components/StatusBadge'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **პირადი მოდულის ჩანაწერის ფანჯარა.**
@@ -395,7 +396,7 @@ function Docs({ module, record }: { module: ModuleInfo; record: CustomRecord }) 
       />
 
       {!query.isLoading && !files.length && (
-        <p className="text-xs text-muted-foreground">{t('customModules.docsEmpty')}</p>
+        <EmptyState size="line" kind="file" title={t('customModules.docsEmpty')} />
       )}
 
       <ul className="space-y-1.5">

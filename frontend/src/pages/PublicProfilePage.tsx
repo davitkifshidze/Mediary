@@ -33,6 +33,7 @@ import { useLibraryImport } from '@/components/share/useLibraryImport'
 import { InfoHint } from '@/components/ui/info-hint'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    საჯარო პროფილი `/u/{username}`.
@@ -252,9 +253,7 @@ export function PublicProfilePage() {
             <MatchPanel username={profile.profile.username} />
           </div>
         ) : profile.domains.length === 0 ? (
-          <p className="py-16 text-center text-sm text-muted-foreground">
-            {t('publicProfile.nothingShared')}
-          </p>
+          <EmptyState size="compact" className="py-16" title={t('publicProfile.nothingShared')} />
         ) : (
           <>
             {/* ---------- დომენების ტაბები რაოდენობებით ---------- */}
@@ -314,9 +313,7 @@ export function PublicProfilePage() {
                 <Loader2 className="size-5 animate-spin text-muted-foreground" />
               </div>
             ) : items.length === 0 ? (
-              <p className="py-16 text-center text-sm text-muted-foreground">
-                {t('publicProfile.emptyDomain')}
-              </p>
+              <EmptyState size="compact" className="py-16" title={t('publicProfile.emptyDomain')} />
             ) : (
               <div className="grid grid-cols-2 gap-4 pb-10 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
                 {items.map((card) =>

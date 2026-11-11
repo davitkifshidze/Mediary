@@ -6,6 +6,7 @@ import { chipLabel, eachDay, formatMoney, hoursLabel, parseDay, shiftDay, shiftR
 import { cn } from '@/lib/utils'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **მორიგეობის კალენდარი — პერიოდის ბადე.**
@@ -301,7 +302,11 @@ export function DutyCalendar({
               </li>
             )
           })}
-        {!shifts.length && <li className="px-3 py-8 text-center text-sm text-muted-foreground">{t('duty.calendar.emptyPeriod')}</li>}
+        {!shifts.length && (
+          <li>
+            <EmptyState size="compact" title={t('duty.calendar.emptyPeriod')} />
+          </li>
+        )}
       </ul>
     </div>
   )

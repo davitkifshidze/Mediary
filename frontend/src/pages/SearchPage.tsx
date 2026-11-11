@@ -179,16 +179,14 @@ export function SearchPage() {
       )}
 
       {q.length < 2 && (
-        <EmptyState
-          icon={<Search className="size-6" />}
+        <EmptyState kind="search"
           title={t('search.title')}
           hint={t('search.hint')}
         />
       )}
 
       {q.length >= 2 && !loading && groups.length === 0 && (
-        <EmptyState
-          icon={<Search className="size-6" />}
+        <EmptyState kind="search"
           title={t('search.empty', { query: q })}
           hint={t('search.emptyHint')}
         />

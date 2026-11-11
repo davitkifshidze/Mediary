@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Boxes, Check, HardDrive, HardDriveUpload, Inbox, Tags, X, Eye } from 'lucide-react'
+import { Boxes, Check, HardDrive, HardDriveUpload, Tags, X, Eye } from 'lucide-react'
 import {
   approveRequest,
   cancelRequest,
@@ -20,7 +20,7 @@ import { errorMessage } from '@/lib/errors'
 import { grantedQuota, requestLabel, requestedQuota } from '@/lib/display'
 import { formatList, kbLabel } from '@/lib/uploadLimits'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
@@ -288,7 +288,6 @@ export function RequestsPage() {
               ]}
               empty={
                 <EmptyState
-                  icon={<Inbox className="size-6" />}
                   title={t('admin.noRequests')}
                   hint={t('requests.emptyHint')}
                 />
@@ -305,12 +304,16 @@ export function RequestsPage() {
         </h2>
 
         {!mine.length ? (
-          <p className="text-sm text-muted-foreground">
-            {t('admin.noOwnRequests')}{' '}
-            <Link to="/modules" className="text-primary hover:text-primary/70">
-              {t('modules.title')}
-            </Link>
-          </p>
+          <EmptyState
+            size="line"
+            title={t('admin.noOwnRequests')}
+            actions={
+              <Link to="/modules" className={buttonVariants({ variant: 'outline', size: 'xs' })}>
+                <Boxes className="size-3.5" />
+                {t('modules.title')}
+              </Link>
+            }
+          />
         ) : (
           <ul className="space-y-2 text-sm">
             {mine.map((r) => (

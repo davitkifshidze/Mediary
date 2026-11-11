@@ -36,6 +36,7 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { MovieMultiSelect } from '@/components/MovieMultiSelect'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { useContentLang } from '@/lib/settings'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    ჟანრზე მიბმული ჩანაწერების მართვა — ჟანრი გაზიარებულია
@@ -246,9 +247,11 @@ export function GenreItemsManager({
           (itemsQ.isLoading ? (
             <div className="py-6 text-center text-sm text-muted-foreground">{t('genres.itemsLoading')}</div>
           ) : items.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
-              {t('genres.itemsEmpty')}
-            </div>
+            <EmptyState
+              size="compact"
+              className="rounded-lg border border-dashed border-border"
+              title={t('genres.itemsEmpty')}
+            />
           ) : (
             <>
               <div data-testid="genre-records">

@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Image as ImageIcon, Upload } from 'lucide-react'
+import { Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -162,7 +162,7 @@ export function DetailPhotos({
 
       <PhotoShowcase
         items={items}
-        empty={loading ? null : <EmptyState icon={<ImageIcon className="size-6" />} title={emptyTitle} />}
+        empty={loading ? null : <EmptyState kind="photo" title={emptyTitle} />}
         onDelete={async (id) => {
           if (await confirm({ title: deleteTitle, variant: 'destructive' })) onDelete(id)
         }}

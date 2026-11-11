@@ -199,8 +199,7 @@ export function CastMemberDialog({
           {!searched ? (
             <p className="text-sm text-muted-foreground">{t('cast.notSearchedYet')}</p>
           ) : items.length === 0 ? (
-            <EmptyState
-              icon={<UserRound className="size-6" />}
+            <EmptyState kind="search"
               title={t('cast.noResults')}
               hint={t('cast.noResultsHint')}
               actions={

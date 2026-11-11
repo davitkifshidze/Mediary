@@ -31,6 +31,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { formatBytes } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    ბორდგეიმის დეტალები — წესები, გალერეა და ჩანიშვნები.
@@ -257,7 +258,7 @@ function Files({ game }: { game: BoardGame }) {
       />
 
       {!query.isLoading && !files.length && (
-        <p className="text-xs text-muted-foreground">{t('boardGames.rulesEmpty')}</p>
+        <EmptyState size="line" kind="file" title={t('boardGames.rulesEmpty')} />
       )}
 
       <ul className="space-y-1.5">

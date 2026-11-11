@@ -11,7 +11,6 @@ import {
   CheckSquare,
   Download,
   Film,
-  ImageOff,
   Lock,
   MoreHorizontal,
   MoveRight,
@@ -597,7 +596,9 @@ export function PhotoGrid({
            გამომძახებელს ეკუთვნის — „დაამატე" და „ფილტრის მოხსნა" სხვადასხვა
            ადგილას სხვადასხვაა. */
         <EmptyState
-          icon={emptyIcon ?? <ImageOff className="size-6" />}
+          // საკუთარი აიქონის გარეშე — ფოტოს ნახატი: ცარიელი ჩარჩო, რომელშიც მზე ამოდის
+          kind={emptyIcon ? undefined : 'photo'}
+          icon={emptyIcon}
           title={emptyText ?? t('photos.empty')}
           hint={emptyHint}
           actions={emptyActions}

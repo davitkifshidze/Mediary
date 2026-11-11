@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { SelectMark } from '@/components/ui/select-mark'
 import { InfoHint } from '@/components/ui/info-hint'
 import { useToast } from '@/components/ui/feedback'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    სეზონები და ეპიზოდები.
@@ -102,7 +103,7 @@ export function EpisodeTracker({ type, id }: { type: TvType; id: number }) {
       </div>
 
       {empty ? (
-        <p className="text-sm text-muted-foreground">{t('episodes.empty')}</p>
+        <EmptyState size="compact" kind="video" title={t('episodes.empty')} />
       ) : (
         <>
           <div className="mb-4">

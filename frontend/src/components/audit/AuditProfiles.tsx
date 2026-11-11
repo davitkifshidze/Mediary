@@ -6,6 +6,7 @@ import { useDateFormat } from '@/lib/dates'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Pagination } from '@/components/ui/pagination'
 import { LIST_PAGE_SIZE, usePages } from '@/lib/paged'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **„ვინ შევიდა ვის პროფილში და რა გადმოიტანა"** — მხოლოდ სუპერადმინი.
@@ -58,8 +59,8 @@ export function AuditProfiles({ filters }: { filters: AuditFilters }) {
             )}
             {!list.isLoading && rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-6 text-center text-muted-foreground">
-                  {t('audit.profiles.empty')}
+                <td colSpan={5} className="p-2">
+                  <EmptyState size="compact" title={t('audit.profiles.empty')} />
                 </td>
               </tr>
             )}
@@ -104,7 +105,7 @@ function ImportsDetail({ row, name, onClose }: { row: AuditProfileRow; name: str
     <ModalShell title={t('audit.profiles.detailTitle', { name, owner: row.owner })} onClose={onClose}>
       <div className="mt-4">
         {row.user_id == null || (!isLoading && entries.length === 0) ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">{t('audit.profiles.noImports')}</p>
+          <EmptyState size="compact" title={t('audit.profiles.noImports')} />
         ) : isLoading ? (
           <p className="py-6 text-center text-sm text-muted-foreground">{t('common.loading')}</p>
         ) : (

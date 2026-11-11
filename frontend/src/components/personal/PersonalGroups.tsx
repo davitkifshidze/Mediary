@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Inbox } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import {
   fetchPersonalGroups,
   PERSONAL_KEY,
@@ -73,7 +73,7 @@ export function PersonalGroups({
 
   const groups = groupsQ.data ?? []
   if (!groups.length) {
-    return <EmptyState icon={<Inbox className="size-6" />} title={t('personal.media.empty')} hint={t('personal.media.emptyHint')} />
+    return <EmptyState kind="photo" title={t('personal.media.empty')} hint={t('personal.media.emptyHint')} />
   }
 
   return (

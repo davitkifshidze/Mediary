@@ -4,6 +4,7 @@ import { Search } from 'lucide-react'
 import { ICON_GROUPS, ICON_NAMES, ModuleIcon, iconId } from '@/components/ModuleIcon'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **ხატულის ამრჩევი — ერთი კომპონენტი შვიდივე ლექსიკონისთვის.**
@@ -125,9 +126,11 @@ export function IconPicker({
 
       {q ? (
         results.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            {allIds ? t('icons.noResults') : t('common.loading')}
-          </p>
+          allIds ? (
+            <EmptyState size="line" kind="search" title={t('icons.noResults')} />
+          ) : (
+            <p className="text-xs text-muted-foreground">{t('common.loading')}</p>
+          )
         ) : (
           <div className="fb-scroll max-h-56 overflow-y-auto pr-1">
             <div className="flex flex-wrap gap-1.5">{results.map(cell)}</div>

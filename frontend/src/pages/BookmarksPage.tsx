@@ -417,7 +417,7 @@ export function BookmarksPage() {
           {/* ⚠️ ცარიელი სექცია **თავს ხსნის**: ადრე ერთი ნაცრისფერი
               წინადადება ეწერა და არ ჩანდა, ფილტრმა ჩამოჭრა თუ მართლა ცარიელია. */}
           {!query.isLoading && !bookmarks.length && (
-            <EmptyState
+            <EmptyState kind={term || activeCount > 0 ? 'search' : 'link'}
               title={term ? t('bookmarks.noResults', { q: term }) : t('bookmarks.empty')}
               hint={term || activeCount > 0 ? t('empty.filteredHint') : t('empty.addHint')}
               actions={

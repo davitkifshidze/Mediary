@@ -86,7 +86,6 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import {
   QuickFill,
   QuickFillCandidate,
-  QuickFillMessage,
   QuickFillResults,
   QuickFillSearch,
 } from '@/components/ui/quick-fill'
@@ -311,7 +310,7 @@ export function PlacesPage() {
           {query.isLoading ? (
             <p className="text-sm text-muted-foreground">{t('api.loading')}</p>
           ) : places.length === 0 ? (
-            <EmptyState
+            <EmptyState kind={activeCount > 0 || term ? 'search' : undefined}
               icon={<MapPin className="size-6" />}
               title={activeCount > 0 || term ? t('places.emptyFiltered') : t('places.empty')}
               hint={activeCount > 0 || term ? t('places.emptyFilteredHint') : t('places.emptyHint')}
@@ -907,7 +906,7 @@ function PlaceForm({
             buttonLabel={t('places.lookupAction')}
           />
 
-          {results != null && results.length === 0 && <QuickFillMessage>{t('places.lookupEmpty')}</QuickFillMessage>}
+          {results != null && results.length === 0 && <EmptyState size="line" kind="search" className="mt-2" title={t('places.lookupEmpty')} />}
 
           {results != null && results.length > 0 && (
             <QuickFillResults label={resultsFrom ? t('places.resultsFrom', { source: t(`places.sources.${resultsFrom}`) }) : undefined}>

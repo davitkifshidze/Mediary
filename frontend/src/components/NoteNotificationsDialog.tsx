@@ -6,6 +6,7 @@ import { useDateFormat } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    შეხსენებების ჟურნალი.
@@ -50,7 +51,7 @@ export function NoteNotificationsDialog({ onClose }: { onClose: () => void }) {
         {isLoading && <p className="text-sm text-muted-foreground">{t('api.loading')}</p>}
 
         {!isLoading && rows.length === 0 && (
-          <p className="text-sm text-muted-foreground">{t('notes.logEmpty')}</p>
+          <EmptyState size="compact" kind="bell" title={t('notes.logEmpty')} />
         )}
 
         {rows.map((row) => (

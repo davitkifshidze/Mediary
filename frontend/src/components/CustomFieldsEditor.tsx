@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/components/ui/feedback'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    მორგებული ველების რედაქტორი.
@@ -140,7 +141,7 @@ export function CustomFieldsEditor({
       </div>
 
       {draft.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('customFields.empty')}</p>
+        <EmptyState size="compact" title={t('customFields.empty')} />
       ) : (
         <ul className="space-y-3">
           {/* ⚠️ ინპუტებიანი ბარათი — აღება და კლავიატურა მხოლოდ სახელურზეა (`handle`), თორემ ტექსტის მონიშვნა გადათრევად წაიკითხებოდა */}

@@ -1316,3 +1316,73 @@
   pointer-events: none;
   color: var(--muted-foreground);
 }
+
+/* ============================================================
+   ცარიელი მდგომარეობის ილუსტრაცია (`ui/empty-art.tsx`)
+
+   ⚠️ **ფერი თემისაა**: კონტური — `currentColor` (მინავლებული ტექსტი),
+   აქცენტი — მოდულის ფერი (`--mod`), მის გარეშე ოქროსფერი; „ქაღალდი" —
+   ბარათის ფონი. ცალკე პალიტრა არ იბადება და მუქ თემაში არაფერი იწერება.
+   ⚠️ **კონტურის სისქე ეკრანის პიქსელებშია** (`vector-effect`): ნახატი
+   120-დან 36 პიქსელამდე მცირდება და ხაზი არ ქრება.
+   ⚠️ **მოძრაობა `prefers-reduced-motion`-ის ქვეშაა** — მის გარეთ ნახატი
+   დასრულებულ, უძრავ მდგომარეობაშია.
+   ============================================================ */
+.fb-empty-art {
+  --empty-accent: var(--mod, var(--gold));
+  --ea-w: 2.25px;
+  color: var(--muted-foreground);
+}
+.fb-empty-art svg { display: block; width: 100%; height: auto; overflow: visible; }
+.fb-empty-art svg * { vector-effect: non-scaling-stroke; }
+[data-empty-state='compact'] .fb-empty-art { --ea-w: 1.75px; }
+[data-empty-state='line'] .fb-empty-art { --ea-w: 1.25px; }
+
+.ea-s  { stroke: currentColor; stroke-width: var(--ea-w); stroke-linecap: round; stroke-linejoin: round; }
+.ea-as { stroke: var(--empty-accent); stroke-width: var(--ea-w); stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.ea-a  { fill: var(--empty-accent); }
+.ea-paper { fill: var(--card); }
+.ea-soft  { fill: var(--muted); }
+.ea-dot   { fill: currentColor; }
+.ea-faint { opacity: 0.45; }
+.ea-row   { stroke: currentColor; stroke-width: calc(var(--ea-w) * 2); stroke-linecap: round; opacity: 0.28; }
+.ea-handle { stroke-width: calc(var(--ea-w) * 1.5); }
+.ea-glint { opacity: 0.3; }
+.ea-ring  { opacity: 0; }
+.ea-wave  { opacity: 0.7; }
+.ea-mote  { opacity: 0.7; }
+.ea-halo  { opacity: 0.9; }
+
+@keyframes ea-sun   { 0%, 100% { transform: translateY(20px); } 40%, 75% { transform: none; } }
+@keyframes ea-pulse { 0%, 100% { transform: none; } 50% { transform: scale(1.12); } }
+@keyframes ea-ring  { from { transform: scale(0.85); opacity: 0.7; } to { transform: scale(1.7); opacity: 0; } }
+@keyframes ea-scrub { from { transform: none; } to { transform: translateX(64px); } }
+@keyframes ea-rock  { 0%, 100% { transform: none; } 50% { transform: rotate(-9deg); } }
+@keyframes ea-mote  { 0% { transform: translateY(5px); opacity: 0; } 40% { opacity: 0.9; } 100% { transform: translateY(-12px); opacity: 0; } }
+@keyframes ea-seek  { 0%, 100% { transform: none; } 25% { transform: translate(16px, -8px); } 50% { transform: translate(22px, 8px); } 75% { transform: translate(-6px, 12px); } }
+@keyframes ea-pull-l { 0%, 100% { transform: none; } 50% { transform: translateX(-5px); } }
+@keyframes ea-pull-r { 0%, 100% { transform: none; } 50% { transform: translateX(5px); } }
+@keyframes ea-float { 0%, 100% { transform: none; } 50% { transform: translateY(-4px); } }
+@keyframes ea-write { 0% { stroke-dashoffset: 60; } 30%, 85% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 60; } }
+@keyframes ea-swing { 0%, 55%, 100% { transform: none; } 8% { transform: rotate(13deg); } 18% { transform: rotate(-11deg); } 28% { transform: rotate(7deg); } 38% { transform: rotate(-4deg); } 46% { transform: rotate(2deg); } }
+@keyframes ea-wave  { 0%, 4% { opacity: 0; } 14% { opacity: 0.9; } 46%, 100% { opacity: 0; } }
+@keyframes ea-halo  { 0%, 100% { transform: none; opacity: 0.9; } 50% { transform: scale(1.14); opacity: 0.55; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ea-sun   { animation: ea-sun 5.5s ease-in-out infinite; }
+  .ea-pulse { transform-box: fill-box; transform-origin: center; animation: ea-pulse 1.8s ease-in-out infinite; }
+  .ea-ring  { transform-box: fill-box; transform-origin: center; animation: ea-ring 1.8s ease-out infinite; }
+  .ea-scrub { animation: ea-scrub 7s linear infinite; }
+  .ea-rock  { transform-box: fill-box; transform-origin: bottom left; animation: ea-rock 3.4s ease-in-out infinite; }
+  .ea-mote  { animation: ea-mote 4s ease-in-out infinite; }
+  .ea-seek  { animation: ea-seek 5s ease-in-out infinite; }
+  .ea-pull-l { animation: ea-pull-l 2.8s ease-in-out infinite; }
+  .ea-pull-r { animation: ea-pull-r 2.8s ease-in-out infinite; }
+  .ea-float { animation: ea-float 3.6s ease-in-out infinite; }
+  .ea-write { stroke-dasharray: 60; animation: ea-write 4.2s ease-in-out infinite; }
+  .ea-swing { transform-box: fill-box; transform-origin: top center; animation: ea-swing 3.6s ease-in-out infinite; }
+  .ea-wave  { animation: ea-wave 3.6s ease-out infinite; }
+  .ea-halo  { animation: ea-halo 3.6s ease-in-out infinite; }
+  .ea-d1 { animation-delay: 0.5s; }
+  .ea-d2 { animation-delay: 1s; }
+}

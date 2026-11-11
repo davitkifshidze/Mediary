@@ -10,6 +10,7 @@ import { LAYER_POPUP } from '@/lib/layers'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { ModuleIcon } from '@/components/ModuleIcon'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    ჯვარედინი ძებნა — ჰედერის ველი და მისი ჩამოსაშლელი სია.
@@ -170,9 +171,12 @@ export function GlobalSearch() {
           )}
 
           {!query.isFetching && total === 0 && (
-            <div className="px-2.5 py-3 text-sm text-muted-foreground">
-              {t('search.empty', { query: debounced })}
-            </div>
+            <EmptyState
+              size="line"
+              kind="search"
+              className="px-2.5 py-3"
+              title={t('search.empty', { query: debounced })}
+            />
           )}
 
           {groups.map((group) => (

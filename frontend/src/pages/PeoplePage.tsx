@@ -15,6 +15,7 @@ import { PageContainer } from '@/components/ui/page'
 import { Pagination } from '@/components/ui/pagination'
 import { LIST_PAGE_SIZE, useClientPages } from '@/lib/paged'
 import { PageHeader } from '@/components/ui/page-header'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    „ვისთან ჰგავს ჩემი გემოვნება" — საჯარო პროფილების
@@ -89,9 +90,7 @@ export function PeoplePage() {
       )}
 
       {data && data.items.length === 0 && (
-        <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          {term ? t('people.noResults') : t('people.empty')}
-        </p>
+        <EmptyState kind={term ? 'search' : 'list'} title={term ? t('people.noResults') : t('people.empty')} />
       )}
 
       <ul className="space-y-2">

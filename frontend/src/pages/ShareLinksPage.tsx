@@ -96,8 +96,7 @@ export function ShareLinksPage() {
         {isLoading ? (
           <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
         ) : links.length === 0 ? (
-          <EmptyState
-            icon={<Link2 className="size-6" />}
+          <EmptyState kind="link"
             title={t('share.empty')}
             hint={t('share.emptyHint')}
             actions={

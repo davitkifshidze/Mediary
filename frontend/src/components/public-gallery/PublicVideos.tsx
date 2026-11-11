@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ExternalLink, Loader2, Play, Video } from 'lucide-react'
+import { ExternalLink, Loader2, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { fetchPublicGalleryVideos, type PublicGalleryVideo } from '@/api/publicProfile'
 import type { VideoPlatform } from '@/api/videos'
@@ -54,7 +54,7 @@ export function PublicVideos({ username }: { username: string }) {
   }
 
   if (!videos.length) {
-    return <EmptyState icon={<Video className="size-6" />} title={t('publicProfile.gallery.emptyVideos')} />
+    return <EmptyState kind="video" title={t('publicProfile.gallery.emptyVideos')} />
   }
 
   const ownerOf = (video: PublicGalleryVideo) =>

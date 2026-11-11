@@ -141,7 +141,7 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
         }
       >
         {rows.length === 0 ? (
-          <EmptyState className="py-6" icon={<Icon className="size-5" />} title={t('places.noFiles')} />
+          <EmptyState kind="file" className="py-6" title={t('places.noFiles')} />
         ) : (
           <ul className="space-y-1">
             {rows.map((f: PlaceFile) => (

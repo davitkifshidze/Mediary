@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import { Images } from 'lucide-react'
 import type { PublicGalleryGroup } from '@/api/publicProfile'
 import type { StackPreview } from '@/components/ui/photo-stack'
 import { useContentLang } from '@/lib/settings'
@@ -64,7 +63,7 @@ export function PublicGroupGrid({
   }
 
   if (!groups.length) {
-    return <EmptyState icon={<Images className="size-6" />} title={emptyText} />
+    return <EmptyState kind="photo" title={emptyText} />
   }
 
   return (

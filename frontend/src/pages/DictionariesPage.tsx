@@ -88,9 +88,11 @@ export function DictionariesPage() {
     return (
       <PageContainer>
         <PageHeader tool="dictionaries" title={t('dictionaries.title')} />
-        <p className="text-sm text-muted-foreground">
-          {loading ? t('common.loading') : t('dictionaries.noModules')}
-        </p>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+        ) : (
+          <EmptyState title={t('dictionaries.noModules')} />
+        )}
       </PageContainer>
     )
   }
@@ -265,7 +267,7 @@ function DictionaryCard({
           )}
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">{t('dictionaries.empty')}</p>
+        <EmptyState size="line" title={t('dictionaries.empty')} />
       )}
 
       <p className="mt-auto text-xs text-muted-foreground">

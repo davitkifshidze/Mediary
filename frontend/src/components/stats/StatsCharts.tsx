@@ -16,6 +16,7 @@ import {
 import { storageUrl } from '@/lib/api'
 import { seriesColor } from '@/lib/chartColors'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   BAR_RADIUS_X,
   BAR_RADIUS_Y,
@@ -276,7 +277,7 @@ export interface ActorRow {
 export function ActorGrid({ actors }: { actors: ActorRow[] }) {
   const { t } = useTranslation()
 
-  if (!actors.length) return <p className="text-sm text-muted-foreground">{t('stats.noActors')}</p>
+  if (!actors.length) return <EmptyState size="line" title={t('stats.noActors')} />
 
   return (
     <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">

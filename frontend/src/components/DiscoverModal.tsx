@@ -21,6 +21,7 @@ import { genreName, tmdbSubtitle, tmdbTitle } from '@/lib/display'
 import { errorMessage, isApiCode } from '@/lib/errors'
 import { useContentLang, useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export function DiscoverModal({
   open,
@@ -253,7 +254,7 @@ export function DiscoverModal({
           // წყარო არ პასუხობს (`tmdb_error`…) — ესეც „ვერაფერი მოიძებნა" არ არის
           <div className="py-12 text-center text-destructive">{errorMessage(q.error)}</div>
         ) : !q.data?.results.length ? (
-          <div className="py-12 text-center text-muted-foreground">{t('discover.empty')}</div>
+          <EmptyState size="compact" kind="search" className="py-12" title={t('discover.empty')} />
         ) : (
           <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5">
             {q.data.results.map((r) => {

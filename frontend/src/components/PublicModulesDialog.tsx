@@ -8,6 +8,7 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/components/ui/feedback'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /* ============================================================
    **ფენა 2 — რომელი მოდული ჩანს საჯარო პროფილზე.**
@@ -67,7 +68,7 @@ export function PublicModulesDialog({
         )}
 
         {shareable.length === 0 ? (
-          <p className="py-3 text-xs text-muted-foreground">{t('publicProfile.noShareable')}</p>
+          <EmptyState size="line" className="py-3" title={t('publicProfile.noShareable')} />
         ) : (
           <ul>
             {shareable.map((m) => (
