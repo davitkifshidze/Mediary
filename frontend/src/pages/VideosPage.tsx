@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { SelectWithAdd, type AddDialog } from '@/components/ui/inline-add'
+import { CourseForm } from '@/components/CourseForm'
+import { useDictionaryAdd, useStatusAdd } from '@/lib/dictionaries'
 import { StatusLabel } from '@/components/StatusBadge'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
 import { useDrillParams } from '@/lib/statsLinks'
@@ -76,7 +79,6 @@ import { RecordActionBar } from '@/components/RecordActionBar'
 import { DictionaryStatusMenu } from '@/components/StatusMenu'
 import { useDateFormat } from '@/lib/dates'
 import { VideoDetail } from '@/components/VideoDetail'
-import { VideoTypeDialog } from '@/components/VideoTypeDialog'
 import {
   FilterGroup,
   FilterOption,
@@ -907,8 +909,24 @@ function VideoForm({
     enabled: has('course'),
   })
   const courses = coursesQ.data ?? []
-  // შენახული კურსი ურნაში შეიძლება იყოს — მაშინ სიაში არ ჩანს, ველი კი მაინც უნდა ჩანდეს
-  const hasCourses = courses.length > 0 || !!video?.course_id
+  /* ველი ჩანს, როცა კურსების მოდული ჩართულია — ცარიელი სიითაც: პირველი კურსი
+     აქვე ემატება („+"). შენახული კურსი ურნაში შეიძლება იყოს — მაშინ სიაში არ
+     ჩანს, ველი კი მაინც უნდა ჩანდეს. */
+  const hasCourses = has('course') || !!video?.course_id
+  // „+" — კურსის იგივე ფორმა, რაც კურსების გვერდზე; შენახული კურსი მაშინვე არჩეულია
+  const addCourse: AddDialog | undefined = has('course')
+    ? (close, pick) => (
+        <CourseForm
+          course={null}
+          onClose={close}
+          onSaved={(saved) => {
+            qc.invalidateQueries({ queryKey: ['courses'] })
+            pick(String(saved.id))
+            close()
+          }}
+        />
+      )
+    : undefined
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(storageUrl(video?.thumbnail))
   /* ბმულიდან მოსული ფოტო **პირდაპირ ჩარჩოშია** (URL-ით); შენახვისას
@@ -922,7 +940,8 @@ function VideoForm({
   const [probing, setProbing] = useState(false)
   // SerpApi-ით დეტალების წამოღება (YouTube-ის გასაღების გარეშე)
   const [webLoading, setWebLoading] = useState(false)
-  const [newType, setNewType] = useState(false)
+  const addType = useDictionaryAdd('video-types')
+  const addStatus = useStatusAdd('video')
   const lastFetched = useRef<string>(video?.url ?? '')
   const qc = useQueryClient()
   // დამატებითი ველები ახალ ვიდეოზე; ჩავარდნისას შექმნილი რჩება
@@ -1226,65 +1245,57 @@ function VideoForm({
         <FormSection title={t('form.sections.classification')}>
           {/* ტიპი — მართვადი ლექსიკონიდან, გვერდით „ახალი ტიპი" */}
           <FormField size="half" {...fields.field('type_id')} htmlFor="v-type" error={errors.type_id}>
-            <div className="flex gap-1">
-              <Select value={form.typeId} onValueChange={(v) => setForm((f) => ({ ...f, typeId: v }))}>
-                <SelectTrigger id="v-type" className={errors.type_id ? 'border-destructive' : undefined}>
-                  <SelectValue placeholder={t('validation.choose')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {types.map((type) => (
-                    <SelectItem key={type.id} value={String(type.id)}>
-                      {videoTypeName(type, lang)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="shrink-0"
-                onClick={() => setNewType(true)}
-                title={t('videoTypes.add')}
-                aria-label={t('videoTypes.add')}
-              >
-                <Plus className="size-4" />
-              </Button>
-            </div>
+            <SelectWithAdd
+              id="v-type"
+              value={form.typeId}
+              onValueChange={(v) => setForm((f) => ({ ...f, typeId: v }))}
+              invalid={!!errors.type_id}
+              addLabel={t('videoTypes.add')}
+              dialog={addType}
+            >
+              {types.map((type) => (
+                <SelectItem key={type.id} value={String(type.id)}>
+                  {videoTypeName(type, lang)}
+                </SelectItem>
+              ))}
+            </SelectWithAdd>
           </FormField>
 
           {/* სტატუსი: ამ მოდულს ის ახლა გაუჩნდა */}
           <FormField size="half" {...fields.field('status')} htmlFor="v-status" error={errors.status}>
-            <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
-              <SelectTrigger id="v-status" className={errors.status ? 'border-destructive' : undefined}>
-                <SelectValue placeholder={t('validation.choose')} />
-              </SelectTrigger>
-              <SelectContent>
-                {statuses.map((s) => (
-                  <SelectItem key={s.id} value={s.key}>
-                    <StatusLabel status={s} />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SelectWithAdd
+              id="v-status"
+              value={form.status}
+              onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
+              invalid={!!errors.status}
+              addLabel={t('statuses.add')}
+              dialog={addStatus}
+            >
+              {statuses.map((s) => (
+                <SelectItem key={s.id} value={s.key}>
+                  <StatusLabel status={s} />
+                </SelectItem>
+              ))}
+            </SelectWithAdd>
           </FormField>
 
           {/* კურსი — „საქაღალდე" ვიდეოებში (კურსების მოდული თუ ჩართულია) */}
           {hasCourses && (
             <FormField {...fields.field('course_id')} htmlFor="v-course" error={errors.course_id}>
-              <Select value={form.courseId} onValueChange={(v) => setForm((f) => ({ ...f, courseId: v }))}>
-                <SelectTrigger id="v-course">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_COURSE}>{t('videos.noCourse')}</SelectItem>
-                  {courses.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SelectWithAdd
+                id="v-course"
+                value={form.courseId}
+                onValueChange={(v) => setForm((f) => ({ ...f, courseId: v }))}
+                addLabel={t('courses.add')}
+                dialog={addCourse}
+              >
+                <SelectItem value={NO_COURSE}>{t('videos.noCourse')}</SelectItem>
+                {courses.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.title}
+                  </SelectItem>
+                ))}
+              </SelectWithAdd>
             </FormField>
           )}
 
@@ -1344,14 +1355,6 @@ function VideoForm({
 
       <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
-      {/* სწრაფი „ახალი ტიპი" — შენახვისთანავე select-ში ირჩევა */}
-      {newType && (
-        <VideoTypeDialog
-          type={null}
-          onClose={() => setNewType(false)}
-          onSaved={(saved) => setForm((f) => ({ ...f, typeId: String(saved.id) }))}
-        />
-      )}
     </ModalShell>
   )
 }

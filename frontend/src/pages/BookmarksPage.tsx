@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { SelectWithAdd } from '@/components/ui/inline-add'
+import { useDictionaryAdd, useStatusAdd } from '@/lib/dictionaries'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -68,7 +70,6 @@ import { ViewToggle } from '@/components/ui/view-toggle'
 import { PageSizePick } from '@/components/ui/page-size-pick'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { PosterUploader } from '@/components/PosterUploader'
-import { BookmarkCategoryDialog } from '@/components/BookmarkCategoryDialog'
 import { TagSelect } from '@/components/TagSelect'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import {
@@ -689,7 +690,8 @@ function BookmarkForm({
   const [thumbPreview, setThumbPreview] = useState<string | null>(storageUrl(bookmark?.image))
   const [removeThumb, setRemoveThumb] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [newCategory, setNewCategory] = useState(false)
+  const addCategory = useDictionaryAdd('bookmark-categories')
+  const addStatus = useStatusAdd('bookmark')
   const qc = useQueryClient()
   const { has } = useModules()
   // დამატებითი ველები ახალ ჩანაწერზე; ჩავარდნისას შექმნილი რჩება
@@ -953,47 +955,38 @@ function BookmarkForm({
 
           {/* კლასიფიკატორი — per-user ლექსიკონიდან, გვერდით „ახალი" */}
           <FormField size="half" {...fields.field('category')} htmlFor="b-category" error={errors.category_id}>
-            <div className="flex gap-1">
-              <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
-                <SelectTrigger id="b-category" className={errors.category_id ? 'border-destructive' : undefined}>
-                  <SelectValue placeholder={t('validation.choose')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={String(category.id)}>
-                      {dictionaryName(category, lang)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="shrink-0"
-                onClick={() => setNewCategory(true)}
-                title={t('bookmarkCategories.add')}
-                aria-label={t('bookmarkCategories.add')}
-              >
-                <Plus className="size-4" />
-              </Button>
-            </div>
+            <SelectWithAdd
+              id="b-category"
+              value={form.categoryId}
+              onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
+              invalid={!!errors.category_id}
+              addLabel={t('bookmarkCategories.add')}
+              dialog={addCategory}
+            >
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={String(category.id)}>
+                  {dictionaryName(category, lang)}
+                </SelectItem>
+              ))}
+            </SelectWithAdd>
           </FormField>
 
           {/* პუნქტები აიქონითა და ფერით (`StatusLabel`) */}
           <FormField size="half" {...fields.field('status')} htmlFor="b-status" error={errors.status}>
-            <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
-              <SelectTrigger id="b-status" className={errors.status ? 'border-destructive' : undefined}>
-                <SelectValue placeholder={t('validation.choose')} />
-              </SelectTrigger>
-              <SelectContent>
-                {statuses.map((s) => (
-                  <SelectItem key={s.id} value={s.key}>
-                    <StatusLabel status={s} />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SelectWithAdd
+              id="b-status"
+              value={form.status}
+              onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
+              invalid={!!errors.status}
+              addLabel={t('statuses.add')}
+              dialog={addStatus}
+            >
+              {statuses.map((s) => (
+                <SelectItem key={s.id} value={s.key}>
+                  <StatusLabel status={s} />
+                </SelectItem>
+              ))}
+            </SelectWithAdd>
           </FormField>
         </FormSection>
 
@@ -1075,14 +1068,6 @@ function BookmarkForm({
 
       <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
-      {/* სწრაფი „ახალი კატეგორია" — შენახვისთანავე select-ში ირჩევა */}
-      {newCategory && (
-        <BookmarkCategoryDialog
-          category={null}
-          onClose={() => setNewCategory(false)}
-          onSaved={(saved) => setForm((f) => ({ ...f, categoryId: String(saved.id) }))}
-        />
-      )}
     </ModalShell>
   )
 }

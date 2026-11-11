@@ -54,7 +54,9 @@ import {
 import { CustomCategoryDialog } from '@/components/CustomCategoryDialog'
 import { deleteDutyType, fetchDutyTypes, reorderDutyTypes } from '@/api/duty'
 import { DutyTypeDialog } from '@/components/duty/DutyTypeDialog'
+import type { AddDialog } from '@/components/ui/inline-add'
 import { classifierKey, isCustomModule } from '@/lib/customModules'
+import { useModules } from '@/lib/modules'
 import { statusesQueryKey } from '@/lib/statuses'
 import { MEDIA } from '@/lib/media'
 import type { Status } from '@/api/types'
@@ -119,7 +121,11 @@ export interface DictionaryDef {
   /** გადატანა · ცარიელად დატოვება · ჩანაწერების წაშლაც (`api/dictionary.ts`) */
   remove: (id: number, removal: DictionaryRemoval) => Promise<DictionaryRemoved>
   count: (item: DictionaryItem) => number
-  dialog: (item: DictionaryItem | null, onClose: () => void) => ReactNode
+  /**
+   * დამატების/რედაქტირების ფანჯარა. `onSaved` შენახულ ერთეულს აბრუნებს —
+   * ფორმის „+" მას მაშინვე ირჩევს (`useDictionaryAdd`).
+   */
+  dialog: (item: DictionaryItem | null, onClose: () => void, onSaved?: (saved: DictionaryItem) => void) => ReactNode
   /**
    * სტატუსის ლექსიკონი — ინდექსზე „სტატუსების" ჯგუფშია, შიგნით კი
    * „ყველა"/„რჩეული" რიგებადაც ჩანს და საიდბარის განლაგებაც იქ იმართება.
@@ -177,7 +183,7 @@ export const DICTIONARIES: DictionaryDef[] = [
     reorder: reorderVideoTypes as never,
     remove: deleteVideoType,
     count: (item) => num(item.videos_count),
-    dialog: (item, onClose) => <VideoTypeDialog type={item as never} onClose={onClose} />,
+    dialog: (item, onClose, onSaved) => <VideoTypeDialog type={item as never} onClose={onClose} onSaved={onSaved as never} />,
   },
   {
     key: 'song-genres',
@@ -193,7 +199,7 @@ export const DICTIONARIES: DictionaryDef[] = [
     remove: deleteSongGenre,
     multi: true,
     count: (item) => num(item.songs_count),
-    dialog: (item, onClose) => <SongGenreDialog genre={item as never} onClose={onClose} />,
+    dialog: (item, onClose, onSaved) => <SongGenreDialog genre={item as never} onClose={onClose} onSaved={onSaved as never} />,
   },
   {
     key: 'book-genres',
@@ -208,7 +214,7 @@ export const DICTIONARIES: DictionaryDef[] = [
     reorder: reorderBookGenres as never,
     remove: deleteBookGenre,
     count: (item) => num(item.books_count),
-    dialog: (item, onClose) => <BookGenreDialog genre={item as never} onClose={onClose} />,
+    dialog: (item, onClose, onSaved) => <BookGenreDialog genre={item as never} onClose={onClose} onSaved={onSaved as never} />,
   },
   {
     key: 'board-game-genres',
@@ -223,7 +229,7 @@ export const DICTIONARIES: DictionaryDef[] = [
     reorder: reorderBoardGameGenres as never,
     remove: deleteBoardGameGenre,
     count: (item) => num(item.board_games_count),
-    dialog: (item, onClose) => <BoardGameGenreDialog genre={item as never} onClose={onClose} />,
+    dialog: (item, onClose, onSaved) => <BoardGameGenreDialog genre={item as never} onClose={onClose} onSaved={onSaved as never} />,
   },
   {
     key: 'game-genres',
@@ -239,7 +245,7 @@ export const DICTIONARIES: DictionaryDef[] = [
     remove: deleteGameGenre,
     multi: true,
     count: (item) => num(item.games_count),
-    dialog: (item, onClose) => <GameGenreDialog genre={item as never} onClose={onClose} />,
+    dialog: (item, onClose, onSaved) => <GameGenreDialog genre={item as never} onClose={onClose} onSaved={onSaved as never} />,
   },
   {
     key: 'note-categories',
@@ -254,7 +260,7 @@ export const DICTIONARIES: DictionaryDef[] = [
     reorder: reorderNoteCategories as never,
     remove: deleteNoteCategory,
     count: (item) => num(item.note_entries_count),
-    dialog: (item, onClose) => <NoteCategoryDialog category={item as never} onClose={onClose} />,
+    dialog: (item, onClose, onSaved) => <NoteCategoryDialog category={item as never} onClose={onClose} onSaved={onSaved as never} />,
   },
   {
     key: 'bookmark-categories',
@@ -269,8 +275,8 @@ export const DICTIONARIES: DictionaryDef[] = [
     reorder: reorderBookmarkCategories as never,
     remove: deleteBookmarkCategory,
     count: (item) => num(item.bookmarks_count),
-    dialog: (item, onClose) => (
-      <BookmarkCategoryDialog category={item as never} onClose={onClose} />
+    dialog: (item, onClose, onSaved) => (
+      <BookmarkCategoryDialog category={item as never} onClose={onClose} onSaved={onSaved as never} />
     ),
   },
   {
@@ -287,7 +293,7 @@ export const DICTIONARIES: DictionaryDef[] = [
     reorder: reorderCourseCategories as never,
     remove: deleteCourseCategory,
     count: (item) => num(item.courses_count),
-    dialog: (item, onClose) => <CourseCategoryDialog category={item as never} onClose={onClose} />,
+    dialog: (item, onClose, onSaved) => <CourseCategoryDialog category={item as never} onClose={onClose} onSaved={onSaved as never} />,
   },
   {
     // ადგილის კატეგორიები (ბუკმარკის/კურსის ზუსტი რიგი)
@@ -303,7 +309,7 @@ export const DICTIONARIES: DictionaryDef[] = [
     reorder: reorderPlaceCategories as never,
     remove: deletePlaceCategory,
     count: (item) => num(item.places_count),
-    dialog: (item, onClose) => <PlaceCategoryDialog category={item as never} onClose={onClose} />,
+    dialog: (item, onClose, onSaved) => <PlaceCategoryDialog category={item as never} onClose={onClose} onSaved={onSaved as never} />,
   },
   {
     /* მორიგეობის ტიპები (8/12/24 სთ და შენი). ⚠️ ქეში მოდულის ფესვშია
@@ -320,7 +326,7 @@ export const DICTIONARIES: DictionaryDef[] = [
     reorder: reorderDutyTypes as never,
     remove: deleteDutyType,
     count: (item) => num(item.shifts_count),
-    dialog: (item, onClose) => <DutyTypeDialog type={item as never} onClose={onClose} />,
+    dialog: (item, onClose, onSaved) => <DutyTypeDialog type={item as never} onClose={onClose} onSaved={onSaved as never} />,
   },
 ]
 
@@ -407,8 +413,8 @@ for (const domain of STATUS_DOMAINS) {
     restoreDefaults: () => restoreDefaultStatuses(domain),
     remove: (id, removal) => deleteStatus(domain, id, removal),
     count: (item) => num(item.records_count),
-    dialog: (item, onClose) => (
-      <StatusDialog domain={domain} status={item as unknown as Status | null} onClose={onClose} />
+    dialog: (item, onClose, onSaved) => (
+      <StatusDialog domain={domain} status={item as unknown as Status | null} onClose={onClose} onSaved={onSaved as never} />
     ),
   })
 }
@@ -441,8 +447,8 @@ export function customDictionaries(modules: ModuleInfo[]): DictionaryDef[] {
         restoreDefaults: m.definition?.statuses === 'none' ? undefined : () => restoreDefaultStatuses(key),
         remove: (id, removal) => deleteStatus(key, id, removal),
         count: (item) => num(item.records_count),
-        dialog: (item, onClose) => (
-          <StatusDialog domain={key} status={item as unknown as Status | null} onClose={onClose} />
+        dialog: (item, onClose, onSaved) => (
+          <StatusDialog domain={key} status={item as unknown as Status | null} onClose={onClose} onSaved={onSaved as never} />
         ),
       },
     ]
@@ -461,12 +467,38 @@ export function customDictionaries(modules: ModuleInfo[]): DictionaryDef[] {
         reorder: ((ids: number[]) => reorderCustomCategories(m.key, ids)) as never,
         remove: (id, removal) => deleteCustomCategory(m.key, id, removal),
         count: (item) => num(item.records_count),
-        dialog: (item, onClose) => (
-          <CustomCategoryDialog moduleKey={m.key} category={item as never} onClose={onClose} />
+        dialog: (item, onClose, onSaved) => (
+          <CustomCategoryDialog moduleKey={m.key} category={item as never} onClose={onClose} onSaved={onSaved as never} />
         ),
       })
     }
 
     return defs
   })
+}
+
+/**
+ * **ფორმის „+"** — ხსნის იმავე ფანჯარას, რასაც ეს გვერდი, და შენახულ
+ * მნიშვნელობას ფორმას უბრუნებს (`SelectWithAdd`, `useInlineAdd`).
+ *
+ * ⚠️ `valueOf` — რას ინახავს ფორმა: ჩვეულებრივ `id`-ს, სტატუსზე კი გასაღებს
+ * (`key`). ⚠️ ლექსიკონი, რომელიც ამ ანგარიშზე არ არის (მოდული გამორთულია,
+ * პირადი მოდული წაშლილია), `undefined`-ს აბრუნებს — მაშინ „+" არ იხატება.
+ */
+export function useDictionaryAdd(
+  key: string | null | undefined,
+  valueOf: (saved: DictionaryItem) => string = (saved) => String(saved.id),
+): AddDialog | undefined {
+  const { customModules, has } = useModules()
+  if (!key) return undefined
+
+  const def = [...DICTIONARIES, ...customDictionaries(customModules)].find((d) => d.key === key)
+  if (!def || !has(def.module)) return undefined
+
+  return (close, pick) => def.dialog(null, close, (saved) => pick(valueOf(saved)))
+}
+
+/** სტატუსის ლექსიკონის „+": ფორმა სტატუსის გასაღებს (`key`) ინახავს და არა `id`-ს */
+export function useStatusAdd(domain: StatusDomainKey | null | undefined): AddDialog | undefined {
+  return useDictionaryAdd(domain ? `${domain}-statuses` : null, (saved) => String(saved.key))
 }

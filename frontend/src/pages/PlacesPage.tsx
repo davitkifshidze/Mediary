@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { SelectWithAdd } from '@/components/ui/inline-add'
+import { useDictionaryAdd } from '@/lib/dictionaries'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -543,6 +545,7 @@ function PlaceForm({
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { toast } = useToast()
+  const addCategory = useDictionaryAdd('place-categories')
   const fields = useModuleFields('place')
 
   const [form, setForm] = useState({
@@ -1024,18 +1027,20 @@ function PlaceForm({
           </FormField>
 
           <FormField size="quarter" {...fields.field('category')} htmlFor="p-category" error={errors.category_id}>
-            <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
-              <SelectTrigger id="p-category" className={errors.category_id ? 'border-destructive' : undefined}>
-                <SelectValue placeholder={t('validation.choose')} />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {dictionaryName(c, lang)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SelectWithAdd
+              id="p-category"
+              value={form.categoryId}
+              onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
+              invalid={!!errors.category_id}
+              addLabel={t('placeCategories.add')}
+              dialog={addCategory}
+            >
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {dictionaryName(c, lang)}
+                </SelectItem>
+              ))}
+            </SelectWithAdd>
           </FormField>
 
           {/* ჩამოსაშლელი „★ 1…10" + ხელით ჩასაწერი წილადი */}

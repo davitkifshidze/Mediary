@@ -20,7 +20,16 @@ import { ModalShell } from '@/components/ui/modal-shell'
 
 const FORM_ID = 'duty-type-form'
 
-export function DutyTypeDialog({ type, onClose }: { type: DutyShiftType | null; onClose: () => void }) {
+export function DutyTypeDialog({
+  type,
+  onClose,
+  onSaved,
+}: {
+  type: DutyShiftType | null
+  onClose: () => void
+  /** შენახული ტიპი — ცვლის ფორმის „+" მას მაშინვე ირჩევს */
+  onSaved?: (saved: DutyShiftType) => void
+}) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
@@ -35,9 +44,10 @@ export function DutyTypeDialog({ type, onClose }: { type: DutyShiftType | null; 
 
   const save = useMutation({
     mutationFn: () => (type ? updateDutyType(type.id, form) : createDutyType(form)),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       invalidateDuty(qc)
       toast({ title: t('duty.types.saved'), variant: 'success' })
+      onSaved?.(saved)
       onClose()
     },
     onError: (e) => {

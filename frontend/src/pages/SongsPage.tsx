@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDictionaryAdd } from '@/lib/dictionaries'
+import { AddButton, AddChip, useInlineAdd } from '@/components/ui/inline-add'
+import { PlaylistDialog } from '@/components/PlaylistDialog'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -48,7 +51,6 @@ import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { PosterUploader } from '@/components/PosterUploader'
-import { SongGenreDialog } from '@/components/SongGenreDialog'
 import { DuplicateLinkNotice } from '@/components/DuplicateLinkNotice'
 import { TagSelect } from '@/components/TagSelect'
 import {
@@ -594,7 +596,8 @@ function SongForm({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [meta, setMeta] = useState<VideoMetadata | null>(null)
   const [metaLoading, setMetaLoading] = useState(false)
-  const [newGenre, setNewGenre] = useState(false)
+  // ჟანრის „+" — შენახული ჟანრი მაშინვე მონიშნულია
+  const genreAdd = useInlineAdd(useDictionaryAdd('song-genres'), (id) => setGenreIds((cur) => [...cur, Number(id)]))
   const lastFetched = useRef<string>(song?.url ?? '')
   const qc = useQueryClient()
   // დამატებითი ველები ახალ სიმღერაზე; ჩავარდნისას შექმნილი რჩება
@@ -604,6 +607,13 @@ function SongForm({
   const initialPlaylists = useMemo(() => song?.playlist_ids ?? [], [song])
   const [playlistIds, setPlaylistIds] = useState<number[]>(initialPlaylists)
   const playlistsQ = useQuery({ queryKey: ['playlists'], queryFn: fetchPlaylists })
+  // ფლეილისტის „+" — იგივე ფანჯარა, რაც ფლეილისტების გვერდზე
+  const playlistAdd = useInlineAdd(
+    (close, pick) => (
+      <PlaylistDialog playlist={null} onClose={close} onSaved={(saved) => pick(String(saved.id))} />
+    ),
+    (id) => setPlaylistIds((cur) => [...cur, Number(id)]),
+  )
 
   /**
    * ბმულის ჩასმისთანავე ვცდილობთ სათაურის/შემსრულებლის/ტეგების/ფოტოს წამოღებას.
@@ -893,10 +903,7 @@ function SongForm({
                 </Chip>
                 )
               })}
-              <Button type="button" variant="outline" size="sm" onClick={() => setNewGenre(true)}>
-                <Plus className="size-3.5" />
-                {t('songGenres.add')}
-              </Button>
+              {genreAdd.available && <AddChip onClick={genreAdd.open} />}
             </div>
           </FormField>
 
@@ -920,12 +927,17 @@ function SongForm({
             hint={joinHints(fields.hint('playlists'), t('playlists.songHint'))}
             htmlFor="s-playlists"
           >
-            <IdMultiSelect
-              items={(playlistsQ.data ?? []).map((p) => ({ id: p.id, label: p.name }))}
-              value={playlistIds}
-              onChange={setPlaylistIds}
-              placeholder={playlistsQ.isLoading ? t('api.loading') : t('playlists.pickForSong')}
-            />
+            <div className="flex gap-1">
+              <div className="min-w-0 flex-1">
+                <IdMultiSelect
+                  items={(playlistsQ.data ?? []).map((p) => ({ id: p.id, label: p.name }))}
+                  value={playlistIds}
+                  onChange={setPlaylistIds}
+                  placeholder={playlistsQ.isLoading ? t('api.loading') : t('playlists.pickForSong')}
+                />
+              </div>
+              <AddButton label={t('playlists.add')} onClick={playlistAdd.open} />
+            </div>
           </FormField>
         </FormSection>
       </form>
@@ -940,14 +952,8 @@ function SongForm({
 
       <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
-      {/* სწრაფი „ახალი ჟანრი" — შენახვისთანავე select-ში ირჩევა */}
-      {newGenre && (
-        <SongGenreDialog
-          genre={null}
-          onClose={() => setNewGenre(false)}
-          onSaved={(saved) => setGenreIds((cur) => [...cur, saved.id])}
-        />
-      )}
+      {genreAdd.node}
+      {playlistAdd.node}
     </ModalShell>
   )
 }

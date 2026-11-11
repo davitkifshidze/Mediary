@@ -340,6 +340,7 @@
   "actions": {
     "retry": "Try again",
     "add": "Add movie",
+    "addNew": "Add new",
     "addSeries": "Add series",
     "addShort": "Add",
     "edit": "Edit",

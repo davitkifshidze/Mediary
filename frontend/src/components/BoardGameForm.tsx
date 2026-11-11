@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { SelectWithAdd } from '@/components/ui/inline-add'
+import { useDictionaryAdd } from '@/lib/dictionaries'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, Loader2, Plus, Store, X } from 'lucide-react'
@@ -23,7 +25,6 @@ import { errorMessage, fieldErrors, isApiCode } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
-import { BoardGameGenreDialog } from '@/components/BoardGameGenreDialog'
 import { PosterUploader } from '@/components/PosterUploader'
 import { Button } from '@/components/ui/button'
 import { RichText } from '@/components/ui/rich-text'
@@ -40,7 +41,7 @@ import {
 } from '@/components/ui/quick-fill'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { ModalShell } from '@/components/ui/modal-shell'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SelectItem } from '@/components/ui/select'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { RatingSelect } from '@/components/ui/rating-select'
@@ -108,7 +109,7 @@ export function BoardGameForm({
   const [imagePreview, setImagePreview] = useState<string | null>(storageUrl(game?.image))
   const [removeImage, setRemoveImage] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [newGenre, setNewGenre] = useState(false)
+  const addGenre = useDictionaryAdd('board-game-genres')
   const qc = useQueryClient()
   // დამატებითი ველები ახალ თამაშზე; ჩავარდნისას შექმნილი რჩება
   const extras = useRecordExtras('board_game', game)
@@ -511,31 +512,20 @@ export function BoardGameForm({
         <FormSection title={t('form.sections.classification')}>
           {/* ჟანრი — per-user ლექსიკონიდან, გვერდით „ახალი ჟანრი" */}
           <FormField size="half" {...fields.field('genre')} htmlFor="bg-genre" error={errors.genre_id}>
-            <div className="flex gap-1">
-              <Select value={form.genreId} onValueChange={(v) => setForm((f) => ({ ...f, genreId: v }))}>
-                <SelectTrigger id="bg-genre" className={errors.genre_id ? 'border-destructive' : undefined}>
-                  <SelectValue placeholder={t('validation.choose')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {genres.map((genre) => (
-                    <SelectItem key={genre.id} value={String(genre.id)}>
-                      {dictionaryName(genre, lang)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="shrink-0"
-                onClick={() => setNewGenre(true)}
-                title={t('boardGameGenres.add')}
-                aria-label={t('boardGameGenres.add')}
-              >
-                <Plus className="size-4" />
-              </Button>
-            </div>
+            <SelectWithAdd
+              id="bg-genre"
+              value={form.genreId}
+              onValueChange={(v) => setForm((f) => ({ ...f, genreId: v }))}
+              invalid={!!errors.genre_id}
+              addLabel={t('boardGameGenres.add')}
+              dialog={addGenre}
+            >
+              {genres.map((genre) => (
+                <SelectItem key={genre.id} value={String(genre.id)}>
+                  {dictionaryName(genre, lang)}
+                </SelectItem>
+              ))}
+            </SelectWithAdd>
           </FormField>
 
           {/* „ჩემი ქულა"; BGG-ის ქულა (`bgg_rating`) ცალკეა და წყაროდან მოდის */}
@@ -743,14 +733,6 @@ export function BoardGameForm({
 
       <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
-      {/* სწრაფი „ახალი ჟანრი" — შენახვისთანავე select-ში ირჩევა */}
-      {newGenre && (
-        <BoardGameGenreDialog
-          genre={null}
-          onClose={() => setNewGenre(false)}
-          onSaved={(saved) => setForm((f) => ({ ...f, genreId: String(saved.id) }))}
-        />
-      )}
     </ModalShell>
   )
 }

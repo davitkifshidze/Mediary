@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { SelectWithAdd } from '@/components/ui/inline-add'
+import { useDictionaryAdd, useStatusAdd } from '@/lib/dictionaries'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, X } from 'lucide-react'
@@ -19,7 +21,6 @@ import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { statusName, useStatuses } from '@/lib/statuses'
-import { NoteCategoryDialog } from '@/components/NoteCategoryDialog'
 import { TagSelect } from '@/components/TagSelect'
 import { Button } from '@/components/ui/button'
 import { RichText } from '@/components/ui/rich-text'
@@ -30,7 +31,7 @@ import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { NoteRemindersDialog, NoteRemindersLink } from '@/components/NoteRemindersDialog'
 import { NoteUploads } from '@/components/NoteUploads'
 import { ModalShell } from '@/components/ui/modal-shell'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SelectItem } from '@/components/ui/select'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { usePendingUploads } from '@/lib/pendingUploads'
@@ -89,7 +90,8 @@ export function NoteForm({
      `unkeyRows()` გასაღებს payload-ში ჭრის. */
   const [links, setLinks] = useState<Keyed<NoteLink>[]>(() => keyRows(note?.links ?? []))
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [newCategory, setNewCategory] = useState(false)
+  const addCategory = useDictionaryAdd('note-categories')
+  const addStatus = useStatusAdd('note')
   const [reminders, setReminders] = useState(false)
   const qc = useQueryClient()
 
@@ -260,50 +262,38 @@ export function NoteForm({
         <FormSection title={t('form.sections.classification')}>
           {/* „რას ეხება" — კატეგორია, გვერდით „ახალი" */}
           <FormField size="half" {...fields.field('category')} htmlFor="note-category" error={errors.category_id}>
-            <div className="flex gap-1">
-              <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
-                <SelectTrigger id="note-category" className={errors.category_id ? 'border-destructive' : undefined}>
-                  <SelectValue placeholder={t('validation.choose')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={String(category.id)}>
-                      {dictionaryName(category, lang)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="shrink-0"
-                onClick={() => setNewCategory(true)}
-                title={t('noteCategories.add')}
-                aria-label={t('noteCategories.add')}
-              >
-                <Plus className="size-4" />
-              </Button>
-            </div>
+            <SelectWithAdd
+              id="note-category"
+              value={form.categoryId}
+              onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
+              invalid={!!errors.category_id}
+              addLabel={t('noteCategories.add')}
+              dialog={addCategory}
+            >
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={String(category.id)}>
+                  {dictionaryName(category, lang)}
+                </SelectItem>
+              ))}
+            </SelectWithAdd>
           </FormField>
 
           <FormField size="half" {...fields.field('status')} htmlFor="note-status" error={errors.status}>
-            <Select
+            <SelectWithAdd
+              id="note-status"
               value={form.status}
               onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}
+              invalid={!!errors.status}
+              addLabel={t('statuses.add')}
+              dialog={addStatus}
             >
-              <SelectTrigger id="note-status" className={errors.status ? 'border-destructive' : undefined}>
-                <SelectValue placeholder={t('validation.choose')} />
-              </SelectTrigger>
-              <SelectContent>
-                {/* სტატუსები per-user ლექსიკონიდან */}
-                {statuses.map((s) => (
-                  <SelectItem key={s.id} value={s.key}>
-                    {statusName(s, lang)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {/* სტატუსები per-user ლექსიკონიდან */}
+              {statuses.map((s) => (
+                <SelectItem key={s.id} value={s.key}>
+                  {statusName(s, lang)}
+                </SelectItem>
+              ))}
+            </SelectWithAdd>
           </FormField>
 
           <FormField
@@ -396,14 +386,6 @@ export function NoteForm({
         }
       />
 
-      {/* სწრაფი „ახალი კატეგორია" — შენახვისთანავე select-ში ირჩევა */}
-      {newCategory && (
-        <NoteCategoryDialog
-          category={null}
-          onClose={() => setNewCategory(false)}
-          onSaved={(saved) => setForm((f) => ({ ...f, categoryId: String(saved.id) }))}
-        />
-      )}
     </ModalShell>
   )
 }

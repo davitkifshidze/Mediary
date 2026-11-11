@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { SelectWithAdd } from '@/components/ui/inline-add'
+import { useDictionaryAdd, useStatusAdd } from '@/lib/dictionaries'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -51,7 +53,6 @@ import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { useContentLang } from '@/lib/settings'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
 import { dedupeTags } from '@/lib/tags'
-import { CustomCategoryDialog } from '@/components/CustomCategoryDialog'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { CustomRecordDetail } from '@/components/CustomRecordDetail'
 import {
@@ -669,7 +670,8 @@ function CustomRecordForm({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [meta, setMeta] = useState<LinkMetadata | null>(null)
   const [metaLoading, setMetaLoading] = useState(false)
-  const [newCategory, setNewCategory] = useState(false)
+  const addCategory = useDictionaryAdd(`${module.key}-categories`)
+  const addStatus = useStatusAdd(moduleKey)
   const lastFetched = useRef<string>(record?.url ?? '')
   // დამატებითი ველები ახალ ჩანაწერზე; ჩავარდნისას შექმნილი რჩება
   const extras = useRecordExtras(module.key, record)
@@ -867,48 +869,40 @@ function CustomRecordForm({
               htmlFor="cr-category"
               error={errors.category_id}
             >
-              <div className="flex gap-1">
-                <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
-                  <SelectTrigger id="cr-category" className={errors.category_id ? 'border-destructive' : undefined}>
-                    <SelectValue placeholder={categories.length ? t('validation.choose') : t('customModules.classifierEmpty', { noun })} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={String(category.id)}>
-                        {dictionaryName(category, lang)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0"
-                  onClick={() => setNewCategory(true)}
-                  title={t('customModules.categoryAdd', { noun })}
-                  aria-label={t('customModules.categoryAdd', { noun })}
-                >
-                  <Plus className="size-4" />
-                </Button>
-              </div>
+              <SelectWithAdd
+                id="cr-category"
+                value={form.categoryId}
+                onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
+                placeholder={categories.length ? t('validation.choose') : t('customModules.classifierEmpty', { noun })}
+                invalid={!!errors.category_id}
+                addLabel={t('customModules.categoryAdd', { noun })}
+                dialog={addCategory}
+              >
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={String(category.id)}>
+                    {dictionaryName(category, lang)}
+                  </SelectItem>
+                ))}
+              </SelectWithAdd>
             </FormField>
           )}
 
           {statuses.length > 0 && (
             <FormField size="half" {...fields.field('status')} required={mustStatus} htmlFor="cr-status" error={errors.status}>
-              <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
-                <SelectTrigger id="cr-status" className={errors.status ? 'border-destructive' : undefined}>
-                  <SelectValue placeholder={t('validation.choose')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {statuses.map((s) => (
-                    <SelectItem key={s.id} value={s.key}>
-                      <StatusLabel status={s} />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SelectWithAdd
+                id="cr-status"
+                value={form.status}
+                onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
+                invalid={!!errors.status}
+                addLabel={t('statuses.add')}
+                dialog={addStatus}
+              >
+                {statuses.map((s) => (
+                  <SelectItem key={s.id} value={s.key}>
+                    <StatusLabel status={s} />
+                  </SelectItem>
+                ))}
+              </SelectWithAdd>
             </FormField>
           )}
 
@@ -932,15 +926,6 @@ function CustomRecordForm({
 
       <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
-      {newCategory && (
-        <CustomCategoryDialog
-          moduleKey={module.key}
-          noun={noun}
-          category={null}
-          onClose={() => setNewCategory(false)}
-          onSaved={(saved) => setForm((f) => ({ ...f, categoryId: String(saved.id) }))}
-        />
-      )}
     </ModalShell>
   )
 }

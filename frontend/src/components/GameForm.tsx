@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useDictionaryAdd } from '@/lib/dictionaries'
+import { AddChip, useInlineAdd } from '@/components/ui/inline-add'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Library, Plus, X } from 'lucide-react'
@@ -31,7 +33,6 @@ import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 import { GameFranchiseDialog } from '@/components/GameFranchiseDialog'
-import { GameGenreDialog } from '@/components/GameGenreDialog'
 import { PosterUploader } from '@/components/PosterUploader'
 import { Button } from '@/components/ui/button'
 import { RichText } from '@/components/ui/rich-text'
@@ -185,7 +186,8 @@ export function GameForm({
   const [coverPreview, setCoverPreview] = useState<string | null>(storageUrl(game?.cover))
   const [removeCover, setRemoveCover] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [newGenre, setNewGenre] = useState(false)
+  // ჟანრის „+" — შენახული ჟანრი მაშინვე მონიშნულია
+  const genreAdd = useInlineAdd(useDictionaryAdd('game-genres'), (id) => setGenreIds((cur) => [...cur, Number(id)]))
   const [franchiseOpen, setFranchiseOpen] = useState(false)
   const qc = useQueryClient()
   // დამატებითი ველები ახალ თამაშზე; ჩავარდნისას შექმნილი რჩება
@@ -602,10 +604,7 @@ export function GameForm({
                   </Chip>
                 )
               })}
-              <Button type="button" variant="outline" size="sm" onClick={() => setNewGenre(true)}>
-                <Plus className="size-3.5" />
-                {t('gameGenres.add')}
-              </Button>
+              {genreAdd.available && <AddChip onClick={genreAdd.open} />}
             </div>
           </FormField>
 
@@ -758,14 +757,7 @@ export function GameForm({
         />
       )}
 
-      {/* სწრაფი „ახალი ჟანრი" — შენახვისთანავე ირჩევა */}
-      {newGenre && (
-        <GameGenreDialog
-          genre={null}
-          onClose={() => setNewGenre(false)}
-          onSaved={(saved) => setGenreIds((cur) => [...cur, saved.id])}
-        />
-      )}
+      {genreAdd.node}
     </ModalShell>
   )
 }

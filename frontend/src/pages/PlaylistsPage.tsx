@@ -11,15 +11,12 @@ import {
   Plus,
   Trash2,
   X,
-  Save,
 } from 'lucide-react'
 import {
-  createPlaylist,
   deletePlaylist,
   fetchPlaylist,
   fetchPlaylists,
   reorderPlaylists,
-  updatePlaylist,
   type Playlist,
 } from '@/api/playlists'
 import { errorMessage } from '@/lib/errors'
@@ -27,8 +24,6 @@ import { sortByIds } from '@/lib/reorder'
 import { songItem, usePlayer } from '@/lib/player'
 import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -38,6 +33,7 @@ import { useRecordLayout } from '@/lib/recordLayout'
 import { useToast } from '@/components/ui/feedback'
 import { MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PlaylistDialog } from '@/components/PlaylistDialog'
 
 /* ============================================================
    პლეილისტები — სიმღერების მოდულის ქვე-გვერდი (2026-09-03).
@@ -206,58 +202,6 @@ function PlayPlaylistButton({ playlist }: { playlist: Playlist }) {
   )
 }
 
-/** დამატება/გადარქმევა — ერთი მოდალი, როგორც ვიდეოს ტიპებზე */
-function PlaylistDialog({ playlist, onClose }: { playlist: Playlist | null; onClose: () => void }) {
-  const { t } = useTranslation()
-  const qc = useQueryClient()
-  const { toast } = useToast()
-  const [name, setName] = useState(playlist?.name ?? '')
-
-  const save = useMutation({
-    mutationFn: () =>
-      playlist ? updatePlaylist(playlist.id, { name }) : createPlaylist({ name }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['playlists'] })
-      toast({ title: t('toast.saved'), variant: 'success' })
-      onClose()
-    },
-    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
-  })
-
-  return (
-    <ModalShell title={playlist ? t('playlists.rename') : t('playlists.add')} onClose={onClose}>
-      <form
-        className="mt-4"
-        onSubmit={(e) => {
-          e.preventDefault()
-          if (name.trim()) save.mutate()
-        }}
-      >
-        <Label htmlFor="playlist-name">{t('playlists.name')}</Label>
-        <Input
-          id="playlist-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t('playlists.namePlaceholder')}
-          autoFocus
-        />
-
-        <ModalFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
-            <X className="size-4" />
-            {t('actions.cancel')}
-          </Button>
-          <Button type="submit" disabled={!name.trim() || save.isPending}>
-            <Save className="size-4" />
-            {save.isPending ? t('actions.saving') : t('actions.save')}
-          </Button>
-        </ModalFooter>
-      </form>
-    </ModalShell>
-  )
-}
-
-/** წაშლა — სიმღერები ხელუხლებელი რჩება, მხოლოდ ნაკრები ქრება */
 function DeleteDialog({ playlist, onClose }: { playlist: Playlist; onClose: () => void }) {
   const { t } = useTranslation()
   const qc = useQueryClient()

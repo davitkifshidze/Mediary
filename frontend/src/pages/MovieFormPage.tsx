@@ -41,6 +41,8 @@ import { cn } from '@/lib/utils'
 import { STATUS_ACTIVE, STATUS_INACTIVE } from '@/lib/statusStyles'
 import { hiddenPicks, missingPicks } from '@/lib/requiredPicks'
 import { statusName, statusTone, useStatuses } from '@/lib/statuses'
+import { useStatusAdd } from '@/lib/dictionaries'
+import { AddChip, useInlineAdd } from '@/components/ui/inline-add'
 import { useContentLang } from '@/lib/settings'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { errorMessage, isApiCode } from '@/lib/errors'
@@ -146,6 +148,9 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
 
   const set = (key: keyof typeof EMPTY, value: string | boolean) =>
     setForm((f) => ({ ...f, [key]: value }))
+
+  // სტატუსის „+" — შენახული სტატუსი მაშინვე არჩეულია
+  const statusAdd = useInlineAdd(useStatusAdd(type), (key) => set('status', key))
 
   const buildFormData = () => {
     const fd = new FormData()
@@ -649,6 +654,8 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
                     {statusName(s, lang)}
                   </button>
                 ))}
+                {/* რიგის ბოლოს — „+ ახლის დამატება": იგივე ფანჯარა, რაც სტატუსების გვერდზე */}
+                {statusAdd.available && <AddChip onClick={statusAdd.open} />}
               </div>
             </FormField>
 
@@ -663,6 +670,8 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
           </div>
         </section>
       </form>
+
+      {statusAdd.node}
 
       {/* დამატებითი ველები (თავისი თეთრი ბარათი).
           ⚠️ `<form>`-ის **გარეთაა**: არსებულ ჩანაწერზე ბარათი თვითონ ინახავს

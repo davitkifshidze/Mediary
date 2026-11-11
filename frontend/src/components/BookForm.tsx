@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { SelectWithAdd } from '@/components/ui/inline-add'
+import { useDictionaryAdd } from '@/lib/dictionaries'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
 import {
   BOOK_FORMATS,
   BOOK_LANGUAGES,
@@ -24,9 +25,7 @@ import { errorMessage, fieldErrors } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
-import { BookGenreDialog } from '@/components/BookGenreDialog'
 import { PosterUploader } from '@/components/PosterUploader'
-import { Button } from '@/components/ui/button'
 import { RichText } from '@/components/ui/rich-text'
 import { Input } from '@/components/ui/input'
 import { FieldLabel } from '@/components/ui/field-label'
@@ -115,7 +114,7 @@ export function BookForm({
   const [linkCover, setLinkCover] = useState<string | null>(null)
   const [removeCover, setRemoveCover] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [newGenre, setNewGenre] = useState(false)
+  const addGenre = useDictionaryAdd('book-genres')
   const qc = useQueryClient()
   // დამატებითი ველები ახალ წიგნზე; ჩავარდნისას შექმნილი რჩება
   const extras = useRecordExtras('book', book)
@@ -447,31 +446,20 @@ export function BookForm({
 
           {/* ჟანრი — per-user ლექსიკონიდან, გვერდით „ახალი ჟანრი" */}
           <FormField size="third" {...fields.field('genre')} htmlFor="b-genre" error={errors.genre_id}>
-            <div className="flex gap-1">
-              <Select value={form.genreId} onValueChange={(v) => setForm((f) => ({ ...f, genreId: v }))}>
-                <SelectTrigger id="b-genre" className={errors.genre_id ? 'border-destructive' : undefined}>
-                  <SelectValue placeholder={t('validation.choose')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {genres.map((genre) => (
-                    <SelectItem key={genre.id} value={String(genre.id)}>
-                      {dictionaryName(genre, lang)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="shrink-0"
-                onClick={() => setNewGenre(true)}
-                title={t('bookGenres.add')}
-                aria-label={t('bookGenres.add')}
-              >
-                <Plus className="size-4" />
-              </Button>
-            </div>
+            <SelectWithAdd
+              id="b-genre"
+              value={form.genreId}
+              onValueChange={(v) => setForm((f) => ({ ...f, genreId: v }))}
+              invalid={!!errors.genre_id}
+              addLabel={t('bookGenres.add')}
+              dialog={addGenre}
+            >
+              {genres.map((genre) => (
+                <SelectItem key={genre.id} value={String(genre.id)}>
+                  {dictionaryName(genre, lang)}
+                </SelectItem>
+              ))}
+            </SelectWithAdd>
             {/* მრავალი ბმული ფორმიდან მოხსნილია: ბმულს ერთი „წყაროს ლინკი" ცვლის. */}
           </FormField>
 
@@ -598,14 +586,6 @@ export function BookForm({
 
       <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
-      {/* სწრაფი „ახალი ჟანრი" — შენახვისთანავე select-ში ირჩევა */}
-      {newGenre && (
-        <BookGenreDialog
-          genre={null}
-          onClose={() => setNewGenre(false)}
-          onSaved={(saved) => setForm((f) => ({ ...f, genreId: String(saved.id) }))}
-        />
-      )}
     </ModalShell>
   )
 }
