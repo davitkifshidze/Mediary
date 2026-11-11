@@ -239,7 +239,7 @@ export function BooksPage() {
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
-            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} total={total} />
+            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} />
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">

@@ -163,7 +163,7 @@ export function DutyHistory({
               ))}
             </SelectContent>
           </Select>
-          <PageSizePick className="ml-auto" size="sm" columns={columns} value={pageSize} total={query.total} onChange={setPageSize} />
+          <PageSizePick className="ml-auto" size="sm" columns={columns} value={pageSize} onChange={setPageSize} />
           <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
         </div>
 

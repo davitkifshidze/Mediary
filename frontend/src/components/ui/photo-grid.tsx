@@ -209,7 +209,6 @@ export function PhotoGrid({
   className,
   pageSize,
   onPageSizeChange,
-  total,
   extraTools,
 }: {
   items: PhotoItem[]
@@ -287,12 +286,6 @@ export function PhotoGrid({
    */
   pageSize?: number
   onPageSizeChange?: (size: number) => void
-  /**
-   * სულ რამდენი ფოტოა — **მართულ რეჟიმში სავალდებულო**: ბადეს მხოლოდ
-   * მიმდინარე გვერდი აქვს ხელში, ე.ი. თვითონ ვერ იცის, ღირს თუ არა
-   * „რამდენი გამოჩნდეს" არჩევანის ჩვენება.
-   */
-  total?: number
   /** ხელსაწყოების ზოლში დამატებული კონტროლი (მაგ. თემის მინიჭება მონიშნულებზე) */
   extraTools?: ReactNode
 }) {
@@ -584,7 +577,6 @@ export function PhotoGrid({
             columns={PHOTO_COLUMNS}
             max={PHOTO_PER_PAGE_MAX}
             value={size}
-            total={total ?? items.length}
             onChange={(next) => {
               pages.reset()
               if (onPageSizeChange) onPageSizeChange(next)

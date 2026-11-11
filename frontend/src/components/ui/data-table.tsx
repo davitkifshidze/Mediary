@@ -134,7 +134,6 @@ export function DataTable<T>({
           size="sm"
           columns={1}
           value={pageSize}
-          total={filtered.length}
           onChange={(next) => {
             setPageSize(next)
             pages.reset()

@@ -123,15 +123,10 @@ describe('usePageSize', () => {
 })
 
 describe('PageSizePick', () => {
-  it('hides on a list no bigger than the smallest choice, and shows the choices with "all" last', async () => {
+  it('shows the choices with "all" last', async () => {
     const { PageSizePick } = await import('@/components/ui/page-size-pick')
 
-    const small = await render(h(PageSizePick, { value: 9, onChange: vi.fn(), columns: 3, total: 7 }))
-    expect(small.querySelector('[data-testid="page-size-pick"]')).toBeNull()
-    act(() => root?.unmount())
-    container?.remove()
-
-    const big = await render(h(PageSizePick, { value: 9, onChange: vi.fn(), columns: 3, total: 40 }))
+    const big = await render(h(PageSizePick, { value: 9, onChange: vi.fn(), columns: 3 }))
     const pick = big.querySelector('[data-testid="page-size-pick"]')!
     expect(pick.textContent).toContain(i18n.t('list.perPage'))
     // ტრიგერის უხილავი ასლები (`SelectFitValue`) — ყველა ვარიანტი, ბოლოს „ყველა" და „სხვა"
@@ -139,10 +134,46 @@ describe('PageSizePick', () => {
     expect(labels).toEqual(['9', '12', '15', '18', '24', '36', '60', i18n.t('list.all'), i18n.t('numberPick.other')])
   })
 
-  it('stays when a typed size is smaller than the list, so it can be changed back', async () => {
+  /* ⚠️ ადრე პატარა სიაზე იმალებოდა — ერთ გვერდზე ჩანდა, მეორეზე არა (ვიდეოებში „არ ჩანდა").
+     ახლა ამრჩევს სიის ზომა საერთოდ არ გადაეცემა: ვერაფრით დაიმალება. */
+  it('always shows, whatever the size of the list', async () => {
     const { PageSizePick } = await import('@/components/ui/page-size-pick')
 
-    const el = await render(h(PageSizePick, { value: 3, onChange: vi.fn(), columns: 3, total: 7 }))
-    expect(el.querySelector('[data-testid="page-size-pick"]')).not.toBeNull()
+    for (const value of [9, 3, 0]) {
+      const el = await render(h(PageSizePick, { value, onChange: vi.fn(), columns: 3 }))
+      expect(el.querySelector('[data-testid="page-size-pick"]'), String(value)).not.toBeNull()
+      act(() => root?.unmount())
+      container?.remove()
+    }
+  })
+})
+
+/* ============================================================
+   **ამრჩევი ყველა სიის გვერდზე დგას** — მსახიობების ჩათვლით (იქ საერთოდ არ იყო).
+   ============================================================ */
+
+const LIST_PAGES = import.meta.glob<string>('../pages/*Page.tsx', { query: '?raw', import: 'default', eager: true })
+
+describe('every list page offers the page size', () => {
+  it.each([
+    'LibraryPage',
+    'VideosPage',
+    'SongsPage',
+    'BooksPage',
+    'GamesPage',
+    'BoardGamesPage',
+    'CoursesPage',
+    'PlacesPage',
+    'BookmarksPage',
+    'NotesPage',
+    'CustomModulePage',
+    'ActorsPage',
+  ])('%s draws the picker, without tying it to the size of the list', (page) => {
+    const source = LIST_PAGES[`../pages/${page}.tsx`]
+
+    expect(source).toBeDefined()
+    expect(source).toMatch(/<PageSizePick\b[^>]*\/>/)
+    // სიის ზომა ამრჩევს აღარ გადაეცემა — მის მიხედვით ვეღარ დაიმალება
+    expect(source.match(/<PageSizePick\b[^>]*\/>/)![0]).not.toContain('total=')
   })
 })

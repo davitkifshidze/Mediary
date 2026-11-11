@@ -43,7 +43,6 @@ export function GalleryPhotoGrid({
   emptyText,
   pageSize,
   onPageSizeChange,
-  total,
   extraTools,
 }: {
   /**
@@ -60,7 +59,6 @@ export function GalleryPhotoGrid({
   /** გვერდებს **სერვერი** ჭრის, ე.ი. ბადე მართულ რეჟიმშია */
   pageSize?: number
   onPageSizeChange?: (size: number) => void
-  total?: number
   extraTools?: React.ReactNode
 }) {
   const { t } = useTranslation()
@@ -157,7 +155,6 @@ export function GalleryPhotoGrid({
       lightboxItems={lightboxImages?.map(toItem)}
       pageSize={pageSize}
       onPageSizeChange={onPageSizeChange}
-      total={total}
       extraTools={extraTools}
       onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
       onMove={(ids) => setMoving(ids)}

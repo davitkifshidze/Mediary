@@ -115,8 +115,9 @@ describe('ActorsPage', () => {
     expect(tile.textContent).not.toContain(i18n.t('actors.countAnime', { count: 0 }))
     expect(button(i18n.t('actors.gender.male')).textContent).toContain('3')
 
-    // გვერდზე 10
-    expect(lastFilters()).toMatchObject({ sort: 'name', page: 1, per_page: 10 })
+    // ნაგულისხმევად ოთხი რიგი ექვს სვეტზე; ზომა „გვერდზე რამდენი“ ამრჩევიდან იცვლება
+    expect(lastFilters()).toMatchObject({ sort: 'name', page: 1, per_page: 24 })
+    expect(document.querySelector('[data-testid="page-size-pick"]')).not.toBeNull()
   })
 
   it('sends the gender cut and a panel filter to the server', async () => {

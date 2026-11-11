@@ -180,7 +180,6 @@ export function GroupPhotos({
           emptyText={emptyText}
           pageSize={pageSize}
           onPageSizeChange={setPageSize}
-          total={query.total}
         />
       )}
 

@@ -140,7 +140,6 @@ export function PersonalMediaGrid({
         items={items}
         pageSize={pageSize}
         onPageSizeChange={setPageSize}
-        total={mediaQ.total}
         onDelete={(ids) => void remove(ids)}
         onMove={(ids) => setMoving(ids)}
         onFavorite={(id) => favorite.mutate(id)}

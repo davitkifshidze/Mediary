@@ -353,7 +353,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
-            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} total={total} />
+            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} />
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input

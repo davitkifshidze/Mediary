@@ -25,6 +25,15 @@ import { cn } from '@/lib/utils'
 /** სენტინელი — რიცხვს ვერ დაემთხვევა, ე.ი. „სხვა" ვერ აირევა 0-ში */
 const OTHER = 'other'
 
+/**
+ * **პუნქტები ერთ ღერძზე — ტექსტი ცენტრში.** სელექტის პუნქტს მარცხნივ 32px აქვს
+ * მონიშვნის ნიშნისთვის და მარჯვნივ — 8px, ე.ი. ვიწრო, რიცხვებიან სიაში ტექსტი
+ * მარჯვნივ გაწეული ჩანდა და მხოლოდ მონიშნულზე „სწორდებოდა" (ნიშანი ცარიელ
+ * ადგილს ავსებდა). აქ დაშორება ორივე მხარეს ერთია; ნიშანი ისევ მარცხენა კიდეზეა
+ * (`absolute`) და ტექსტის ადგილს არ იკავებს — მონიშნული და მოუნიშნავი ერთნაირად დგას.
+ */
+const ITEM = 'justify-center px-8'
+
 export function NumberPick({
   value,
   onChange,
@@ -105,12 +114,14 @@ export function NumberPick({
         </SelectTrigger>
         <SelectContent>
           {list.map((n) => (
-            <SelectItem key={n} value={String(n)}>
+            <SelectItem key={n} value={String(n)} className={ITEM}>
               {labelOf(n)}
             </SelectItem>
           ))}
           {/* ბოლოში — „სხვა", სადაც რიცხვს თვითონ წერ */}
-          <SelectItem value={OTHER}>{t('numberPick.other')}</SelectItem>
+          <SelectItem value={OTHER} className={ITEM}>
+            {t('numberPick.other')}
+          </SelectItem>
         </SelectContent>
       </Select>
 

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { NumberPick } from '@/components/ui/number-pick'
-import { LIST_PER_PAGE_MAX, PAGE_ALL, pageSizeOptions } from '@/lib/pageSize'
+import { LIST_PER_PAGE_MAX, pageSizeOptions } from '@/lib/pageSize'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -11,16 +11,15 @@ import { cn } from '@/lib/utils'
    სიებზე `PageHeader`-შია ხედის გადამრთველის გვერდით (`md`, `h-10`),
    ფოტოს ბადეზე — მის ხელსაწყოთა ზოლში (`sm`, `h-9`).
 
-   ⚠️ **პატარა სიაზე იმალება** — როცა სულ უმცირეს ვარიანტზე ნაკლებია და
-   არჩეული ზომა ისედაც ყველაფერს აჩვენებს; ხელით ჩაწერილი პატარა ზომა
-   (მაგ. 3) კი ამრჩევს ტოვებს, თორემ უკან დაბრუნების გზა არ იქნებოდა.
+   ⚠️ **ყოველთვის ჩანს — ერთ ჩანაწერზეც.** ადრე პატარა სიაზე იმალებოდა („არჩევანს
+   აზრი არ აქვს"), მაგრამ ასე ერთ გვერდზე იყო და მეორეზე არა, და ვერ გაიგებდი,
+   საერთოდ აქვს თუ არა ამ სიას ეს პარამეტრი; არჩევანი კი სიის გაზრდამდეც გჭირდება.
    ============================================================ */
 
 export function PageSizePick({
   value,
   onChange,
   columns,
-  total,
   max = LIST_PER_PAGE_MAX,
   size = 'md',
   className,
@@ -29,8 +28,6 @@ export function PageSizePick({
   onChange: (size: number) => void
   /** განლაგების სვეტები (`layoutColumns`); 1 — სტრიქონები */
   columns: number
-  /** სულ რამდენია — პატარა სიაზე არჩევანს აზრი არ აქვს */
-  total: number
   /** სერვერის ჭერი — „სხვა"-ს ზედა ზღვარი */
   max?: number
   size?: 'sm' | 'md'
@@ -38,8 +35,6 @@ export function PageSizePick({
 }) {
   const { t } = useTranslation()
   const options = pageSizeOptions(columns)
-
-  if (total <= options[0] && (value === PAGE_ALL || value >= total)) return null
 
   return (
     <span className={cn('flex items-center gap-2', className)} data-testid="page-size-pick">

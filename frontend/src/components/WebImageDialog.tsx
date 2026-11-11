@@ -641,7 +641,6 @@ export function WebImageDialog({
                     size="sm"
                     columns={PHOTO_COLUMNS}
                     value={pageSize}
-                    total={items.length}
                     onChange={(size) => {
                       setPageSize(size)
                       pager.reset()

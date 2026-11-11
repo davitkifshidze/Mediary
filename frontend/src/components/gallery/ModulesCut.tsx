@@ -177,7 +177,6 @@ function ModulePhotos({
           }))}
           pageSize={pageSize}
           onPageSizeChange={setPageSize}
-          total={query.total}
         />
       )}
 

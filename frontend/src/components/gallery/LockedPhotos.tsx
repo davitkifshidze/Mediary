@@ -63,7 +63,6 @@ export function LockedPhotos({
           columns={PHOTO_COLUMNS}
           max={PHOTO_PER_PAGE_MAX}
           value={pageSize}
-          total={total}
           onChange={onPageSizeChange}
         />
       </div>

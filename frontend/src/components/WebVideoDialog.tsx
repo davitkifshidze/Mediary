@@ -397,7 +397,6 @@ export function WebVideoDialog({
                 size="sm"
                 columns={VIDEO_COLUMNS}
                 value={pageSize}
-                total={items.length}
                 onChange={(size) => {
                   setPageSize(size)
                   pager.reset()

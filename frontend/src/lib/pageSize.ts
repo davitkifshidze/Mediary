@@ -129,19 +129,37 @@ export function usePageSize(
 
 const PHOTO_KEY = 'photo-grid.page-size'
 
-/** ფოტოების ბადის ზომა — ბრაუზერში, ყველა ფოტოს ბადეზე ერთი (გალერეა, ჩანაწერი, მსახიობი) */
-export function usePhotoPageSize(): readonly [number, (next: number) => void] {
+/** მსახიობების ბადე მოდული არ არის — მისი ზომაც ბრაუზერში ინახება */
+const ACTORS_KEY = 'actors.page-size'
+
+/** მსახიობების ბადის სვეტები ფართო ეკრანზე (`ActorsPage`: `xl:grid-cols-6`) */
+export const ACTOR_COLUMNS = 6
+
+/** ბრაუზერში შენახული ზომა; უცნობი ან დაზიანებული მნიშვნელობა ნაგულისხმევს ნიშნავს */
+function useStoredPageSize(key: string, fallback: number, max: number): readonly [number, (next: number) => void] {
   const [size, setSize] = useState(() => {
-    const raw = Number(safeGet(PHOTO_KEY))
-    return Number.isInteger(raw) && raw >= 0 && raw <= PHOTO_PER_PAGE_MAX && safeGet(PHOTO_KEY) !== null
-      ? raw
-      : defaultPageSize(PHOTO_COLUMNS, 'photos')
+    const stored = safeGet(key)
+    const raw = Number(stored)
+    return stored !== null && Number.isInteger(raw) && raw >= 0 && raw <= max ? raw : fallback
   })
 
-  const change = useCallback((next: number) => {
-    setSize(next)
-    safeSet(PHOTO_KEY, String(next))
-  }, [])
+  const change = useCallback(
+    (next: number) => {
+      setSize(next)
+      safeSet(key, String(next))
+    },
+    [key],
+  )
 
   return [size, change] as const
+}
+
+/** მსახიობების გვერდის ზომა — სვეტების ჯერადი (ნაგულისხმევად ოთხი რიგი) */
+export function useActorsPageSize(): readonly [number, (next: number) => void] {
+  return useStoredPageSize(ACTORS_KEY, defaultPageSize(ACTOR_COLUMNS), LIST_PER_PAGE_MAX)
+}
+
+/** ფოტოების ბადის ზომა — ბრაუზერში, ყველა ფოტოს ბადეზე ერთი (გალერეა, ჩანაწერი, მსახიობი) */
+export function usePhotoPageSize(): readonly [number, (next: number) => void] {
+  return useStoredPageSize(PHOTO_KEY, defaultPageSize(PHOTO_COLUMNS, 'photos'), PHOTO_PER_PAGE_MAX)
 }

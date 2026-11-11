@@ -523,7 +523,7 @@ export function VideosPage() {
             {/* ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
             <ViewToggle value={layout} onChange={setLayout} />
             {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
-            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} total={total} />
+            <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} />
             {/* ძებნა — განმარტება tooltip-ია და არა `title` */}
             <Tooltip>
               <TooltipTrigger asChild>

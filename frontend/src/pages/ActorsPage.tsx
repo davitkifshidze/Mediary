@@ -37,7 +37,9 @@ import { Input } from '@/components/ui/input'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Pagination } from '@/components/ui/pagination'
-import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { usePagedList } from '@/lib/paged'
+import { ACTOR_COLUMNS, useActorsPageSize } from '@/lib/pageSize'
+import { PageSizePick } from '@/components/ui/page-size-pick'
 import { MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -46,7 +48,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
    ყველა „ჩემი" მსახიობი — ვინც ჩემს ფილმზე, სერიალზე ან ანიმეზეა და ვისაც
    ჩემი ფოტო აქვს. ⚠️ ავზი ათასობითაა, ამიტომ ფილტრი, დახარისხება და გვერდები
-   სერვერზეა (`GET /actors`); გვერდზე 10 — ნომრები + „მეტის ჩვენება", გვერდი `?page=`-შია.
+   სერვერზეა (`GET /actors`); გვერდის ზომა ბადის სვეტების ჯერადია (`PageSizePick`, ბრაუზერში ინახება) —
+   ნომრები + „მეტის ჩვენება", გვერდი `?page=`-შია.
 
    ⚠️ სქესი ჭრილებია მთვლელით („ყველა · ქალები · კაცები"), დანარჩენი ფილტრი —
    პანელში (მისამართში ინახება, ბრაუზერის „უკან" მუშაობს). `/gallery/actors`
@@ -110,11 +113,14 @@ export function ActorsPage() {
     sort,
     locale: lang === 'ka' ? 'ka' : 'en',
   }
+  // „გვერდზე რამდენი" — ბადის სვეტების ჯერადი; მსახიობები მოდული არ არის, არჩევანი ბრაუზერშია
+  const [pageSize, setPageSize] = useActorsPageSize()
   // ფილტრის/დახარისხების ცვლილება პირველ გვერდზე აბრუნებს (`usePagedList`)
   const query = usePagedList({
     queryKey: [ACTORS_KEY, filters],
-    fetchPage: (page) =>
-      fetchActors({ ...filters, page, per_page: LIST_PAGE_SIZE }).then((list) => ({ ...list, lastPage: list.last_page })),
+    fetchPage: (page, per_page) =>
+      fetchActors({ ...filters, page, per_page }).then((list) => ({ ...list, lastPage: list.last_page })),
+    pageSize,
   })
 
   const items = query.items
@@ -246,6 +252,7 @@ export function ActorsPage() {
         subtitle={t('actors.count', { count: total })}
         actions={
           <>
+            <PageSizePick value={pageSize} onChange={setPageSize} columns={ACTOR_COLUMNS} />
             <div className="relative min-w-0 flex-1 sm:flex-none">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
