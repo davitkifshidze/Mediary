@@ -3,13 +3,15 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ImageOff, ListMusic, Loader2, Search, Users, ArrowRight, ChevronDown } from 'lucide-react'
-import { globalSearch, type SearchGroup, type SearchItem } from '@/api/search'
+import { fetchSearchDomains, globalSearch, type SearchDomain, type SearchGroup, type SearchItem } from '@/api/search'
 import { storageUrl } from '@/lib/api'
 import { moduleName, useModules } from '@/lib/modules'
 import { highlightParts, resultPath } from '@/lib/searchResults'
+import { readScope, rememberScope, scopeOf, toggleScope } from '@/lib/searchScope'
+import { cutStyle } from '@/lib/cutStyle'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { CutTabs } from '@/components/ui/cut-tabs'
+import { ScopeCard, ScopeGroup } from '@/components/ui/scope-card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { PageContainer } from '@/components/ui/page'
@@ -28,6 +30,12 @@ import { ModuleIcon } from '@/components/ModuleIcon'
    ჩიპებისთვისაც საჭიროა — ე.ი. დომენის არჩევის შემდეგაც უნდა ჩანდეს
    „სხვაგან რამდენია". ერთი მოთხოვნით არჩეული დომენის მიღმა ყველა რიცხვი
    გაქრებოდა.
+
+   ⚠️ **არეალი რამდენიმე დომენია და ახსოვს** (`lib/searchScope.ts`): ჩიპები
+   სიტყვამდეც ჩანს (`GET /search/domains`), მონიშნული რამდენიმე დომენი
+   მიმოხილვიდან იფილტრება, ზუსტად ერთი კი ღრმა სიას ხსნის. „ვეძებ: …"
+   ყოველთვის ამბობს, სად იძებნება — სიის ველის „სხვაგანაც"-ით მოსულმა
+   დამახსოვრებული არეალი უნდა დაინახოს და არა გამოიცნოს.
 
    ⚠️ **ნაჭერს სერვერი აბრუნებს, ხაზგასმას კი ბრაუზერი** — `highlightParts()`
    სუფთა ტექსტს ჭრის, ე.ი. ნედლი HTML არსად არ ჩნდება.
@@ -53,7 +61,17 @@ export function SearchPage() {
   const [params, setParams] = useSearchParams()
 
   const q = (params.get('q') ?? '').trim()
-  const domain = params.get('domain')
+
+  const domainsQ = useQuery({ queryKey: ['search-domains'], queryFn: fetchSearchDomains, staleTime: 5 * 60_000 })
+  const available = domainsQ.data ?? null
+  const [remembered, setRemembered] = useState(readScope)
+  const scopeParam = params.get('domain')
+  const selected = useMemo(
+    () => scopeOf(scopeParam, remembered, available ? available.map((d) => d.key) : null),
+    [scopeParam, remembered, available],
+  )
+  /** ზუსტად ერთი დომენი — მისი ღრმა სია „მეტის ჩვენებით" */
+  const domain = selected.length === 1 ? selected[0] : null
 
   const [term, setTerm] = useState(params.get('q') ?? '')
   const [limit, setLimit] = useState(DEEP_STEP)
@@ -66,8 +84,6 @@ export function SearchPage() {
       const next = new URLSearchParams(params)
       if (term.trim()) next.set('q', term.trim())
       else next.delete('q')
-      // სხვა სიტყვაზე დომენის ფილტრი აზრს კარგავს
-      next.delete('domain')
       setParams(next, { replace: true })
     }, DEBOUNCE_MS)
 
@@ -96,15 +112,27 @@ export function SearchPage() {
     placeholderData: keepPreviousData,
   })
 
-  const groups = domain ? (deep.data?.groups ?? []) : (overview.data?.groups ?? [])
-  const total = overview.data?.total ?? 0
+  const overviewGroups = overview.data?.groups ?? []
+  const groups = domain
+    ? (deep.data?.groups ?? [])
+    : selected.length
+      ? overviewGroups.filter((g) => selected.includes(g.key))
+      : overviewGroups
+  /** არეალის ჯამი — „ნაპოვნია N" იმას ითვლის, რაც ეკრანზეა */
+  const total = selected.length
+    ? overviewGroups.filter((g) => selected.includes(g.key)).reduce((sum, g) => sum + g.total, 0)
+    : (overview.data?.total ?? 0)
   const loading = overview.isFetching || deep.isFetching
 
-  const setDomain = (key: string | null) => {
-    const next = new URLSearchParams(params)
-    if (key) next.set('domain', key)
-    else next.delete('domain')
-    setParams(next, { replace: true })
+  /** არეალის შეცვლა: ახსოვს ბრაუზერს და ჩანს მისამართში */
+  const choose = (next: string[]) => {
+    setRemembered(next)
+    rememberScope(next)
+
+    const query = new URLSearchParams(params)
+    if (next.length) query.set('domain', next.join(','))
+    else query.delete('domain')
+    setParams(query, { replace: true })
   }
 
   const routes = useMemo(
@@ -118,23 +146,31 @@ export function SearchPage() {
    * ასეთ დროს არც `color` ბრუნდება და არც `node` — და ბარათი ტონსა და
    * ხატულას `lib/cutStyle.ts`-იდან იღებს.
    */
-  const cutIdentity = (group: SearchGroup) => {
+  const cutIdentity = (group: SearchDomain) => {
     const found = modules.find((m) => m.key === group.module)
+    const fallback = cutStyle(group.key)
 
     return found
       ? {
           color: found.color ?? null,
-          node: <ModuleIcon name={found.icon} className="size-4 text-[var(--mod)]" />,
+          icon: <ModuleIcon name={found.icon} className="size-4 text-[var(--mod)]" />,
         }
-      : {}
+      : { color: fallback.color, icon: <fallback.icon className="size-4 text-[var(--mod)]" /> }
   }
 
-  const labelOf = (group: SearchGroup) => {
+  const labelOf = (group: SearchDomain | SearchGroup) => {
     if (OWN_LABEL.includes(group.key)) return t(`search.group.${group.key}`)
     const found = modules.find((m) => m.key === group.module)
 
     return found ? moduleName(found, i18n.language) : group.key
   }
+
+  const all = cutStyle('all')
+  const searched = q.length >= 2 && !!overview.data
+  /** ჩიპის რიცხვი მიმოხილვიდან; სიტყვამდე რიცხვი არ აქვს */
+  const countOf = (key: string) =>
+    searched ? (overviewGroups.find((g) => g.key === key)?.total ?? 0) : undefined
+  const scopeNames = (available ?? []).filter((d) => selected.includes(d.key)).map(labelOf)
 
   return (
     <PageContainer>
@@ -143,7 +179,7 @@ export function SearchPage() {
         subtitle={q.length >= 2 ? t('search.found', { count: total }) : t('search.hint')}
       />
 
-      <div className="relative mb-5 max-w-xl">
+      <div className="relative mb-2 max-w-xl">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           autoFocus
@@ -158,23 +194,34 @@ export function SearchPage() {
         )}
       </div>
 
-      {/* ⚠️ ჩიპები **მიმოხილვიდან** იწერება, ე.ი. არჩეული დომენის მიღმაც
-          ჩანს, სად რამდენი შედეგია */}
-      {(overview.data?.groups.length ?? 0) > 1 && (
+      <p className="mb-4 text-sm text-muted-foreground" data-testid="search-scope">
+        {t('search.scope', { where: scopeNames.length ? scopeNames.join(', ') : t('search.scopeAll') })}
+      </p>
+
+      {/* ⚠️ ჩიპები დომენების სიიდან იწერება და სიტყვამდეც ჩანს; რიცხვი
+          **მიმოხილვიდან** მოდის, ე.ი. არჩეული არეალის მიღმაც ჩანს, სად რამდენია */}
+      {(available?.length ?? 0) > 1 && (
         <div className="mb-5">
-          <CutTabs
-            options={[
-              { key: 'all', label: t('search.allDomains'), count: total },
-              ...(overview.data?.groups ?? []).map((g) => ({
-                key: g.key,
-                label: labelOf(g),
-                count: g.total,
-                ...cutIdentity(g),
-              })),
-            ]}
-            value={domain ?? 'all'}
-            onChange={(key) => setDomain(key === 'all' ? null : key)}
-          />
+          <ScopeGroup label={t('search.scopeLabel')}>
+            <ScopeCard
+              active={selected.length === 0}
+              color={all.color}
+              icon={<all.icon className="size-4 text-[var(--mod)]" />}
+              label={t('search.allDomains')}
+              count={searched ? overview.data?.total : undefined}
+              onClick={() => choose([])}
+            />
+            {(available ?? []).map((d) => (
+              <ScopeCard
+                key={d.key}
+                active={selected.includes(d.key)}
+                label={labelOf(d)}
+                count={countOf(d.key)}
+                onClick={() => choose(toggleScope(selected, d.key))}
+                {...cutIdentity(d)}
+              />
+            ))}
+          </ScopeGroup>
         </div>
       )}
 
@@ -210,7 +257,7 @@ export function SearchPage() {
             {group.total > group.items.length && (
               <div className="mt-2">
                 {!domain ? (
-                  <Button variant="outline" size="sm" onClick={() => setDomain(group.key)}>
+                  <Button variant="outline" size="sm" onClick={() => choose([group.key])}>
                     <ArrowRight className="size-4" />
                     {t('search.showAllIn', { name: labelOf(group), count: group.total })}
                   </Button>

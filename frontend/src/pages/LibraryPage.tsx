@@ -11,7 +11,6 @@ import {
   ArrowUpNarrowWide,
   Layers,
   Plus,
-  Search,
   Sparkles,
   FilterX,
 } from 'lucide-react'
@@ -44,12 +43,12 @@ import { filterCount, straightenRanges, useFilterDraft } from '@/lib/filters'
 import { useModuleSetting } from '@/lib/moduleSetting'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { InfoHint } from '@/components/ui/info-hint'
-import { Input } from '@/components/ui/input'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { FloatingPick } from '@/components/FloatingPick'
+import { ListSearch } from '@/components/ListSearch'
 import { RandomPickDialog } from '@/components/RandomPickDialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -288,15 +287,8 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
             <ViewToggle value={layout} onChange={setLayout} />
             {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
             <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} />
-            <div className="relative min-w-0 flex-1 sm:flex-none">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={t('search.placeholder')}
-                className="w-full pl-9 sm:w-56"
-              />
-            </div>
+            {/* ეძებს მხოლოდ ამ მოდულში; „სხვაგანაც" იმავე სიტყვით ჯვარედინ ძებნაზე გადადის */}
+            <ListSearch value={q} onChange={setQ} placeholder={t(`search.inModule.${type}`)} />
             {/* დალაგება — ერთი ველი + მიმართულების ისარი (DataTable-სტილი) */}
             <div className="flex items-center gap-1">
               <Select

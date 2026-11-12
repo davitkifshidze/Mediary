@@ -340,6 +340,7 @@ Route::middleware('auth:sanctum')->group(function () {
     /* ---------- ჯვარედინი ძებნა ----------
        ⚠️ **მოდულის ჯგუფის გარეთ**: კითხვა ყველა ჩართულ მოდულს ეხება და არა
        ერთს — რომელია ჩართული, ამას `GlobalSearch` წყვეტს. */
+    Route::get('/search/domains', [SearchController::class, 'domains']);
     Route::get('/search', [SearchController::class, 'index']);
 
     /* ---------- ბმულის მეტა-მონაცემი ----------

@@ -111,6 +111,26 @@ class MediaLibraryFilterTest extends TestCase
         $this->assertSame([], $this->titles("{$uri}?genre=action,horror&genre_mode=all"));
     }
 
+    /**
+     * სიის ველი ეძებს ორივე ენის სათაურსა და IMDb id-ში — და დანარჩენ ფილტრებს
+     * არ არღვევს (`or` ერთ ფრჩხილშია).
+     */
+    #[DataProvider('modules')]
+    public function test_the_list_search_reads_both_titles_and_the_imdb_id(string $model, string $uri): void
+    {
+        $love = $this->record($model, 'Love', ['imdb_id' => 'tt0111161', 'year' => 1994]);
+        $love->setTranslation('ka', ['title' => 'სიყვარული']);
+        $this->record($model, 'Hate', ['imdb_id' => 'tt0068646', 'year' => 1972]);
+
+        $this->assertSame(['Love'], $this->titles("{$uri}?q=lov"));
+        $this->assertSame(['Love'], $this->titles("{$uri}?q=".urlencode('სიყვარ')));
+        $this->assertSame(['Love'], $this->titles("{$uri}?q=tt0111161"));
+        $this->assertEqualsCanonicalizing(['Love', 'Hate'], $this->titles("{$uri}?q=tt0"));
+        // წელი ძებნასთან ერთად მოქმედებს
+        $this->assertSame(['Hate'], $this->titles("{$uri}?q=tt0&year_max=1980"));
+        $this->assertSame([], $this->titles("{$uri}?q=tt0111161&year_max=1980"));
+    }
+
     /** „დან" > „მდე" — წყვილი გადაისმება და არა ცარიელი სია ბრუნდება */
     #[DataProvider('modules')]
     public function test_reversed_bounds_are_swapped(string $model, string $uri): void

@@ -12,7 +12,6 @@ import {
   Map as MapIcon,
   MapPin,
   Plus,
-  Search,
   Star,
   FilterX,
   Check,
@@ -56,6 +55,7 @@ import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useDateFormat } from '@/lib/dates'
 import { useContentLang } from '@/lib/settings'
+import { ListSearch } from '@/components/ListSearch'
 import { PlaceDetail } from '@/components/PlaceDetail'
 import { FormMapPick } from '@/components/PlaceMapLazy'
 import { PendingFilesSection } from '@/components/PendingFiles'
@@ -277,15 +277,7 @@ export function PlacesPage() {
             <ViewToggle value={layout} onChange={setLayout} />
             {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
             <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} />
-            <div className="relative min-w-0 flex-1 sm:flex-none">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={t('search.placeholder')}
-                className="w-full pl-9 sm:w-56"
-              />
-            </div>
+            <ListSearch value={q} onChange={setQ} placeholder={t('search.inModule.place')} />
             <Select value={sort} onValueChange={(v) => setSort(v as (typeof SORTS)[number])}>
               <SelectTrigger className="w-36">
                 <SelectValue />

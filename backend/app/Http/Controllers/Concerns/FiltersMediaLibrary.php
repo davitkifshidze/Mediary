@@ -79,8 +79,15 @@ trait FiltersMediaLibrary
 
         $this->filterGenres($query, $request);
 
+        /* სიის ველი იმავე ველებში ეძებს, რაშიც ჯვარედინი ძებნა პოულობს სათაურს:
+           ორივე ენის სათაური (თარგმანების ცხრილი) და IMDb id. ⚠️ ერთ ფრჩხილშია —
+           `or` დანარჩენ ფილტრებს (სტატუსი, ჟანრი, წელი) არ უნდა არღვევდეს. */
         if ($q = $request->string('q')->toString()) {
-            $query->whereHas('translations', fn ($t) => $t->where('title', 'like', Like::contains($q)));
+            $imdb = $query->getModel()->qualifyColumn('imdb_id');
+
+            $query->where(fn (Builder $match) => $match
+                ->whereHas('translations', fn ($t) => $t->where('title', 'like', Like::contains($q)))
+                ->orWhere($imdb, 'like', Like::contains($q)));
         }
 
         /* ⚠️ ზღვრის დასმისთანავე უწლო / ურეიტინგო ჩანაწერი სიიდან გადის: `NULL`

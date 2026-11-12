@@ -139,6 +139,26 @@ class GlobalSearch
         ];
     }
 
+    /**
+     * **რომელ დომენებში შეუძლია ძებნა ამ ანგარიშს** — ძებნის გვერდის ჩიპები.
+     *
+     * ⚠️ სია სიტყვამდეც საჭიროა: არეალი ირჩევა (და ახსოვს) მანამ, სანამ რამე
+     * მოიძებნება, ე.ი. ჩიპებს პასუხის ჯგუფებიდან ვერ ავაწყობთ — ცარიელი
+     * ჯგუფი პასუხში არ მოდის.
+     *
+     * @return list<array{key: string, module: string|null}>
+     */
+    public function domains(User $user): array
+    {
+        $domains = [];
+
+        foreach ($this->sources($user) as $domain => $spec) {
+            $domains[] = ['key' => (string) $domain, 'module' => $spec['module']];
+        }
+
+        return $domains;
+    }
+
     /* ================= წყაროების რეესტრი ================= */
 
     /**

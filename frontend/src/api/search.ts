@@ -59,6 +59,19 @@ export interface SearchOptions {
   signal?: AbortSignal
 }
 
+/** დომენი, რომელშიც ეს ანგარიში ეძებს — ძებნის გვერდის არეალის ჩიპი */
+export interface SearchDomain {
+  key: string
+  module: string | null
+}
+
+/** დომენების სია სიტყვამდეც ცნობილია: არეალი ირჩევა, სანამ რამე მოიძებნება */
+export async function fetchSearchDomains(): Promise<SearchDomain[]> {
+  const { data } = await api.get<{ data: SearchDomain[] }>('/search/domains')
+
+  return data.data
+}
+
 export async function globalSearch(q: string, opts: SearchOptions = {}): Promise<SearchResult> {
   const { data } = await api.get<SearchResult>('/search', {
     params: { q, per_module: opts.perModule, domain: opts.domain },

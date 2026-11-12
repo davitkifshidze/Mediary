@@ -315,7 +315,7 @@ export function SharePage() {
                 <Input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder={t('search.placeholder')}
+                  placeholder={t('search.inList')}
                   className="pl-9"
                 />
               </div>

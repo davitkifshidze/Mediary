@@ -357,6 +357,25 @@ class GlobalSearchTest extends TestCase
         $this->assertSame(1, $res->json('total'));
     }
 
+    /**
+     * **არეალის ჩიპები** — დომენების სია სიტყვამდეც ცნობილია და მხოლოდ ჩართულ
+     * მოდულებს მოიცავს; მსახიობები მედია-მოდულთან ერთად ჩნდება.
+     */
+    public function test_the_domain_list_follows_the_enabled_modules(): void
+    {
+        $domains = $this->actingAs($this->alice)->getJson('/api/search/domains')->assertOk()->json('data');
+
+        $this->assertSame(['movie', 'song', 'playlist', 'bookmark', 'cast'], array_column($domains, 'key'));
+        $this->assertSame('song', collect($domains)->firstWhere('key', 'playlist')['module']);
+        $this->assertNull(collect($domains)->firstWhere('key', 'cast')['module']);
+
+        $reader = $this->makeUser('dato', ['book']);
+        $this->assertSame(
+            ['book'],
+            array_column($this->actingAs($reader)->getJson('/api/search/domains')->json('data'), 'key'),
+        );
+    }
+
     /* ================= რეესტრი და რიგი ================= */
 
     /** ყველა მოდული ჩართული + ერთი პირადი მოდული — რეესტრის სრული სია */

@@ -6,7 +6,6 @@ import {
   ExternalLink,
   GraduationCap,
   Plus,
-  Search,
   FilterX,
 } from 'lucide-react'
 import {
@@ -30,6 +29,7 @@ import { errorMessage } from '@/lib/errors'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { CourseDetail } from '@/components/CourseDetail'
+import { ListSearch } from '@/components/ListSearch'
 import { RecordActionBar } from '@/components/RecordActionBar'
 import { EnumStatusMenu } from '@/components/StatusMenu'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
@@ -42,7 +42,6 @@ import {
 } from '@/components/FilterPanel'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Input } from '@/components/ui/input'
 import { hostLabel } from '@/lib/platforms'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -228,15 +227,7 @@ export function CoursesPage() {
             <ViewToggle value={layout} onChange={setLayout} />
             {/* „გვერდზე რამდენი“ — ხედის სვეტების ჯერადი, მოდულზე ინახება */}
             <PageSizePick value={pageSize} onChange={setPageSize} columns={columns} />
-            <div className="relative min-w-0 flex-1 sm:flex-none">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={t('search.placeholder')}
-                className="w-full pl-9 sm:w-56"
-              />
-            </div>
+            <ListSearch value={q} onChange={setQ} placeholder={t('search.inModule.course')} />
             <Select value={sort} onValueChange={(v) => setSort(v as (typeof SORTS)[number])}>
               <SelectTrigger className="w-36">
                 <SelectValue />

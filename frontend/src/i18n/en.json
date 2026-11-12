@@ -434,7 +434,7 @@
     "hint": "Type at least two characters — titles, descriptions, notes, quotes, tags, cast and file names are all searched",
     "emptyHint": "Try another word, or part of one",
     "found": "{{count}} results",
-    "allDomains": "Everywhere",
+    "allDomains": "All",
     "allResults": "All results ({{count}})",
     "groupAll": "All {{count}} results",
     "showAllIn": "{{name}} — all {{count}} results",
@@ -477,7 +477,20 @@
       "video": "Video",
       "file": "File",
       "field": "Field"
-    }
+    },
+    "inModule": {
+      "movie": "Search movies…",
+      "series": "Search series…",
+      "anime": "Search anime…",
+      "course": "Search courses…",
+      "place": "Search places…"
+    },
+    "inList": "Search this list…",
+    "elsewhere": "Elsewhere too",
+    "elsewhereHint": "Search every module for the same word",
+    "scope": "Searching: {{where}}",
+    "scopeAll": "every module",
+    "scopeLabel": "Where to search"
   },
   "form": {
     "addTitle": "Add movie",

@@ -20,6 +20,12 @@ use Illuminate\Http\Request;
  */
 class SearchController extends Controller
 {
+    /** დომენები, რომლებშიც ეს ანგარიში ეძებს — ძებნის გვერდის არეალის ჩიპები */
+    public function domains(Request $request, GlobalSearch $search)
+    {
+        return response()->json(['data' => $search->domains($request->user())]);
+    }
+
     public function index(Request $request, GlobalSearch $search)
     {
         $data = $request->validate([
