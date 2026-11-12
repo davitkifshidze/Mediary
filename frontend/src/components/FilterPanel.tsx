@@ -1,6 +1,8 @@
 import {
   Children,
+  createContext,
   isValidElement,
+  useContext,
   useMemo,
   useRef,
   useState,
@@ -35,6 +37,26 @@ import { EmptyState } from '@/components/ui/empty-state'
 
 const PANEL_WIDTH = 'w-[280px]'
 
+/** ამდენი რიგიდან სია „გრძელია": ჩნდება ძებნა და პანელში სია დარჩენილ სიმაღლეს იკავებს */
+const LONG_LIST = 8
+
+/**
+ * **გრძელი სია პანელის დარჩენილ სიმაღლეს იკავებს.**
+ *
+ * ⚠️ სია ფიქსირებულ 260px-ზე იყო შეზღუდული (~7 რიგი), თუმცა პანელს მთელი ეკრანის
+ * სიმაღლე აქვს — ოცი ჟანრი შვიდრიგიან ფანჯარაში იძებნებოდა, ქვემოთ კი ცარიელი
+ * ადგილი რჩებოდა. ახლა პანელი flex-სვეტია: მოკლე ჯგუფები (დიაპაზონები, ორ-სამ
+ * რიგიანი სიები) თავის ზომაზე რჩება, გრძელსიიანი ჯგუფი კი იკუმშება და შიგნით
+ * სქროლავს — ამიტომ დიაპაზონები და ქვედა ღილაკები ყოველთვის ჩანს.
+ *
+ * ⚠️ მხოლოდ **პანელის შიგნით** (`InPanel`): სხვაგან დახატულ ჯგუფს flex-მშობელი არ
+ * ჰყავს, იქ ჭერის მოხსნა სიას უსასრულოდ გაშლიდა.
+ */
+const InPanel = createContext(false)
+
+/** ჯგუფი „იჭიმება" — მისი სია ჭერის ნაცვლად დარჩენილ სიმაღლეს იღებს */
+const GroupFill = createContext(false)
+
 interface OptionProps {
   label: string
   checked: boolean
@@ -68,6 +90,30 @@ function selectedOptions(node: ReactNode, out: ReactElement<OptionProps>[] = [])
   return out
 }
 
+/** ჯგუფში გრძელი სია დევს? (რიგებს ისევე ითვლის, როგორც თვითონ სია) */
+function hasLongList(node: ReactNode): boolean {
+  let found = false
+
+  Children.forEach(node, (child) => {
+    if (found || !isValidElement(child)) return
+
+    const nested = (child.props as { children?: ReactNode }).children
+
+    if (child.type === FilterOptionList) {
+      const items = Children.toArray(nested)
+      found =
+        items.length >= LONG_LIST &&
+        items.every((item) => isValidElement(item) && item.type === FilterOption)
+
+      return
+    }
+
+    if (nested) found = hasLongList(nested)
+  })
+
+  return found
+}
+
 /** ერთი ჩაკეცვადი ჯგუფი პანელში (ჟანრები, სტატუსი, დიაპაზონები…) */
 export function FilterGroup({
   title,
@@ -88,9 +134,19 @@ export function FilterGroup({
   const [open, setOpen] = useState(defaultOpen)
   const selected = useMemo(() => selectedOptions(children), [children])
   const shown = count ?? selected.length
+  const inPanel = useContext(InPanel)
+  // ჩაკეცილი ჯგუფი არ იჭიმება — მას მხოლოდ სათაური აქვს
+  const fill = inPanel && open && hasLongList(children)
 
   return (
-    <div className="border-b border-border py-3 first:pt-0 last:border-b-0">
+    <div
+      data-fill={fill || undefined}
+      className={cn(
+        'border-b border-border py-3 first:pt-0 last:border-b-0',
+        // ⚠️ `flex-auto` და არა `flex-1`: საწყისი ზომა შიგთავსია — მაღალ ეკრანზე სია მთლიანად ჩანს
+        fill ? 'flex min-h-56 flex-auto flex-col' : 'shrink-0',
+      )}
+    >
       <div className="flex items-center gap-1">
         <button
           data-kind="accordion"
@@ -155,7 +211,15 @@ export function FilterGroup({
 
       {/* გაშლა/აკეცვა რბილად; `pt-2` და არა `mt-2`, რომ დაშორებაც
           გაზომვაში შევიდეს და აკეცილ ჯგუფს ზედმეტი ადგილი არ დარჩეს */}
-      <AutoHeight>{open && <div className="space-y-0.5 pt-2">{children}</div>}</AutoHeight>
+      {fill ? (
+        /* ⚠️ `AutoHeight`-ის გარეშე: ის შიგთავსს ზომავს და ყუთს პიქსელურ სიმაღლეს
+           აძლევს, flex-ის შეკუმშვას კი ზუსტად ეს უშლის ხელს */
+        <GroupFill.Provider value>
+          <div className="flex min-h-0 flex-1 flex-col space-y-0.5 pt-2">{children}</div>
+        </GroupFill.Provider>
+      ) : (
+        <AutoHeight>{open && <div className="space-y-0.5 pt-2">{children}</div>}</AutoHeight>
+      )}
     </div>
   )
 }
@@ -210,11 +274,12 @@ export function FilterOptionList({
   maxHeight = 260,
 }: {
   children: ReactNode
-  /** px — დაახლოებით 7 რიგი */
+  /** px — დაახლოებით 7 რიგი; პანელის გრძელ სიას ჭერი არ აქვს */
   maxHeight?: number
 }) {
   const { t } = useTranslation()
   const [query, setQuery] = useState('')
+  const fill = useContext(GroupFill)
 
   const items = Children.toArray(children)
   const options = items.filter(
@@ -254,8 +319,8 @@ export function FilterOptionList({
   return (
     <>
       {/* გრძელ სიაში ძებნა — რვა რიგიდან ზემოთ სქროლი ცალკე აღარ ყოფნის */}
-      {!plain && options.length >= 8 && (
-        <div className="relative mb-2">
+      {!plain && options.length >= LONG_LIST && (
+        <div className="relative mb-2 shrink-0">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
@@ -266,7 +331,11 @@ export function FilterOptionList({
         </div>
       )}
 
-      <div className="fb-scroll -mr-1 space-y-1 overflow-y-auto pr-1" style={{ maxHeight }}>
+      {/* პანელის გრძელი სია ჭერის ნაცვლად დარჩენილ სიმაღლეს იღებს (`GroupFill`) */}
+      <div
+        className={cn('fb-scroll -mr-1 space-y-1 overflow-y-auto pr-1', fill && 'min-h-0 flex-1')}
+        style={fill ? undefined : { maxHeight }}
+      >
         {shown}
         {!plain && !shown.length && (
           <EmptyState size="line" kind="search" className="px-1.5" title={t('filter.noMatches')} />
@@ -432,7 +501,7 @@ export function FilterPanel({
           ახლა სათაურთან მხოლოდ რიცხვია, ხოლო რაც უნდა *გააკეთო* —
           „ყველაფრის გასუფთავება" — სიტყვიერი ღილაკია ქვემოთ და არა შიშველი
           ჯვარი. `pr-9` — უჯრის დახურვის ჯვარს ვუტოვებთ ადგილს. */}
-      <div className="mb-3 flex items-center gap-2 pr-9 lg:pr-0">
+      <div className="mb-3 flex shrink-0 items-center gap-2 pr-9 lg:pr-0">
         <SlidersHorizontal className="size-4 shrink-0 text-muted-foreground" />
         <h2 className="flex-1 text-sm font-semibold">{t('filter.more')}</h2>
         {activeCount > 0 && (
@@ -442,9 +511,13 @@ export function FilterPanel({
         )}
       </div>
 
-      <div className="fb-scroll -mr-1 min-h-0 flex-1 overflow-y-auto pr-1">{children}</div>
+      {/* flex-სვეტი: გრძელსიიანი ჯგუფი იკუმშება, დანარჩენი თავის ზომაზე რჩება;
+          სქროლი მხოლოდ მაშინ ჩნდება, როცა ეკრანი მინიმუმსაც ვერ იტევს */}
+      <InPanel.Provider value>
+        <div className="fb-scroll -mr-1 flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">{children}</div>
+      </InPanel.Provider>
 
-      <div className="mt-3 space-y-2 border-t border-border pt-3">
+      <div className="mt-3 shrink-0 space-y-2 border-t border-border pt-3">
         <Button className="w-full" onClick={onApply} disabled={!dirty}>
           <Check className="size-4" />
           {t('filter.apply')}
