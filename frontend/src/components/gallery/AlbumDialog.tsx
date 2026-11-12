@@ -40,14 +40,24 @@ import { AlbumPasswordFields } from '@/components/gallery/AlbumPasswordFields'
    ⚠️ **ხილვადობა აქვეა**: ალბომი გალერეაში ერთადერთია, რასაც
    საკუთარი გადამრთველი აქვს — ფოტო მშობლის ხილვადობას იმემკვიდრებს,
    უმშობლოს კი მემკვიდრეობით არაფერი მოსდის.
+
+   ⚠️ **`lockOnly` — იგივე ფანჯარა მხოლოდ ლოკის ბლოკით** (ბარათის მენიუს
+   „ჩაკეტვა" / „პაროლი"). ლოკი რედაქტირების ფანჯარაში ცხოვრობს, მაგრამ იქ მისი
+   ძებნა არავის მოსდის თავში: ფილმის, მსახიობისა და პირადი გალერეის ბარათზე
+   „ჩაკეტვა" მენიუშია, ალბომზე კი არ იყო — პაროლმოხსნილ ალბომს ხელახლა ვერ
+   კეტავდი, თუ არ იცოდი, რომ ეს „რედაქტირებაშია". სახელი, აღწერა და ხილვადობა
+   ამ რეჟიმში არ იხატება და უცვლელად იგზავნება.
    ============================================================ */
 
 export function AlbumDialog({
   album,
+  lockOnly = false,
   onClose,
 }: {
   /** `null` — ახალი ალბომი */
   album: GalleryAlbum | null
+  /** მხოლოდ ლოკის ბლოკი — პაროლის დადება, შეცვლა ან მოხსნა არსებულ ალბომზე */
+  lockOnly?: boolean
   onClose: () => void
 }) {
   const { t } = useTranslation()
@@ -67,6 +77,8 @@ export function AlbumDialog({
   const locked = !!album?.locked
   /** მოქმედი პაროლი მაშინ ჰკითხე, როცა ლოკი უკვე დგას და სესია ღია არაა */
   const needsCurrent = locked && !album?.unlocked
+  /** ლოკის რეჟიმი მხოლოდ არსებულ ალბომზეა — ახალს ჯერ სახელი სჭირდება */
+  const onlyLock = lockOnly && !!album
 
   const save = useMutation({
     mutationFn: async () => {
@@ -98,7 +110,7 @@ export function AlbumDialog({
       ;['gallery', 'gallery-photos', 'gallery-groups', 'gallery-summary', 'gallery-albums'].forEach(
         (key) => qc.invalidateQueries({ queryKey: [key] }),
       )
-      toast({ title: t('gallery.albumSaved'), variant: 'success' })
+      toast({ title: t(onlyLock ? (removing ? 'lock.removed' : 'lock.saved') : 'gallery.albumSaved'), variant: 'success' })
       onClose()
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
@@ -109,10 +121,12 @@ export function AlbumDialog({
   const ready =
     !!name.trim() &&
     !albumPasswordProblem(password, repeat) &&
-    (!needsCurrent || !(removing || password) || !!current)
+    (!needsCurrent || !(removing || password) || !!current) &&
+    // ლოკის რეჟიმში შესანახი მხოლოდ ლოკია — ცარიელი ფორმა არაფერს ცვლის
+    (!onlyLock || removing || !!password)
 
   return (
-    <ModalShell title={t(album ? 'gallery.albumEdit' : 'gallery.albumAdd')} onClose={onClose}>
+    <ModalShell title={onlyLock ? `${t('lock.title')} — ${album.name}` : t(album ? 'gallery.albumEdit' : 'gallery.albumAdd')} onClose={onClose}>
       <form
         id="album-form"
         onSubmit={(e) => {
@@ -121,43 +135,47 @@ export function AlbumDialog({
         }}
         className="space-y-4"
       >
-        <div>
-          <Label htmlFor="album-name">{t('gallery.albumName')}</Label>
-          <Input
-            id="album-name"
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={120}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="album-desc">{t('gallery.albumDescription')}</Label>
-          <Textarea
-            id="album-desc"
-            rows={2}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            maxLength={255}
-          />
-        </div>
-
-        {/* ---------- ხილვადობა ---------- */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Globe className={isPublic ? 'size-4 text-primary' : 'size-4 text-muted-foreground'} />
-              {t('gallery.albumPublic')}
-              <InfoHint info={t('gallery.albumPublicHint')} />
+        {!onlyLock && (
+          <>
+            <div>
+              <Label htmlFor="album-name">{t('gallery.albumName')}</Label>
+              <Input
+                id="album-name"
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={120}
+              />
             </div>
-          </div>
-          <Switch
-            checked={isPublic}
-            onCheckedChange={setIsPublic}
-            aria-label={t('gallery.albumPublic')}
-          />
-        </div>
+
+            <div>
+              <Label htmlFor="album-desc">{t('gallery.albumDescription')}</Label>
+              <Textarea
+                id="album-desc"
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                maxLength={255}
+              />
+            </div>
+
+            {/* ---------- ხილვადობა ---------- */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Globe className={isPublic ? 'size-4 text-primary' : 'size-4 text-muted-foreground'} />
+                  {t('gallery.albumPublic')}
+                  <InfoHint info={t('gallery.albumPublicHint')} />
+                </div>
+              </div>
+              <Switch
+                checked={isPublic}
+                onCheckedChange={setIsPublic}
+                aria-label={t('gallery.albumPublic')}
+              />
+            </div>
+          </>
+        )}
 
         {/* ---------- ლოკი ---------- */}
         <section className="rounded-md border border-border p-3">

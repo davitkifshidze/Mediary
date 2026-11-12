@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FolderPlus, Images, Lock, LockOpen, Maximize2, SquarePen, Trash2 } from 'lucide-react'
+import { FolderPlus, Images, KeyRound, Lock, LockOpen, Maximize2, SquarePen, Trash2 } from 'lucide-react'
 import {
   deleteGalleryAlbum,
   fetchGalleryAlbums,
@@ -75,8 +75,8 @@ export function AlbumsCut() {
   const { toast } = useToast()
 
   const [open, setOpen] = useState<{ id: number; title: string } | null>(null)
-  /** `null` — დახურულია · `{album: null}` — ახალი · `{album}` — რედაქტირება */
-  const [editing, setEditing] = useState<{ album: GalleryAlbum | null } | null>(null)
+  /** `null` — დახურულია · `{album: null}` — ახალი · `{album}` — რედაქტირება · `lockOnly` — მხოლოდ ლოკი */
+  const [editing, setEditing] = useState<{ album: GalleryAlbum | null; lockOnly?: boolean } | null>(null)
   const [unlocking, setUnlocking] = useState<GalleryAlbum | null>(null)
   /** ალბომების დასტები თუ ყველა უკატეგორიო ფოტო ერთ ბადეზე */
   const [layout, setLayout] = useState<GalleryLayout>('grouped')
@@ -154,7 +154,7 @@ export function AlbumsCut() {
      არ გაიხსნებოდა. */
   const dialogs = (
     <>
-      {editing && <AlbumDialog album={editing.album} onClose={() => setEditing(null)} />}
+      {editing && <AlbumDialog album={editing.album} lockOnly={editing.lockOnly} onClose={() => setEditing(null)} />}
       {unlocking && (
         <AlbumUnlockDialog
           album={unlocking}
@@ -272,16 +272,27 @@ export function AlbumsCut() {
               })
               if (ok) remove.mutate(album.id)
             }
-            /* ⋯ და მარჯვენა კლიკი — ერთი სია: გახსნა · (განბლოკვა/ჩაკეტვა) · — ·
-               რედაქტირება · ფოტოების წაშლა · ალბომის წაშლა. ქვედა ზოლში მხოლოდ
-               სამი მთავარია (გახსნა · რედაქტირება · წაშლა), დანარჩენი — ⋯-ში. */
+            /* ⋯ და მარჯვენა კლიკი — ერთი სია: გახსნა · ლოკი · — · რედაქტირება ·
+               ფოტოების წაშლა · ალბომის წაშლა. ქვედა ზოლში მხოლოდ სამი მთავარია
+               (გახსნა · რედაქტირება · წაშლა), დანარჩენი — ⋯-ში.
+               ⚠️ **ლოკის პუნქტები სხვა მოდულების ბარათისაა** (`lockMenuActions`):
+               უპაროლო ალბომზე „ჩაკეტვა", პაროლიანზე „პაროლი" (შეცვლა/მოხსნა), ამ
+               სესიაში გახსნილზე — „ისევ ჩაკეტვაც". „ჩაკეტვა" აქ რომ არ იყო, პაროლის
+               დადება მხოლოდ „რედაქტირების" ფანჯრიდან შეიძლებოდა. */
             const menu: MenuAction[] = [
               { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: openAlbum },
               ...(album && locked
                 ? [{ key: 'unlock', label: t('gallery.albumUnlock'), icon: LockOpen, run: () => setUnlocking(album) }]
                 : []),
               ...(album && group.locked && group.unlocked
-                ? [{ key: 'relock', label: t('gallery.albumRelock'), icon: Lock, run: () => relock.mutate(album.id) }]
+                ? [{ key: 'relock', label: t('lock.relock'), icon: Lock, run: () => relock.mutate(album.id) }]
+                : []),
+              ...(album
+                ? [
+                    album.locked
+                      ? { key: 'lock-password', label: t('lock.password'), icon: KeyRound, run: () => setEditing({ album, lockOnly: true }) }
+                      : { key: 'lock', label: t('lock.lock'), icon: Lock, run: () => setEditing({ album, lockOnly: true }) },
+                  ]
                 : []),
               ...(album
                 ? [{ key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing({ album }) }]

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -24,6 +24,12 @@ import '@/i18n'
    ორივე გზა სინტაქსურად სწორია და ორივე რაღაცას ხსნის. ერთადერთი, რაც
    განასხვავებს, არის რა დაიხატა ეკრანზე — ამიტომ არსებობს ეს ფაილი
    (`GroupsCut.test.ts`-ის ზუსტი მიზეზი).
+
+   რეგრესია: **პაროლის დადება ბარათის მენიუდან**. ლოკი მხოლოდ „რედაქტირების"
+   ფანჯარაში იყო, მენიუში კი მხოლოდ უკვე ჩაკეტილის პუნქტები (გახსნა · ისევ
+   ჩაკეტვა) — პაროლმოხსნილ ალბომს ხელახლა ვერ კეტავდი. ახლა ბარათს იგივე
+   პუნქტები აქვს, რაც ფილმსა და მსახიობს: უპაროლოზე „ჩაკეტვა", პაროლიანზე
+   „პაროლი"; ორივე ალბომის ფანჯარას მხოლოდ ლოკის ბლოკით ხსნის.
    ============================================================ */
 
 const album = {
@@ -51,12 +57,19 @@ const lockedPage = {
   meta: { page: 1, per_page: 24, total: 4, last_page: 1 },
 }
 
+/** ალბომის მდგომარეობა ტესტიდან იცვლება — უპაროლო · ჩაკეტილი · ამ სესიაში გახსნილი */
+const state = vi.hoisted(() => ({
+  lock: { locked: true, unlocked: false },
+  update: vi.fn(),
+}))
+
 vi.mock('@/api/gallery', async (original) => ({
   ...(await original<typeof import('@/api/gallery')>()),
-  fetchGalleryAlbums: vi.fn(async () => [album]),
+  fetchGalleryAlbums: vi.fn(async () => [{ ...album, ...state.lock }]),
   // ⚠️ ჩაკეტილ ალბომს ესკიზი არ აქვს — ერთი `path`-იც კი ფოტოს გაამხელდა
-  fetchGalleryGroups: vi.fn(async () => ({ groups: [group], previews: {} })),
+  fetchGalleryGroups: vi.fn(async () => ({ groups: [{ ...group, ...state.lock }], previews: {} })),
   fetchGalleryPhotos: vi.fn(async () => lockedPage),
+  updateGalleryAlbum: state.update,
 }))
 
 // React 19-ის `act()` ამ დროშას ითხოვს, თორემ ეფექტებს არ ატარებს
@@ -64,6 +77,12 @@ vi.mock('@/api/gallery', async (original) => ({
 
 let root: Root | null = null
 let container: HTMLDivElement | null = null
+
+beforeEach(() => {
+  state.lock = { locked: true, unlocked: false }
+  state.update.mockReset()
+  state.update.mockResolvedValue({ ...album })
+})
 
 afterEach(() => {
   act(() => root?.unmount())
@@ -105,6 +124,35 @@ async function mountAlbumsCut() {
 
 function button(scope: ParentNode, text: string) {
   return [...scope.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes(text))
+}
+
+/** `⋯` მენიუს გახსნა — პუნქტები პორტალშია (`document.body`) */
+async function openMenu(node: ParentNode, label: string) {
+  const trigger = node.querySelector<HTMLButtonElement>(`[data-testid="stack-actions"] button[aria-label="${label}"]`)!
+  await act(async () => {
+    trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    trigger.click()
+  })
+  await flush()
+
+  // მენიუს პუნქტი ერთადერთი ღილაკია, რომელიც ბარათის გარეთ იხატება
+  return [...document.body.querySelectorAll('button')]
+    .filter((b) => !node.contains(b))
+    .map((b) => (b.textContent ?? '').trim())
+}
+
+/** ⚠️ „გახსნა" ორი პუნქტის წარწერაა — ბარათის გახსნა და პაროლით გახსნა; მეორე მხოლოდ დაუხსნელზეა */
+const count = (items: string[], text: string) => items.filter((item) => item === text).length
+
+const menuItem = (text: string) =>
+  [...document.body.querySelectorAll('button')].find((b) => !container!.contains(b) && (b.textContent ?? '').trim() === text)!
+
+async function type(input: HTMLInputElement, value: string) {
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+  await act(async () => {
+    setValue.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
 }
 
 describe('AlbumsCut', () => {
@@ -151,5 +199,90 @@ describe('AlbumsCut', () => {
        ინსპექტორში მოსაძებნი არაფერია. */
     const sources = [...node.querySelectorAll('img')].map((img) => img.getAttribute('src'))
     expect(sources.every((src) => src === '/locked-photo.svg')).toBe(true)
+  })
+
+  it('an album without a password can be locked from the card menu, in a window that holds only the lock', async () => {
+    const i18n = (await import('@/i18n')).default
+    state.lock = { locked: false, unlocked: true }
+    const node = await mountAlbumsCut()
+
+    const items = await openMenu(node, i18n.t('actions.more'))
+    expect(items).toContain(i18n.t('lock.lock'))
+    // უპაროლოზე არც გასახსნელია რამე, არც ხელახლა ჩასაკეტი, არც შესაცვლელი პაროლი
+    expect(count(items, i18n.t('gallery.albumUnlock')), 'მხოლოდ ბარათის გახსნა').toBe(1)
+    expect(items).not.toContain(i18n.t('lock.relock'))
+    expect(items).not.toContain(i18n.t('lock.password'))
+
+    await act(async () => menuItem(i18n.t('lock.lock')).click())
+    await flush()
+
+    // ფანჯარაში მხოლოდ ლოკია — სახელი, აღწერა და ხილვადობა არ იხატება
+    expect(document.body.textContent).toContain(i18n.t('lock.title'))
+    expect(document.querySelector('#album-name')).toBeNull()
+    expect(document.querySelector('#album-desc')).toBeNull()
+    const password = document.querySelector<HTMLInputElement>('#album-password')!
+    const repeat = document.querySelector<HTMLInputElement>('#album-repeat')!
+    expect(password).toBeTruthy()
+
+    // ცარიელი ფორმა არაფერს ინახავს; პაროლი და მისი გამეორება — ინახავს
+    const save = () => document.querySelector<HTMLButtonElement>('button[form="album-form"]')!
+    expect(save().disabled).toBe(true)
+    await type(password, 'secret-1')
+    expect(save().disabled, 'გამეორების გარეშე').toBe(true)
+    await type(repeat, 'secret-1')
+    expect(save().disabled).toBe(false)
+
+    await act(async () => save().click())
+    await flush()
+
+    // სახელი, აღწერა და ხილვადობა უცვლელად იგზავნება; ანგარიშის პაროლი ახალ ლოკს არ სჭირდება
+    expect(state.update).toHaveBeenCalledTimes(1)
+    expect(state.update.mock.calls[0]).toEqual([3, { name: 'პირადი', description: null, visibility: 'private', password: 'secret-1' }])
+    expect(document.querySelector('#album-password'), 'ფანჯარა იხურება').toBeNull()
+  })
+
+  it('a locked album offers its password in the menu, and asks for the account password while it is closed', async () => {
+    const i18n = (await import('@/i18n')).default
+    const node = await mountAlbumsCut()
+
+    const items = await openMenu(node, i18n.t('actions.more'))
+    expect(count(items, i18n.t('gallery.albumUnlock')), 'ბარათის გახსნა და პაროლით გახსნა').toBe(2)
+    expect(items).toContain(i18n.t('lock.password'))
+    expect(items).not.toContain(i18n.t('lock.lock'))
+    // დაუხსნელს „ისევ ჩაკეტვა" არ სჭირდება
+    expect(items).not.toContain(i18n.t('lock.relock'))
+
+    await act(async () => menuItem(i18n.t('lock.password')).click())
+    await flush()
+
+    expect(document.querySelector('#album-name')).toBeNull()
+    await act(async () => button(document.body, i18n.t('gallery.albumRemoveLock'))!.click())
+    await flush()
+
+    // მოხსნა დაუხსნელ ალბომზე ანგარიშის პაროლის გარეშე არ იგზავნება
+    const save = () => document.querySelector<HTMLButtonElement>('button[form="album-form"]')!
+    expect(save().disabled).toBe(true)
+    await type(document.querySelector<HTMLInputElement>('#album-current')!, 'my-account-password')
+    expect(save().disabled).toBe(false)
+
+    await act(async () => save().click())
+    await flush()
+
+    expect(state.update.mock.calls[0]).toEqual([
+      3,
+      { name: 'პირადი', description: null, visibility: 'private', remove_password: true, account_password: 'my-account-password' },
+    ])
+  })
+
+  it('an album opened in this session can be locked again or have its password changed', async () => {
+    const i18n = (await import('@/i18n')).default
+    state.lock = { locked: true, unlocked: true }
+    const node = await mountAlbumsCut()
+
+    const items = await openMenu(node, i18n.t('actions.more'))
+    expect(items).toContain(i18n.t('lock.relock'))
+    expect(items).toContain(i18n.t('lock.password'))
+    expect(items).not.toContain(i18n.t('lock.lock'))
+    expect(count(items, i18n.t('gallery.albumUnlock')), 'მხოლოდ ბარათის გახსნა').toBe(1)
   })
 })

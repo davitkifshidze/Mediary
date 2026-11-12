@@ -199,6 +199,40 @@ class RecordLockPageTest extends TestCase
         Storage::disk('private')->assertMissing('gallery/locked/secret.jpg');
     }
 
+    public function test_an_album_unlocked_in_bulk_can_be_locked_again(): void
+    {
+        Storage::fake('public');
+        Storage::fake('private');
+
+        $album = GalleryAlbum::create(['user_id' => $this->nino->id, 'name' => 'Trip', 'sort_order' => 1]);
+        $album->setPassword('secret1');
+        Storage::disk('private')->put('gallery/locked/secret.jpg', 'x');
+        $photo = GalleryImage::create([
+            'user_id' => $this->nino->id, 'album_id' => $album->id, 'source' => 'tmdb', 'category' => 'backdrop',
+            'path' => 'gallery/locked/secret.jpg', 'size' => 100,
+        ]);
+
+        $this->spa()->postJson('/api/locks/remove', [
+            'ids' => [RecordLock::where('lockable_type', 'gallery_album')->value('id')],
+            'account_password' => 'password',
+        ])->assertOk()->assertJsonPath('removed', 1);
+
+        // მოხსნილი ლოკი კვალს არ ტოვებს: ახალი პაროლი ანგარიშის პაროლის გარეშე იდება
+        $this->spa()->patchJson("/api/gallery/albums/{$album->id}", ['name' => 'Trip', 'password' => 'again-1'])
+            ->assertOk()
+            ->assertJsonPath('locked', true)
+            ->assertJsonPath('unlocked', true);
+
+        $this->assertTrue($album->refresh()->passwordMatches('again-1'));
+        $this->spa()->getJson('/api/locks')->assertJsonCount(1, 'data')->assertJsonPath('data.0.type', 'gallery_album');
+
+        // ფოტო ისევ დაცულ დისკზეა
+        $path = GalleryImage::withoutGlobalScopes()->findOrFail($photo->id)->path;
+        $this->assertStringStartsWith('gallery/locked/', $path);
+        Storage::disk('private')->assertExists($path);
+        Storage::disk('public')->assertMissing('gallery/images/secret.jpg');
+    }
+
     public function test_removal_needs_the_update_permission_of_the_module(): void
     {
         $lock = $this->lock($this->movie('Secret Diary'));
