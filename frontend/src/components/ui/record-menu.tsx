@@ -2,6 +2,8 @@ import { Fragment, type ReactNode, type ComponentType, type CSSProperties } from
 import { useTranslation } from 'react-i18next'
 import {
   Check,
+  Circle,
+  CircleDot,
   ExternalLink,
   Info,
   Play,
@@ -10,7 +12,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import type { Status } from '@/api/types'
-import { statusName, statusTone } from '@/lib/statuses'
+import { enumStatusKey, enumStatusTone, statusName, statusTone, type EnumStatusDomain } from '@/lib/statuses'
 import { cn } from '@/lib/utils'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
 import {
@@ -24,6 +26,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { ModuleIcon } from '@/components/ModuleIcon'
+import { enumStatusIcon } from '@/components/StatusBadge'
 import { statusStyle } from '@/lib/statusColor'
 import { STATUS_TEXT } from '@/lib/statusStyles'
 
@@ -51,7 +54,13 @@ import { STATUS_TEXT } from '@/lib/statusStyles'
 
    ⚠️ **სტანდარტული რიგი**: გახსნა · დაკვრა/ბმული · სტატუსი ▸ ·
    რჩეული · მოდულის საკუთარი · — · რედაქტირება · წაშლა. `statusActions()`
+   (ლექსიკონი) და `enumStatusActions()` (წიგნი · თამაში · კურსი · ადგილი)
    სტატუსების ქვემენიუს ერთი ფუნქციით აწყობს, რომ ყველა მოდულზე ერთნაირი იყოს.
+
+   ⚠️ **ყოველ პუნქტს აიქონი აქვს — `icon` ტიპში სავალდებულოა**: უაიქონო პუნქტი
+   აიქონიანების გვერდით ტექსტს მარცხნივ სწევს და სია ორ სვეტად იკითხება. ქვემენიუს
+   პუნქტიც (სტატუსი) თავის აიქონსა და ფერს ხატავს — იმავეს, რაც ბეჯზეა.
+   `scripts/menu-icons.mjs` ამოწმებს, რომ ველი ისევ სავალდებულოა.
    ============================================================ */
 
 /** სტანდარტული პუნქტების აიქონები — ყველა მოდულზე ერთნაირი */
@@ -62,13 +71,18 @@ export const MENU_ICONS = {
   favorite: Star,
   edit: SquarePen,
   delete: Trash2,
+  /** „სტატუსი ▸" — ქვემენიუს სათაურის პუნქტი */
+  status: CircleDot,
 } as const
 
 export interface MenuAction {
   key: string
   label: string
-  /** lucide-ის აიქონი ან ნებისმიერი კომპონენტი, რომელიც `className`/`style`-ს იღებს (სტატუსის აიქონი სახელით) */
-  icon?: ComponentType<{ className?: string; style?: CSSProperties }>
+  /**
+   * lucide-ის აიქონი ან ნებისმიერი კომპონენტი, რომელიც `className`/`style`-ს იღებს (სტატუსის
+   * აიქონი სახელით). ⚠️ **სავალდებულოა** — მენიუს ყოველ პუნქტს თავისი აიქონი აქვს.
+   */
+  icon: ComponentType<{ className?: string; style?: CSSProperties }>
   /** აიქონის დამატებითი კლასი — მაგ. შევსებული ვარსკვლავი რჩეულზე */
   iconClassName?: string
   /** სტატუსის საკუთარი ფერი (`statusStyle(s, 'icon')`) */
@@ -96,6 +110,7 @@ export function statusActions(
   return {
     key: 'status',
     label,
+    icon: MENU_ICONS.status,
     // თითო პუნქტს თავისი აიქონი და ფერი აქვს (ლექსიკონის `icon`/`color`, სხვაგვარად როლის ტონი)
     sub: statuses.map((s) => ({
       key: `status:${s.key}`,
@@ -106,6 +121,37 @@ export function statusActions(
       checked: current?.id === s.id,
       run: () => pick(s.key),
     })),
+  }
+}
+
+/**
+ * enum-სტატუსების ქვემენიუ — წიგნი, თამაში, კურსი, ადგილი: სახელი i18n-იდან, აიქონი და
+ * ფერი იგივე, რაც ბეჯზე (`EnumStatusBadge`); მიმდინარეზე ✓.
+ */
+export function enumStatusActions<S extends string>(
+  domain: EnumStatusDomain,
+  label: string,
+  options: readonly S[],
+  current: S,
+  t: (key: string) => string,
+  pick: (next: S) => void,
+): MenuAction {
+  return {
+    key: 'status',
+    label,
+    icon: MENU_ICONS.status,
+    sub: options.map((s) => {
+      const key = enumStatusKey(domain, s)
+
+      return {
+        key: `status:${s}`,
+        label: key ? t(key) : s,
+        icon: enumStatusIcon(domain, s) ?? Circle,
+        iconClassName: STATUS_TEXT[enumStatusTone(domain, s)],
+        checked: current === s,
+        run: () => pick(s),
+      }
+    }),
   }
 }
 
@@ -133,13 +179,14 @@ export function contextMenuItems(actions: MenuAction[]): ReactNode {
       {action.sub ? (
         <ContextMenuSub>
           <ContextMenuSubTrigger disabled={action.disabled}>
-            {action.icon && <action.icon className="size-3.5" />}
+            <action.icon className={cn('size-3.5', action.iconClassName)} style={action.iconStyle} />
             {action.label}
           </ContextMenuSubTrigger>
           <ContextMenuSubContent>
             {action.sub.map((item) => (
               <ContextMenuItem key={item.key} disabled={item.disabled} onSelect={deferred(item.run)}>
                 <Check className={cn('fb-selected size-3.5', item.checked ? 'opacity-100' : 'opacity-0')} />
+                <item.icon className={cn('size-3.5', item.iconClassName)} style={item.iconStyle} />
                 {item.label}
               </ContextMenuItem>
             ))}
@@ -151,7 +198,7 @@ export function contextMenuItems(actions: MenuAction[]): ReactNode {
           onSelect={deferred(action.run)}
           className={cn(action.danger && 'text-destructive focus:bg-destructive/10 focus:text-destructive')}
         >
-          {action.icon && <action.icon className={cn('size-3.5', action.iconClassName)} style={action.iconStyle} />}
+          <action.icon className={cn('size-3.5', action.iconClassName)} style={action.iconStyle} />
           {action.label}
         </ContextMenuItem>
       )}
@@ -199,13 +246,15 @@ export function RecordActionMenu({
           {action.separator && <div className="my-1 h-px bg-border" />}
           {action.sub ? (
             <div>
-              <p className="px-2.5 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="flex items-center gap-1.5 px-2.5 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <action.icon className={cn('size-3.5', action.iconClassName)} style={action.iconStyle} />
                 {action.label}
               </p>
               {action.sub.map((item) => (
                 <ActionMenuClose key={item.key} asChild>
                   <button type="button" className={actionItemClass()} disabled={item.disabled} onClick={item.run}>
                     <Check className={cn('fb-selected size-3.5', item.checked ? 'opacity-100' : 'opacity-0')} />
+                    <item.icon className={cn('size-3.5', item.iconClassName)} style={item.iconStyle} />
                     {item.label}
                   </button>
                 </ActionMenuClose>
@@ -219,7 +268,7 @@ export function RecordActionMenu({
                 disabled={action.disabled}
                 onClick={deferred(action.run)}
               >
-                {action.icon && <action.icon className={cn('size-3.5', action.iconClassName)} style={action.iconStyle} />}
+                <action.icon className={cn('size-3.5', action.iconClassName)} style={action.iconStyle} />
                 {action.label}
               </button>
             </ActionMenuClose>

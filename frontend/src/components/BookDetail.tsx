@@ -29,7 +29,7 @@ import { ProgressCard, ProgressDialog } from '@/components/BookProgress'
 import { BookQuotes, QuoteDialog } from '@/components/BookQuotes'
 import { Tabs } from '@/components/ui/tabs'
 import { Markdown } from '@/components/ui/markdown'
-import { favoriteAction, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { enumStatusActions, favoriteAction, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { EnumStatusBadge } from '@/components/StatusBadge'
@@ -97,16 +97,7 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
   /* კონტექსტური მენიუ დეტალის სათაურზე: სტატუსი ▸ · რჩეული ·
      ციტატის დამატება · გვერდის განახლება (იგივე პუნქტები, რაც სიის სტრიქონს აქვს) */
   const heroActions: MenuAction[] = [
-    {
-      key: 'status',
-      label: t('form.status'),
-      sub: BOOK_STATUSES.map((s) => ({
-        key: `status:${s}`,
-        label: t(`books.statuses.${s}`),
-        checked: book.status === s,
-        run: () => statusMut.mutate(s),
-      })),
-    },
+    enumStatusActions('book', t('form.status'), BOOK_STATUSES, book.status, t, (s) => statusMut.mutate(s)),
     favoriteAction(book.is_favorite, () => favorite.mutate(), t),
     { key: 'quote', label: t('books.menuAddQuote'), icon: Quote, separator: true, run: () => setQuoteOpen(true) },
     { key: 'progress', label: t('books.menuProgress'), icon: BookOpenCheck, run: () => setProgressOpen(true) },

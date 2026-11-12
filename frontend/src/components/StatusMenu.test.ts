@@ -13,6 +13,12 @@ import { TooltipProvider } from '@/components/ui/tooltip'
    მოდულის **ყველა** სტატუსის სახელის უხილავი ასლი დგას და სიგანეს მათგან
    ყველაზე ფართო ადგენს — ამიტომ მოწმდება, რომ ასლების ნაკრები ერთი და იგივეა,
    რომელი სტატუსიც არ უნდა ეწეროს, და რომ ასლი ღილაკის ტექსტში არ ჩანს.
+
+   ⚠️ **ღილაკი რიგის დანარჩენ ღილაკებთან ერთ ხაზზე დგას.** ორი რამ სწევდა მას
+   დაბლა: ჩვეულებრივი (`inline-block`) ღილაკი შიგთავსს ტექსტის ხაზზე აწყობდა და
+   რიგზე მაღალი გამოდიოდა, ბადის საბაზისო ხაზს კი პირველი — ნულოვანი სიმაღლის —
+   ასლი ადგენდა. jsdom განლაგებას არ ითვლის, ამიტომ მოწმდება თვითონ მიზეზი:
+   ტრიგერი `inline-flex h-9`-ია და ხილული ბეჯი ბადის **პირველი** უჯრაა.
    ============================================================ */
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -95,6 +101,53 @@ describe('DictionaryStatusMenu', () => {
     expect(badge.className).toContain('w-full')
     expect(badge.className).toContain('whitespace-nowrap')
     expect(badge.className).not.toContain('min-w-36')
+  })
+})
+
+describe('the trigger in a row of buttons', () => {
+  /** ხილული ბეჯის უჯრა პირველია, ყველა ასლი — მის შემდეგ */
+  const expectAligned = (button: Element) => {
+    // რიგის ღილაკის ზომა: flex-კონტეინერი ფიქსირებული სიმაღლით — ტექსტის ხაზი შიგნით არ არის
+    expect(button.className).toContain('inline-flex')
+    expect(button.className).toContain('h-9')
+    expect(button.className).toContain('items-center')
+
+    const sizer = button.querySelector('[data-status-sizer]')!
+    expect(sizer.className.split(' ')).toContain('grid')
+    expect(sizer.className).not.toContain('inline-grid')
+
+    const cells = [...sizer.children]
+    expect(cells[0].matches('[data-status-current]'), 'ხილული ბეჯი ბადის პირველი უჯრაა').toBe(true)
+    expect(cells[0].getAttribute('aria-hidden')).toBeNull()
+    expect(cells.length).toBeGreaterThan(1)
+    for (const copy of cells.slice(1)) {
+      expect(copy.getAttribute('aria-hidden')).toBe('true')
+      expect(copy.className).toContain('h-0')
+    }
+  }
+
+  it('is a fixed-height flex box whose first cell is the visible badge — dictionary statuses', async () => {
+    const { DictionaryStatusMenu } = await import('@/components/StatusMenu')
+    const row = (current: Status | null) =>
+      h(DictionaryStatusMenu, { status: current, statuses: STATUSES, label: 'სტატუსი', emptyLabel: 'სტატუსის გარეშე', onChange: () => {} })
+
+    const el = await mount(h('div', null, row(STATUSES[0]), row(null)))
+    const buttons = [...el.querySelectorAll('[data-status-menu]')]
+
+    expect(buttons).toHaveLength(2)
+    buttons.forEach(expectAligned)
+  })
+
+  it('is the same box for enum statuses, and a caller class does not replace it', async () => {
+    const { EnumStatusMenu } = await import('@/components/StatusMenu')
+    const options = ['to_visit', 'visited'] as const
+    const el = await mount(
+      h(EnumStatusMenu, { domain: 'place', value: 'visited', options, label: 'სტატუსი', onChange: () => {}, className: 'shrink-0' }),
+    )
+    const button = el.querySelector('[data-status-menu]')!
+
+    expectAligned(button)
+    expect(button.className).toContain('shrink-0')
   })
 })
 

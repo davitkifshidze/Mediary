@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { ExternalLink, Info } from 'lucide-react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import type { Video } from '@/api/videos'
 import type { VideoCardProps } from '@/components/VideoCard'
@@ -184,8 +185,8 @@ describe('VideoCard', () => {
     const openSource = vi.fn()
     const { el, props } = await mount(video(), {
       actions: [
-        { key: 'open', label: i18n.t('actions.open'), run: vi.fn() },
-        { key: 'source', label: i18n.t('videos.source'), run: openSource },
+        { key: 'open', label: i18n.t('actions.open'), icon: Info, run: vi.fn() },
+        { key: 'source', label: i18n.t('videos.source'), icon: ExternalLink, run: openSource },
       ],
     })
 

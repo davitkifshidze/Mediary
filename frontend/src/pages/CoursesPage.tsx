@@ -53,7 +53,7 @@ import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Pagination } from '@/components/ui/pagination'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
+import { enumStatusActions, favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
    კურსების მოდული (`course`).
@@ -300,16 +300,9 @@ export function CoursesPage() {
                     ...(course.url
                       ? [{ key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: () => window.open(course.url!, '_blank', 'noopener,noreferrer') }]
                       : []),
-                    {
-                      key: 'status',
-                      label: t('courses.status'),
-                      sub: COURSE_STATUSES.map((s) => ({
-                        key: `status:${s}`,
-                        label: t(`courses.statuses.${s}`),
-                        checked: course.status === s,
-                        run: () => status.mutate({ id: course.id, next: s }),
-                      })),
-                    },
+                    enumStatusActions('course', t('courses.status'), COURSE_STATUSES, course.status, t, (s) =>
+                      status.mutate({ id: course.id, next: s }),
+                    ),
                     favoriteAction(course.is_favorite, () => favorite.mutate(course.id), t),
                     share.action({ domain: 'course', id: course.id, title: course.title }),
                     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(course) },

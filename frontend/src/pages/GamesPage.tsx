@@ -57,7 +57,7 @@ import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
+import { enumStatusActions, favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { RatingBadge } from '@/components/ui/star-rating'
 import { RecordActionBar } from '@/components/RecordActionBar'
 import { EnumStatusMenu } from '@/components/StatusMenu'
@@ -333,16 +333,7 @@ export function GamesPage() {
                 ...(store
                   ? [{ key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: () => window.open(store.url, '_blank', 'noopener,noreferrer') }]
                   : []),
-                {
-                  key: 'status',
-                  label: t('form.status'),
-                  sub: GAME_STATUSES.map((s) => ({
-                    key: `status:${s}`,
-                    label: t(`games.statuses.${s}`),
-                    checked: game.status === s,
-                    run: () => status.mutate({ id: game.id, next: s }),
-                  })),
-                },
+                enumStatusActions('game', t('form.status'), GAME_STATUSES, game.status, t, (s) => status.mutate({ id: game.id, next: s })),
                 favoriteAction(game.is_favorite, () => favorite.mutate(game.id), t),
                 share.action({ domain: 'game', id: game.id, title: title(game) }),
                 { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(game) },

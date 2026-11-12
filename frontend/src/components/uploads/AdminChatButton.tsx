@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { MessageSquareText, MessageSquare } from 'lucide-react'
+import { MessageSquareText, MessageSquare, UserRound } from 'lucide-react'
 import { fetchChatAdmins, openConversation } from '@/api/chat'
 import { errorMessage } from '@/lib/errors'
 import { ActionMenu, actionItemClass } from '@/components/ui/action-menu'
@@ -62,6 +62,7 @@ export function AdminChatButton() {
         >
           {admins.map((a) => (
             <button key={a.username} type="button" className={actionItemClass()} onClick={() => open.mutate(a.username)}>
+              <UserRound className="size-4 shrink-0" />
               {a.display_name}
               <span className="text-xs text-muted-foreground">@{a.username}</span>
             </button>

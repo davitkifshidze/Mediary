@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { Circle, CircleCheck } from 'lucide-react'
 import type { MenuAction } from '@/components/ui/record-menu'
 import i18n from '@/i18n'
 
@@ -11,6 +12,11 @@ import i18n from '@/i18n'
    წითელი პუნქტი, გამყოფი), პუნქტის არჩევა `run`-ს **ერთი tick-ით გვიან**
    უშვებს (მენიუ ჯერ იხურება), `⋯` ღილაკი კი ქვემენიუს სათაურიან ჯგუფად
    ბრტყელებს. ცარიელი სია ტრიგერს ხელუხლებლად ტოვებს.
+
+   ⚠️ **ყოველ პუნქტს აიქონი აქვს** — ქვემენიუს სათაურსაც და მის პუნქტებსაც
+   (✓-ის გვერდით): უაიქონო პუნქტი აიქონიანების გვერდით ტექსტს მარცხნივ სწევდა.
+   enum-სტატუსების ქვემენიუ (`enumStatusActions`) იმავე აიქონსა და ტონს იღებს,
+   რაც ბეჯზეა.
    ============================================================ */
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -52,12 +58,13 @@ describe('RecordContextMenu', () => {
       {
         key: 'status',
         label: 'სტატუსი',
+        icon: m.MENU_ICONS.status,
         sub: [
-          { key: 's1', label: 'ნანახი', checked: true, run: () => {} },
-          { key: 's2', label: 'საყურებელი', run: () => {} },
+          { key: 's1', label: 'ნანახი', icon: CircleCheck, checked: true, run: () => {} },
+          { key: 's2', label: 'საყურებელი', icon: Circle, run: () => {} },
         ],
       },
-      { key: 'delete', label: 'წაშლა', danger: true, separator: true, run: del },
+      { key: 'delete', label: 'წაშლა', icon: m.MENU_ICONS.delete, danger: true, separator: true, run: del },
     ]
 
     await render(h(m.RecordContextMenu, { actions, children: h('div', { 'data-testid': 'card' }, 'ბარათი') }))
@@ -72,6 +79,10 @@ describe('RecordContextMenu', () => {
     expect(itemWith('წაშლა')!.className).toContain('text-destructive')
     expect(document.body.querySelector('[role="separator"]'), 'გამყოფი წაშლის წინ').toBeTruthy()
     expect(document.body.textContent).toContain('სტატუსი')
+    // სამივე პუნქტს — ქვემენიუს გამხსნელსაც — თავისი აიქონი აქვს
+    for (const label of ['გახსნა', 'სტატუსი', 'წაშლა']) {
+      expect(itemWith(label)!.querySelector('svg'), `„${label}“ აიქონით`).toBeTruthy()
+    }
 
     // არჩევა — `run` ერთხელ ეშვება (გადადებულია `setTimeout`-ით; `act` მას თვითონ ასრულებს)
     await act(async () => {
@@ -101,8 +112,16 @@ describe('RecordActionMenu', () => {
     const pick = vi.fn()
 
     const actions: MenuAction[] = [
-      { key: 'status', label: 'სტატუსი', sub: [{ key: 'a', label: 'ნანახი', checked: true, run: pick }] },
-      { key: 'delete', label: 'წაშლა', danger: true, separator: true, run: () => {} },
+      {
+        key: 'status',
+        label: 'სტატუსი',
+        icon: m.MENU_ICONS.status,
+        sub: [
+          { key: 'a', label: 'ნანახი', icon: CircleCheck, iconClassName: 'text-success', checked: true, run: pick },
+          { key: 'b', label: 'საყურებელი', icon: Circle, run: () => {} },
+        ],
+      },
+      { key: 'delete', label: 'წაშლა', icon: m.MENU_ICONS.delete, danger: true, separator: true, run: () => {} },
     ]
 
     await render(h(m.RecordActionMenu, { label: 'მეტი', actions }))
@@ -115,8 +134,22 @@ describe('RecordActionMenu', () => {
     await flush()
 
     expect(document.body.textContent).toContain('სტატუსი')
-    const status = [...document.body.querySelectorAll('button')].find((b) => b.textContent?.includes('ნანახი'))!
+    const button = (text: string) => [...document.body.querySelectorAll('button')].find((b) => b.textContent?.includes(text))!
+    const status = button('ნანახი')
     expect(status).toBeTruthy()
+
+    // ჯგუფის სათაურს აიქონი აქვს; პუნქტს — ✓ და თავისი აიქონი (ფერით), არჩეულზე ✓ ჩანს
+    const title = [...document.body.querySelectorAll('p')].find((p) => p.textContent?.includes('სტატუსი'))!
+    expect(title.querySelector('svg'), 'ჯგუფის სათაურის აიქონი').toBeTruthy()
+    const [check, icon] = [...status.querySelectorAll('svg')]
+    expect(status.querySelectorAll('svg')).toHaveLength(2)
+    expect(check.getAttribute('class')).toContain('opacity-100')
+    expect(icon.getAttribute('class')).toContain('text-success')
+    const other = [...button('საყურებელი').querySelectorAll('svg')]
+    expect(other).toHaveLength(2)
+    expect(other[0].getAttribute('class')).toContain('opacity-0')
+    expect(button('წაშლა').querySelector('svg'), 'წაშლის აიქონი').toBeTruthy()
+
     await act(async () => status.click())
     expect(pick).toHaveBeenCalledTimes(1)
   })
@@ -143,5 +176,48 @@ describe('favoriteAction / statusActions', () => {
     expect(sub.sub?.map((s) => s.checked)).toEqual([false, true])
     sub.sub?.[0].run?.()
     expect(picked).toEqual(['to_watch'])
+    // ქვემენიუს გამხსნელსაც და ყოველ სტატუსსაც თავისი აიქონი აქვს
+    expect(sub.icon).toBe(m.MENU_ICONS.status)
+    expect(sub.sub?.every((s) => typeof s.icon === 'function' || typeof s.icon === 'object')).toBe(true)
+  })
+
+  it('builds the enum status submenu with the icon and the tone the badge uses', async () => {
+    const m = await import('@/components/ui/record-menu')
+    const { enumStatusIcon } = await import('@/components/StatusBadge')
+    const { enumStatusKey, enumStatusTone } = await import('@/lib/statuses')
+    const { STATUS_TEXT } = await import('@/lib/statusStyles')
+    const { BOOK_STATUSES } = await import('@/api/books')
+    const { GAME_STATUSES } = await import('@/api/games')
+    const { COURSE_STATUSES } = await import('@/api/courses')
+    const { PLACE_STATUSES } = await import('@/api/places')
+
+    const cases = [
+      ['book', BOOK_STATUSES],
+      ['game', GAME_STATUSES],
+      ['course', COURSE_STATUSES],
+      ['place', PLACE_STATUSES],
+    ] as const
+
+    for (const [domain, options] of cases) {
+      const picked: string[] = []
+      const current = options[options.length - 1]
+      const action = m.enumStatusActions<string>(domain, 'სტატუსი', options, current, (k) => i18n.t(k), (next) => picked.push(next))
+
+      expect(action.key).toBe('status')
+      expect(action.icon).toBe(m.MENU_ICONS.status)
+      expect(action.sub).toHaveLength(options.length)
+
+      action.sub!.forEach((item, i) => {
+        const status = options[i]
+        expect(item.label, `${domain}:${status}`).toBe(i18n.t(enumStatusKey(domain, status)!))
+        // აიქონი ბეჯისაა; რომელსაც საკუთარი არ აქვს — წრე, ცარიელი არასდროს
+        expect(item.icon, `${domain}:${status}`).toBe(enumStatusIcon(domain, status) ?? Circle)
+        expect(item.iconClassName).toBe(STATUS_TEXT[enumStatusTone(domain, status)])
+        expect(item.checked).toBe(status === current)
+      })
+
+      action.sub![0].run?.()
+      expect(picked).toEqual([options[0]])
+    }
   })
 })

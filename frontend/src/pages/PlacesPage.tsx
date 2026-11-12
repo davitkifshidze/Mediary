@@ -103,7 +103,7 @@ import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Pagination } from '@/components/ui/pagination'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
+import { enumStatusActions, favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
    ადგილების მოდული (`place`).
@@ -355,16 +355,9 @@ export function PlacesPage() {
                     ...(place.map_url
                       ? [{ key: 'map', label: t('places.openMap'), icon: MapIcon, run: () => window.open(place.map_url!, '_blank', 'noopener,noreferrer') }]
                       : []),
-                    {
-                      key: 'status',
-                      label: t('places.status'),
-                      sub: PLACE_STATUSES.map((s) => ({
-                        key: `status:${s}`,
-                        label: t(`places.statuses.${s}`),
-                        checked: place.status === s,
-                        run: () => status.mutate({ id: place.id, next: s }),
-                      })),
-                    },
+                    enumStatusActions('place', t('places.status'), PLACE_STATUSES, place.status, t, (s) =>
+                      status.mutate({ id: place.id, next: s }),
+                    ),
                     favoriteAction(place.is_favorite, () => favorite.mutate(place.id), t),
                     share.action({ domain: 'place', id: place.id, title: place.name }),
                     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(place) },

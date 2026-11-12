@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Info } from 'lucide-react'
 import i18n from '@/i18n'
 import type { RecordLayout } from '@/lib/recordLayout'
 
@@ -91,7 +92,7 @@ describe('RecordView', () => {
           meta: h('span', null, '1965'),
           tags: ['sci-fi'],
           bar: h('div', { 'data-testid': 'bar' }, 'bar'),
-          actions: [{ key: 'open', label: 'Open', run: onOpen }],
+          actions: [{ key: 'open', label: 'Open', icon: Info, run: onOpen }],
           onEdit,
           photoTestId: 'photo',
           titleTestId: 'title',

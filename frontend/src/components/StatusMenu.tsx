@@ -45,10 +45,17 @@ const TRIGGER_BADGE = 'w-full justify-between whitespace-nowrap'
  * ეკრანის წამკითხველიც და ტექსტით ძებნაც ამას წაიკითხავდა.
  * ⚠️ ასლი ბეჯის იმავე კომპონენტია (იგივე შიგნითა დაშორება და შრიფტი) და
  * აიქონისა და ისრის ადგილსაც იკავებს.
+ * ⚠️ **ხილული ბეჯი DOM-ში პირველია, ასლები — მის შემდეგ**: ბადის საბაზისო ხაზს
+ * მისი პირველი უჯრა ადგენს. პირველი რომ ნულოვანი სიმაღლის ასლი იყო, ხაზი ბადის
+ * ზედა კიდეზე ჯდებოდა, 36px-იანი ბეჯი მთლიანად მის ქვემოთ ეკიდა და ღილაკი რიგის
+ * დანარჩენ ღილაკებზე დაბლა იდგა.
  */
 function StatusSizer({ labels, children }: { labels: readonly string[]; children: ReactNode }) {
   return (
-    <span className="inline-grid" data-status-sizer>
+    <span className="grid" data-status-sizer>
+      <span className="col-start-1 row-start-1 grid" data-status-current>
+        {children}
+      </span>
       {labels.map((label, index) => (
         <Badge
           key={`${label}-${index}`}
@@ -61,10 +68,17 @@ function StatusSizer({ labels, children }: { labels: readonly string[]; children
           <span className="size-3.5 shrink-0" />
         </Badge>
       ))}
-      <span className="col-start-1 row-start-1 grid">{children}</span>
     </span>
   )
 }
+
+/**
+ * **ტრიგერი რიგის ღილაკის ზომისაა** — `inline-flex h-9`, ზუსტად როგორც `Button size="sm"`.
+ * ⚠️ ჩვეულებრივი (`inline-block`) ღილაკი შიგთავსს ტექსტის ხაზზე აწყობს: ხაზის სიმაღლე
+ * ბეჯის 36px-ს ემატებოდა, ღილაკი რიგზე მაღალი გამოდიოდა და ბეჯი მასში ჩამოწეული იდგა.
+ * flex-კონტეინერში ტექსტის ხაზი აღარ არის — სიმაღლე ზუსტად `h-9`-ია.
+ */
+const TRIGGER = 'inline-flex h-9 cursor-pointer items-center rounded-md'
 
 interface MenuOption {
   key: string
@@ -95,7 +109,7 @@ function RowStatusMenu({
     <ActionMenu
       label={label}
       trigger={
-        <button type="button" className={cn('cursor-pointer rounded-md', className)} data-status-menu>
+        <button type="button" className={cn(TRIGGER, className)} data-status-menu>
           <StatusSizer labels={sizes}>{current}</StatusSizer>
         </button>
       }

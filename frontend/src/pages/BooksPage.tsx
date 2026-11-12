@@ -59,7 +59,7 @@ import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
+import { enumStatusActions, favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { RatingBadge } from '@/components/ui/star-rating'
 import { RecordActionBar } from '@/components/RecordActionBar'
 import { EnumStatusMenu } from '@/components/StatusMenu'
@@ -341,16 +341,7 @@ export function BooksPage() {
                 ...(href
                   ? [{ key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: () => window.open(href, '_blank', 'noopener,noreferrer') }]
                   : []),
-                {
-                  key: 'status',
-                  label: t('form.status'),
-                  sub: BOOK_STATUSES.map((s) => ({
-                    key: `status:${s}`,
-                    label: t(`books.statuses.${s}`),
-                    checked: book.status === s,
-                    run: () => status.mutate({ id: book.id, next: s }),
-                  })),
-                },
+                enumStatusActions('book', t('form.status'), BOOK_STATUSES, book.status, t, (s) => status.mutate({ id: book.id, next: s })),
                 favoriteAction(book.is_favorite, () => favorite.mutate(book.id), t),
                 /* წიგნის პუნქტები: ციტატა · გვერდი · გალერეა (დეტალში) */
                 { key: 'quote', label: t('books.menuAddQuote'), icon: Quote, separator: true, run: () => setQuoteFor(book) },
