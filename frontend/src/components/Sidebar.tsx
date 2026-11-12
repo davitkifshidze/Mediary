@@ -715,11 +715,12 @@ export function Sidebar({
     if (m.key === 'personal') {
       const sectionOpen = !!open.personal
       const onPersonal = location.pathname === '/personal' || location.pathname.startsWith('/personal/')
+      // ფესვი (`/personal`) „ყველა"-ა; პიროვნებისა და ალბომის გვერდზე მათი ჭრილი რჩება მონიშნული
       const activeCut = location.pathname.startsWith('/personal/albums')
         ? 'albums'
-        : location.pathname.startsWith('/personal/media')
-          ? 'media'
-          : 'people'
+        : location.pathname.startsWith('/personal/people')
+          ? 'people'
+          : 'media'
 
       return (
         <div key={m.key} style={modAccent(m.color)}>

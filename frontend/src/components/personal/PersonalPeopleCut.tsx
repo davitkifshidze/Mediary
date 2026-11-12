@@ -20,6 +20,7 @@ import { PersonalDeleteDialog } from '@/components/personal/PersonalDeleteDialog
 import { LockBadge } from '@/components/locks/RecordLock'
 import { PersonalUnlockDialog, usePersonalLockMenu } from '@/components/personal/PersonalLock'
 import { CardActions } from '@/components/personal/PersonalCardActions'
+import { PersonalKindFilter, type PersonalKindFilterValue } from '@/components/personal/PersonalKindFilter'
 
 /* ============================================================
    **„პიროვნებები"** — ბარათები: მთავარი ფოტო, სახელი,
@@ -58,8 +59,20 @@ export function PersonalPeopleCut() {
     onSettled: () => invalidatePersonal(qc),
   })
 
-  const people = peopleQ.data ?? []
-  const open = (person: Person) => navigate(`/personal/people/${person.id}`)
+  /* ქვეფილტრი: „ფოტო" — ვისაც ფოტო აქვს (ბარათი ფოტოებს ითვლის, გვერდი ფოტოების
+     ჩანართზე იხსნება), „ვიდეო" — ვისაც ვიდეო. ⚠️ გაფილტრულ სიაზე გადათრევა გამორთულია:
+     ნაწილობრივი რიგის შენახვა დამალულებს ბოლოში გადაყრიდა. */
+  const [filter, setFilter] = useState<PersonalKindFilterValue>('all')
+  const kind = filter === 'photo' || filter === 'video' ? filter : undefined
+  const everyone = peopleQ.data ?? []
+  const people = everyone.filter((person) => (kind === 'photo' ? person.photos > 0 : kind === 'video' ? person.videos > 0 : true))
+  const counts = {
+    all: everyone.length,
+    photo: everyone.filter((person) => person.photos > 0).length,
+    video: everyone.filter((person) => person.videos > 0).length,
+  }
+  const open = (person: Person) =>
+    navigate(`/personal/people/${person.id}${kind ? `?tab=${kind === 'photo' ? 'photos' : 'videos'}` : ''}`)
 
   const dialogs = (
     <>
@@ -80,7 +93,7 @@ export function PersonalPeopleCut() {
 
   if (peopleQ.isLoading) return <GalleryStackSkeleton />
 
-  if (!people.length) {
+  if (!everyone.length) {
     return (
       <>
         <EmptyState
@@ -101,6 +114,10 @@ export function PersonalPeopleCut() {
 
   return (
     <section>
+      <div className="mb-4" data-testid="personal-people-filter">
+        <PersonalKindFilter value={filter} onChange={setFilter} counts={counts} favorite={false} />
+      </div>
+      {!people.length && <EmptyState kind="search" title={t('personal.people.emptyKind')} />}
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <Sortable ids={people.map((p) => p.id)} layout="grid" onReorder={(ids) => reorder.mutate(ids)}>
           {people.map((person) => {
@@ -116,17 +133,17 @@ export function PersonalPeopleCut() {
                 ]
 
             return (
-              <SortableItem key={person.id} id={person.id}>
+              <SortableItem key={person.id} id={person.id} disabled={!!kind}>
                 <PhotoStack
                   title={person.name}
                   subtitle={person.birthday ? t('personal.person.born', { date: date(person.birthday) }) : undefined}
                   label={[
-                    countLabel(t, person.photos, person.videos),
-                    person.albums > 0 ? t('personal.albumsCount', { count: person.albums }) : null,
+                    countLabel(t, kind === 'video' ? 0 : person.photos, kind === 'photo' ? 0 : person.videos),
+                    !kind && person.albums > 0 ? t('personal.albumsCount', { count: person.albums }) : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')}
-                  count={person.photos + person.videos}
+                  count={(kind === 'video' ? 0 : person.photos) + (kind === 'photo' ? 0 : person.videos)}
                   images={privatePreview(person.cover)}
                   aspect="portrait"
                   locked={hidden}

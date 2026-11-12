@@ -10,6 +10,7 @@ import { InfoHint } from '@/components/ui/info-hint'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { PersonalAlbumCards } from '@/components/personal/PersonalAlbumCards'
 import { PersonalAlbumDialog } from '@/components/personal/PersonalAlbumDialog'
+import { PersonalKindFilter, type PersonalKindFilterValue } from '@/components/personal/PersonalKindFilter'
 
 /* ============================================================
    **„ალბომები"** — ჯერ „გარე" ალბომები, მერე ადამიანების
@@ -17,17 +18,33 @@ import { PersonalAlbumDialog } from '@/components/personal/PersonalAlbumDialog'
 
    ⚠️ **ცარიელი ალბომიც იხატება** (გალერეის წესი): საქაღალდე, რომელიც
    პირველ ფოტომდე გაქრებოდა, მასში გადატანას შეუძლებელს გახდიდა.
+
+   ⚠️ **ალბომი ერთია და ფოტოსაც იტევს და ვიდეოსაც** — სახეობა (ფოტო-ალბომი /
+   ვიდეო-ალბომი) არ არსებობს. ქვეფილტრი „ფოტო" იმ ალბომებს აჩვენებს, რომლებშიც ფოტოა,
+   და ბარათზე მხოლოდ ფოტოებს ითვლის; „ვიდეო" — ვიდეოებს; „ყველა" — მთლიანად.
    ============================================================ */
 
 export function PersonalAlbumsCut() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [adding, setAdding] = useState(false)
+  const [filter, setFilter] = useState<PersonalKindFilterValue>('all')
+  const kind = filter === 'photo' || filter === 'video' ? filter : undefined
 
   const albumsQ = useQuery({ queryKey: [PERSONAL_KEY, 'albums', {}], queryFn: () => fetchPersonalAlbums() })
+  const everything = albumsQ.data
+
+  const counts = useMemo(
+    () => ({
+      all: (everything ?? []).length,
+      photo: (everything ?? []).filter((album) => album.photos > 0).length,
+      video: (everything ?? []).filter((album) => album.videos > 0).length,
+    }),
+    [everything],
+  )
 
   const { outside, byPerson } = useMemo(() => {
-    const all = albumsQ.data ?? []
+    const all = (everything ?? []).filter((album) => (kind === 'photo' ? album.photos > 0 : kind === 'video' ? album.videos > 0 : true))
     const groups = new Map<number, { name: string; albums: PersonalAlbum[] }>()
 
     for (const album of all) {
@@ -41,13 +58,30 @@ export function PersonalAlbumsCut() {
       outside: all.filter((album) => !album.person),
       byPerson: [...groups.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name)),
     }
-  }, [albumsQ.data])
+  }, [everything, kind])
 
   const dialog = adding && (
     <PersonalAlbumDialog album={null} onClose={() => setAdding(false)} onSaved={(saved) => navigate(`/personal/albums/${saved.id}`)} />
   )
 
   if (albumsQ.isLoading) return <GalleryStackSkeleton aspect="wide" />
+
+  const filterBar = (
+    <div className="mb-4" data-testid="personal-albums-filter">
+      <PersonalKindFilter value={filter} onChange={setFilter} counts={counts} favorite={false} />
+    </div>
+  )
+
+  // ფილტრმა დაცალა — ალბომები არის, უბრალოდ ამ სახეობის გარეშე
+  if (!outside.length && !byPerson.length && (everything ?? []).length > 0) {
+    return (
+      <>
+        {filterBar}
+        <EmptyState kind="search" title={t('personal.albums.emptyKind')} />
+        {dialog}
+      </>
+    )
+  }
 
   if (!outside.length && !byPerson.length) {
     return (
@@ -69,6 +103,8 @@ export function PersonalAlbumsCut() {
   }
 
   return (
+    <div>
+    {filterBar}
     <div className="space-y-8">
       {outside.length > 0 && (
         <section>
@@ -76,7 +112,7 @@ export function PersonalAlbumsCut() {
             {t('personal.albums.outside')}
             <InfoHint info={t('personal.albums.outsideHint')} />
           </h2>
-          <PersonalAlbumCards albums={outside} />
+          <PersonalAlbumCards albums={outside} kind={kind} />
         </section>
       )}
 
@@ -93,11 +129,12 @@ export function PersonalAlbumsCut() {
               {group.name}
             </button>
           </h2>
-          <PersonalAlbumCards albums={group.albums} showOwner={false} />
+          <PersonalAlbumCards albums={group.albums} showOwner={false} kind={kind} />
         </section>
       ))}
 
       {dialog}
+    </div>
     </div>
   )
 }

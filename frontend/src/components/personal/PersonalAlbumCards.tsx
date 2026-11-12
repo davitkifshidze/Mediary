@@ -34,8 +34,11 @@ import { CardActions } from '@/components/personal/PersonalCardActions'
 export function PersonalAlbumCards({
   albums,
   showOwner = true,
+  kind,
 }: {
   albums: PersonalAlbum[]
+  /** ქვეფილტრი „ფოტო" / „ვიდეო": ბარათი მხოლოდ იმ სახეობას ითვლის და ალბომი იმ ჩანართზე იხსნება */
+  kind?: 'photo' | 'video'
   /** პიროვნების გვერდზე „ვისია" ზედმეტია */
   showOwner?: boolean
 }) {
@@ -54,7 +57,10 @@ export function PersonalAlbumCards({
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  const open = (album: PersonalAlbum) => navigate(`/personal/albums/${album.id}`)
+  const open = (album: PersonalAlbum) => navigate(`/personal/albums/${album.id}${kind ? `?kind=${kind}` : ''}`)
+  /** ბარათის შიგთავსი — „12 ფოტო · 3 ვიდეო", ან მხოლოდ არჩეული სახეობა */
+  const photosOf = (album: PersonalAlbum) => (kind === 'video' ? 0 : album.photos)
+  const videosOf = (album: PersonalAlbum) => (kind === 'photo' ? 0 : album.videos)
 
   return (
     <>
@@ -73,12 +79,12 @@ export function PersonalAlbumCards({
                 ]
 
             return (
-              <SortableItem key={album.id} id={album.id}>
+              <SortableItem key={album.id} id={album.id} disabled={!!kind}>
                 <PhotoStack
                   title={album.name}
                   subtitle={showOwner ? (album.person?.name ?? t('personal.album.outside')) : (album.description ?? undefined)}
-                  label={countLabel(t, album.photos, album.videos)}
-                  count={album.photos + album.videos}
+                  label={countLabel(t, photosOf(album), videosOf(album))}
+                  count={photosOf(album) + videosOf(album)}
                   images={privatePreview(album.cover)}
                   aspect="wide"
                   locked={hidden}

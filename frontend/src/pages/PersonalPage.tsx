@@ -28,14 +28,14 @@ import { PersonalUploadButton } from '@/components/personal/PersonalUploader'
    ქვემოთ ჭრილი. „ატვირთვა" სათაურშია და ყველა ჭრილიდან ხელმისაწვდომია.
 
    ⚠️ **ტაბი ბარათია და არა ხაზგასმული ბმული** („ქარდების სტილად") — მოდულის
-   ფერში, აიქონითა და რიცხვით (`summary`: პიროვნებები · ალბომები · ფოტო+ვიდეო);
+   ფერში, აიქონითა და რიცხვით (`summary`: ფოტო+ვიდეო · პიროვნებები · ალბომები);
    არჩევა მისამართზე გადადის, ე.ი. მარშრუტები და საიდბარი იგივეა.
 
    ⚠️ **ფაილები პირად დისკზეა** — `/storage/*` მათ ვერ ხედავს; ბადე ესკიზს
    blob-ად კითხულობს, ვიდეო Range-ით უკრავს (`api/personal.ts`).
    ============================================================ */
 
-export function PersonalPage({ cut = 'people' }: { cut?: PersonalCut }) {
+export function PersonalPage({ cut = 'media' }: { cut?: PersonalCut }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { all } = useModules()
@@ -45,7 +45,7 @@ export function PersonalPage({ cut = 'people' }: { cut?: PersonalCut }) {
   const summary = summaryQ.data
   const color = all.find((m) => m.key === 'personal')?.color ?? null
 
-  /** ჭრილის რიცხვი — „ფოტო & ვიდეო" ფოტოსა და ვიდეოს ჯამია */
+  /** ჭრილის რიცხვი — „ყველა" ფოტოსა და ვიდეოს ჯამია */
   const countOf = (key: PersonalCut) => {
     if (!summary) return undefined
     if (key === 'people') return summary.people

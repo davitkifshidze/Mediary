@@ -72,10 +72,10 @@ export function resultPath(item: SearchItem, routeBase: string | undefined): str
   if (item.domain === 'playlist') return `/playlists/${item.id}`
   if (item.domain === 'gallery') return '/gallery/videos'
   /* პირადი გალერეა: ადამიანსა და ალბომს თავისი გვერდი აქვს, ფოტო კი
-     „ფოტო & ვიდეო"-ს ძებნით იხსნება (წარწერა) */
+     „ყველა" ჩანართის ძებნით იხსნება (წარწერა) */
   if (item.domain === 'personal') return `/personal/people/${item.id}`
   if (item.domain === 'personal_album') return `/personal/albums/${item.id}`
-  if (item.domain === 'personal_media') return `/personal/media?q=${encodeURIComponent(item.title)}`
+  if (item.domain === 'personal_media') return `/personal?q=${encodeURIComponent(item.title)}`
   // მორიგეობის პერიოდი იხსნება და რედაქტირება ჩანს (`DutyPage`, `?shift=`)
   if (item.domain === 'duty') return `/duty?shift=${item.id}`
 

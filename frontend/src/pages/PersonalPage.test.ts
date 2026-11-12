@@ -249,18 +249,43 @@ describe('PersonalPage', () => {
     )
 
     const cards = [...container!.querySelectorAll<HTMLButtonElement>('nav button[aria-pressed]')]
+    // „ყველა" (ფოტო + ვიდეო) პირველია, შემდეგ პიროვნებები და ალბომები
     expect(cards.map((b) => b.textContent)).toEqual([
+      `${i18n.t('personal.cut.media')}6`,
       `${i18n.t('personal.cut.people')}2`,
       `${i18n.t('personal.cut.albums')}0`,
-      // ფოტო & ვიდეო = ფოტო + ვიდეო
-      `${i18n.t('personal.cut.media')}6`,
     ])
-    expect(cards[0].getAttribute('aria-pressed')).toBe('true')
+    expect(cards[1].getAttribute('aria-pressed')).toBe('true')
     // ხაზგასმული ბმულები აღარ არის
     expect(container!.querySelector('nav a')).toBeNull()
 
-    await act(async () => cards[1].click())
+    await act(async () => cards[2].click())
     expect(container!.querySelector('[data-testid="where"]')).not.toBeNull()
+  })
+})
+
+describe('PersonalPeopleCut — ქვეფილტრი', () => {
+  it('narrows people by kind and counts only that kind on the card', async () => {
+    defaults()
+    const { PersonalPage } = await import('@/pages/PersonalPage')
+    await render(h(PersonalPage, { cut: 'people' }), '/personal/people')
+
+    const filter = container!.querySelector('[data-testid="personal-people-filter"]')!
+    const tab = (key: string) => [...filter.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.startsWith(i18n.t(`personal.kind.${key}`)))!
+    // ყველა 2 · ფოტო 1 · ვიდეო 1 — მეორე პიროვნებას არაფერი აქვს; „რჩეული" აქ ჯერ არ არის
+    expect(tab('all').textContent).toContain('2')
+    expect(tab('photo').textContent).toContain('1')
+    expect(filter.textContent).not.toContain(i18n.t('filter.favorite'))
+
+    const cards = () => [...container!.querySelectorAll<HTMLElement>('section > ul > li')]
+    expect(cards()).toHaveLength(2)
+    expect(cards()[0].textContent).toContain(i18n.t('personal.videos', { count: 1 }))
+
+    await act(async () => tab('photo').click())
+    expect(cards()).toHaveLength(1)
+    // ბარათი მხოლოდ ფოტოებს ითვლის — ალბომი და პიროვნება ერთია, სახეობა ჩანართისაა
+    expect(cards()[0].textContent).toContain(i18n.t('personal.photos', { count: 2 }))
+    expect(cards()[0].textContent).not.toContain(i18n.t('personal.videos', { count: 1 }))
   })
 })
 
@@ -471,7 +496,16 @@ describe('PersonalPersonPage', () => {
     expect(mocks.fetchPersonalGroups).toHaveBeenLastCalledWith('album', { kind: 'photo', favorite: undefined, person_id: 1 })
     const groups = container!.querySelector('[data-testid="personal-groups"]')!
     expect(groups.textContent).toContain('ზღვა')
-    expect(groups.textContent).toContain(i18n.t('personal.groups.noAlbum'))
+    // „ალბომის გარეშე" ჯგუფი არ არის — ბადის ქვემოთ ბმულია, რომელიც იმავე სიას ფილტრით ხსნის
+    expect(groups.querySelectorAll('li')).toHaveLength(1)
+    expect(groups.textContent).not.toContain(i18n.t('personal.groups.noAlbum'))
+    const rest = container!.querySelector<HTMLButtonElement>('[data-testid="personal-groups-rest"]')!
+    expect(rest.textContent).toContain(i18n.t('personal.groups.restAlbum', { count: 1 }))
+
+    await act(async () => rest.click())
+    await flush()
+    expect(container!.querySelector('[data-testid="personal-group-open"]')?.textContent).toContain(i18n.t('personal.groups.noAlbum'))
+    expect(mocks.fetchPersonalMedia).toHaveBeenLastCalledWith(expect.objectContaining({ no_album: true, person_id: 1 }))
   })
 })
 

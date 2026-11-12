@@ -125,7 +125,7 @@ export function PersonalPersonPage() {
   })
 
   const back = (
-    <Link to="/personal" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+    <Link to="/personal/people" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
       <ArrowLeft className="size-4" />
       {t('personal.cut.people')}
     </Link>
@@ -286,7 +286,7 @@ export function PersonalPersonPage() {
 
       {editing && <PersonDialog person={person} onClose={() => setEditing(false)} />}
       {deleting && (
-        <PersonalDeleteDialog target={{ kind: 'person', person }} onClose={() => setDeleting(false)} onDeleted={() => navigate('/personal')} />
+        <PersonalDeleteDialog target={{ kind: 'person', person }} onClose={() => setDeleting(false)} onDeleted={() => navigate('/personal/people')} />
       )}
     </PageContainer>
   )

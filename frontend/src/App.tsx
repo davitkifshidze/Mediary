@@ -169,7 +169,7 @@ const MODULE_PAGES: Record<string, React.ReactNode> = {
   // ადგილები
   place: <PlacesPage />,
   // პირადი გალერეა; ფესვი „ადამიანებია", დანარჩენი ჭრილები ქვემოთ
-  personal: <PersonalPage cut="people" />,
+  personal: <PersonalPage cut="media" />,
   // მორიგეობა (კალენდარი · სია · ჯამები · კალკულატორი — `?view=`)
   duty: <DutyPage />,
   // გალერეა ცალკე მოდულია, ფოტოები კი ფილმებსა/სერიალებს ჰკიდია
@@ -306,6 +306,7 @@ function AppShell() {
           {/* ---------- პირადი გალერეა ----------
               ჭრილები `PERSONAL_CUTS`-ის მისამართებია (საიდბარის ქვე-მენიუც იგივეა);
               ადამიანისა და ალბომის გვერდი — `:id`. */}
+          {has('personal') && <Route path="personal/people" element={<PersonalPage cut="people" />} />}
           {has('personal') && <Route path="personal/albums" element={<PersonalPage cut="albums" />} />}
           {has('personal') && <Route path="personal/media" element={<PersonalPage cut="media" />} />}
           {has('personal') && <Route path="personal/people/:id" element={<PersonalPersonPage />} />}

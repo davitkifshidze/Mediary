@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Folders, Image, Inbox, LayoutGrid, Search, Star, Users, Video } from 'lucide-react'
+import { Folders, Inbox, LayoutGrid, Search, Users } from 'lucide-react'
 import {
   fetchPersonalSummary,
   PERSONAL_KEY,
@@ -15,12 +15,14 @@ import { CutTabs } from '@/components/ui/cut-tabs'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { PersonalGroups } from '@/components/personal/PersonalGroups'
+import { PersonalKindFilter, type PersonalKindFilterValue } from '@/components/personal/PersonalKindFilter'
 import { PersonalMediaGrid } from '@/components/personal/PersonalMediaGrid'
 
 /* ============================================================
-   **„ფოტო & ვიდეო"** — ყველაფერი ერთად, დაჯგუფებით:
-   **ყველა · პიროვნებით · ალბომით · დაუჯგუფებელი**; ქვემოთ ქვე-ფილტრი —
-   **ყველა · ფოტოები · ვიდეოები · რჩეული**, მარჯვნივ ძებნა წარწერაში და სორტირება.
+   **„ყველა"** — ყველა ფოტო და ვიდეო ერთად, დაჯგუფებით:
+   **დაჯგუფების გარეშე · პიროვნებით · ალბომით · დაუჯგუფებელი** (თითოს განმარტება
+   `i`-შია); ქვემოთ ქვე-ფილტრი — **ყველა · ფოტო · ვიდეო · რჩეული**, მარჯვნივ ძებნა
+   წარწერაში და სორტირება.
 
    ⚠️ **ჯგუფები სერვერზე ითვლება** და ერთი კომპონენტით იხატება
    (`PersonalGroups` — იგივეა პიროვნების გვერდის „ალბომით" ხედი). გახსნილ
@@ -42,20 +44,13 @@ import { PersonalMediaGrid } from '@/components/personal/PersonalMediaGrid'
 
 type Grouping = 'all' | PersonalGrouping | 'ungrouped'
 
-type Filter = 'all' | 'photo' | 'video' | 'favorite'
+type Filter = PersonalKindFilterValue
 
 const GROUPINGS: { key: Grouping; icon: typeof LayoutGrid; color: string }[] = [
   { key: 'all', icon: LayoutGrid, color: 'var(--primary)' },
   { key: 'person', icon: Users, color: 'var(--tool-people)' },
   { key: 'album', icon: Folders, color: 'var(--gold)' },
   { key: 'ungrouped', icon: Inbox, color: 'var(--status-undecided)' },
-]
-
-const FILTERS: { key: Filter; icon: typeof LayoutGrid; color?: string }[] = [
-  { key: 'all', icon: LayoutGrid },
-  { key: 'photo', icon: Image },
-  { key: 'video', icon: Video },
-  { key: 'favorite', icon: Star, color: 'var(--favorite)' },
 ]
 
 export function PersonalMediaCut() {
@@ -90,30 +85,13 @@ export function PersonalMediaCut() {
     return summary.photos + summary.videos
   }
 
-  const filterCount = (key: Filter) => {
-    if (!summary) return undefined
-    if (key === 'photo') return summary.photos
-    if (key === 'video') return summary.videos
-    if (key === 'favorite') return summary.favorites
-
-    return summary.photos + summary.videos
-  }
+  const filterCounts = summary
+    ? { all: summary.photos + summary.videos, photo: summary.photos, video: summary.videos, favorite: summary.favorites }
+    : undefined
 
   const toolbar = (
     <div className="mb-4 flex flex-wrap items-center gap-2" data-testid="personal-media-toolbar">
-      <CutTabs
-        layout="inline"
-        size="sm"
-        options={FILTERS.map(({ key, icon, color }) => ({
-          key,
-          label: t(key === 'favorite' ? 'filter.favorite' : `personal.kind.${key}`),
-          icon,
-          color,
-          count: filterCount(key),
-        }))}
-        value={filter}
-        onChange={(key) => setFilter(key as Filter)}
-      />
+      <PersonalKindFilter value={filter} onChange={setFilter} counts={filterCounts} />
 
       {/* ძებნა + სორტირება — მარჯვნივ */}
       <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -155,6 +133,8 @@ export function PersonalMediaCut() {
           options={GROUPINGS.map(({ key, icon, color }) => ({
             key,
             label: t(`personal.groups.${key}`),
+            // რას ნიშნავს ეს დაჯგუფება — „დაუჯგუფებელი" და „ალბომის გარეშე" ერთი არ არის
+            hint: t(`personal.groups.hint.${key}`),
             icon,
             color,
             count: groupingCount(key),

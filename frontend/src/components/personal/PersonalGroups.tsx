@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import {
   fetchPersonalGroups,
   PERSONAL_KEY,
@@ -27,6 +27,10 @@ import { PersonalMediaGrid } from '@/components/personal/PersonalMediaGrid'
 
    ⚠️ **გახსნილი ჯგუფი აქვე ინახება** — დაჯგუფების შეცვლაზე მშობელი
    კომპონენტს `key`-ით თავიდან სვამს და გახსნილი ჯგუფი იხურება.
+
+   ⚠️ **„…-ის გარეშე" ჯგუფი არ არის** — ეს ფილტრია: ბადეში მხოლოდ ნამდვილი ჯგუფები
+   (პიროვნებები, ალბომები) დგას, ბოლოს კი ბმული „ალბომის გარეშე: N →", რომელიც იმავე
+   სიას ფილტრით ხსნის. ფსევდო-ჯგუფი ბარათებს შორის ნამდვილ ალბომად იკითხებოდა.
    ============================================================ */
 
 export function PersonalGroups({
@@ -71,12 +75,27 @@ export function PersonalGroups({
 
   if (groupsQ.isLoading) return <GalleryStackSkeleton aspect="wide" />
 
-  const groups = groupsQ.data ?? []
-  if (!groups.length) {
+  const all = groupsQ.data ?? []
+  // სერვერი „გარეშე" ნარჩენს სათაურის გარეშე აბრუნებს — ის ჯგუფი არ არის
+  const groups = all.filter((g) => g.title !== null)
+  const rest = all.find((g) => g.title === null) ?? null
+
+  if (!all.length) {
     return <EmptyState kind="photo" title={t('personal.media.empty')} hint={t('personal.media.emptyHint')} />
   }
 
+  /** „ალბომის გარეშე: N →" — ფილტრი და არა ჯგუფი */
+  const restLink = rest && (
+    <Button variant="outline" size="sm" className="mt-4" onClick={() => setGroup(rest)} data-testid="personal-groups-rest">
+      {t(by === 'person' ? 'personal.groups.restPerson' : 'personal.groups.restAlbum', { count: rest.total })}
+      <ArrowRight className="size-4" />
+    </Button>
+  )
+
+  if (!groups.length) return <div>{restLink}</div>
+
   return (
+    <div>
     <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" data-testid="personal-groups">
       {groups.map((g) => (
         <li key={g.key}>
@@ -92,5 +111,7 @@ export function PersonalGroups({
         </li>
       ))}
     </ul>
+    {restLink}
+    </div>
   )
 }
