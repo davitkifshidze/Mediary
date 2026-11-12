@@ -119,8 +119,12 @@ export function DetailPhotos({
   emptyTitle,
   deleteTitle,
 }: {
-  /** სათაურს ბეჯიც შეიძლება მოჰყვეს („ფოტოები · ატვირთული") */
-  title: ReactNode
+  /**
+   * სათაურს ბეჯიც შეიძლება მოჰყვეს („ფოტოები · ატვირთული"). **სათაურის გარეშე** ბლოკი
+   * ჩანართის შიგთავსია (ბუკმარკის „ატვირთული"): ატვირთვის ღილაკი ვიტრინის ზემოთ დგას,
+   * ცარიელზე კი — ცარიელი მდგომარეობის შიგნით.
+   */
+  title?: ReactNode
   hint?: string
   items: ShowcaseItem[]
   loading?: boolean
@@ -136,17 +140,16 @@ export function DetailPhotos({
   const confirm = useConfirm()
   const input = useRef<HTMLInputElement>(null)
 
-  return (
-    <DetailSection
-      title={title}
-      hint={hint}
-      action={
-        <Button variant="outline" size="sm" disabled={uploading} onClick={() => input.current?.click()}>
-          <Upload className="size-3.5" />
-          {uploading ? t('actions.saving') : uploadLabel}
-        </Button>
-      }
-    >
+  const upload = (
+    <Button variant="outline" size="sm" disabled={uploading} onClick={() => input.current?.click()} data-testid="detail-photos-upload">
+      <Upload className="size-3.5" />
+      {uploading ? t('actions.saving') : uploadLabel}
+    </Button>
+  )
+  const tabbed = title == null
+
+  const body = (
+    <>
       <input
         ref={input}
         type="file"
@@ -162,11 +165,26 @@ export function DetailPhotos({
 
       <PhotoShowcase
         items={items}
-        empty={loading ? null : <EmptyState kind="photo" title={emptyTitle} />}
+        empty={loading ? null : <EmptyState kind="photo" title={emptyTitle} actions={tabbed ? upload : undefined} />}
         onDelete={async (id) => {
           if (await confirm({ title: deleteTitle, variant: 'destructive' })) onDelete(id)
         }}
       />
+    </>
+  )
+
+  if (tabbed) {
+    return (
+      <div>
+        {items.length > 0 && <div className="mb-3 flex justify-end">{upload}</div>}
+        {body}
+      </div>
+    )
+  }
+
+  return (
+    <DetailSection title={title} hint={hint} action={upload}>
+      {body}
     </DetailSection>
   )
 }

@@ -1,14 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
-import { Plus, SquarePen, Trash2, X } from 'lucide-react'
+import { ExternalLink, Plus, SquarePen, Trash2, X } from 'lucide-react'
 import { BOOKMARK_LINK_KINDS, setBookmarkLinks, type Bookmark, type BookmarkLink, type BookmarkLinkKind } from '@/api/bookmarks'
 import { emptyLink, isPricedKind, LINK_KIND_LOOK, linkHost, usableFavicon, withPreview } from '@/lib/bookmarkLinks'
 import { useBookmarkRefresh } from '@/lib/bookmarks'
 import { errorMessage, fieldErrors } from '@/lib/errors'
 import { tintStyle } from '@/lib/gameMeta'
 import { keyRow, type Keyed } from '@/lib/rowKeys'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FormFooter } from '@/components/ui/form-layout'
@@ -18,6 +18,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
 
 /* ============================================================
    **ბუკმარკის დამატებითი ბმულები**.
@@ -30,7 +31,8 @@ import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/
      ფასი (მხოლოდ მაღაზიასა და ფასზე) და ბმულის ველი გვერდის მეტა-მონაცემით;
    - `BookmarkLinksEditor` — სია ფორმაში + „ბმულის დამატება"-ს ღილაკი;
    - `BookmarkLinkDialog` — ერთი ბმული ფორმის გარეშე (დეტალი, მარჯვენა კლიკი);
-   - `BookmarkLinkCards` — დეტალის ბარათები: favicon, წარწერა, დომენი, ფასი.
+   - `BookmarkLinkCards` — დეტალის სია: თითო ბმული ერთ ხაზზე (ნიშანი · სახელი · საიტი ·
+     კატეგორია · ფასი · „გახსნა" · „რედაქტირება"), რიგი გადათრევით.
 
    ⚠️ **რიგი ცვლილებას ფუნქციით აბრუნებს** (`(link) => link`): მეტა-მონაცემი
    ასინქრონულად მოდის და იმ დროისთვის მომხმარებელს წარწერა შეიძლება უკვე
@@ -251,94 +253,129 @@ export function BookmarkLinkDialog({ bookmark, edit, onClose }: { bookmark: Book
 }
 
 /**
- * დეტალის ბარათები — favicon, წარწერა, დომენი, ტიპი ფერით და ფასი.
- * `onEdit` — ბარათის გვერდით ხილული „რედაქტირება" (ტექსტით; ბმულის **შიგნით**
- * ღილაკი ვერ ჩაჯდება) და მარჯვენა ღილაკის მენიუ: გახსნა · რედაქტირება · მოხსნა.
+ * **დეტალის ბმულები — თითო ერთ ხაზზე**: ნიშანი · სახელი · საიტი · კატეგორია · ფასი,
+ * მარჯვნივ „გახსნა" და „რედაქტირება". მარჯვენა ღილაკის მენიუ: გახსნა · რედაქტირება · მოხსნა.
+ *
+ * ⚠️ **რიგი გადათრევით იცვლება და ინახება** (`onReorder`): სერვერზე `links` ერთი სვეტია,
+ * ე.ი. ახალი რიგი მთელი სიაა — ნაწილობრივი „გადაადგილება" არ არსებობს.
+ * ⚠️ რიგი ბმული აღარ არის (შიგნით ღილაკები ვერ ჩაჯდებოდა) — გასახსნელად „გახსნაა".
+ * ⚠️ ახალი რიგი **მაშინვე** ჩანს (`moved`), სერვერის პასუხამდე; ჩავარდნაზე ძველი ბრუნდება.
+ *    „რედაქტირება"/„მოხსნა" ადგილს მაინც **შენახული** სიიდან ითვლის — გამომძახებელმა
+ *    ახალი რიგი ჯერ არ იცის.
  */
 export function BookmarkLinkCards({
   links,
   onEdit,
   onRemove,
+  onReorder,
 }: {
   links: BookmarkLink[]
   onEdit?: (index: number) => void
   onRemove?: (index: number) => void
+  /** ახალი რიგი — მთელი სია; დაბრუნებული დაპირების ჩავარდნა ძველ რიგს აბრუნებს */
+  onReorder?: (links: BookmarkLink[]) => Promise<unknown> | void
 }) {
   const { t } = useTranslation()
   const confirm = useConfirm()
+  const [moved, setMoved] = useState<BookmarkLink[] | null>(null)
+  // შენახული სია შეიცვალა (პასუხი მოვიდა) — დროებითი რიგი აღარ სჭირდება
+  useEffect(() => setMoved(null), [links])
 
   if (!links.length) {
     return <EmptyState kind="link" className="py-6" title={t('bookmarks.linksEmpty')} />
   }
 
-  return (
-    <ul className="grid gap-2 sm:grid-cols-2" data-testid="bookmark-link-cards">
-      {links.map((link, i) => {
-        const { icon: Icon, color } = LINK_KIND_LOOK[link.kind] ?? LINK_KIND_LOOK.other
-        const host = linkHost(link.url)
-        const actions: MenuAction[] = [
-          { key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: () => window.open(link.url, '_blank', 'noopener,noreferrer') },
-          ...(onEdit ? [{ key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => onEdit(i) }] : []),
-          ...(onRemove
-            ? [
-                {
-                  key: 'remove',
-                  label: t('bookmarks.removeLink'),
-                  icon: MENU_ICONS.delete,
-                  danger: true,
-                  run: async () => {
-                    if (await confirm({ title: t('bookmarks.removeLinkTitle'), description: link.label || host || link.url, variant: 'destructive' })) {
-                      onRemove(i)
-                    }
-                  },
-                },
-              ]
-            : []),
-        ]
+  const sortable = !!onReorder && links.length > 1
+  const shown = moved ?? links
+  /* ⚠️ `0` dnd-kit-ისთვის „არაფერია" — გასაღები სტრიქონია და არა ადგილის ნომერი */
+  const ids = shown.map((_, i) => `link-${i}`)
+  const reorder = (order: (string | number)[]) => {
+    const next = order.map((id) => shown[ids.indexOf(String(id))])
+    setMoved(next)
+    void Promise.resolve(onReorder?.(next)).catch(() => setMoved(null))
+  }
 
-        return (
-          <RecordContextMenu key={`${i}:${link.url}`} actions={actions}>
-            <li className="flex items-center gap-2">
-              <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-md border border-border bg-card p-2.5 transition-colors hover:border-primary/50"
+  return (
+    <ul className="space-y-2" data-testid="bookmark-link-cards">
+      <Sortable ids={ids} onReorder={reorder}>
+        {shown.map((link, row) => {
+          // ადგილი შენახულ სიაში — გამომძახებლის ინდექსი
+          const i = links.indexOf(link)
+          const { icon: Icon, color } = LINK_KIND_LOOK[link.kind] ?? LINK_KIND_LOOK.other
+          const host = linkHost(link.url)
+          const open = () => window.open(link.url, '_blank', 'noopener,noreferrer')
+          const actions: MenuAction[] = [
+            { key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: open },
+            ...(onEdit ? [{ key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => onEdit(i) }] : []),
+            ...(onRemove
+              ? [
+                  {
+                    key: 'remove',
+                    label: t('bookmarks.removeLink'),
+                    icon: MENU_ICONS.delete,
+                    danger: true,
+                    run: async () => {
+                      if (await confirm({ title: t('bookmarks.removeLinkTitle'), description: link.label || host || link.url, variant: 'destructive' })) {
+                        onRemove(i)
+                      }
+                    },
+                  },
+                ]
+              : []),
+          ]
+
+          return (
+            <RecordContextMenu key={`${i}:${link.url}`} actions={actions}>
+              <SortableItem
+                id={ids[row]}
+                handle
+                disabled={!sortable}
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border bg-card px-2.5 py-2"
                 title={link.url}
+                data-testid="bookmark-link"
               >
-                <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-md bg-muted">
+                {sortable && <SortableHandle />}
+                <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-md bg-muted">
                   {link.favicon_url ? (
                     <img src={link.favicon_url} alt="" loading="lazy" referrerPolicy="no-referrer" className="size-5" />
                   ) : (
                     <Icon className="size-4" style={{ color }} />
                   )}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{link.label || host || link.url}</span>
-                  {host && <span className="block truncate text-xs text-muted-foreground">{host}</span>}
-                </span>
-                <span className="flex shrink-0 flex-col items-end gap-1">
-                  <Badge className="border" style={tintStyle(color)}>
-                    <Icon className="size-3" />
-                    {t(`bookmarks.linkKinds.${link.kind}`)}
-                  </Badge>
-                  {link.price && (
-                    <span className="text-sm font-semibold tabular-nums" data-testid="bookmark-link-price">
-                      {link.price}
-                    </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{link.label || host || link.url}</span>
+                {host && <span className="hidden max-w-44 shrink-0 truncate text-xs text-muted-foreground sm:block">{host}</span>}
+                <Badge className="shrink-0 border" style={tintStyle(color)}>
+                  <Icon className="size-3" />
+                  {t(`bookmarks.linkKinds.${link.kind}`)}
+                </Badge>
+                {link.price && (
+                  <span className="shrink-0 text-sm font-semibold tabular-nums" data-testid="bookmark-link-price">
+                    {link.price}
+                  </span>
+                )}
+                <span className="ml-auto flex shrink-0 items-center gap-2">
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                    data-testid="bookmark-link-open"
+                  >
+                    <ExternalLink className="size-3.5" />
+                    {t('actions.open')}
+                  </a>
+                  {onEdit && (
+                    <Button type="button" variant="edit" size="sm" onClick={() => onEdit(i)} data-testid="bookmark-link-edit">
+                      <SquarePen className="size-3.5" />
+                      {t('actions.edit')}
+                    </Button>
                   )}
                 </span>
-              </a>
-              {onEdit && (
-                <Button type="button" variant="edit" size="sm" className="shrink-0" onClick={() => onEdit(i)} data-testid="bookmark-link-edit">
-                  <SquarePen className="size-3.5" />
-                  {t('actions.edit')}
-                </Button>
-              )}
-            </li>
-          </RecordContextMenu>
-        )
-      })}
+              </SortableItem>
+            </RecordContextMenu>
+          )
+        })}
+      </Sortable>
     </ul>
   )
 }

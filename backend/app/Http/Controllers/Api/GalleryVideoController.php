@@ -123,6 +123,30 @@ class GalleryVideoController extends Controller
     }
 
     /**
+     * **სათაურისა და არხის შესწორება.** ვებძებნის მოტანილი სათაური ხშირად გრძელი ან
+     * უცხო ენაზეა — შენახულ ბმულს საკუთარი სახელი ეწერება.
+     *
+     * ⚠️ ბმული, პლატფორმა და `embed_url` აქ **არ იცვლება**: სხვა ბმული სხვა ვიდეოა
+     * (წაშლა + დამატება), `embed_url` კი მხოლოდ `applyUrl()`-ით იწერება.
+     */
+    public function update(Request $request, GalleryVideo $galleryVideo): JsonResponse
+    {
+        $data = $request->validate([
+            'title' => ['nullable', 'string', 'max:500'],
+            'channel' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        foreach (['title' => 500, 'channel' => 255] as $field => $max) {
+            if (array_key_exists($field, $data)) {
+                $galleryVideo->{$field} = $this->text($data[$field], $max);
+            }
+        }
+        $galleryVideo->save();
+
+        return response()->json(['data' => $this->withOwners(collect([$galleryVideo]))[0]]);
+    }
+
+    /**
      * **მოდულები, რომელთა ჩანაწერებსაც ვიდეო-ბმული აქვთ** — ჭრილის პირველი საფეხური:
      * თითოზე ვიდეოების და ჩანაწერების რაოდენობა და ბოლო ბმულების ესკიზები.
      */

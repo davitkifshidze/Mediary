@@ -1039,6 +1039,12 @@ export function saveSerpVideo(target: SaveGalleryVideoBody['target'], id: number
   })
 }
 
+/** სათაურისა და არხის შესწორება — ბმული და ესკიზი არ იცვლება */
+export async function updateGalleryVideo(id: number, input: { title: string | null; channel: string | null }): Promise<GalleryVideo> {
+  const { data } = await api.patch(`/gallery/videos/${id}`, input)
+  return data.data
+}
+
 export async function deleteGalleryVideo(id: number): Promise<void> {
   await api.delete(`/gallery/videos/${id}`)
 }

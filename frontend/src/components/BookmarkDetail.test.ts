@@ -14,10 +14,11 @@ import i18n from '@/i18n'
    **ბუკმარკის დეტალის ფანჯარა**.
 
    ⚠️ მოწმდება: „ბმულის გახსნა" ფანჯრის შიგნითაა, ახალ ჩანართში იხსნება და
-   „გახსნის" მთვლელს ზრდის; დამატებითი ბმულები ბარათებადაა (ტიპი, დომენი, ფასი);
-   „ბმულის დამატება" მთელ სიას აგზავნის (ძველი + ახალი); გალერეა ორ საცავს ერთ
-   ხედად აჩვენებს — „ატვირთული" (`bookmark_files`) და „ვებიდან" (`owner=bookmark:<id>`),
-   გამორთულ მოდულზე კი ამბობს, რომ ჩასართავია.
+   „გახსნის" მთვლელს ზრდის; დამატებითი ბმულები თითო ხაზზეა (ტიპი, დომენი, ფასი,
+   „გახსნა" და „რედაქტირება") და რიგი გადათრევით ინახება; „ბმულის დამატება" მთელ სიას
+   აგზავნის (ძველი + ახალი); გალერეა ორი ნამდვილი ჩანართია — „ატვირთული" (`bookmark_files`)
+   და „ვებიდან" (`owner=bookmark:<id>`), რიცხვებით; ვიდეო-ბმულები ცალკე სექციაა;
+   გამორთულ მოდულზე „ვებიდან" ამბობს, რომ მოდული ჩასართავია.
    ============================================================ */
 
 const status: Status = {
@@ -122,11 +123,11 @@ async function flush() {
   })
 }
 
-async function mount(gallery = true) {
+const shot = { id: 1, kind: 'image', path: 'bookmarks/files/images/shot.png', url: '/storage/bookmarks/files/images/shot.png', original_name: 'shot.png', mime: 'image/png', size: 10, created_at: null }
+
+async function mount(gallery = true, files: unknown[] = [shot]) {
   mocks.gallery = gallery
-  mocks.fetchBookmarkFiles.mockResolvedValue([
-    { id: 1, kind: 'image', path: 'bookmarks/files/images/shot.png', url: '/storage/bookmarks/files/images/shot.png', original_name: 'shot.png', mime: 'image/png', size: 10, created_at: null },
-  ])
+  mocks.fetchBookmarkFiles.mockResolvedValue(files)
   mocks.markBookmarkVisited.mockResolvedValue({ ...bookmark, visit_count: 5 })
   mocks.setBookmarkLinks.mockResolvedValue(bookmark)
   mocks.fetchGalleryPhotos.mockResolvedValue({ data: [], meta: { page: 1, per_page: 60, total: 0, last_page: 1 } })
@@ -163,6 +164,8 @@ async function mount(gallery = true) {
 }
 
 const button = (label: string) => [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)
+/** გალერეის ორი ჩანართი — „ატვირთული" და „ვებიდან" */
+const tabs = () => [...document.querySelectorAll<HTMLButtonElement>('[data-testid="bookmark-gallery-tabs"] button')]
 
 describe('BookmarkDetail', () => {
   it('refreshes the photo from the link and says what happened', async () => {
@@ -213,23 +216,65 @@ describe('BookmarkDetail', () => {
     expect(button(i18n.t('actions.delete'))).toBeDefined()
   })
 
-  it('shows the extra links as cards with type, host and price', async () => {
+  it('shows each extra link on one row with type, host, price and an "open" link', async () => {
     await mount()
 
     const cards = document.querySelector<HTMLElement>('[data-testid="bookmark-link-cards"]')!
-    const links = [...cards.querySelectorAll<HTMLAnchorElement>('a')]
-    expect(links.map((a) => a.getAttribute('href'))).toEqual(bookmark.links.map((l) => l.url))
-    expect(links.every((a) => a.getAttribute('target') === '_blank')).toBe(true)
+    const rows = [...cards.querySelectorAll<HTMLElement>('[data-testid="bookmark-link"]')]
+    expect(rows).toHaveLength(bookmark.links.length)
 
-    expect(links[0].textContent).toContain('Amazon')
-    expect(links[0].textContent).toContain('amazon.com')
-    expect(links[0].textContent).toContain(i18n.t('bookmarks.linkKinds.shop'))
-    expect(links[0].querySelector('[data-testid="bookmark-link-price"]')?.textContent).toBe('$99')
+    // „გახსნა" — ნამდვილი ბმული ახალ ჩანართში, თითო რიგზე ერთი
+    const opens = rows.map((row) => row.querySelector<HTMLAnchorElement>('[data-testid="bookmark-link-open"]')!)
+    expect(opens.map((a) => a.getAttribute('href'))).toEqual(bookmark.links.map((l) => l.url))
+    expect(opens.every((a) => a.getAttribute('target') === '_blank' && a.getAttribute('rel')?.includes('noopener'))).toBe(true)
+    expect(opens[0].textContent?.trim()).toBe(i18n.t('actions.open'))
+
+    expect(rows[0].textContent).toContain('Amazon')
+    expect(rows[0].textContent).toContain('amazon.com')
+    expect(rows[0].textContent).toContain(i18n.t('bookmarks.linkKinds.shop'))
+    expect(rows[0].querySelector('[data-testid="bookmark-link-price"]')?.textContent).toBe('$99')
 
     // წარწერის გარეშე — დომენი; მიმოხილვას ფასი არ აქვს
-    expect(links[1].textContent).toContain('rtings.com')
-    expect(links[1].textContent).toContain(i18n.t('bookmarks.linkKinds.review'))
-    expect(links[1].querySelector('[data-testid="bookmark-link-price"]')).toBeNull()
+    expect(rows[1].textContent).toContain('rtings.com')
+    expect(rows[1].textContent).toContain(i18n.t('bookmarks.linkKinds.review'))
+    expect(rows[1].querySelector('[data-testid="bookmark-link-price"]')).toBeNull()
+
+    // ორ ბმულზე რიგი ითრევა — თითოს სახელური აქვს
+    expect(cards.querySelectorAll('[data-sortable-handle]')).toHaveLength(bookmark.links.length)
+  })
+
+  it('dragging a link saves the whole list in the new order', async () => {
+    mocks.setBookmarkLinks.mockClear()
+    const originalRect = Element.prototype.getBoundingClientRect
+    // jsdom-ს განლაგება არ აქვს — მართკუთხედი რიგის ნომრიდან ითვლება (`sortable.test.ts`-ის ხერხი)
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      const ids = [...new Set([...document.querySelectorAll<HTMLElement>('[data-sortable-id]')].map((x) => x.dataset.sortableId))]
+      const target = (this.closest('[data-sortable-id]') ?? this.querySelector('[data-sortable-id]')) as HTMLElement | null
+      const top = target ? ids.indexOf(target.dataset.sortableId) * 50 : 0
+      return { x: 0, y: top, top, left: 0, width: 200, height: 40, right: 200, bottom: top + 40, toJSON: () => ({}) } as DOMRect
+    }
+
+    try {
+      await mount()
+      const handle = document.querySelector<HTMLElement>('[data-testid="bookmark-link"] [data-sortable-handle][aria-roledescription="sortable"]')!
+      const press = async (code: string) => {
+        await act(async () => {
+          handle.dispatchEvent(new KeyboardEvent('keydown', { code, key: code === 'Space' ? ' ' : code, bubbles: true, cancelable: true }))
+        })
+        await flush()
+      }
+
+      await press('Space')
+      await press('ArrowDown')
+      await press('Space')
+
+      expect(mocks.setBookmarkLinks).toHaveBeenCalledWith(5, [bookmark.links[1], bookmark.links[0]])
+      // ახალი რიგი პასუხამდეც ჩანს
+      const first = document.querySelector<HTMLElement>('[data-testid="bookmark-link"]')!
+      expect(first.textContent).toContain('rtings.com')
+    } finally {
+      Element.prototype.getBoundingClientRect = originalRect
+    }
   })
 
   it('"add link" sends the whole list — the old links and the new one', async () => {
@@ -264,7 +309,7 @@ describe('BookmarkDetail', () => {
 
     const edits = [...document.querySelectorAll<HTMLButtonElement>('[data-testid="bookmark-link-edit"]')]
     expect(edits).toHaveLength(bookmark.links.length)
-    // ღილაკი ბმულის გვერდითაა და არა მის შიგნით — ბმულზე დაჭერა მას არ „ყლაპავს"
+    // ღილაკი „გახსნის" გვერდითაა და არა მის შიგნით — ბმულზე დაჭერა მას არ „ყლაპავს"
     expect(edits[1].closest('a')).toBeNull()
     expect(edits[1].textContent).toBe(i18n.t('actions.edit'))
 
@@ -299,29 +344,73 @@ describe('BookmarkDetail', () => {
     expect(mocks.setBookmarkLinks).toHaveBeenCalledWith(5, [bookmark.links[1]])
   })
 
-  it('the gallery shows the uploaded photos and the web part for owner bookmark:<id>', async () => {
+  it('the gallery is two real tabs with counts — uploaded and from the web for owner bookmark:<id>', async () => {
     await mount(true)
 
     const gallery = document.querySelector<HTMLElement>('[data-testid="bookmark-gallery"]')!
     expect(gallery.textContent).toContain(i18n.t('bookmarks.galleryTitle'))
-    expect(gallery.textContent).toContain(i18n.t('gallery.uploadedBadge'))
-    expect(gallery.textContent).toContain(i18n.t('gallery.webBadge'))
-    expect(gallery.querySelector('[data-testid="parent-gallery"]')).not.toBeNull()
 
+    const [uploaded, web] = tabs()
+    expect(uploaded.textContent).toContain(i18n.t('gallery.uploadedBadge'))
+    expect(uploaded.textContent).toContain('1')
+    expect(uploaded.getAttribute('aria-pressed')).toBe('true')
+    expect(web.textContent).toContain(i18n.t('gallery.webBadge'))
+    expect(web.textContent).toContain('0')
+
+    // „ატვირთული" ღიაა: ვიტრინა ჩანს, ვების ბადე — არა; რიცხვი კი ორივეს მოაქვს
+    expect(gallery.querySelector('[data-testid="showcase-main"]')).not.toBeNull()
+    expect(gallery.textContent).not.toContain(i18n.t('bookmarks.webPhotosTitle'))
     expect(mocks.fetchBookmarkFiles).toHaveBeenCalledWith(5)
-    expect(mocks.fetchGalleryPhotos).toHaveBeenCalledWith(expect.objectContaining({ owner: 'bookmark:5' }))
-    expect(mocks.fetchGalleryVideos).toHaveBeenCalledWith(expect.objectContaining({ owner: 'bookmark:5' }))
-    expect(button(i18n.t('web.searchPhotos'))).toBeDefined()
+    expect(mocks.fetchGalleryPhotos).toHaveBeenCalledWith({ owner: 'bookmark:5', per_page: 1 })
+
+    await act(async () => web.click())
+    await flush()
+
+    expect(tabs()[1].getAttribute('aria-pressed')).toBe('true')
+    expect(gallery.querySelector('[data-testid="showcase-main"]')).toBeNull()
+    expect(gallery.textContent).toContain(i18n.t('bookmarks.webPhotosTitle'))
+    // ცარიელზე — ცარიელი მდგომარეობა ღილაკით (ზედა ღილაკის გარდა)
+    expect(gallery.textContent).toContain(i18n.t('gallery.emptyRecord'))
+    expect([...gallery.querySelectorAll('button')].filter((b) => b.textContent?.trim() === i18n.t('web.searchPhotos'))).toHaveLength(2)
   })
 
-  it('without the gallery module the web part says the module must be enabled', async () => {
+  it('an empty "uploaded" tab is an empty state that carries the upload button', async () => {
+    await mount(true, [])
+
+    const gallery = document.querySelector<HTMLElement>('[data-testid="bookmark-gallery"]')!
+    expect(tabs()[0].textContent).toContain('0')
+    expect(gallery.textContent).toContain(i18n.t('bookmarks.photosEmpty'))
+    const uploads = gallery.querySelectorAll('[data-testid="detail-photos-upload"]')
+    expect(uploads).toHaveLength(1)
+    expect(uploads[0].closest('[data-empty-state]')).not.toBeNull()
+  })
+
+  it('video links are their own section: empty with a search button, never a big player before "watch"', async () => {
+    await mount(true)
+
+    const videos = document.querySelector<HTMLElement>('[data-testid="gallery-videos"]')!
+    expect(videos.textContent).toContain(i18n.t('gallery.videosTitle'))
+    expect(videos.textContent).toContain(i18n.t('gallery.noVideos'))
+    expect([...videos.querySelectorAll('button')].some((b) => b.textContent?.trim() === i18n.t('web.searchVideos'))).toBe(true)
+    expect(videos.querySelector('[data-player-spot]')).toBeNull()
+    expect(mocks.fetchGalleryVideos).toHaveBeenCalledWith(expect.objectContaining({ owner: 'bookmark:5' }))
+  })
+
+  it('without the gallery module the web tab says the module must be enabled', async () => {
     await mount(false)
 
     const gallery = document.querySelector<HTMLElement>('[data-testid="bookmark-gallery"]')!
     // ატვირთული ფოტოები მოდულის გარეშეც ჩანს — ისინი ბუკმარკისაა
-    expect(gallery.textContent).toContain(i18n.t('gallery.uploadedBadge'))
-    expect(gallery.querySelector('[data-testid="gallery-off"]')).not.toBeNull()
+    expect(tabs()[0].textContent).toContain(i18n.t('gallery.uploadedBadge'))
+    expect(gallery.querySelector('[data-testid="showcase-main"]')).not.toBeNull()
+
+    await act(async () => tabs()[1].click())
+    await flush()
+
+    // შენიშვნა ერთხელ — ვიდეოს სექცია მას არ იმეორებს
+    expect(gallery.querySelectorAll('[data-testid="gallery-off"]')).toHaveLength(1)
     expect(gallery.querySelector('[data-testid="parent-gallery"]')).toBeNull()
+    expect(gallery.querySelector('[data-testid="gallery-videos"]')).toBeNull()
     expect(mocks.fetchGalleryPhotos).not.toHaveBeenCalled()
   })
 })

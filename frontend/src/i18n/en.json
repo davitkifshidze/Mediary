@@ -2240,7 +2240,14 @@
         "release": "The album is in the trash, the photos are unlocked"
       }
     },
-    "showInModule": "Show in the module"
+    "showInModule": "Show in the module",
+    "videoWatch": "Watch",
+    "videoEdit": "Edit the video link",
+    "videoEditHint": "Only the title and the channel change. The link stays the same — another link is another video: delete this one and add the new one.",
+    "videoTitle": "Title",
+    "videoChannel": "Channel",
+    "videoSaved": "Link saved",
+    "videosHint": "Video links are kept in the gallery module. “Watch” plays the video right here, above the list; a platform that does not allow embedding opens in a new tab."
   },
   "boardGames": {
     "title": "Board games",
@@ -2838,7 +2845,7 @@
     },
     "copyFailed": "Could not copy — select it and copy by hand",
     "linksTitle": "Links",
-    "linksHint": "Extra links — shop, price, review, video, docs. The bookmark's own link is above; a price is written on shop and price links.",
+    "linksHint": "Extra links — shop, price, review, video, docs. The bookmark's own link is above; a price is written on shop and price links. Drag a link to change the order — it is saved.",
     "linksEmpty": "No extra links yet.",
     "linksCount": "{{count}} link(s)",
     "addLink": "Add link",
@@ -2863,10 +2870,9 @@
     "removeLinkTitle": "Remove this link?",
     "linkRemoved": "Link removed",
     "galleryTitle": "Gallery",
-    "galleryHint": "Above are your uploaded photos (a shop screenshot, for example); below, photos downloaded from the web and video links kept in the gallery module. The web search starts with the title and domain; the chips add product, photos, logo and review.",
+    "galleryHint": "“Uploaded” holds the photos you uploaded (a shop screenshot, for example); “From the web” holds photos downloaded from the web and kept in the gallery module. The web search starts with the title and domain; the chips add product, photos, logo and review.",
     "webFailed": "The bookmark is saved, but {{count}} of the web picks could not be added — Save will try again.",
     "photosTitle": "Photos",
-    "photosHint": "Photos you uploaded — a shop or product screenshot, for example.",
     "addPhotos": "Upload photos",
     "photosEmpty": "No photos yet.",
     "photoDeleteTitle": "Delete the photo?",
@@ -2875,7 +2881,9 @@
       "photos": "photos",
       "logo": "logo",
       "review": "review"
-    }
+    },
+    "webPhotosTitle": "Photos downloaded from the web",
+    "linksReordered": "Link order saved"
   },
   "bookmarkCategories": {
     "title": "Bookmark categories",

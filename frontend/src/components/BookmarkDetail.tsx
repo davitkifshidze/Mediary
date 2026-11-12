@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRecordShare } from '@/components/share/RecordShare'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, ExternalLink, Globe, Plus, RefreshCw, SquarePen, Trash2 } from 'lucide-react'
+import { Copy, ExternalLink, Globe, Plus, RefreshCw, SquarePen, Trash2, Upload } from 'lucide-react'
 import {
   deleteBookmarkFile,
   fetchBookmarkFiles,
@@ -12,7 +12,9 @@ import {
   toggleBookmarkFavorite,
   uploadBookmarkFiles,
   type Bookmark,
+  type BookmarkLink,
 } from '@/api/bookmarks'
+import { fetchGalleryPhotos } from '@/api/gallery'
 import { useRecordOpen } from '@/lib/audit'
 import { BOOKMARK_WEB_TERMS, useBookmarkRefresh } from '@/lib/bookmarks'
 import { useBookmarkPhoto, useRefreshFromLink } from '@/lib/bookmarkPhoto'
@@ -20,16 +22,17 @@ import { copyText } from '@/lib/clipboard'
 import { useDateFormat } from '@/lib/dates'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { errorMessage } from '@/lib/errors'
+import { useModules } from '@/lib/modules'
 import { useContentLang } from '@/lib/settings'
 import { useStatuses } from '@/lib/statuses'
 import { cn } from '@/lib/utils'
 import { BookmarkLinkCards, BookmarkLinkDialog } from '@/components/BookmarkLinks'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
 import { ModuleIcon } from '@/components/ModuleIcon'
-import { RecordGallery } from '@/components/RecordGallery'
+import { ParentGallery } from '@/components/gallery/ParentGallery'
 import { StatusBadge } from '@/components/StatusBadge'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
-import { Badge } from '@/components/ui/badge'
+import { CutTabs } from '@/components/ui/cut-tabs'
 import { Markdown } from '@/components/ui/markdown'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { FavoriteButton } from '@/components/ui/favorite-button'
@@ -92,6 +95,15 @@ export function BookmarkDetail({
   const status = useMutation({
     mutationFn: (key: string) => setBookmarkStatus(bookmark.id, key),
     onSuccess: refresh,
+    onError: fail,
+  })
+  /* გადათრევით შეცვლილი რიგი — ისევ მთელი სია */
+  const reorderLinks = useMutation({
+    mutationFn: (links: BookmarkLink[]) => setBookmarkLinks(bookmark.id, links),
+    onSuccess: () => {
+      refresh()
+      toast({ title: t('bookmarks.linksReordered'), variant: 'success' })
+    },
     onError: fail,
   })
   /* ბარათის მენიუს „მოხსნა" — სია მთლიანად იგზავნება (სერვერზე `links` ერთი სვეტია) */
@@ -243,7 +255,7 @@ export function BookmarkDetail({
           </p>
         )}
 
-        {/* ---------- დამატებითი ბმულები ბარათებად ---------- */}
+        {/* ---------- დამატებითი ბმულები: თითო ერთ ხაზზე, რიგი გადათრევით ---------- */}
         <DetailSection
           title={t('bookmarks.linksTitle')}
           hint={t('bookmarks.linksHint')}
@@ -254,23 +266,21 @@ export function BookmarkDetail({
             </Button>
           }
         >
-          <BookmarkLinkCards links={bookmark.links ?? []} onEdit={setLinkEdit} onRemove={(index) => removeLink.mutate(index)} />
+          <BookmarkLinkCards
+            links={bookmark.links ?? []}
+            onEdit={setLinkEdit}
+            onRemove={(index) => removeLink.mutate(index)}
+            onReorder={(links) => reorderLinks.mutateAsync(links)}
+          />
         </DetailSection>
 
-        {/* ---------- გალერეა: ორი საცავი ერთ ხედად ---------- */}
+        {/* ---------- გალერეა: ორი საცავი ორ ჩანართად, ვიდეო-ბმულები ცალკე ---------- */}
         <div ref={gallery} data-testid="bookmark-gallery">
-          <DetailSection title={t('bookmarks.galleryTitle')} hint={t('bookmarks.galleryHint')}>
-            <div className="space-y-6">
-              <Photos bookmark={bookmark} />
-              <RecordGallery
-                type="bookmark"
-                id={bookmark.id}
-                bare
-                query={[bookmark.title, bookmark.domain].filter(Boolean).join(' ')}
-                terms={BOOKMARK_WEB_TERMS.map((key) => fixedT(`bookmarks.webChips.${key}`))}
-              />
-            </div>
-          </DetailSection>
+          <Gallery
+            bookmark={bookmark}
+            query={[bookmark.title, bookmark.domain].filter(Boolean).join(' ')}
+            terms={BOOKMARK_WEB_TERMS.map((key) => fixedT(`bookmarks.webChips.${key}`))}
+          />
         </div>
       </div>
 
@@ -278,6 +288,60 @@ export function BookmarkDetail({
         <BookmarkLinkDialog bookmark={bookmark} edit={linkEdit === 'new' ? undefined : linkEdit} onClose={() => setLinkEdit(null)} />
       )}
     </ModalShell>
+  )
+}
+
+/* ---------- გალერეა: „ატვირთული (N)" / „ვებიდან (N)" + ვიდეოები ----------
+
+   ⚠️ **ორი საცავი — ორი ნამდვილი ჩანართი**: `bookmark_files` (შენი ატვირთული) და
+   გალერეის მოდულის ფოტოები (`owner=bookmark:<id>`). ადრე ორი ბლოკი ერთმანეთის ქვეშ იდგა
+   პატარა ნიშნით და ქვედა ხშირად ვერ ჩანდა.
+   ⚠️ რიცხვები ცოცხალია: ატვირთულის — იგივე `bookmark-files` ქეში, ვებისა — ერთრიგიანი
+   მოთხოვნა `gallery-photos`-ის გასაღებქვეშ, ე.ი. ჩამოტვირთვა და წაშლა მასაც აახლებს.
+   გალერეის მოდულის გარეშე ვების რიცხვი სიიდან მოსული `photos_count`-ია.
+   ⚠️ საწყისი ჩანართი — ის, სადაც ფოტოა: მხოლოდ ვებიდან მოტანილზე „ვებიდან". */
+
+function Gallery({ bookmark, query, terms }: { bookmark: Bookmark; query: string; terms: string[] }) {
+  const { t } = useTranslation()
+  const { has } = useModules()
+  const owner = `bookmark:${bookmark.id}`
+  const [tab, setTab] = useState<'uploaded' | 'web'>(() =>
+    !bookmark.files_count && (bookmark.photos_count ?? 0) > 0 ? 'web' : 'uploaded',
+  )
+
+  const filesQ = useQuery({ queryKey: ['bookmark-files', bookmark.id], queryFn: () => fetchBookmarkFiles(bookmark.id) })
+  const webQ = useQuery({
+    queryKey: ['gallery-photos', owner, 'count'],
+    queryFn: () => fetchGalleryPhotos({ owner, per_page: 1 }),
+    enabled: has('gallery'),
+  })
+
+  return (
+    <div className="space-y-6">
+      <DetailSection title={t('bookmarks.galleryTitle')} hint={t('bookmarks.galleryHint')}>
+        <div data-testid="bookmark-gallery-tabs">
+          <CutTabs
+            size="sm"
+            layout="inline"
+            options={[
+              { key: 'uploaded', label: t('gallery.uploadedBadge'), count: filesQ.data?.length ?? bookmark.files_count, icon: Upload },
+              { key: 'web', label: t('gallery.webBadge'), count: webQ.data?.meta.total ?? bookmark.photos_count, icon: Globe },
+            ]}
+            value={tab}
+            onChange={(key) => setTab(key === 'web' ? 'web' : 'uploaded')}
+          />
+        </div>
+        <div className="mt-4">
+          {tab === 'uploaded' ? (
+            <Photos bookmark={bookmark} />
+          ) : (
+            <ParentGallery type="bookmark" id={bookmark.id} parts="photos" title={t('bookmarks.webPhotosTitle')} query={query} terms={terms} />
+          )}
+        </div>
+      </DetailSection>
+
+      <ParentGallery type="bookmark" id={bookmark.id} parts="videos" query={query} terms={terms} />
+    </div>
   )
 }
 
@@ -312,14 +376,7 @@ function Photos({ bookmark }: { bookmark: Bookmark }) {
 
   return (
     <DetailPhotos
-      /* ორი საცავი ერთ ხედად: ეს ბლოკი „ატვირთულია", ქვემოთ — „ვებიდან" */
-      title={
-        <span className="inline-flex items-center gap-2">
-          {t('bookmarks.photosTitle')}
-          <Badge className="bg-secondary text-secondary-foreground">{t('gallery.uploadedBadge')}</Badge>
-        </span>
-      }
-      hint={t('bookmarks.photosHint')}
+      /* სათაურის გარეშე: ეს „ატვირთული" ჩანართის შიგთავსია */
       items={files.map((file) => ({ id: file.id, src: file.path, title: file.original_name }))}
       loading={isLoading}
       uploading={upload.isPending}

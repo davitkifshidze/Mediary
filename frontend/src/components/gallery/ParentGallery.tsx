@@ -41,9 +41,15 @@ export function ParentGallery({
   query,
   terms,
   title,
+  parts = 'all',
 }: {
   type: GalleryParentKind
   id: number
+  /**
+   * რომელი ნაწილი იხატება: `photos` — მხოლოდ ვებიდან მოტანილი ფოტოები, `videos` — მხოლოდ
+   * ვიდეო-ბმულები (ბუკმარკის ფანჯარა მათ ცალკე სექციებად სვამს), `all` — ორივე ერთად.
+   */
+  parts?: 'all' | 'photos' | 'videos'
   /** ვებძებნის საწყისი შეკითხვა — სათაური (+ ავტორი) */
   query: string
   /** სწრაფი ჩიპები შეკითხვისთვის */
@@ -67,6 +73,9 @@ export function ParentGallery({
   })
 
   if (!enabled) {
+    // ცალკე მდგარი ვიდეოს ნაწილი იმავე შენიშვნას მეორედ არ იმეორებს — ფოტოების ნაწილი უკვე ამბობს
+    if (parts === 'videos') return null
+
     return (
       <p className="flex items-start gap-2 rounded-md border border-dashed border-border px-3 py-2.5 text-sm text-muted-foreground" data-testid="gallery-off">
         <span className="min-w-0 flex-1">
@@ -88,29 +97,47 @@ export function ParentGallery({
 
   const label = query || t('gallery.recordPhotos')
 
+  const searchPhotos = (
+    <Button variant="outline" size="sm" onClick={() => setWebOpen(true)}>
+      <Globe className="size-4" />
+      {t('web.searchPhotos')}
+    </Button>
+  )
+  const searchVideos = (
+    <Button variant="outline" size="sm" onClick={() => setVideoOpen(true)}>
+      <Video className="size-4" />
+      {t('web.searchVideos')}
+    </Button>
+  )
+
   return (
     <div className="space-y-4" data-testid="parent-gallery">
+      {parts !== 'videos' && (
       <GroupPhotos
         title={title ?? <Badge className="bg-primary/15 text-foreground">{t('gallery.webBadge')}</Badge>}
         filters={{ owner }}
         cacheKey={owner}
         categories
         emptyText={t('gallery.emptyRecord')}
+        emptyActions={searchPhotos}
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={() => setWebOpen(true)}>
-              <Globe className="size-4" />
-              {t('web.searchPhotos')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setVideoOpen(true)}>
-              <Video className="size-4" />
-              {t('web.searchVideos')}
-            </Button>
+            {searchPhotos}
+            {parts === 'all' && searchVideos}
           </>
         }
       />
+      )}
 
-      <GalleryVideoList videos={videosQ.data?.data ?? []} onChanged={invalidate} />
+      {parts !== 'photos' && (
+        <GalleryVideoList
+          videos={videosQ.data?.data ?? []}
+          onChanged={invalidate}
+          /* ცალკე სექციად: ცარიელზეც ჩანს (ღილაკით), სათაური კი გამომძახებლისაა */
+          standalone={parts === 'videos'}
+          action={parts === 'videos' ? searchVideos : undefined}
+        />
+      )}
 
       {webOpen && (
         <WebImageDialog

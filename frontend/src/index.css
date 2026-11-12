@@ -447,6 +447,10 @@
   from { opacity: 0; transform: translateY(1rem); }
   to   { opacity: 1; transform: none; }
 }
+/* ფოტოების ვიტრინა: ახალი ფოტო ძველის ზემოდან ნელა ჩნდება (რბილი გადასვლა) */
+@media (prefers-reduced-motion: no-preference) {
+  .fb-showcase-in { animation: fb-fade-in 600ms ease; }
+}
 @media (prefers-reduced-motion: no-preference) {
   .fb-player[data-layout='side'] { animation: fb-player-side-in 260ms cubic-bezier(0.16, 1, 0.3, 1); }
   .fb-player[data-layout='bar'] { animation: fb-player-bar-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }

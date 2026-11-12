@@ -75,6 +75,27 @@ class GalleryVideoListTest extends TestCase
         $this->getJson('/api/gallery/videos/records?type=nonsense')->assertStatus(422);
     }
 
+    public function test_a_saved_link_can_be_renamed_but_keeps_its_url(): void
+    {
+        $this->seedVideos();
+        $video = GalleryVideo::where('title', 'Beta trailer')->firstOrFail();
+
+        $this->patchJson("/api/gallery/videos/{$video->id}", ['title' => 'ოფიციალური თრეილერი', 'channel' => '', 'url' => 'https://evil.example/x'])
+            ->assertOk()
+            ->assertJsonPath('data.title', 'ოფიციალური თრეილერი')
+            ->assertJsonPath('data.channel', null)
+            ->assertJsonPath('data.url', 'https://youtu.be/one')
+            ->assertJsonPath('data.owner.title', 'Dune');
+
+        // სხვისი ბმული — 404
+        $other = User::create(['name' => 'x', 'username' => 'x', 'email' => 'x@example.com', 'password' => 'password']);
+        $foreign = GalleryVideo::withoutGlobalScopes()->create([
+            'user_id' => $other->id, 'videoable_type' => 'movie', 'videoable_id' => 1, 'url' => 'https://youtu.be/z', 'platform' => 'youtube', 'title' => 'Theirs',
+        ]);
+        $this->patchJson("/api/gallery/videos/{$foreign->id}", ['title' => 'Mine now'])->assertNotFound();
+        $this->assertSame('Theirs', $foreign->fresh()->title);
+    }
+
     public function test_search_matches_title_or_channel_and_sort_orders_the_list(): void
     {
         $this->seedVideos();

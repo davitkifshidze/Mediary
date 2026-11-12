@@ -35,14 +35,18 @@ import 'yet-another-react-lightbox/plugins/thumbnails.css'
    სია ყველა ფოტოსი, რაც დაეტევა, დანარჩენი — სქროლით"): მთავარი ფოტო `sm`-იდან
    ნახევარ სიგანეზეა (`lg`-ზე 55%), ესკიზები მარჯვნივ სვეტად — სვეტის სიმაღლე
    მთავარი ფოტოსია (შიგნით აბსოლუტური სქროლი), ტელეფონზე ზოლად ქვემოთ.
-   ⚠️ **ავტოსლაიდი** ყოველ წამში (`autoplay`, ნაგულისხმევად ჩართული — ერთი
-   ვიტრინაა რვა ფანჯარაში); ჩერდება ჰოვერზე და ლაითბოქსის ღიაობისას. აქტიური
+   ⚠️ **ავტოსლაიდი** ყოველ 4.5 წამში (`autoplay`, ნაგულისხმევად ჩართული — ერთი
+   ვიტრინაა რვა ფანჯარაში); ჩერდება ჰოვერზე და ლაითბოქსის ღიაობისას. წამში ერთხელ
+   გადართვა კითხვას უშლიდა — ფოტოს დანახვასაც ვერ ასწრებდი.
+   ⚠️ **გადასვლა რბილია**: ახალი ფოტო ძველის ზემოდან ნელა ჩნდება (`fb-fade-in`),
+   ძველი კი ქვეშ რჩება — ცარიელი ფონი შუაში არ გაიელვებს. მოძრაობა
+   `prefers-reduced-motion`-ს ემორჩილება (`index.css`). აქტიური
    ესკიზი **მხოლოდ თავის სვეტში** სქროლდება — `scrollIntoView` ფანჯარასაც
    ამოძრავებდა და კითხვისას გვერდი ყოველ წამში ხტებოდა.
    ============================================================ */
 
-/** ავტოსლაიდის ბიჯი (ms) */
-const AUTOPLAY_MS = 1000
+/** ავტოსლაიდის ბიჯი (ms) — საკმარისი, რომ ფოტო დაინახო */
+const AUTOPLAY_MS = 4500
 
 export interface ShowcaseItem {
   id: number
@@ -64,7 +68,7 @@ export function PhotoShowcase({
   empty?: ReactNode
   /** მიმდინარე (დიდი) ფოტოს წაშლა — დადასტურება გამომძახებლისაა */
   onDelete?: (id: number) => void
-  /** ფოტოები თავისით ცვლის ერთმანეთს (ყოველ წამში); `false` — მხოლოდ ხელით */
+  /** ფოტოები თავისით ცვლის ერთმანეთს (ყოველ 4.5 წამში); `false` — მხოლოდ ხელით */
   autoplay?: boolean
   className?: string
 }) {
@@ -78,6 +82,13 @@ export function PhotoShowcase({
   const current = items.length ? Math.min(index, items.length - 1) : 0
   const shown = items[current]
   const count = items.length
+  /* წინა ფოტო — ახლის ქვეშ რჩება, სანამ ის ჩნდება (რბილი გადასვლა) */
+  const [below, setBelow] = useState<ShowcaseItem | null>(null)
+  const last = useRef<ShowcaseItem | null>(null)
+  useEffect(() => {
+    if (last.current && shown && last.current.id !== shown.id) setBelow(last.current)
+    last.current = shown ?? null
+  }, [shown])
   const running = autoplay && count > 1 && !hovered && !open
 
   useEffect(() => {
@@ -117,9 +128,19 @@ export function PhotoShowcase({
           type="button"
           onClick={() => setOpen(true)}
           aria-label={t('photos.open')}
-          className="block aspect-video w-full cursor-zoom-in"
+          className="relative block aspect-video w-full cursor-zoom-in"
         >
-          <img src={storageUrl(shown.src) ?? ''} alt={shown.title ?? ''} className="size-full object-cover" />
+          {below && below.id !== shown.id && (
+            <img src={storageUrl(below.src) ?? ''} alt="" aria-hidden className="absolute inset-0 size-full object-cover" data-testid="showcase-below" />
+          )}
+          {/* `key` — ახალი ფოტო ახალი ელემენტია, ე.ი. ჩნდება ანიმაციით და არა უცებ */}
+          <img
+            key={shown.id}
+            src={storageUrl(shown.src) ?? ''}
+            alt={shown.title ?? ''}
+            className="fb-showcase-in relative size-full object-cover"
+            data-testid="showcase-current"
+          />
         </button>
 
         {items.length > 1 && (

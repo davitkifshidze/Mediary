@@ -52,6 +52,7 @@ export function GroupPhotos({
   actions,
   showOwner,
   emptyText,
+  emptyActions,
   onUnlock,
   categories,
 }: {
@@ -66,6 +67,8 @@ export function GroupPhotos({
   actions?: ReactNode
   showOwner?: boolean
   emptyText?: string
+  /** ცარიელზე — ღილაკი, რომლითაც ფოტო ჩნდება */
+  emptyActions?: ReactNode
   /** ჩაკეტილ ალბომში „პაროლის შეყვანა" */
   onUnlock?: () => void
   /**
@@ -178,6 +181,7 @@ export function GroupPhotos({
           loading={query.isLoading}
           showOwner={showOwner}
           emptyText={emptyText}
+          emptyActions={emptyActions}
           pageSize={pageSize}
           onPageSizeChange={setPageSize}
         />

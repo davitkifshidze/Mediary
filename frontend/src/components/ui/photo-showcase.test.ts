@@ -24,6 +24,9 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
+/** ავტოსლაიდის ბიჯი — კომპონენტის იგივე რიცხვი (4–5 წამი) */
+const AUTOPLAY_MS = 4500
+
 const ITEMS = [1, 2, 3].map((id) => ({ id, src: `photos/${id}.jpg`, title: `photo ${id}` }))
 
 async function mount(props: Record<string, unknown> = {}) {
@@ -51,14 +54,23 @@ describe('PhotoShowcase', () => {
     expect(thumbs.querySelectorAll('button')).toHaveLength(3)
   })
 
-  it('slides by itself every second and wraps from the last photo to the first', async () => {
+  it('slides by itself every 4.5 seconds, softly, and wraps from the last photo to the first', async () => {
     vi.useFakeTimers()
     const el = await mount()
     expect(current(el)).toBe('photo 1')
 
+    // წამში ერთხელ აღარ ხტება — ფოტოს დანახვას ასწრებ
     await act(async () => vi.advanceTimersByTime(1000))
+    expect(current(el)).toBe('photo 1')
+
+    await act(async () => vi.advanceTimersByTime(AUTOPLAY_MS - 1000))
     expect(current(el)).toBe('photo 2')
-    await act(async () => vi.advanceTimersByTime(2000))
+    // რბილი გადასვლა: ახალი ფოტო ანიმაციით ჩნდება, ძველი ქვეშ რჩება
+    expect(el.querySelector('[data-testid="showcase-current"]')?.className).toContain('fb-showcase-in')
+    expect(el.querySelector('[data-testid="showcase-current"]')?.getAttribute('alt')).toBe('photo 2')
+    expect(el.querySelector('[data-testid="showcase-below"]')?.getAttribute('src')).toContain('1')
+
+    await act(async () => vi.advanceTimersByTime(AUTOPLAY_MS * 2))
     expect(current(el)).toBe('photo 1')
   })
 
@@ -68,11 +80,11 @@ describe('PhotoShowcase', () => {
     const showcase = el.querySelector<HTMLElement>('[data-testid="photo-showcase"]')!
 
     await act(async () => showcase.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
-    await act(async () => vi.advanceTimersByTime(3000))
+    await act(async () => vi.advanceTimersByTime(AUTOPLAY_MS * 3))
     expect(current(el)).toBe('photo 1')
 
     await act(async () => showcase.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body })))
-    await act(async () => vi.advanceTimersByTime(1000))
+    await act(async () => vi.advanceTimersByTime(AUTOPLAY_MS))
     expect(current(el)).toBe('photo 2')
   })
 
@@ -80,7 +92,7 @@ describe('PhotoShowcase', () => {
     vi.useFakeTimers()
     const el = await mount({ autoplay: false })
 
-    await act(async () => vi.advanceTimersByTime(3000))
+    await act(async () => vi.advanceTimersByTime(AUTOPLAY_MS * 3))
     expect(current(el)).toBe('photo 1')
     await act(async () => el.querySelectorAll<HTMLButtonElement>('[data-testid="showcase-thumbs"] button')[2].click())
     expect(current(el)).toBe('photo 3')
@@ -91,7 +103,7 @@ describe('PhotoShowcase', () => {
     const el = await mount({ items: ITEMS.slice(0, 1) })
 
     expect(el.querySelector('[data-testid="showcase-thumbs"]')).toBeNull()
-    await act(async () => vi.advanceTimersByTime(3000))
-    expect(el.querySelector('[data-testid="showcase-main"] img')?.getAttribute('alt')).toBe('photo 1')
+    await act(async () => vi.advanceTimersByTime(AUTOPLAY_MS * 3))
+    expect(el.querySelector('[data-testid="showcase-current"]')?.getAttribute('alt')).toBe('photo 1')
   })
 })

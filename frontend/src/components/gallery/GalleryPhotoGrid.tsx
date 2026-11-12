@@ -41,6 +41,7 @@ export function GalleryPhotoGrid({
   loading,
   showOwner,
   emptyText,
+  emptyActions,
   pageSize,
   onPageSizeChange,
   extraTools,
@@ -56,6 +57,8 @@ export function GalleryPhotoGrid({
   loading?: boolean
   showOwner?: boolean
   emptyText?: string
+  /** ცარიელ მდგომარეობაში — ღილაკი, რომლითაც ფოტო ჩნდება („ფოტოები ვებიდან") */
+  emptyActions?: React.ReactNode
   /** გვერდებს **სერვერი** ჭრის, ე.ი. ბადე მართულ რეჟიმშია */
   pageSize?: number
   onPageSizeChange?: (size: number) => void
@@ -151,6 +154,7 @@ export function GalleryPhotoGrid({
     <PhotoGrid
       emptyText={emptyText ?? t('gallery.noPhotosYet')}
       emptyHint={t('gallery.emptyHint')}
+      emptyActions={emptyActions}
       items={images.map(toItem)}
       lightboxItems={lightboxImages?.map(toItem)}
       pageSize={pageSize}

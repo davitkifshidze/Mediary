@@ -1176,6 +1176,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/gallery/videos/modules', [GalleryVideoController::class, 'modules']);
         Route::get('/gallery/videos/records', [GalleryVideoController::class, 'records']);
         Route::post('/gallery/videos', [GalleryVideoController::class, 'store']);
+        // სათაურისა და არხის შესწორება (ბმული და ესკიზი არ იცვლება)
+        Route::match(['put', 'patch'], '/gallery/videos/{galleryVideo}', [GalleryVideoController::class, 'update']);
         Route::delete('/gallery/videos/{galleryVideo}', [GalleryVideoController::class, 'destroy']);
         /* **ალბომები და ფოტოს გადატანა.**
            ⚠️ `albums`/`images/move` `{type}/{id}`-ზე **ზემოთ** — იგივე წესი,
