@@ -517,6 +517,116 @@ class LibraryStats
     }
 
     /**
+     * **რამდენი დასრულდა პერიოდში** — მიზნის პროგრესი.
+     *
+     * ⚠️ წყარო იგივეა, რაც `summary()`-სა და `/stats`-ს: მედიაზე — ნახვების ჟურნალი
+     * (ხელახლა ნახვაც ითვლება), დანარჩენზე — `done_at` სვეტი. სხვა დამთვლელი იმავე
+     * კითხვაზე სხვა რიცხვს აჩვენებდა.
+     * ⚠️ ზედა ზღვარი `23:59:59`-ით: `date` სვეტი sqlite-ზე `Y-m-d H:i:s`-ად წერია და
+     * შიშველი `<= Y-m-d` ბოლო დღეს დაკარგავდა.
+     *
+     * @param  int|null  $classifier  მოდულის კლასიფიკატორის რიგი (ჟანრი, კატეგორია, ტიპი)
+     */
+    public function doneBetween(User $user, string $module, string $from, string $to, ?int $classifier = null): int
+    {
+        $map = self::map($module);
+
+        if (! $map || ! $map['done_at']) {
+            return 0;
+        }
+
+        $records = $this->base($user, $module, $map)();
+        $table = $records->getModel()->getTable();
+
+        if ($classifier) {
+            if (empty($map['genres'])) {
+                return 0;
+            }
+
+            self::classified($records, $map['genres'], $classifier, $table);
+        }
+
+        $until = $to.' 23:59:59';
+
+        if (isset($map['watch_log'])) {
+            return RecordLocks::excludeMorph(DB::table('media_watches'), 'media_watches.watchable_type', 'media_watches.watchable_id', session: false)
+                ->where('user_id', $user->getKey())
+                ->where('watchable_type', $map['watch_log'])
+                ->whereNull('trashed_at')
+                ->where('watched_at', '>=', $from)
+                ->where('watched_at', '<=', $until)
+                ->when($classifier, fn ($q) => $q->whereIn('watchable_id', $records->toBase()->select($table.'.id')))
+                ->count();
+        }
+
+        $column = $table.'.'.$map['done_at'];
+
+        return $records->where($column, '>=', $from)->where($column, '<=', $until)->count();
+    }
+
+    /**
+     * მოდულის კლასიფიკატორი (id → სახელი) — მიზნის პირობის ამრჩევი.
+     *
+     * ⚠️ გლობალური ჟანრებიდან მხოლოდ ის ბრუნდება, რაც ამ ანგარიშის ჩანაწერებზე დგას —
+     * მთელი ლექსიკონი ასობით რიგია და უმეტესობა ნულს დათვლიდა.
+     *
+     * @return array<int, array{name_ka: ?string, name_en: ?string}>
+     */
+    public function classifiers(User $user, string $module): array
+    {
+        $map = self::map($module);
+        $genres = $map['genres'] ?? null;
+
+        if (! $map || ! $genres) {
+            return [];
+        }
+
+        if ($genres['kind'] === 'morph') {
+            $ids = DB::table('genreables')
+                ->where('genreable_type', $genres['alias'])
+                ->whereIn('genreable_id', $this->base($user, $module, $map)()->toBase()->select('id'))
+                ->distinct()
+                ->pluck('genre_id');
+
+            return Genre::whereIn('id', $ids)->get()
+                ->sortBy(fn (Genre $g) => $g->name_en)
+                ->mapWithKeys(fn (Genre $g) => [(int) $g->id => ['name_ka' => $g->name_ka, 'name_en' => $g->name_en]])
+                ->all();
+        }
+
+        $table = $genres['kind'] === 'pivot' ? $genres['dictionary'] : $genres['table'];
+
+        return DB::table($table)
+            ->where('user_id', $user->getKey())
+            ->when(Schema::hasColumn($table, 'trashed_at'), fn ($q) => $q->whereNull('trashed_at'))
+            ->when(! empty($map['custom']), fn ($q) => $q->where('module', $module))
+            ->orderBy(Schema::hasColumn($table, 'sort_order') ? 'sort_order' : 'id')
+            ->orderBy('id')
+            ->get()
+            ->mapWithKeys(fn ($row) => [(int) $row->id => ['name_ka' => $row->name_ka ?? null, 'name_en' => $row->name_en ?? null]])
+            ->all();
+    }
+
+    /** ჩანაწერების შევიწროება კლასიფიკატორის ერთ რიგზე — სვეტი, pivot ან გლობალური ჟანრი */
+    private static function classified(Builder $query, array $genres, int $id, string $table): void
+    {
+        if ($genres['kind'] === 'column') {
+            $query->where($table.'.'.$genres['column'], $id);
+
+            return;
+        }
+
+        [$pivot, $local, $foreign] = $genres['kind'] === 'pivot'
+            ? [$genres['table'], $genres['local'], $genres['foreign']]
+            : ['genreables', 'genreable_id', 'genre_id'];
+
+        $query->whereExists(fn ($q) => $q->from($pivot)
+            ->whereColumn("{$pivot}.{$local}", "{$table}.id")
+            ->where("{$pivot}.{$foreign}", $id)
+            ->when($genres['kind'] === 'morph', fn ($w) => $w->where("{$pivot}.genreable_type", $genres['alias'])));
+    }
+
+    /**
      * **რომელ მოდულს შეუძლია წლიური მიზანი.**
      *
      * ⚠️ მხოლოდ ისინი, ვისაც „როდის დავასრულე" თარიღი აქვს — სხვაგვარად

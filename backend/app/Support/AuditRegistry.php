@@ -52,6 +52,7 @@ use App\Models\GameGenre;
 use App\Models\GameVideo;
 use App\Models\Genre;
 use App\Models\GenreTranslation;
+use App\Models\Goal;
 use App\Models\MediaWatch;
 use App\Models\Message;
 use App\Models\MessageHide;
@@ -232,6 +233,8 @@ class AuditRegistry
 
         // ---- ანგარიში, ადმინის ზონა, ჩატი
         User::class => 'account',
+        // მიზანი ანგარიშის პარამეტრია: დამატება, შეცვლა და წაშლა ჟურნალში ჩანს
+        Goal::class => 'account',
         /* გაზიარების ბმული ანგარიშის ფაქტია (სამ დომენს ფარავს).
            ⚠️ ტოკენის ორივე სვეტი `HIDDEN`-შია — ჟურნალი `/audit`-ზე ეკრანზე იხატება. */
         ShareLink::class => 'account',

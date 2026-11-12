@@ -3,6 +3,7 @@
 namespace App\Services\Import;
 
 use App\Models\User;
+use App\Services\Goals\GoalTransfer;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,7 @@ class MediaryImporter
         private readonly MediaryTargets $targets,
         private readonly MediaryWriter $writer,
         private readonly MediaryExtras $extras,
+        private readonly GoalTransfer $goals,
         private readonly MediaryFiles $files,
     ) {}
 
@@ -61,6 +63,10 @@ class MediaryImporter
         if ($record === null) {
             return $this->fail('not_found', null, $module);
         }
+
+        /* მოდულის მიზნები კონვერტშია: ნებისმიერ ჩანაწერთან ერთად შემოდის და მეორედ არ იწერება.
+           ⚠️ დუბლის შემოწმებამდე — უკვე არსებულ ბიბლიოთეკაზეც მიზნები უნდა დაემატოს. */
+        $this->goals->merge($user, $module, (array) ($envelope['goals'] ?? []));
 
         $title = MediaryIdentity::label($module, $record) ?: null;
 

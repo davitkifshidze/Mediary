@@ -27,8 +27,8 @@ import { PageHeader } from '@/components/ui/page-header'
  * ჩანართია („კალენდარი"). ⚠️ ამის ფასი: recharts-ის ჩანქი (≈104 kB gzip)
  * მთავარ გვერდზე აღარ იტვირთება.
  */
-const YearGoals = lazy(() =>
-  import('@/components/YearGoals').then((m) => ({ default: m.YearGoals })),
+const GoalsBlock = lazy(() =>
+  import('@/components/goals/GoalsBlock').then((m) => ({ default: m.GoalsBlock })),
 )
 
 /* ============================================================
@@ -125,10 +125,10 @@ export function DashboardPage() {
         />
       )}
 
-      {/* ===== წლიური მიზნები =====
-          ⚠️ **ბარათების ზემოთ, კომპაქტურ ზოლად, ყოველთვის** — „მიზანი ჯერ არ
-          დაგისახავს"-იც პასუხია; დაჭერით მოდალი იხსნება. */}
-      <Suspense fallback={null}>{!isLoading && cards.length > 0 && <YearGoals />}</Suspense>
+      {/* ===== მიზნები =====
+          ⚠️ **ბარათების ზემოთ, კომპაქტურ ბლოკად** — მიმდინარე მიზნების ფილები და
+          „ყველა მიზანი →"; დამატება და ისტორია `/goals`-ზეა. */}
+      <Suspense fallback={null}>{!isLoading && cards.length > 0 && <GoalsBlock />}</Suspense>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => (

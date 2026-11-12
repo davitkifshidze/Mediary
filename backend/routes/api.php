@@ -65,6 +65,7 @@ use App\Http\Controllers\Api\GameGenreController;
 use App\Http\Controllers\Api\GameVideoController;
 use App\Http\Controllers\Api\GenreController;
 use App\Http\Controllers\Api\GenreItemController;
+use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\ImportController;
 use App\Http\Controllers\Api\LinkResolverController;
 use App\Http\Controllers\Api\LookupController;
@@ -517,6 +518,14 @@ Route::middleware('auth:sanctum')->group(function () {
     /* ⚠️ `/stats/summary` **`/stats`-ის ზემოთ არ უნდა იყოს საჭირო**, რადგან
        პირველი ზუსტი მისამართია და არა პარამეტრი — მაგრამ თუ ოდესმე
        `/stats/{domain}` გაჩნდება, „summary" დომენად წაიკითხება. */
+    /* მიზნები — `/goals` გვერდი და მთავარი გვერდის ბლოკი. მოდულის middleware აქ არ დგას:
+       მიზანი მხოლოდ ჩართულ და ხილულ მოდულზე იქმნება და ითვლება (`GoalBook::modules()`). */
+    Route::get('/goals', [GoalController::class, 'index']);
+    Route::get('/goals/classifiers', [GoalController::class, 'classifiers']);
+    Route::post('/goals', [GoalController::class, 'store']);
+    Route::match(['put', 'patch'], '/goals/{goal}', [GoalController::class, 'update'])->whereNumber('goal');
+    Route::delete('/goals/{goal}', [GoalController::class, 'destroy'])->whereNumber('goal');
+
     Route::get('/stats', [StatsController::class, 'index']);
     Route::get('/stats/summary', [StatsController::class, 'summary']);
 

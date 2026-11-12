@@ -140,6 +140,9 @@ export const CODES = [
   'download_already_running',
   // კურსის გარეშე ვიდეოს ვიდეოების სიიდან ვერ ამოიღებ — ვეღარსად გამოჩნდებოდა
   'video_needs_course',
+  // მიზნები: ზღვარი და სხვა მოდულის პირობა
+  'goal_limit',
+  'goal_classifier_unknown',
   // კურსის ფლეილისტი: ვერც Data API-მ და ვერც `yt-dlp`-მა უპასუხა (503)
   'youtube_unavailable',
   // კურსის ბმული ფლეილისტი არ არის — მისი ვიდეოები ვიდეოებში ვერ დაემატება (422)

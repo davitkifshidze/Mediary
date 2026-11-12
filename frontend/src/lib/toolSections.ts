@@ -18,6 +18,7 @@ import {
   ScrollText,
   ShieldCheck,
   Tags,
+  Target,
   Trash2,
   ArchiveRestore,
   UserCog,
@@ -66,6 +67,7 @@ export type ToolSectionKey =
   | 'backups'
   | 'transfer'
   | 'stats'
+  | 'goals'
   | 'trash'
   | 'purge'
   | 'notifications'
@@ -96,6 +98,8 @@ export const TOOL_SECTIONS: Record<ToolSectionKey, ToolSection> = {
      იგივეა, უბრალოდ მეორე ნახევარი შემოემატა. */
   transfer: { color: 'var(--tool-transfer)', icon: ArrowLeftRight },
   stats: { color: 'var(--tool-stats)', icon: ChartColumn },
+  /* მიზნები — სტატისტიკის გვერდით: „რა გავაკეთე" და „რამდენი მინდა" */
+  goals: { color: 'var(--tool-goals)', icon: Target },
   /* ⚠️ **ურნა და არა კალათა** — `Trash2` რიგში უკვე მასობრივ წაშლას
      (`purge`) აქვს; ერთი ხატვა ორ სხვადასხვა რამეს რომ ნიშნავდეს,
      ზუსტად ის შეცდომაა, რომელიც CLAUDE.md-ს იკონების წესში წერია.

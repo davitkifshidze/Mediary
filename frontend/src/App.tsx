@@ -44,6 +44,7 @@ const GuestRecordPage = lazy(() => import('@/pages/GuestRecordPage').then((m) =>
 const NotificationsPage = lazy(() => import('@/pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })))
 const MediaSyncPage = lazy(() => import('@/pages/MediaSyncPage').then((m) => ({ default: m.MediaSyncPage })))
 const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default: m.StatsPage })))
+const GoalsPage = lazy(() => import('@/pages/GoalsPage').then((m) => ({ default: m.GoalsPage })))
 const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })))
 const SyncPage = lazy(() => import('@/pages/SyncPage').then((m) => ({ default: m.SyncPage })))
 const TranslationsPage = lazy(() => import('@/pages/TranslationsPage').then((m) => ({ default: m.TranslationsPage })))
@@ -346,6 +347,7 @@ function AppShell() {
           {/* სტატისტიკა. ⚠️ **მოდულზე დამოკიდებული არაა**: პასუხი
               ყველა ჩართულ მოდულს ეხება და ჩაურთველი სიიდან თვითონ ცვივა. */}
           <Route path="stats" element={<StatsPage />} />
+          <Route path="goals" element={<GoalsPage />} />
           <Route path="trash" element={<TrashPage />} />
           <Route path="search" element={<SearchPage />} />
           {/* შეტყობინებების სრული სია — ზარის „ყველას ნახვა" */}

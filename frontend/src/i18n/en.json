@@ -1361,7 +1361,9 @@
     "screenshot_must_be_photo": "A screenshot can only be a photo.",
     "screenshot_album_mismatch": "This album belongs to the other space — a screenshot goes only into a screenshot album.",
     "screenshot_album_has_no_person": "A screenshot album has no person.",
-    "screenshot_not_public": "A screenshot album can never be public."
+    "screenshot_not_public": "A screenshot album can never be public.",
+    "goal_limit": "The goal limit is reached — delete an old goal.",
+    "goal_classifier_unknown": "This condition does not belong to that module."
   },
   "fields": {
     "title": "Fields",
@@ -3139,7 +3141,8 @@
       "duty_workplace": "Duty workplace",
       "duty_type": "Duty shift type",
       "duty_rate": "Duty rate",
-      "duty_pattern": "Duty rhythm"
+      "duty_pattern": "Duty rhythm",
+      "goal": "Goal"
     },
     "subtitleWarn": "The log is kept forever — cleanup is manual only.",
     "views": {
@@ -4254,23 +4257,58 @@
     "filterNone": "none"
   },
   "goals": {
-    "title": "Goals for {{year}}",
-    "edit": "Change goals",
-    "set": "Set a goal",
-    "editHint": "Switch a module on and choose how many you intend to finish this year. “On track” means this pace reaches the goal by year end.",
-    "saved": "The goals have been saved.",
-    "missingHint": "No goal is possible for: {{modules}} — this module has no completion date.",
-    "barSummary": "{{onTrack}} of {{total}} on track",
-    "barEmpty": "No goals set yet",
-    "doneSoFar": "This year: {{count}}",
-    "toggle": "{{module}} — goal",
-    "pace": "At this pace by year end — {{count}}",
-    "reached": "Goal reached",
-    "target": "Target",
-    "less": "One less",
-    "more": "One more",
-    "barEmptyHint": "Pick a module and a number ({{presets}}) — how many you intend to finish this year; the goal cards will appear here.",
-    "openCard": "{{module}} — change the goal"
+    "title": "Goals",
+    "edit": "Edit the goal",
+    "saved": "Goal saved",
+    "target": "How many",
+    "hint": "A goal says how many you want to finish in one module in one period — a year, a month, a week or dates you choose. Progress is counted from the records' finish dates (for movies, series and anime — from the watch log), the same way the statistics count. A module can have several goals; a finished period moves to the history.",
+    "add": "Add a goal",
+    "deleted": "Goal deleted",
+    "deleteTitle": "Delete this goal?",
+    "deleteHint": "Only the goal is deleted — your records are not touched. It does not go to the trash.",
+    "all": "All goals",
+    "blockEmpty": "You have no current goal.",
+    "blockMore": "and {{count}} more",
+    "cut": {
+      "current": "Current",
+      "history": "History"
+    },
+    "emptyCurrent": "No current goals.",
+    "emptyCurrentHint": "Add the first one: pick a module, a period and a number.",
+    "emptyNoModules": "A goal needs a module with a finish date — you have none enabled yet.",
+    "emptyHistory": "No past goals yet.",
+    "defaultName": "{{module}} — {{count}}",
+    "period": {
+      "year": "Year",
+      "month": "Month",
+      "week": "Week",
+      "custom": "Custom dates"
+    },
+    "periodLabel": "Period",
+    "state": {
+      "achieved": "Achieved",
+      "failed": "Missed",
+      "upcoming": "Not started"
+    },
+    "ahead": "{{count}} ahead of schedule",
+    "behind": "{{count}} behind schedule",
+    "onTrack": "On schedule",
+    "daysLeft": "{{count}} days left",
+    "startsOn": "Starts {{date}}",
+    "formHint": "A goal can be set only on a module that has a finish date. For a year, a month and a week the app works out the exact dates; a week starts on Monday.",
+    "module": "Module",
+    "targetHint": "How many you want to finish in this period.",
+    "year": "Year",
+    "month": "Month",
+    "weekDay": "Any day of the week",
+    "weekHint": "The goal covers the week this day falls in — Monday through Sunday.",
+    "from": "From",
+    "to": "To",
+    "condition": "Condition",
+    "conditionHint": "Optional: only records of this genre, category or type are counted.",
+    "conditionNone": "No condition",
+    "name": "Name",
+    "nameHint": "Optional. Left empty, the card is named after the module and the number."
   },
   "courses": {
     "title": "Courses",

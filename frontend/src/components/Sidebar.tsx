@@ -8,6 +8,7 @@ import {
   ArrowLeftRight,
   BellRing,
   ChartColumn,
+  Target,
   ChevronDown,
   Clapperboard,
   DownloadCloud,
@@ -931,6 +932,11 @@ export function Sidebar({
         <Link to="/stats" onClick={() => setDrawerOpen(false)} style={toolAccent('stats')} className={toolLink('/stats')}>
           <ChartColumn className="size-4 shrink-0" />
           {t('stats.title')}
+        </Link>
+        {/* მიზნები — „რამდენი მინდა": სტატისტიკის („რა გავაკეთე") წყვილი */}
+        <Link to="/goals" onClick={() => setDrawerOpen(false)} style={toolAccent('goals')} className={toolLink('/goals')}>
+          <Target className="size-4 shrink-0" />
+          {t('goals.title')}
         </Link>
         {/* „ექსპორტ & იმპორტი" — ორივე ერთ სექციაში.
             ⚠️ **პირობის გარეშე ჩანს**: ექსპორტი ყველა ჩართულ მოდულს ეხება,

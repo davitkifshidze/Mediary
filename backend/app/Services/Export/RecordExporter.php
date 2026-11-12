@@ -4,6 +4,7 @@ namespace App\Services\Export;
 
 use App\Models\Status;
 use App\Models\User;
+use App\Services\Goals\GoalTransfer;
 use App\Services\Modules\CustomFieldService;
 use App\Support\AppTime;
 use App\Support\CustomModules;
@@ -63,6 +64,7 @@ class RecordExporter
     public function __construct(
         private readonly RecordExtras $extras,
         private readonly CustomFieldService $fields,
+        private readonly GoalTransfer $goals,
     ) {}
 
     /**
@@ -190,6 +192,11 @@ class RecordExporter
                 fn (array $field) => array_intersect_key($field, array_flip(['key', 'type', 'label_ka', 'label_en', 'placeholder_ka', 'placeholder_en', 'enabled', 'required', 'sort_order'])),
                 $this->fields->definitions($user, $module),
             );
+        }
+
+        // მოდულის მიზნები — ჩანაწერი არ არის, ამიტომ კონვერტში მგზავრობს (`GoalTransfer`)
+        if ($goals = $this->goals->export($user, $module)) {
+            $meta['goals'] = $goals;
         }
 
         if (StatusDomain::usesDictionary($module)) {
