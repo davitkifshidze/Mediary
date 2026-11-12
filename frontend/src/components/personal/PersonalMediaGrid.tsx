@@ -27,7 +27,7 @@ import { usePhotoPageSize } from '@/lib/pageSize'
 import { Pagination } from '@/components/ui/pagination'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { LockedPhotosAlbumDialog } from '@/components/gallery/LockedPhotosAlbumDialog'
-import { PersonalMoveDialog } from '@/components/personal/PersonalMoveDialog'
+import { PersonalMoveDialog, type PersonalSpace } from '@/components/personal/PersonalMoveDialog'
 
 /* ============================================================
    **ფოტოებისა და ვიდეოების ბადე** — ერთი კომპონენტი
@@ -59,8 +59,11 @@ export function PersonalMediaGrid({
   emptyHint,
   emptyActions,
   extraTools,
+  space = 'media',
 }: {
   filters: PersonalMediaFilters
+  /** რომელ სივრცეშია ბადე — გადატანის ფანჯარა იქიდან იწყებს (ფოტო & ვიდეო / სქრინშოტები) */
+  space?: PersonalSpace
   /** პიროვნების/ალბომის მთავარი ფოტო — „მთავარად დაყენება" და ვარსკვლავის ნიშანი */
   primary?: { id: number | null; set: (mediaId: number) => void }
   emptyText?: string
@@ -192,7 +195,7 @@ export function PersonalMediaGrid({
 
       <Pagination {...mediaQ.pagination} />
 
-      {moving && <PersonalMoveDialog ids={moving} onClose={() => setMoving(null)} />}
+      {moving && <PersonalMoveDialog ids={moving} space={space} onClose={() => setMoving(null)} />}
       {captioning && <CaptionDialog media={captioning} onClose={() => setCaptioning(null)} />}
       {lockingIds && (
         <LockedPhotosAlbumDialog

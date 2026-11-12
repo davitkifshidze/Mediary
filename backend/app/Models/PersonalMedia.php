@@ -53,6 +53,8 @@ class PersonalMedia extends Model
         'duration' => 'integer',
         'taken_at' => 'datetime',
         'is_favorite' => 'boolean',
+        // სქრინშოტი — ცალკე სივრცე: „ყველა"-ში, პიროვნებებსა და ალბომებში არ ერევა
+        'is_screenshot' => 'boolean',
         'sort_order' => 'integer',
     ];
 

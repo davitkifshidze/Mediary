@@ -35,6 +35,10 @@ class PersonalAlbumController extends Controller
         $albums = $this->gallery->withCounts(PersonalAlbum::query()->with('person:id,name'))
             ->when($request->filled('person_id'), fn ($q) => $q->where('person_id', $request->integer('person_id')))
             ->when($request->boolean('outside'), fn ($q) => $q->whereNull('person_id'))
+            // სქრინშოტების ალბომები ცალკე სივრცეა: `?screenshots=1` — მხოლოდ ისინი, სხვაგვარად არ ჩანს
+            ->where('is_screenshot', $request->boolean('screenshots'))
+            // რჩეულები თავში
+            ->orderByDesc('is_favorite')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
@@ -47,6 +51,9 @@ class PersonalAlbumController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
+        // სივრცე მხოლოდ შექმნისას ირჩევა — ალბომი მერე სივრცეს ვეღარ იცვლის
+        $data['is_screenshot'] = $request->boolean('is_screenshot');
+        $this->guardScreenshotAlbum($data['is_screenshot'], $data);
 
         // ⚠️ დამალულ ადამიანში შექმნილი ალბომი მაშინვე გაქრებოდა — ჯერ გახსნა
         RecordLocks::ensureOpen(isset($data['person_id']) ? Person::query()->find($data['person_id']) : null);
@@ -74,6 +81,7 @@ class PersonalAlbumController extends Controller
         RecordLocks::ensureOpen($personalAlbum);
 
         $data = $this->validated($request, $personalAlbum);
+        $this->guardScreenshotAlbum((bool) $personalAlbum->is_screenshot, $data);
         $movesPerson = array_key_exists('person_id', $data) && $data['person_id'] !== $personalAlbum->person_id;
 
         if ($movesPerson && $data['person_id'] !== null) {
@@ -94,6 +102,31 @@ class PersonalAlbumController extends Controller
         }
 
         return new PersonalAlbumResource($this->fresh($personalAlbum));
+    }
+
+    /** რჩეულის გადართვა — რჩეული ალბომი სიის თავშია */
+    public function toggleFavorite(PersonalAlbum $personalAlbum)
+    {
+        RecordLocks::ensureOpen($personalAlbum);
+        $personalAlbum->update(['is_favorite' => ! $personalAlbum->is_favorite]);
+
+        return new PersonalAlbumResource($this->fresh($personalAlbum));
+    }
+
+    /**
+     * **სქრინშოტების ალბომი პიროვნებას არ ეკუთვნის და საჯარო არასდროსაა** — პაროლების
+     * სქრინშოტი არც პიროვნების გვერდზე უნდა გამოჩნდეს, არც პროფილზე.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function guardScreenshotAlbum(bool $screenshot, array $data): void
+    {
+        if (! $screenshot) {
+            return;
+        }
+
+        abort_if(($data['person_id'] ?? null) !== null, 422, 'screenshot_album_has_no_person');
+        abort_if(($data['visibility'] ?? null) === 'public', 422, 'screenshot_not_public');
     }
 
     /**

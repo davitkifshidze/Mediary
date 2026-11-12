@@ -1018,6 +1018,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/personal/people/{person}', [PersonalPersonController::class, 'show'])->whereNumber('person');
         Route::match(['put', 'patch'], '/personal/people/{person}', [PersonalPersonController::class, 'update'])->whereNumber('person');
         Route::delete('/personal/people/{person}', [PersonalPersonController::class, 'destroy'])->whereNumber('person');
+        Route::patch('/personal/people/{person}/favorite', [PersonalPersonController::class, 'toggleFavorite'])->whereNumber('person');
         Route::put('/personal/people/{person}/lock', [PersonalPersonController::class, 'setLock'])->whereNumber('person');
         Route::post('/personal/people/{person}/unlock', [PersonalPersonController::class, 'unlock'])
             ->whereNumber('person')
@@ -1030,6 +1031,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/personal/albums/{personalAlbum}', [PersonalAlbumController::class, 'show'])->whereNumber('personalAlbum');
         Route::match(['put', 'patch'], '/personal/albums/{personalAlbum}', [PersonalAlbumController::class, 'update'])->whereNumber('personalAlbum');
         Route::delete('/personal/albums/{personalAlbum}', [PersonalAlbumController::class, 'destroy'])->whereNumber('personalAlbum');
+        Route::patch('/personal/albums/{personalAlbum}/favorite', [PersonalAlbumController::class, 'toggleFavorite'])->whereNumber('personalAlbum');
         Route::put('/personal/albums/{personalAlbum}/lock', [PersonalAlbumController::class, 'setLock'])->whereNumber('personalAlbum');
         Route::post('/personal/albums/{personalAlbum}/unlock', [PersonalAlbumController::class, 'unlock'])
             ->whereNumber('personalAlbum')

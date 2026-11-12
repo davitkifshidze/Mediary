@@ -28,29 +28,46 @@ export function PersonalUploadDialog({
   personId,
   albumId,
   only,
+  screenshot = false,
 }: {
   onClose: () => void
   personId?: number | null
   albumId?: number | null
+  /** სქრინშოტების ჩანართიდან — მხოლოდ ფოტო, პიროვნების გარეშე, სქრინშოტების ალბომებით */
+  screenshot?: boolean
   /** ფოტოების / ვიდეოების ჩანართიდან — მხოლოდ ეს სახეობა */
   only?: UploadOnly
 }) {
   const { t } = useTranslation()
   const uploader = useRef<PersonalUploaderHandle>(null)
   const peopleQ = useQuery({ queryKey: [PERSONAL_KEY, 'people'], queryFn: fetchPeople })
-  const albumsQ = useQuery({ queryKey: [PERSONAL_KEY, 'albums', {}], queryFn: () => fetchPersonalAlbums() })
+  const albumsQ = useQuery({
+    queryKey: [PERSONAL_KEY, 'albums', screenshot ? { screenshots: true } : {}],
+    queryFn: () => fetchPersonalAlbums(screenshot ? { screenshots: true } : {}),
+  })
+  const kind = screenshot ? 'photo' : only
 
   const [person, setPerson] = useState(personId ? String(personId) : NONE)
   const [album, setAlbum] = useState(albumId ? String(albumId) : NONE)
 
   return (
     <ModalShell
-      title={t(only === 'photo' ? 'personal.upload.photo' : only === 'video' ? 'personal.upload.video' : 'personal.upload.title')}
+      title={t(
+        screenshot
+          ? 'personal.screenshots.upload'
+          : only === 'photo'
+            ? 'personal.upload.photo'
+            : only === 'video'
+              ? 'personal.upload.video'
+              : 'personal.upload.title',
+      )}
       onClose={onClose}
       size="wide"
       hint={t('personal.upload.hint')}
     >
       <FormSection>
+        {/* სქრინშოტს პიროვნება არ აქვს */}
+        {!screenshot && (
         <FormField label={t('personal.move.person')} size="half">
           <SelectWithAdd
             value={person}
@@ -66,13 +83,14 @@ export function PersonalUploadDialog({
             ))}
           </SelectWithAdd>
         </FormField>
+        )}
 
         <FormField label={t('personal.move.album')} size="half">
           <SelectWithAdd
             value={album}
             onValueChange={setAlbum}
             addLabel={t('personal.album.add')}
-            dialog={addAlbum(person === NONE ? null : Number(person))}
+            dialog={addAlbum(person === NONE || screenshot ? null : Number(person), screenshot)}
           >
             <SelectItem value={NONE}>{t('personal.move.noAlbum')}</SelectItem>
             {(albumsQ.data ?? []).map((a) => (
@@ -87,12 +105,13 @@ export function PersonalUploadDialog({
       <PersonalUploader
         ref={uploader}
         className="mt-4"
-        personId={person === NONE ? null : Number(person)}
+        personId={person === NONE || screenshot ? null : Number(person)}
         albumId={album === NONE ? null : Number(album)}
-        only={only}
+        only={kind}
+        screenshot={screenshot || undefined}
       >
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card/40 p-4">
-          <PersonalUploadButton onClick={() => uploader.current?.open()} only={only} />
+          <PersonalUploadButton onClick={() => uploader.current?.open()} only={kind} />
           <span className="text-sm text-muted-foreground">{t('personal.upload.dragHint')}</span>
         </div>
       </PersonalUploader>

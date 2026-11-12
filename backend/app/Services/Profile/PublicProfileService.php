@@ -274,7 +274,11 @@ class PublicProfileService
         // ცხრილის პრეფიქსი განზრახ: `series`-ს სხვა ცხრილი აქვს, ვიდრე კლასის სახელი,
         // და join-ის დამატება მოგვიანებით ორაზროვან `user_id`-ს გააჩენდა
         $q->where($q->getModel()->getTable().'.user_id', $user->id)
-            ->where('visibility', 'public');
+            ->where('visibility', 'public')
+            /* სქრინშოტების ალბომი საჯარო არასდროსაა — ვალიდაციის გარდა აქაც იჭრება.
+               ⚠️ მხოლოდ პირადი გალერეის ალბომზე: სვეტი სხვა დომენს არ აქვს (sqlite უცნობ
+               სვეტს სტრიქონად წაიკითხავდა და ყველა საჯარო ჩანაწერი უხმოდ გაქრებოდა). */
+            ->when($q->getModel() instanceof PersonalAlbum, fn (Builder $w) => $w->where('personal_albums.is_screenshot', false));
 
         /* `custom` ფსევდო-დომენი (დამთხვევა): ყველა **საჯარო** პირადი
            მოდული ერთად. ⚠️ მოდულის ფენა (`module_user.is_public`) აქ ამ სიით

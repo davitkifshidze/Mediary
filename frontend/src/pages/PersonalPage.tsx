@@ -12,6 +12,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { AddAlbumButton, PersonalAlbumsCut } from '@/components/personal/PersonalAlbumsCut'
 import { PersonalMediaCut } from '@/components/personal/PersonalMediaCut'
+import { PersonalScreenshotsCut } from '@/components/personal/PersonalScreenshotsCut'
 import { AddPersonButton, PersonalPeopleCut } from '@/components/personal/PersonalPeopleCut'
 import { PersonalUploadDialog } from '@/components/personal/PersonalUploadDialog'
 import { PersonalUploadButton } from '@/components/personal/PersonalUploader'
@@ -50,6 +51,7 @@ export function PersonalPage({ cut = 'media' }: { cut?: PersonalCut }) {
     if (!summary) return undefined
     if (key === 'people') return summary.people
     if (key === 'albums') return summary.albums
+    if (key === 'screenshots') return summary.screenshots
 
     return summary.photos + summary.videos
   }
@@ -64,7 +66,9 @@ export function PersonalPage({ cut = 'media' }: { cut?: PersonalCut }) {
           <>
             {cut === 'people' && <AddPersonButton />}
             {cut === 'albums' && <AddAlbumButton />}
-            <PersonalUploadButton onClick={() => setUploading(true)} />
+            {/* სქრინშოტებს თავისი ალბომები აქვთ; ატვირთვაც მათ სივრცეში მიდის (მხოლოდ ფოტო) */}
+            {cut === 'screenshots' && <AddAlbumButton screenshot />}
+            <PersonalUploadButton only={cut === 'screenshots' ? 'photo' : undefined} onClick={() => setUploading(true)} />
           </>
         }
       />
@@ -102,8 +106,9 @@ export function PersonalPage({ cut = 'media' }: { cut?: PersonalCut }) {
       {cut === 'people' && <PersonalPeopleCut />}
       {cut === 'albums' && <PersonalAlbumsCut />}
       {cut === 'media' && <PersonalMediaCut />}
+      {cut === 'screenshots' && <PersonalScreenshotsCut />}
 
-      {uploading && <PersonalUploadDialog onClose={() => setUploading(false)} />}
+      {uploading && <PersonalUploadDialog screenshot={cut === 'screenshots'} onClose={() => setUploading(false)} />}
     </PageContainer>
   )
 }

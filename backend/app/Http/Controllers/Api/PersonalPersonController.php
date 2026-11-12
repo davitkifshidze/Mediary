@@ -33,6 +33,8 @@ class PersonalPersonController extends Controller
     public function index()
     {
         $people = $this->gallery->withCounts(Person::query(), albums: true)
+            // რჩეულები თავში
+            ->orderByDesc('is_favorite')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
@@ -54,6 +56,15 @@ class PersonalPersonController extends Controller
         ]);
 
         return (new PersonResource($this->fresh($person)))->response()->setStatusCode(201);
+    }
+
+    /** რჩეულის გადართვა — რჩეული პიროვნება სიის თავშია */
+    public function toggleFavorite(Person $person)
+    {
+        RecordLocks::ensureOpen($person);
+        $person->update(['is_favorite' => ! $person->is_favorite]);
+
+        return new PersonResource($this->fresh($person));
     }
 
     public function show(Person $person)

@@ -40,6 +40,9 @@ class PersonalAlbum extends Model
         'cover_media_id' => 'integer',
         'sort_order' => 'integer',
         'trashed_children' => 'array',
+        // სქრინშოტების ალბომი — პიროვნების გარეშე და არასდროს საჯარო
+        'is_screenshot' => 'boolean',
+        'is_favorite' => 'boolean',
     ];
 
     protected static function booted(): void

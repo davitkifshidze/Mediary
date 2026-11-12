@@ -50,7 +50,7 @@ const DEEP_STEP = 25
 const DEEP_MAX = 100
 
 /** დომენები, რომლებიც მოდულები **არ** არიან — მათ სახელს i18n იძლევა */
-const OWN_LABEL = ['cast', 'playlist', 'gallery', 'personal', 'personal_album', 'personal_media']
+const OWN_LABEL = ['cast', 'playlist', 'gallery', 'personal', 'personal_album', 'personal_media', 'personal_screenshot']
 
 /** აკრეფის დასრულების ლოდინი — სექციების ძებნის იგივე რიტმი */
 const DEBOUNCE_MS = 350

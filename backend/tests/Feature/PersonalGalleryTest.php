@@ -383,6 +383,106 @@ class PersonalGalleryTest extends TestCase
             ->assertJsonPath('data.cover', $inAlbum->thumbUrl());
     }
 
+    /* ---------- სქრინშოტები და რჩეულები ---------- */
+
+    /**
+     * **სქრინშოტი ცალკე სივრცეა**: „ყველა"-ს სიაში, მთვლელებში, ჯგუფებსა და ალბომებში
+     * არ ერევა; ჩანს მხოლოდ თავის ჩანართზე (`screenshots=only`) ან „ყველა"-ს ფილტრის
+     * მონიშვნისას (`with`). სქრინშოტი ფოტოა, პიროვნება არ აქვს და მხოლოდ სქრინშოტების
+     * ალბომში დევს.
+     */
+    public function test_screenshots_live_in_their_own_space(): void
+    {
+        $person = $this->person();
+        $photo = $this->media(['person_id' => $person->id]);
+        $shotAlbum = PersonalAlbum::findOrFail($this->postJson('/api/personal/albums', ['name' => 'პაროლები', 'is_screenshot' => true])->assertCreated()->json('data.id'));
+        $this->assertTrue($shotAlbum->is_screenshot);
+
+        // ატვირთვა სქრინშოტებში: პიროვნება არ ეწერება; ალბომში ატვირთული — ალბომის სივრცისაა
+        $loose = PersonalMedia::findOrFail($this->upload(['screenshot' => 1, 'person_id' => $person->id])->assertCreated()->json('data.id'));
+        $inAlbum = PersonalMedia::findOrFail($this->upload(['album_id' => $shotAlbum->id])->assertCreated()->json('data.id'));
+        $this->assertSame([true, null], [$loose->is_screenshot, $loose->person_id]);
+        $this->assertTrue($inAlbum->is_screenshot);
+
+        // „ყველა" — სქრინშოტების გარეშე; თავის ჩანართზე — მხოლოდ ისინი; მონიშვნით — ერთად
+        $this->getJson('/api/personal/media')->assertOk()->assertJsonPath('data.*.id', [$photo->id]);
+        $this->assertEqualsCanonicalizing([$loose->id, $inAlbum->id], $this->getJson('/api/personal/media?screenshots=only')->assertOk()->json('data.*.id'));
+        $this->getJson('/api/personal/media?screenshots=with')->assertOk()->assertJsonCount(3, 'data');
+        // სქრინშოტების ალბომის გვერდი თავის შიგთავსს ხედავს
+        $this->getJson("/api/personal/media?album_id={$shotAlbum->id}")->assertOk()->assertJsonPath('data.*.id', [$inAlbum->id]);
+
+        // მთვლელები, ჯგუფები და ალბომების სია — ცალ-ცალკე
+        $this->getJson('/api/personal/summary')->assertOk()
+            ->assertJsonPath('photos', 1)
+            ->assertJsonPath('ungrouped', 0)
+            ->assertJsonPath('albums', 0)
+            ->assertJsonPath('screenshots', 2);
+        $this->assertSame(['person:'.$person->id], array_column($this->getJson('/api/personal/media/groups?by=person')->assertOk()->json('data'), 'key'));
+        $this->getJson('/api/personal/media/groups?by=album')->assertOk()->assertJsonPath('data.*.key', ['album:none']);
+        $this->getJson('/api/personal/albums')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/api/personal/albums?screenshots=1')->assertOk()->assertJsonPath('data.0.name', 'პაროლები')->assertJsonPath('data.0.photos', 1);
+        $row = collect($this->getJson('/api/personal/people')->json('data'))->firstWhere('id', $person->id);
+        $this->assertSame(1, $row['photos']);
+
+        // ვიდეო სქრინშოტი ვერ იქნება; სქრინშოტების ალბომს პიროვნება არ ჰყავს და საჯარო ვერ გახდება
+        $video = UploadedFile::fake()->create('clip.mp4', 200, 'video/mp4');
+        $this->upload(['screenshot' => 1], $video)->assertStatus(422);
+        $this->patchJson("/api/personal/albums/{$shotAlbum->id}", ['person_id' => $person->id])->assertStatus(422);
+        $this->patchJson("/api/personal/albums/{$shotAlbum->id}", ['visibility' => 'public'])->assertStatus(422);
+
+        // ძებნა: სქრინშოტი თავის ჯგუფშია და ფოტოებში არ ერევა
+        $loose->update(['caption' => 'ბანკის პაროლი']);
+        $keys = collect($this->getJson('/api/search?q='.urlencode('პაროლი'))->json('groups'))->pluck('key');
+        $this->assertTrue($keys->contains('personal_screenshot'));
+        $this->assertFalse($keys->contains('personal_media'));
+    }
+
+    /** გადატანა: სივრცეს ალბომი წყვეტს; ალბომის გარეშე — ცხადი ნიშანი; სივრცის შეცვლა ალბომს ხსნის */
+    public function test_moving_between_photos_and_screenshots_follows_the_album(): void
+    {
+        $person = $this->person();
+        $album = $this->album('ზღვა', $person->id);
+        $shotAlbum = PersonalAlbum::findOrFail($this->postJson('/api/personal/albums', ['name' => 'საინფორმაციო', 'is_screenshot' => true])->json('data.id'));
+        $photo = $this->media(['person_id' => $person->id, 'album_id' => $album->id]);
+        $video = $this->media(['kind' => 'video', 'thumb_path' => null, 'thumb_size' => 0]);
+
+        // ფოტო → სქრინშოტებში (ალბომის გარეშე): პიროვნება და წინა სივრცის ალბომი ეხსნება; ვიდეო გამოიტოვება
+        $this->postJson('/api/personal/media/move', ['ids' => [$photo->id, $video->id], 'screenshot' => true])->assertOk()->assertJsonPath('moved', 1);
+        $this->assertSame([true, null, null], [$photo->fresh()->is_screenshot, $photo->fresh()->person_id, $photo->fresh()->album_id]);
+        $this->assertFalse($video->fresh()->is_screenshot);
+
+        // სქრინშოტების ალბომში → იქ ჯდება; ჩვეულებრივ ალბომში → ისევ ფოტოა (და ალბომის პიროვნებისაა)
+        $this->postJson('/api/personal/media/move', ['ids' => [$photo->id], 'album_id' => $shotAlbum->id])->assertOk();
+        $this->assertSame([true, $shotAlbum->id], [$photo->fresh()->is_screenshot, $photo->fresh()->album_id]);
+
+        $this->postJson('/api/personal/media/move', ['ids' => [$photo->id], 'album_id' => $album->id])->assertOk();
+        $this->assertSame([false, $album->id, $person->id], [$photo->fresh()->is_screenshot, $photo->fresh()->album_id, $photo->fresh()->person_id]);
+    }
+
+    /** რჩეული პიროვნება და ალბომი — სიის თავში; სქრინშოტის რჩეული ჩვეულებრივი `is_favorite`-ია */
+    public function test_favourite_people_and_albums_come_first(): void
+    {
+        $first = $this->person('ანა');
+        $second = $this->person('ბექა');
+        $albumA = $this->album('A');
+        $albumB = $this->album('B');
+
+        $this->patchJson("/api/personal/people/{$second->id}/favorite")->assertOk()->assertJsonPath('data.is_favorite', true);
+        $this->getJson('/api/personal/people')->assertOk()->assertJsonPath('data.*.id', [$second->id, $first->id]);
+
+        $this->patchJson("/api/personal/albums/{$albumB->id}/favorite")->assertOk()->assertJsonPath('data.is_favorite', true);
+        $this->getJson('/api/personal/albums')->assertOk()->assertJsonPath('data.*.id', [$albumB->id, $albumA->id]);
+
+        // მეორე დაჭერა ხსნის
+        $this->patchJson("/api/personal/people/{$second->id}/favorite")->assertOk()->assertJsonPath('data.is_favorite', false);
+
+        $shot = PersonalMedia::findOrFail($this->upload(['screenshot' => 1])->json('data.id'));
+        $this->patchJson("/api/personal/media/{$shot->id}/favorite")->assertOk()->assertJsonPath('data.is_favorite', true);
+        $this->getJson('/api/personal/media?screenshots=only&favorite=1')->assertOk()->assertJsonPath('data.*.id', [$shot->id]);
+        // ფოტოების რჩეულებში არ ითვლება
+        $this->getJson('/api/personal/summary')->assertOk()->assertJsonPath('favorites', 0);
+    }
+
     /* ---------- სიები, მთვლელები, მთავარი ფოტო ---------- */
 
     public function test_people_and_albums_carry_counts_and_a_main_photo(): void

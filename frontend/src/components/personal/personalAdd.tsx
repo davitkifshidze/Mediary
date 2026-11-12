@@ -15,12 +15,13 @@ export const addPerson: AddDialog = (close, pick) => (
   <PersonDialog person={null} onClose={close} onSaved={(saved) => pick(String(saved.id))} />
 )
 
-/** ახალი ალბომი — უკვე არჩეული პიროვნებით, თუ ასეთი არის */
-export function addAlbum(personId: number | null): AddDialog {
+/** ახალი ალბომი — უკვე არჩეული პიროვნებით, თუ ასეთი არის; `screenshot` — სქრინშოტების სივრცეში */
+export function addAlbum(personId: number | null, screenshot = false): AddDialog {
   return (close, pick) => (
     <PersonalAlbumDialog
       album={null}
       personId={personId ?? undefined}
+      screenshot={screenshot}
       onClose={close}
       onSaved={(saved) => pick(String(saved.id))}
     />

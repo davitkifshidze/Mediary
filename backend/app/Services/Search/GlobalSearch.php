@@ -396,6 +396,16 @@ class GlobalSearch
                 'model' => PersonalMedia::class,
                 'title_rank' => ['columns' => ['caption']],
                 'columns' => ['title' => ['caption'], 'file' => ['original_name']],
+                // სქრინშოტი ცალკე ჯგუფია — ფოტოებში არ ერევა და თავის ჩანართზე იხსნება
+                'scope' => fn (Builder $q) => $q->where('is_screenshot', false),
+            ],
+
+            'personal_screenshot' => [
+                'module' => 'personal',
+                'model' => PersonalMedia::class,
+                'title_rank' => ['columns' => ['caption']],
+                'columns' => ['title' => ['caption'], 'file' => ['original_name']],
+                'scope' => fn (Builder $q) => $q->where('is_screenshot', true),
             ],
 
             /* მორიგეობა: შენიშვნა და დამატებითი ველები („შემცვლელი“);
@@ -835,7 +845,7 @@ class GlobalSearch
             'cast' => $record->name_ka ?: $record->name,
             'playlist', 'personal', 'personal_album' => $record->name,
             // წარწერის გარეშე ფოტო ფაილის სახელით ჩანს
-            'personal_media' => $record->caption ?: $record->original_name,
+            'personal_media', 'personal_screenshot' => $record->caption ?: $record->original_name,
             default => $record->title,
         };
 
@@ -858,7 +868,7 @@ class GlobalSearch
             'cast' => $record->known_for,
             'gallery' => $record->channel,
             // ფოტო/ვიდეოს გადაღების თარიღი
-            'personal_media' => $record->taken_at?->toDateString(),
+            'personal_media', 'personal_screenshot' => $record->taken_at?->toDateString(),
             // მორიგეობის სამსახური
             'duty' => $record->workplace?->name,
             default => null,

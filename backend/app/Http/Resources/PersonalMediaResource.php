@@ -32,6 +32,7 @@ class PersonalMediaResource extends JsonResource
             'taken_at' => $this->taken_at?->toIso8601String(),
             'caption' => $this->caption,
             'is_favorite' => (bool) $this->is_favorite,
+            'is_screenshot' => (bool) $this->is_screenshot,
             'person_id' => $this->person_id,
             'album_id' => $this->album_id,
             'sort_order' => (int) $this->sort_order,

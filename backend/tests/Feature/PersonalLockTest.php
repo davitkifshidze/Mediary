@@ -419,9 +419,15 @@ class PersonalLockTest extends TestCase
         $shown = $this->media(['person_id' => $open->id, 'album_id' => $album->id, 'caption' => 'ტალღა']);
         $hidden = $this->media(['person_id' => $locked->id, 'album_id' => $album->id]);
         $this->lock($locked);
+        // სქრინშოტების ალბომი — ბაზაში „საჯაროც" რომ ეწეროს, პროფილზე არასდროს გადის
+        $shots = $this->album('პაროლები', null, ['visibility' => 'public']);
+        PersonalAlbum::withoutGlobalScopes()->whereKey($shots->id)->update(['is_screenshot' => true]);
 
         // სტუმარი — ავტორიზაციის გარეშე
         $this->app['auth']->forgetGuards();
+
+        $this->getJson('/api/public/profiles/nino/personal_album')->assertOk()->assertJsonCount(1, 'data');
+        $this->getJson("/api/public/profiles/nino/personal-albums/{$shots->id}")->assertNotFound();
 
         $card = $this->getJson('/api/public/profiles/nino/personal_album')->assertOk()->json('data.0');
         $this->assertSame(1, $card['photos'], 'ჩაკეტილი ადამიანის ფოტო საჯარო ალბომშიც არ ითვლება');

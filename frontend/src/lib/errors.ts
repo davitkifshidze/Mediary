@@ -205,6 +205,11 @@ export const CODES = [
   'file_not_found',
   // გალერეა
   'nothing_to_move',
+  // პირადი გალერეის სქრინშოტები: ცალკე სივრცე — მხოლოდ ფოტო, საკუთარი ალბომებით, პიროვნებისა და საჯაროობის გარეშე
+  'screenshot_must_be_photo',
+  'screenshot_album_mismatch',
+  'screenshot_album_has_no_person',
+  'screenshot_not_public',
   /* მორიგეობა: ქასთომ (უტიპო) მორიგეობას საათები სჭირდება; შუალედი
      (კალკულატორი) 3 წელზე გრძელი ვერ იქნება; მასობრივ შეცვლას რაიმე უნდა შეეცვალა. */
   'duty_hours_required',

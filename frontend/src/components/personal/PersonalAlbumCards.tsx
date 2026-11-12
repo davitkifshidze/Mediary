@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Globe, LockOpen } from 'lucide-react'
-import { isHidden, reorderPersonalAlbums, type PersonalAlbum } from '@/api/personal'
+import { Globe, LockOpen, Star } from 'lucide-react'
+import { isHidden, reorderPersonalAlbums, togglePersonalAlbumFavorite, type PersonalAlbum } from '@/api/personal'
 import { errorMessage } from '@/lib/errors'
 import { countLabel, invalidatePersonal, privatePreview } from '@/lib/personal'
 import { useToast } from '@/components/ui/feedback'
 import { PhotoStack } from '@/components/ui/photo-stack'
-import { contextMenuItems, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
+import { contextMenuItems, favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { Sortable, SortableItem } from '@/components/ui/sortable'
 import { PersonalAlbumDialog } from '@/components/personal/PersonalAlbumDialog'
 import { PersonalDeleteDialog } from '@/components/personal/PersonalDeleteDialog'
@@ -57,6 +57,13 @@ export function PersonalAlbumCards({
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
+  /** რჩეული ალბომი სიის თავშია (რიგს სერვერი ალაგებს) */
+  const favorite = useMutation({
+    mutationFn: (id: number) => togglePersonalAlbumFavorite(id),
+    onSuccess: () => invalidatePersonal(qc),
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
   const open = (album: PersonalAlbum) => navigate(`/personal/albums/${album.id}${kind ? `?kind=${kind}` : ''}`)
   /** ბარათის შიგთავსი — „12 ფოტო · 3 ვიდეო", ან მხოლოდ არჩეული სახეობა */
   const photosOf = (album: PersonalAlbum) => (kind === 'video' ? 0 : album.photos)
@@ -73,6 +80,7 @@ export function PersonalAlbumCards({
               ? [{ key: 'unlock', label: t('lock.unlock'), icon: LockOpen, run: () => setUnlocking(album) }, ...lockMenu.items(album)]
               : [
                   { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => open(album) },
+                  favoriteAction(album.is_favorite, () => favorite.mutate(album.id), t),
                   ...lockMenu.items(album),
                   { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(album) },
                   { key: 'delete', label: t('confirm.delete'), icon: MENU_ICONS.delete, danger: true, run: () => setDeleting(album) },
@@ -98,6 +106,7 @@ export function PersonalAlbumCards({
                       </span>
                     ) : undefined
                   }
+                  meta={album.is_favorite ? <Star className="size-3.5 fill-current text-favorite" aria-label={t('filter.favorite')} /> : undefined}
                   onClick={() => (hidden ? setUnlocking(album) : open(album))}
                   menu={contextMenuItems(menu)}
                   actions={<CardActions hidden={hidden} menu={menu} onUnlock={() => setUnlocking(album)} onOpen={() => open(album)} onEdit={() => setEditing(album)} onDelete={() => setDeleting(album)} />}

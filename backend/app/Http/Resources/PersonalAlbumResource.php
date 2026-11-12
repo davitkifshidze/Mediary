@@ -32,6 +32,9 @@ class PersonalAlbumResource extends JsonResource
             'cover_media_id' => $hidden ? null : $this->cover_media_id,
             'cover' => $hidden ? null : ($this->resolved_cover ?? null),
             'visibility' => $this->visibility,
+            // სქრინშოტების სივრცის ალბომი; რჩეული ალბომი
+            'is_screenshot' => (bool) $this->is_screenshot,
+            'is_favorite' => (bool) $this->is_favorite,
             'photos' => (int) ($this->photos_count ?? 0),
             'videos' => (int) ($this->videos_count ?? 0),
             'sort_order' => (int) $this->sort_order,

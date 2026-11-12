@@ -454,7 +454,8 @@
       "gallery": "Gallery videos",
       "personal": "People (personal gallery)",
       "personal_album": "Albums (personal gallery)",
-      "personal_media": "Photos & videos (personal gallery)"
+      "personal_media": "Photos & videos (personal gallery)",
+      "personal_screenshot": "Screenshots (personal gallery)"
     },
     "field": {
       "title": "Title",
@@ -1356,7 +1357,11 @@
     "database_archive_invalid": "This is not a database export JSON ZIP.",
     "database_archive_library": "This is a “My full export” — it goes in on the “Import” tab (adding).",
     "playlist_missing": "The course link is not a YouTube playlist.",
-    "video_needs_course": "This video belongs to no course — off the list it would show nowhere."
+    "video_needs_course": "This video belongs to no course — off the list it would show nowhere.",
+    "screenshot_must_be_photo": "A screenshot can only be a photo.",
+    "screenshot_album_mismatch": "This album belongs to the other space — a screenshot goes only into a screenshot album.",
+    "screenshot_album_has_no_person": "A screenshot album has no person.",
+    "screenshot_not_public": "A screenshot album can never be public."
   },
   "fields": {
     "title": "Fields",
@@ -4436,7 +4441,8 @@
     "cut": {
       "people": "People",
       "albums": "Albums",
-      "media": "All"
+      "media": "All",
+      "screenshots": "Screenshots"
     },
     "stat": {
       "people": "People",
@@ -4556,7 +4562,11 @@
       "noPerson": "No person",
       "noAlbum": "No album",
       "followsAlbum": "This is {{name}}’s album — the photo will belong to them too.",
-      "done": "Moved: {{count}}"
+      "done": "Moved: {{count}}",
+      "space": "Where",
+      "spaceHint": "Screenshots are a separate space: no person is set and the albums are its own. Videos do not move to screenshots.",
+      "toScreenshots": "To screenshots",
+      "toMedia": "To photos"
     },
     "delete": {
       "personTitle": "Delete “{{name}}”?",
@@ -4605,6 +4615,13 @@
       "pick": "Choose a person",
       "confirm": "Attach",
       "done": "Album attached to {{name}}"
+    },
+    "screenshots": {
+      "albums": "Screenshot albums",
+      "albumsHint": "Screenshots have their own albums (for instance “Info”, “Passwords”) — they never show among ordinary albums or people. An album can be locked with a password.",
+      "empty": "No screenshots yet",
+      "emptyHint": "Upload a screenshot here — it will not show in “All”, among people or in albums.",
+      "upload": "Upload screenshots"
     }
   },
   "courseCategories": {

@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { LockOpen, UserPlus } from 'lucide-react'
-import { fetchPeople, isHidden, PERSONAL_KEY, reorderPeople, type Person } from '@/api/personal'
+import { LockOpen, Star, UserPlus } from 'lucide-react'
+import { fetchPeople, isHidden, PERSONAL_KEY, reorderPeople, togglePersonFavorite, type Person } from '@/api/personal'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { countLabel, invalidatePersonal, privatePreview } from '@/lib/personal'
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/components/ui/feedback'
 import { PhotoStack } from '@/components/ui/photo-stack'
-import { contextMenuItems, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
+import { contextMenuItems, favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { Sortable, SortableItem } from '@/components/ui/sortable'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { PersonDialog } from '@/components/personal/PersonDialog'
@@ -65,12 +65,21 @@ export function PersonalPeopleCut() {
   const [filter, setFilter] = useState<PersonalKindFilterValue>('all')
   const kind = filter === 'photo' || filter === 'video' ? filter : undefined
   const everyone = peopleQ.data ?? []
-  const people = everyone.filter((person) => (kind === 'photo' ? person.photos > 0 : kind === 'video' ? person.videos > 0 : true))
+  const people = everyone.filter((person) =>
+    filter === 'favorite' ? person.is_favorite : kind === 'photo' ? person.photos > 0 : kind === 'video' ? person.videos > 0 : true,
+  )
   const counts = {
     all: everyone.length,
     photo: everyone.filter((person) => person.photos > 0).length,
     video: everyone.filter((person) => person.videos > 0).length,
+    favorite: everyone.filter((person) => person.is_favorite).length,
   }
+  /** რჩეული პიროვნება სიის თავშია (რიგს სერვერი ალაგებს) */
+  const favorite = useMutation({
+    mutationFn: (id: number) => togglePersonFavorite(id),
+    onSuccess: () => invalidatePersonal(qc),
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
   const open = (person: Person) =>
     navigate(`/personal/people/${person.id}${kind ? `?tab=${kind === 'photo' ? 'photos' : 'videos'}` : ''}`)
 
@@ -115,7 +124,7 @@ export function PersonalPeopleCut() {
   return (
     <section>
       <div className="mb-4" data-testid="personal-people-filter">
-        <PersonalKindFilter value={filter} onChange={setFilter} counts={counts} favorite={false} />
+        <PersonalKindFilter value={filter} onChange={setFilter} counts={counts} />
       </div>
       {!people.length && <EmptyState kind="search" title={t('personal.people.emptyKind')} />}
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -127,13 +136,14 @@ export function PersonalPeopleCut() {
               ? [{ key: 'unlock', label: t('lock.unlock'), icon: LockOpen, run: () => setUnlocking(person) }, ...lockMenu.items(person)]
               : [
                   { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => open(person) },
+                  favoriteAction(person.is_favorite, () => favorite.mutate(person.id), t),
                   ...lockMenu.items(person),
                   { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing({ person }) },
                   { key: 'delete', label: t('confirm.delete'), icon: MENU_ICONS.delete, danger: true, run: () => setDeleting(person) },
                 ]
 
             return (
-              <SortableItem key={person.id} id={person.id} disabled={!!kind}>
+              <SortableItem key={person.id} id={person.id} disabled={filter !== 'all'}>
                 <PhotoStack
                   title={person.name}
                   subtitle={person.birthday ? t('personal.person.born', { date: date(person.birthday) }) : undefined}
@@ -148,6 +158,7 @@ export function PersonalPeopleCut() {
                   aspect="portrait"
                   locked={hidden}
                   badge={person.locked ? <LockBadge hidden={hidden} /> : undefined}
+                  meta={person.is_favorite ? <Star className="size-3.5 fill-current text-favorite" aria-label={t('filter.favorite')} /> : undefined}
                   onClick={() => (hidden ? setUnlocking(person) : open(person))}
                   menu={contextMenuItems(menu)}
                   actions={<CardActions hidden={hidden} menu={menu} onUnlock={() => setUnlocking(person)} onOpen={() => open(person)} onEdit={() => setEditing({ person })} onDelete={() => setDeleting(person)} />}

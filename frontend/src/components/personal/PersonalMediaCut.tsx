@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Folders, Inbox, LayoutGrid, Search, Users } from 'lucide-react'
+import { Folders, Inbox, LayoutGrid, MonitorSmartphone, Search, Users } from 'lucide-react'
 import {
   fetchPersonalSummary,
   PERSONAL_KEY,
@@ -11,6 +11,7 @@ import {
   type PersonalMediaFilters,
   type PersonalSort,
 } from '@/api/personal'
+import { Chip } from '@/components/ui/chip'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
@@ -62,6 +63,8 @@ export function PersonalMediaCut() {
   const [params] = useSearchParams()
   const [q, setQ] = useState(params.get('q') ?? '')
   const [sort, setSort] = useState<PersonalSort>('taken')
+  /** სქრინშოტები სიაში მხოლოდ მონიშვნისას ჩნდება — ნაგულისხმევად ცალკე სივრცეშია */
+  const [withShots, setWithShots] = useState(false)
 
   // ⚠️ იგივე ქეშია, რაც გვერდის მთვლელებს — ცალკე მოთხოვნა არ მიდის
   const summary = useQuery({ queryKey: [PERSONAL_KEY, 'summary'], queryFn: fetchPersonalSummary }).data
@@ -71,6 +74,7 @@ export function PersonalMediaCut() {
     favorite: filter === 'favorite' || undefined,
     q: q.trim() || undefined,
     sort,
+    screenshots: withShots ? 'with' : undefined,
   }
 
   const by: PersonalGrouping | null = grouping === 'person' || grouping === 'album' ? grouping : null
@@ -92,6 +96,12 @@ export function PersonalMediaCut() {
   const toolbar = (
     <div className="mb-4 flex flex-wrap items-center gap-2" data-testid="personal-media-toolbar">
       <PersonalKindFilter value={filter} onChange={setFilter} counts={filterCounts} />
+      {/* სქრინშოტები აქ მხოლოდ მონიშვნისას ერევა (ჯგუფებში — არასდროს) */}
+      {!by && (summary?.screenshots ?? 0) > 0 && (
+        <Chip active={withShots} className="h-9" icon={<MonitorSmartphone className="size-3.5" />} onClick={() => setWithShots((v) => !v)}>
+          {t('personal.cut.screenshots')}
+        </Chip>
+      )}
 
       {/* ძებნა + სორტირება — მარჯვნივ */}
       <div className="ml-auto flex flex-wrap items-center gap-2">

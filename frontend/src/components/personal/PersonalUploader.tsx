@@ -71,12 +71,15 @@ export function PersonalUploader({
   personId,
   albumId,
   only,
+  screenshot,
   className,
   children,
 }: {
   ref?: Ref<PersonalUploaderHandle>
   personId?: number | null
   albumId?: number | null
+  /** სქრინშოტების სივრცეში ატვირთვა (ალბომის გარეშეც) — მხოლოდ ფოტო, პიროვნების გარეშე */
+  screenshot?: boolean
   /** ფოტოების / ვიდეოების ჩანართი მხოლოდ თავის სახეობას იღებს (ამრჩევიც მას აჩვენებს) */
   only?: UploadOnly
   className?: string
@@ -144,7 +147,7 @@ export function PersonalUploader({
     busy.current = true
     patch(next.key, { status: 'uploading', progress: 0, error: undefined })
 
-    uploadPersonalMedia(next.file, { person_id: personId, album_id: albumId }, (fraction) =>
+    uploadPersonalMedia(next.file, { person_id: personId, album_id: albumId, screenshot }, (fraction) =>
       patch(next.key, { progress: fraction }),
     )
       .then(() => {
@@ -162,7 +165,7 @@ export function PersonalUploader({
         // რიგი თვითონ გადაიხედება — `queue` შეიცვალა
         setQueue((cur) => [...cur])
       })
-  }, [queue, personId, albumId, qc])
+  }, [queue, personId, albumId, screenshot, qc])
 
   /* ⚠️ `noClick`/`noKeyboard` — შიგთავსზე დაჭერა ფოტოს ხსნის და არა ფაილის
      ამრჩევს; ამრჩევს მხოლოდ ღილაკი ხსნის (`open`) */

@@ -91,6 +91,7 @@ const person = (over: Partial<Person> = {}): Person => ({
   photos: 2,
   videos: 0,
   albums: 0,
+  is_favorite: false,
   sort_order: 1,
   created_at: null,
   locked: false,

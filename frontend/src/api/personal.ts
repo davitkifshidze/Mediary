@@ -47,6 +47,8 @@ export interface Person extends RecordLockState {
   photos: number
   videos: number
   albums: number
+  /** რჩეული პიროვნება — სიის თავშია */
+  is_favorite: boolean
   sort_order: number
   created_at: string | null
 }
@@ -60,6 +62,10 @@ export interface PersonalAlbum extends RecordLockState {
   cover_media_id: number | null
   cover: string | null
   visibility: Visibility
+  /** სქრინშოტების სივრცის ალბომი — პიროვნების გარეშე და არასდროს საჯარო */
+  is_screenshot: boolean
+  /** რჩეული ალბომი — სიის თავშია */
+  is_favorite: boolean
   photos: number
   videos: number
   sort_order: number
@@ -98,6 +104,8 @@ export interface PersonalSummary {
   videos: number
   favorites: number
   ungrouped: number
+  /** სქრინშოტები — ცალკე სივრცე: ფოტოების, რჩეულებისა და დაუჯგუფებლის რიცხვში არ ითვლება */
+  screenshots: number
   bytes: number
   storage: import('@/api/account').StorageUsage
 }
@@ -111,6 +119,11 @@ export interface PersonalMediaFilters extends ListParams {
   no_album?: boolean
   kind?: PersonalKind
   favorite?: boolean
+  /**
+   * სქრინშოტების სივრცე: გასაღების გარეშე სიაში **არ** ჩანს; `only` — მხოლოდ ისინი,
+   * `with` — დანარჩენთან ერთად. ალბომის სიაზე (`album_id`) სივრცეს ალბომი წყვეტს.
+   */
+  screenshots?: 'only' | 'with'
   q?: string
   sort?: PersonalSort
 }
@@ -188,12 +201,32 @@ export interface PersonalAlbumInput {
   person_id?: number | null
   cover_media_id?: number | null
   visibility?: Visibility
+  /** მხოლოდ შექმნისას: სქრინშოტების სივრცის ალბომი */
+  is_screenshot?: boolean
 }
 
-export async function fetchPersonalAlbums(params: { person_id?: number; outside?: boolean } = {}): Promise<PersonalAlbum[]> {
+/** ⚠️ `screenshots` — მხოლოდ სქრინშოტების ალბომები; მის გარეშე ისინი სიაში არ ჩანს */
+export async function fetchPersonalAlbums(
+  params: { person_id?: number; outside?: boolean; screenshots?: boolean } = {},
+): Promise<PersonalAlbum[]> {
   const { data } = await api.get('/personal/albums', {
-    params: { ...(params.person_id ? { person_id: params.person_id } : {}), ...(params.outside ? { outside: 1 } : {}) },
+    params: {
+      ...(params.person_id ? { person_id: params.person_id } : {}),
+      ...(params.outside ? { outside: 1 } : {}),
+      ...(params.screenshots ? { screenshots: 1 } : {}),
+    },
   })
+  return data.data
+}
+
+/** რჩეულის გადართვა — რჩეული ალბომი / პიროვნება სიის თავშია */
+export async function togglePersonalAlbumFavorite(id: number): Promise<PersonalAlbum> {
+  const { data } = await api.patch(`/personal/albums/${id}/favorite`)
+  return data.data
+}
+
+export async function togglePersonFavorite(id: number): Promise<Person> {
+  const { data } = await api.patch(`/personal/people/${id}/favorite`)
   return data.data
 }
 
@@ -272,6 +305,8 @@ export interface UploadPersonalInput {
   person_id?: number | null
   album_id?: number | null
   caption?: string | null
+  /** სქრინშოტების სივრცეში ატვირთვა (ალბომის გარეშეც); მხოლოდ ფოტო */
+  screenshot?: boolean
 }
 
 /**
@@ -290,6 +325,7 @@ export async function uploadPersonalMedia(
   if (input.person_id) form.append('person_id', String(input.person_id))
   if (input.album_id) form.append('album_id', String(input.album_id))
   if (input.caption) form.append('caption', input.caption)
+  if (input.screenshot) form.append('screenshot', '1')
   if (file.lastModified) form.append('taken_at', new Date(file.lastModified).toISOString())
 
   const { data } = await api.post('/personal/media', form, {
@@ -320,7 +356,8 @@ export async function togglePersonalFavorite(id: number): Promise<PersonalMedia>
  */
 export async function movePersonalMedia(
   ids: number[],
-  changes: { person_id?: number | null; album_id?: number | null },
+  /** `screenshot` — სივრცის შეცვლა ალბომის გარეშე; ალბომში გადატანისას სივრცეს ალბომი წყვეტს */
+  changes: { person_id?: number | null; album_id?: number | null; screenshot?: boolean },
 ): Promise<number> {
   const { data } = await api.post('/personal/media/move', { ids, ...changes })
   return data.moved

@@ -34,6 +34,7 @@ class PersonResource extends JsonResource
             'photos' => (int) ($this->photos_count ?? 0),
             'videos' => (int) ($this->videos_count ?? 0),
             'albums' => (int) ($this->albums_count ?? 0),
+            'is_favorite' => (bool) $this->is_favorite,
             'sort_order' => (int) $this->sort_order,
             'created_at' => $this->created_at?->toIso8601String(),
             ...$lock,

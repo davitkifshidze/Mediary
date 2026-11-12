@@ -76,6 +76,8 @@ export function resultPath(item: SearchItem, routeBase: string | undefined): str
   if (item.domain === 'personal') return `/personal/people/${item.id}`
   if (item.domain === 'personal_album') return `/personal/albums/${item.id}`
   if (item.domain === 'personal_media') return `/personal?q=${encodeURIComponent(item.title)}`
+  // სქრინშოტი ცალკე სივრცეა — თავის ჩანართზე იხსნება
+  if (item.domain === 'personal_screenshot') return `/personal/screenshots?q=${encodeURIComponent(item.title)}`
   // მორიგეობის პერიოდი იხსნება და რედაქტირება ჩანს (`DutyPage`, `?shift=`)
   if (item.domain === 'duty') return `/duty?shift=${item.id}`
 

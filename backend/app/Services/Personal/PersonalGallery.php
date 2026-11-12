@@ -5,6 +5,8 @@ namespace App\Services\Personal;
 use App\Models\Person;
 use App\Models\PersonalAlbum;
 use App\Models\PersonalMedia;
+use App\Models\User;
+use App\Support\LockedPersonalMedia;
 use App\Support\SafeMime;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Builder;
@@ -127,8 +129,14 @@ class PersonalGallery
      * ხდება (ინვარიანტი). ⚠️ სხვა ადამიანზე გადატანისას ალბომი, რომელიც
      * წინა ადამიანისაა, ეხსნება — თორემ ფოტო ორ სხვადასხვა ადამიანს ეკუთვნოდა.
      *
+     * ⚠️ **სივრცესაც ალბომი წყვეტს** (`screenshot` — მხოლოდ ალბომის გარეშე): სქრინშოტების
+     * ალბომში გადატანილი ფოტო სქრინშოტი ხდება, ჩვეულებრივში — ისევ ფოტო; სივრცის
+     * შეცვლა წინა სივრცის ალბომს ხსნის. სქრინშოტს პიროვნება არ აქვს, ვიდეო სქრინშოტი
+     * ვერ გახდება (გამოიტოვება). ⚠️ ჩაკეტილი ფოტოების სისტემური ალბომი სივრცეს არ
+     * ცვლის — ჩაკეტილი სქრინშოტი გახსნის შემდეგ ისევ სქრინშოტია.
+     *
      * @param  Collection<int, PersonalMedia>  $media
-     * @param  array{person_id?: int|null, album_id?: int|null}  $changes
+     * @param  array{person_id?: int|null, album_id?: int|null, screenshot?: bool}  $changes
      * @return int რამდენი შეიცვალა
      */
     public function move(Collection $media, array $changes): int
@@ -137,9 +145,14 @@ class PersonalGallery
             ? PersonalAlbum::query()->findOrFail($changes['album_id'])
             : null;
 
-        $albumPersons = PersonalAlbum::query()
+        $current = PersonalAlbum::query()
             ->whereIn('id', $media->pluck('album_id')->filter()->unique()->all())
-            ->pluck('person_id', 'id');
+            ->get(['id', 'person_id', 'is_screenshot'])
+            ->keyBy('id');
+        $albumPersons = $current->pluck('person_id', 'id');
+        // სისტემური ჩაკეტილი ალბომი ორივე სივრცის ფოტოს იტევს
+        $owner = $album ? User::query()->find($album->user_id) : null;
+        $vault = $owner !== null && (int) (LockedPersonalMedia::album($owner)?->id ?? 0) === (int) $album->id;
 
         $moved = 0;
 
@@ -161,11 +174,28 @@ class PersonalGallery
             $person = $person === null ? null : (int) $person;
             $albumId = $albumId === null ? null : (int) $albumId;
 
-            if ($item->person_id === $person && $item->album_id === $albumId) {
+            // სივრცე: ალბომი წყვეტს; ალბომის გარეშე — ცხადი ნიშანი ან რაც იყო
+            $screenshot = array_key_exists('screenshot', $changes) ? (bool) $changes['screenshot'] : (bool) $item->is_screenshot;
+            if ($album && ! $vault) {
+                $screenshot = (bool) $album->is_screenshot;
+            } elseif (! $album && $albumId !== null && (bool) ($current->get($albumId)?->is_screenshot) !== $screenshot) {
+                // სივრცე შეიცვალა — წინა სივრცის ალბომი არ მიჰყვება
+                $albumId = null;
+            }
+
+            if ($screenshot) {
+                // ვიდეო სქრინშოტი ვერ გახდება
+                if ($item->kind !== 'photo') {
+                    continue;
+                }
+                $person = null;
+            }
+
+            if ($item->person_id === $person && $item->album_id === $albumId && (bool) $item->is_screenshot === $screenshot) {
                 continue;
             }
 
-            $item->forceFill(['person_id' => $person, 'album_id' => $albumId])->save();
+            $item->forceFill(['person_id' => $person, 'album_id' => $albumId, 'is_screenshot' => $screenshot])->save();
             $moved++;
         }
 

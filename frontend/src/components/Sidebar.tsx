@@ -720,7 +720,9 @@ export function Sidebar({
         ? 'albums'
         : location.pathname.startsWith('/personal/people')
           ? 'people'
-          : 'media'
+          : location.pathname.startsWith('/personal/screenshots')
+            ? 'screenshots'
+            : 'media'
 
       return (
         <div key={m.key} style={modAccent(m.color)}>

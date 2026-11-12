@@ -30,6 +30,7 @@ export function PersonalAlbumsCut() {
   const [adding, setAdding] = useState(false)
   const [filter, setFilter] = useState<PersonalKindFilterValue>('all')
   const kind = filter === 'photo' || filter === 'video' ? filter : undefined
+  const favorite = filter === 'favorite'
 
   const albumsQ = useQuery({ queryKey: [PERSONAL_KEY, 'albums', {}], queryFn: () => fetchPersonalAlbums() })
   const everything = albumsQ.data
@@ -39,12 +40,15 @@ export function PersonalAlbumsCut() {
       all: (everything ?? []).length,
       photo: (everything ?? []).filter((album) => album.photos > 0).length,
       video: (everything ?? []).filter((album) => album.videos > 0).length,
+      favorite: (everything ?? []).filter((album) => album.is_favorite).length,
     }),
     [everything],
   )
 
   const { outside, byPerson } = useMemo(() => {
-    const all = (everything ?? []).filter((album) => (kind === 'photo' ? album.photos > 0 : kind === 'video' ? album.videos > 0 : true))
+    const all = (everything ?? []).filter((album) =>
+      favorite ? album.is_favorite : kind === 'photo' ? album.photos > 0 : kind === 'video' ? album.videos > 0 : true,
+    )
     const groups = new Map<number, { name: string; albums: PersonalAlbum[] }>()
 
     for (const album of all) {
@@ -58,7 +62,7 @@ export function PersonalAlbumsCut() {
       outside: all.filter((album) => !album.person),
       byPerson: [...groups.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name)),
     }
-  }, [everything, kind])
+  }, [everything, kind, favorite])
 
   const dialog = adding && (
     <PersonalAlbumDialog album={null} onClose={() => setAdding(false)} onSaved={(saved) => navigate(`/personal/albums/${saved.id}`)} />
@@ -68,7 +72,7 @@ export function PersonalAlbumsCut() {
 
   const filterBar = (
     <div className="mb-4" data-testid="personal-albums-filter">
-      <PersonalKindFilter value={filter} onChange={setFilter} counts={counts} favorite={false} />
+      <PersonalKindFilter value={filter} onChange={setFilter} counts={counts} />
     </div>
   )
 
@@ -140,7 +144,7 @@ export function PersonalAlbumsCut() {
 }
 
 /** სათაურის ღილაკი — „ალბომის დამატება" */
-export function AddAlbumButton({ personId }: { personId?: number | null }) {
+export function AddAlbumButton({ personId, screenshot }: { personId?: number | null; screenshot?: boolean }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -155,6 +159,7 @@ export function AddAlbumButton({ personId }: { personId?: number | null }) {
         <PersonalAlbumDialog
           album={null}
           personId={personId}
+          screenshot={screenshot}
           onClose={() => setOpen(false)}
           onSaved={(saved) => navigate(`/personal/albums/${saved.id}`)}
         />

@@ -44,6 +44,7 @@ function person(id: number, over: Partial<Person> = {}): Person {
     photos: 2,
     videos: 1,
     albums: 0,
+    is_favorite: false,
     sort_order: id,
     created_at: null,
     locked: false,
@@ -178,7 +179,7 @@ async function flush(times = 3) {
 
 function defaults() {
   mocks.fetchPersonalSummary.mockResolvedValue({
-    people: 2, albums: 0, photos: 4, videos: 2, favorites: 0, ungrouped: 0, bytes: 2048,
+    people: 2, albums: 0, photos: 4, videos: 2, favorites: 0, ungrouped: 0, screenshots: 3, bytes: 2048,
     storage: { used: 0, quota: 1, remaining: 1, percent: 0, warn_at: 80, critical_at: 95 },
   })
   mocks.fetchPeople.mockResolvedValue([person(1), person(2, { photos: 0, videos: 0 })])
@@ -249,11 +250,12 @@ describe('PersonalPage', () => {
     )
 
     const cards = [...container!.querySelectorAll<HTMLButtonElement>('nav button[aria-pressed]')]
-    // „ყველა" (ფოტო + ვიდეო) პირველია, შემდეგ პიროვნებები და ალბომები
+    // „ყველა" (ფოტო + ვიდეო) პირველია, შემდეგ პიროვნებები, ალბომები და სქრინშოტები (ცალკე სივრცე)
     expect(cards.map((b) => b.textContent)).toEqual([
       `${i18n.t('personal.cut.media')}6`,
       `${i18n.t('personal.cut.people')}2`,
       `${i18n.t('personal.cut.albums')}0`,
+      `${i18n.t('personal.cut.screenshots')}3`,
     ])
     expect(cards[1].getAttribute('aria-pressed')).toBe('true')
     // ხაზგასმული ბმულები აღარ არის
@@ -272,10 +274,10 @@ describe('PersonalPeopleCut — ქვეფილტრი', () => {
 
     const filter = container!.querySelector('[data-testid="personal-people-filter"]')!
     const tab = (key: string) => [...filter.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.startsWith(i18n.t(`personal.kind.${key}`)))!
-    // ყველა 2 · ფოტო 1 · ვიდეო 1 — მეორე პიროვნებას არაფერი აქვს; „რჩეული" აქ ჯერ არ არის
+    // ყველა 2 · ფოტო 1 · ვიდეო 1 — მეორე პიროვნებას არაფერი აქვს; რჩეული — ჯერ არავინ
     expect(tab('all').textContent).toContain('2')
     expect(tab('photo').textContent).toContain('1')
-    expect(filter.textContent).not.toContain(i18n.t('filter.favorite'))
+    expect(filter.textContent).toContain(`${i18n.t('filter.favorite')}0`)
 
     const cards = () => [...container!.querySelectorAll<HTMLElement>('section > ul > li')]
     expect(cards()).toHaveLength(2)
@@ -286,6 +288,55 @@ describe('PersonalPeopleCut — ქვეფილტრი', () => {
     // ბარათი მხოლოდ ფოტოებს ითვლის — ალბომი და პიროვნება ერთია, სახეობა ჩანართისაა
     expect(cards()[0].textContent).toContain(i18n.t('personal.photos', { count: 2 }))
     expect(cards()[0].textContent).not.toContain(i18n.t('personal.videos', { count: 1 }))
+  })
+})
+
+describe('სქრინშოტები და რჩეულები', () => {
+  it('keeps screenshots in their own tab and offers them in "All" only as a tick', async () => {
+    defaults()
+    mocks.fetchPersonalAlbums.mockResolvedValue([])
+    const { PersonalPage } = await import('@/pages/PersonalPage')
+    await render(h(PersonalPage, { cut: 'screenshots' }), '/personal/screenshots')
+
+    // ჩანართი მხოლოდ სქრინშოტებს ითხოვს და მათ ალბომებს — ცალკე სივრციდან
+    expect(mocks.fetchPersonalMedia).toHaveBeenLastCalledWith(expect.objectContaining({ screenshots: 'only' }))
+    expect(mocks.fetchPersonalAlbums).toHaveBeenCalledWith({ screenshots: true })
+    // ატვირთვა აქ მხოლოდ ფოტოა; ალბომის დამატება — სქრინშოტების ალბომი
+    expect(container!.textContent).toContain(i18n.t('personal.upload.photo'))
+    expect(container!.textContent).toContain(i18n.t('personal.album.add'))
+  })
+
+  it('does not mix screenshots into "All" until the chip is ticked', async () => {
+    defaults()
+    const { PersonalPage } = await import('@/pages/PersonalPage')
+    await render(h(PersonalPage, { cut: 'media' }))
+
+    expect(mocks.fetchPersonalMedia).toHaveBeenLastCalledWith(expect.objectContaining({ screenshots: undefined }))
+
+    const chip = [...container!.querySelectorAll<HTMLButtonElement>('[data-testid="personal-media-toolbar"] button')].find(
+      (b) => b.textContent?.trim() === i18n.t('personal.cut.screenshots'),
+    )!
+    await act(async () => chip.click())
+    await flush()
+
+    expect(mocks.fetchPersonalMedia).toHaveBeenLastCalledWith(expect.objectContaining({ screenshots: 'with' }))
+  })
+
+  it('puts a favourite person first-class: a star on the card and a filter', async () => {
+    defaults()
+    mocks.fetchPeople.mockResolvedValue([person(1, { is_favorite: true }), person(2)])
+    const { PersonalPage } = await import('@/pages/PersonalPage')
+    await render(h(PersonalPage, { cut: 'people' }), '/personal/people')
+
+    const filter = container!.querySelector('[data-testid="personal-people-filter"]')!
+    const favorite = [...filter.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.startsWith(i18n.t('filter.favorite')))!
+    expect(favorite.textContent).toContain('1')
+
+    await act(async () => favorite.click())
+    const cards = [...container!.querySelectorAll<HTMLElement>('section > ul > li')]
+    expect(cards).toHaveLength(1)
+    expect(cards[0].textContent).toContain('Person 1')
+    expect(cards[0].querySelector(`[aria-label="${i18n.t('filter.favorite')}"]`)).not.toBeNull()
   })
 })
 

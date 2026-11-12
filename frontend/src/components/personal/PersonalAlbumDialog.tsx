@@ -43,11 +43,14 @@ const NO_PERSON = 'none'
 export function PersonalAlbumDialog({
   album,
   personId,
+  screenshot = false,
   onClose,
   onSaved,
 }: {
   /** `null` — ახალი ალბომი */
   album: PersonalAlbum | null
+  /** ახალი ალბომი სქრინშოტების სივრცეში — პიროვნებისა და საჯაროობის გარეშე */
+  screenshot?: boolean
   /** ახალი ალბომის ადამიანი (ადამიანის გვერდიდან) */
   personId?: number | null
   onClose: () => void
@@ -64,22 +67,26 @@ export function PersonalAlbumDialog({
   const [owner, setOwner] = useState<string>(String(album ? (album.person_id ?? NO_PERSON) : (personId ?? NO_PERSON)))
   const [isPublic, setIsPublic] = useState(album?.visibility === 'public')
   const [cover, setCover] = useState<CoverDraft>(EMPTY_COVER)
+  /** სქრინშოტების ალბომს პიროვნება არ ჰყავს და საჯარო ვერ გახდება — ეს ორი ველი არ იხატება */
+  const shots = album ? album.is_screenshot : screenshot
 
   const save = useMutation({
     mutationFn: async () => {
-      const input = {
-        name: name.trim(),
-        description: description.trim() || null,
-        person_id: owner === NO_PERSON ? null : Number(owner),
-        visibility: isPublic ? ('public' as const) : ('private' as const),
-      }
+      const input = shots
+        ? { name: name.trim(), description: description.trim() || null, ...(album ? {} : { is_screenshot: true }) }
+        : {
+            name: name.trim(),
+            description: description.trim() || null,
+            person_id: owner === NO_PERSON ? null : Number(owner),
+            visibility: isPublic ? ('public' as const) : ('private' as const),
+          }
 
       let saved = album ? await updatePersonalAlbum(album.id, input) : await createPersonalAlbum(input)
 
       /* მთავარი ფოტო: ახალი ფაილი ალბომში აიტვირთება და მთავრად ინიშნება;
          „წაშლა" მხოლოდ მთავრობას ხსნის — ფოტო ალბომში რჩება */
       if (cover.file) {
-        const media = await uploadPersonalMedia(cover.file, { album_id: saved.id, person_id: saved.person_id })
+        const media = await uploadPersonalMedia(cover.file, { album_id: saved.id, person_id: saved.person_id, screenshot: shots || undefined })
         saved = await updatePersonalAlbum(saved.id, { cover_media_id: media.id })
       } else if (cover.cleared && saved.cover_media_id) {
         saved = await updatePersonalAlbum(saved.id, { cover_media_id: null })
@@ -120,6 +127,7 @@ export function PersonalAlbumDialog({
             />
           </FormField>
 
+          {!shots && (
           <FormField label={t('personal.album.owner')} hint={t('personal.album.ownerHint')}>
             <Select value={owner} onValueChange={setOwner}>
               <SelectTrigger>
@@ -135,6 +143,7 @@ export function PersonalAlbumDialog({
               </SelectContent>
             </Select>
           </FormField>
+          )}
 
           <FormField label={t('personal.album.description')} htmlFor="personal-album-description">
             <Textarea
@@ -147,6 +156,7 @@ export function PersonalAlbumDialog({
           </FormField>
 
           {/* ---------- საჯაროობა ---------- */}
+          {!shots && (
           <FormField>
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
               <div className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium">
@@ -162,6 +172,7 @@ export function PersonalAlbumDialog({
               />
             </div>
           </FormField>
+          )}
         </FormSection>
       </form>
 

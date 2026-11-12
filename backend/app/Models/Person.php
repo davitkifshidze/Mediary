@@ -53,6 +53,7 @@ class Person extends Model
         'sort_order' => 'integer',
         'cover_media_id' => 'integer',
         'trashed_children' => 'array',
+        'is_favorite' => 'boolean',
     ];
 
     /**

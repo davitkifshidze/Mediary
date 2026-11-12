@@ -62,6 +62,10 @@ class PersonalMediaController extends Controller
             'no_album' => ['nullable', 'boolean'],
             'kind' => ['nullable', 'in:'.implode(',', PersonalMedia::KINDS)],
             'favorite' => ['nullable', 'boolean'],
+            /* სქრინშოტები ცალკე სივრცეა: ნაგულისხმევად სიაში **არ** ჩანს; `only` — მხოლოდ
+               ისინი (სქრინშოტების ჩანართი), `with` — დანარჩენთან ერთად („ყველა"-ს ფილტრი).
+               ⚠️ ალბომის სიაზე (`album_id`) სივრცეს ალბომი წყვეტს — ფილტრი არ მოქმედებს. */
+            'screenshots' => ['nullable', 'in:only,with'],
             'q' => ['nullable', 'string', 'max:200'],
             'sort' => ['nullable', 'in:'.implode(',', self::SORTS)],
         ]);
@@ -100,16 +104,29 @@ class PersonalMediaController extends Controller
             'caption' => ['nullable', 'string', 'max:500'],
             // ბრაუზერის `File.lastModified` — როცა EXIF/ვიდეოს თარიღი არ არის
             'taken_at' => ['nullable', 'date'],
+            // სქრინშოტების სივრცეში ატვირთვა (ალბომის გარეშეც)
+            'screenshot' => ['nullable', 'boolean'],
         ]);
 
         $personId = isset($data['person_id']) ? (int) $data['person_id'] : null;
         $albumId = isset($data['album_id']) ? (int) $data['album_id'] : null;
 
         // ადამიანის ალბომში ატვირთული ფოტო მისი ადამიანისაა (ინვარიანტი)
+        $album = null;
         if ($albumId !== null) {
-            $personId = $this->openTarget($personId, $albumId)?->person_id ?? $personId;
+            $album = $this->openTarget($personId, $albumId);
+            $personId = $album?->person_id ?? $personId;
         } else {
             $this->openTarget($personId, null);
+        }
+
+        /* სივრცეს ალბომი წყვეტს: სქრინშოტების ალბომში ატვირთული სქრინშოტია, ჩვეულებრივში —
+           ფოტო. ალბომის გარეშე — მოთხოვნის ნიშანი. ⚠️ სქრინშოტი ფოტოა და პიროვნება არ აქვს. */
+        $screenshot = $album ? (bool) $album->is_screenshot : $request->boolean('screenshot');
+        abort_if($album && $request->has('screenshot') && $request->boolean('screenshot') !== $screenshot, 422, 'screenshot_album_mismatch');
+        abort_if($screenshot && $kind !== 'photo', 422, 'screenshot_must_be_photo');
+        if ($screenshot) {
+            $personId = null;
         }
 
         $meta = $this->inspector->inspect((string) $file->getRealPath(), $kind);
@@ -121,6 +138,7 @@ class PersonalMediaController extends Controller
             'person_id' => $personId,
             'album_id' => $albumId,
             'kind' => $kind,
+            'is_screenshot' => $screenshot,
             'path' => $path,
             'original_name' => mb_substr((string) $file->getClientOriginalName(), 0, 255) ?: basename($path),
             'mime' => SafeMime::ofUpload($file),
@@ -173,6 +191,9 @@ class PersonalMediaController extends Controller
             'ids.*' => ['integer'],
             'person_id' => ['nullable', 'integer', Rule::exists('persons', 'id')->where('user_id', $userId)->whereNull('trashed_at')],
             'album_id' => ['nullable', 'integer', Rule::exists('personal_albums', 'id')->where('user_id', $userId)->whereNull('trashed_at')],
+            /* სივრცის შეცვლა ალბომის გარეშე: `true` — სქრინშოტებში, `false` — უკან ფოტოებში.
+               ალბომში გადატანისას სივრცეს ალბომი წყვეტს (`PersonalGallery::move()`). */
+            'screenshot' => ['nullable', 'boolean'],
         ]);
 
         $changes = [];
@@ -180,6 +201,9 @@ class PersonalMediaController extends Controller
             if ($request->exists($key)) {
                 $changes[$key] = $data[$key] === null ? null : (int) $data[$key];
             }
+        }
+        if ($request->has('screenshot')) {
+            $changes['screenshot'] = $request->boolean('screenshot');
         }
 
         abort_if($changes === [], 422, 'nothing_to_move');
@@ -321,6 +345,9 @@ class PersonalMediaController extends Controller
             ->when(! empty($data['no_album']), fn ($q) => $q->whereNull('album_id'))
             ->when(isset($data['kind']), fn ($q) => $q->where('kind', $data['kind']))
             ->when(! empty($data['favorite']), fn ($q) => $q->where('is_favorite', true))
+            // სქრინშოტი ნაგულისხმევად არსად ერევა; ალბომის სიაზე სივრცეს ალბომი წყვეტს
+            ->when(! isset($data['album_id']) && ! isset($data['screenshots']), fn ($q) => $q->where('is_screenshot', false))
+            ->when(($data['screenshots'] ?? null) === 'only', fn ($q) => $q->where('is_screenshot', true))
             ->when(isset($data['q']) && trim((string) $data['q']) !== '', function ($q) use ($data) {
                 $like = Like::contains(trim((string) $data['q']));
 

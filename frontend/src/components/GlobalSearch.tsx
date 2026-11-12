@@ -116,7 +116,7 @@ export function GlobalSearch() {
   const labelOf = (group: SearchGroup) => {
     /* პირადი გალერეის სამი ჯგუფი ერთი მოდულისაა: მოდულის სახელი სამივეს
        ერთნაირად დაარქმევდა, ამიტომ თითოს თავისი სახელი აქვს */
-    if (['cast', 'playlist', 'gallery', 'personal', 'personal_album', 'personal_media'].includes(group.key)) {
+    if (['cast', 'playlist', 'gallery', 'personal', 'personal_album', 'personal_media', 'personal_screenshot'].includes(group.key)) {
       return t(`search.group.${group.key}`)
     }
     const found = modules.find((m) => m.key === group.module)

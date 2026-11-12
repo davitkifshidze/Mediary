@@ -72,12 +72,12 @@ export function PersonalAlbumPage() {
   })
 
   const album = albumQ.data
-  const backTo = album?.person ? `/personal/people/${album.person.id}?tab=albums` : '/personal/albums'
+  const backTo = album?.is_screenshot ? '/personal/screenshots' : album?.person ? `/personal/people/${album.person.id}?tab=albums` : '/personal/albums'
 
   const back = (
     <Link to={backTo} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
       <ArrowLeft className="size-4" />
-      {album?.person ? album.person.name : t('personal.cut.albums')}
+      {album?.is_screenshot ? t('personal.cut.screenshots') : album?.person ? album.person.name : t('personal.cut.albums')}
     </Link>
   )
 
@@ -126,14 +126,14 @@ export function PersonalAlbumPage() {
               {t('confirm.delete')}
             </Button>
             {/* გარე ალბომი მთლიანად ებმება პიროვნებას — ალბომი მის ალბომებში ჩნდება */}
-            {!album.person && (
+            {!album.person && !album.is_screenshot && (
               <Button variant="outline" onClick={() => setAttaching(true)}>
                 <UserRoundPlus className="size-4" />
                 {t('personal.attach.open')}
               </Button>
             )}
             {/* ჩანართის საკუთარი ღილაკი: „ატვირთვა" · „ფოტოს ატვირთვა" · „ვიდეოს ატვირთვა" */}
-            <PersonalUploadButton only={kind} onClick={() => uploader.current?.open()} />
+            <PersonalUploadButton only={album.is_screenshot ? 'photo' : kind} onClick={() => uploader.current?.open()} />
           </>
         }
       />
@@ -160,7 +160,9 @@ export function PersonalAlbumPage() {
       )}
 
       {/* გაყოფა და ბადე — მთლიანად გადათრევის სამიზნე (ფაილი ამ ალბომში ჩავარდება) */}
-      <PersonalUploader ref={uploader} albumId={album.id} personId={album.person_id} only={kind}>
+      <PersonalUploader ref={uploader} albumId={album.id} personId={album.person_id} only={album.is_screenshot ? 'photo' : kind}>
+      {/* სქრინშოტების ალბომში მხოლოდ ფოტოა — სახეობის ზოლი ზედმეტია */}
+      {!album.is_screenshot && (
       <div className="mb-4" data-testid="album-kinds">
         <CutTabs
           layout="inline"
@@ -179,8 +181,10 @@ export function PersonalAlbumPage() {
           }}
         />
       </div>
+      )}
 
       <PersonalMediaGrid
+        space={album.is_screenshot ? 'screenshots' : 'media'}
         filters={{ album_id: album.id, sort: 'manual', kind }}
         primary={{ id: album.cover_media_id, set: (mediaId) => setCover.mutate(mediaId) }}
         emptyText={t('personal.album.empty')}

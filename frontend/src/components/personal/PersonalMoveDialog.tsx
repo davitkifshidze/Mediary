@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/feedback'
 import { FormField, FormSection } from '@/components/ui/form-layout'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
-import { SelectItem } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 /* ============================================================
    **გადატანა ადამიანში და/ან ალბომში** — მრავალმონიშვნით.
@@ -24,17 +24,28 @@ import { SelectItem } from '@/components/ui/select'
 
    ⚠️ **ჩაკეტილი და დაუხსნელი სამიზნე გათიშულია** — სერვერი მას 423-ით
    უარყოფს: ფოტო მომხმარებლის თვალწინ „გაქრებოდა". ჯერ გახსნა.
+
+   ⚠️ **სივრცე („ფოტო & ვიდეო" / „სქრინშოტები") ცალკე არჩევანია**: სქრინშოტს
+   პიროვნება არ აქვს და მხოლოდ სქრინშოტების ალბომში დევს, ამიტომ სივრცის შეცვლაზე
+   ალბომების სია იცვლება და პიროვნების ველი ქრება. ალბომში გადატანისას სივრცეს
+   სერვერზე ალბომი წყვეტს; ვიდეო სქრინშოტი ვერ გახდება (გამოიტოვება).
    ============================================================ */
+
+/** სად ცხოვრობს ფოტო: ფოტო & ვიდეო, თუ სქრინშოტების ცალკე სივრცე */
+export type PersonalSpace = 'media' | 'screenshots'
 
 const KEEP = 'keep'
 const NONE = 'none'
 
 export function PersonalMoveDialog({
   ids,
+  space = 'media',
   onClose,
   onMoved,
 }: {
   ids: number[]
+  /** რომელი სივრციდან გაიხსნა ფანჯარა */
+  space?: PersonalSpace
   onClose: () => void
   onMoved?: () => void
 }) {
@@ -42,18 +53,34 @@ export function PersonalMoveDialog({
   const qc = useQueryClient()
   const { toast } = useToast()
 
+  /** სამიზნე სივრცე; `KEEP` — სადაც არის */
+  const [target, setTarget] = useState<PersonalSpace | typeof KEEP>(KEEP)
+  const into: PersonalSpace = target === KEEP ? space : target
+  const shots = into === 'screenshots'
+
   const peopleQ = useQuery({ queryKey: [PERSONAL_KEY, 'people'], queryFn: fetchPeople })
-  const albumsQ = useQuery({ queryKey: [PERSONAL_KEY, 'albums', {}], queryFn: () => fetchPersonalAlbums() })
+  const albumsQ = useQuery({
+    queryKey: [PERSONAL_KEY, 'albums', shots ? { screenshots: true } : {}],
+    queryFn: () => fetchPersonalAlbums(shots ? { screenshots: true } : {}),
+  })
 
   const [person, setPerson] = useState(KEEP)
   const [album, setAlbum] = useState(KEEP)
+
+  /** სივრცის შეცვლა წინა სივრცის არჩევანს აუქმებს — მისი ალბომები იქ არ არსებობს */
+  const changeSpace = (next: string) => {
+    setTarget(next as PersonalSpace | typeof KEEP)
+    setPerson(KEEP)
+    setAlbum(KEEP)
+  }
 
   const value = (choice: string) => (choice === NONE ? null : Number(choice))
 
   const move = useMutation({
     mutationFn: () =>
       movePersonalMedia(ids, {
-        ...(person === KEEP ? {} : { person_id: value(person) }),
+        ...(target === KEEP ? {} : { screenshot: shots }),
+        ...(person === KEEP || shots ? {} : { person_id: value(person) }),
         ...(album === KEEP ? {} : { album_id: value(album) }),
       }),
     onSuccess: (moved) => {
@@ -70,6 +97,21 @@ export function PersonalMoveDialog({
   return (
     <ModalShell title={t('personal.move.title', { count: ids.length })} onClose={onClose} hint={t('personal.move.hint')}>
       <FormSection>
+        <FormField label={t('personal.move.space')} hint={t('personal.move.spaceHint')}>
+          <Select value={target} onValueChange={changeSpace}>
+            <SelectTrigger data-testid="move-space">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={KEEP}>{t('personal.move.keep')}</SelectItem>
+              {space !== 'media' && <SelectItem value="media">{t('personal.move.toMedia')}</SelectItem>}
+              {space !== 'screenshots' && <SelectItem value="screenshots">{t('personal.move.toScreenshots')}</SelectItem>}
+            </SelectContent>
+          </Select>
+        </FormField>
+
+        {/* სქრინშოტს პიროვნება არ აქვს */}
+        {!shots && (
         <FormField label={t('personal.move.person')}>
           <SelectWithAdd
             value={person}
@@ -86,13 +128,14 @@ export function PersonalMoveDialog({
             ))}
           </SelectWithAdd>
         </FormField>
+        )}
 
         <FormField label={t('personal.move.album')}>
           <SelectWithAdd
             value={album}
             onValueChange={setAlbum}
             addLabel={t('personal.album.add')}
-            dialog={addAlbum(person === NONE || person === KEEP ? null : Number(person))}
+            dialog={addAlbum(person === NONE || person === KEEP || shots ? null : Number(person), shots)}
           >
             <SelectItem value={KEEP}>{t('personal.move.keep')}</SelectItem>
             <SelectItem value={NONE}>{t('personal.move.noAlbum')}</SelectItem>
@@ -115,7 +158,7 @@ export function PersonalMoveDialog({
           <X className="size-4" />
           {t('actions.cancel')}
         </Button>
-        <Button disabled={(person === KEEP && album === KEEP) || move.isPending} onClick={() => move.mutate()}>
+        <Button disabled={(target === KEEP && person === KEEP && album === KEEP) || move.isPending} onClick={() => move.mutate()}>
           <MoveRight className="size-4" />
           {t('gallery.move')}
         </Button>

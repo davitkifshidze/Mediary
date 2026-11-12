@@ -308,6 +308,7 @@ function AppShell() {
               ადამიანისა და ალბომის გვერდი — `:id`. */}
           {has('personal') && <Route path="personal/people" element={<PersonalPage cut="people" />} />}
           {has('personal') && <Route path="personal/albums" element={<PersonalPage cut="albums" />} />}
+          {has('personal') && <Route path="personal/screenshots" element={<PersonalPage cut="screenshots" />} />}
           {has('personal') && <Route path="personal/media" element={<PersonalPage cut="media" />} />}
           {has('personal') && <Route path="personal/people/:id" element={<PersonalPersonPage />} />}
           {has('personal') && <Route path="personal/albums/:id" element={<PersonalAlbumPage />} />}

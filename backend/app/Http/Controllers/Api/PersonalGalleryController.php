@@ -33,16 +33,20 @@ class PersonalGalleryController extends Controller
     /** მთვლელები ქვე-ნავიგაციისთვის და ადგილი (`StorageBar`) */
     public function summary(Request $request)
     {
-        $media = PersonalMedia::query();
+        // ⚠️ სქრინშოტი ცალკე სივრცეა: ფოტოს, რჩეულისა და დაუჯგუფებლის რიცხვში არ ერევა
+        $all = PersonalMedia::query();
+        $media = PersonalMedia::query()->where('is_screenshot', false);
 
         return response()->json([
             'people' => Person::query()->count(),
-            'albums' => PersonalAlbum::query()->count(),
+            'albums' => PersonalAlbum::query()->where('is_screenshot', false)->count(),
             'photos' => (clone $media)->where('kind', 'photo')->count(),
             'videos' => (clone $media)->where('kind', 'video')->count(),
             'favorites' => (clone $media)->where('is_favorite', true)->count(),
             'ungrouped' => (clone $media)->whereNull('person_id')->whereNull('album_id')->count(),
-            'bytes' => (int) (clone $media)->sum('size') + (int) (clone $media)->sum('thumb_size'),
+            'screenshots' => (clone $all)->where('is_screenshot', true)->count(),
+            // ადგილს ყველაფერი იკავებს — სქრინშოტიც
+            'bytes' => (int) (clone $all)->sum('size') + (int) (clone $all)->sum('thumb_size'),
             'storage' => $this->meter->usage($request->user()),
         ]);
     }
@@ -68,7 +72,9 @@ class PersonalGalleryController extends Controller
             'person_id' => ['nullable', 'integer'],
         ]);
 
+        // ჯგუფები — მხოლოდ ფოტო/ვიდეოს სივრცე: სქრინშოტი არც პიროვნებით ჯგუფდება, არც ჩვეულებრივი ალბომით
         $base = PersonalMedia::query()
+            ->where('is_screenshot', false)
             ->when(isset($data['person_id']), fn ($q) => $q->where('person_id', (int) $data['person_id']))
             ->when(isset($data['kind']), fn ($q) => $q->where('kind', $data['kind']))
             ->when(! empty($data['favorite']), fn ($q) => $q->where('is_favorite', true));
@@ -112,7 +118,7 @@ class PersonalGalleryController extends Controller
             ->get()
             ->groupBy(fn ($row) => (string) $row->album_id);
 
-        $albums = PersonalAlbum::query()->with('person:id,name')->orderBy('sort_order')->orderBy('name')->get();
+        $albums = PersonalAlbum::query()->where('is_screenshot', false)->with('person:id,name')->orderBy('sort_order')->orderBy('name')->get();
         $keys = [...$albums->modelKeys(), null];
         $previews = $this->gallery->previews($base, 'album_id', $keys);
 
