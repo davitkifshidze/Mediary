@@ -12,11 +12,10 @@ import type { VideoDownloadState } from '@/api/videos'
    probe**, რომელსაც ბუკმარკი იყენებს; ტიპიც იქიდან მოდის, რომ ორი
    იდენტური აღწერა არ დაიბადოს.
 
-   ⚠️ სტატუსი **enum-ია** და არა per-user ლექსიკონი: „მივატოვე" მეოთხე
-   ფაქტია და `StatusDomain`-ის სამ როლს (`todo`/`doing`/`done`) არ უდრის.
+   ⚠️ სტატუსი **enum-ია** და არა per-user ლექსიკონი: გასავლელი · გავდივარ · გავლილი.
    ============================================================ */
 
-export const COURSE_STATUSES = ['to_take', 'taking', 'done', 'dropped'] as const
+export const COURSE_STATUSES = ['to_take', 'taking', 'done'] as const
 
 export type CourseStatus = (typeof COURSE_STATUSES)[number]
 

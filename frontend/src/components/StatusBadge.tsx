@@ -78,7 +78,7 @@ export function StatusLabel({ status, className }: { status: Status; className?:
 export const ENUM_STATUS_ICON = {
   book: { to_read: Clock, reading: BookOpen, read: BookOpenCheck, abandoned: Ban },
   game: { to_play: Clock, playing: Gamepad2, finished: CheckCircle2 },
-  course: { to_take: Clock, taking: PlayCircle, done: CheckCircle2, dropped: Ban },
+  course: { to_take: Clock, taking: PlayCircle, done: CheckCircle2 },
   place: { to_visit: MapPin, visited: CheckCircle2 },
 } as const satisfies Record<EnumStatusDomain, Record<string, LucideIcon>>
 

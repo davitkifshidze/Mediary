@@ -4299,8 +4299,7 @@
     "statuses": {
       "to_take": "გასავლელი",
       "taking": "გავდივარ",
-      "done": "გავიარე",
-      "dropped": "მივატოვე"
+      "done": "გავიარე"
     },
     "sort_newest": "ახლები",
     "sort_oldest": "ძველები",

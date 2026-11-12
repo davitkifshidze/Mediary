@@ -104,7 +104,12 @@ describe('enumStatusTone', () => {
 
   it('„მიტოვებული" წითელია და არა ნაცრისფერი', () => {
     expect(enumStatusTone('book', 'abandoned')).toBe('dropped')
-    expect(enumStatusTone('course', 'dropped')).toBe('dropped')
+  })
+
+  /** კურსს „მივატოვე" აღარ აქვს — სამია და არცერთი წითელი */
+  it('კურსის სტატუსი სამია: გასავლელი · გავდივარ · გავლილი', () => {
+    expect(Object.keys(ENUM_STATUS_ROLE.course)).toEqual(['to_take', 'taking', 'done'])
+    expect(Object.values(ENUM_STATUS_ROLE.course)).not.toContain('dropped')
   })
 
   /** ⚠️ ტონი ფერის გარეშე ეკრანზე ჩუმად ნაცრისფერი იქნებოდა — ზუსტად ის, რასაც ეს ასწორებს */

@@ -39,8 +39,15 @@ class Course extends Model
     /** კალათა: `destroy()` `moveToTrash()`-ს იძახის */
     use HasTrash;
 
-    /** ⚠️ ოთხი და არა სამი: „მივატოვე" ცალკე ფაქტია და არა „დასრულებული" */
-    public const STATUSES = ['to_take', 'taking', 'done', 'dropped'];
+    /** გასავლელი · გავდივარ · გავლილი */
+    public const STATUSES = ['to_take', 'taking', 'done'];
+
+    /**
+     * **მოხსნილი სტატუსი → რით იცვლება.** „მივატოვე" (`dropped`) აღარ არსებობს;
+     * ძველი ექსპორტის ფაილში ის ჯერ კიდევ წერია და იმპორტი მას ასე კითხულობს
+     * (`MediaryWriter`) — სხვაგვარად კურსი ნაგულისხმევი სტატუსით შემოვიდოდა უხმოდ.
+     */
+    public const RETIRED_STATUSES = ['dropped' => 'to_take'];
 
     /** ფაილის სახეები — ⚠️ სერტიფიკატი (`certificate`) მოხსნილია */
     public const FILE_KINDS = ['image', 'doc'];

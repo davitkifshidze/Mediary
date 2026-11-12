@@ -195,7 +195,7 @@ export type EnumStatusRole = StatusRole | 'dropped'
 export const ENUM_STATUS_ROLE = {
   book: { to_read: 'todo', reading: 'doing', read: 'done', abandoned: 'dropped' },
   game: { to_play: 'todo', playing: 'doing', finished: 'done' },
-  course: { to_take: 'todo', taking: 'doing', done: 'done', dropped: 'dropped' },
+  course: { to_take: 'todo', taking: 'doing', done: 'done' },
   place: { to_visit: 'todo', visited: 'done' },
 } as const satisfies {
   book: Record<BookStatus, EnumStatusRole>

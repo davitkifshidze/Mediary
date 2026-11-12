@@ -99,9 +99,11 @@ class MediaryWriter
         // enum-სტატუსი (წიგნი, თამაში, კურსი, ადგილი) — მხოლოდ ცნობადი მნიშვნელობა
         if (! StatusDomain::usesDictionary($module) && isset($columns['status']) && is_string($record['status'] ?? null)) {
             $allowed = defined($class.'::STATUSES') ? $class::STATUSES : [];
+            // ძველი ფაილის მოხსნილი სტატუსი (კურსის `dropped`) — მისი შემცვლელით
+            $status = defined($class.'::RETIRED_STATUSES') ? ($class::RETIRED_STATUSES[$record['status']] ?? $record['status']) : $record['status'];
 
-            if ($allowed === [] || in_array($record['status'], $allowed, true)) {
-                $attrs['status'] = $record['status'];
+            if ($allowed === [] || in_array($status, $allowed, true)) {
+                $attrs['status'] = $status;
             }
         }
 

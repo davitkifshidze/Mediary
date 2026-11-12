@@ -10,6 +10,7 @@ use App\Services\Storage\StorageMeter;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -124,6 +125,63 @@ class CourseModuleTest extends TestCase
         $this->patchJson("/api/courses/{$id}/status", ['status' => 'taking'])
             ->assertOk()
             ->assertJsonPath('data.finished_at', null);
+    }
+
+    /**
+     * **„მივატოვე" (`dropped`) აღარ არის სტატუსი** — სამია: გასავლელი · გავდივარ · გავლილი.
+     * ⚠️ სვეტი `string`-ია, ე.ი. ძველი მნიშვნელობა ბაზაში დარჩებოდა და ფილტრის ვერც ერთ
+     * ჭრილში ვერ მოხვდებოდა; მიგრაცია მას „გასავლელში" აბრუნებს, იმპორტი კი ძველ ფაილში
+     * იმავე წესით კითხულობს.
+     */
+    public function test_the_dropped_status_is_gone_and_leftovers_become_to_take(): void
+    {
+        $this->assertSame(['to_take', 'taking', 'done'], Course::STATUSES);
+
+        $this->postJson('/api/courses', $this->payload(['status' => 'dropped']))
+            ->assertStatus(422)->assertJsonValidationErrors('status');
+
+        $id = $this->postJson('/api/courses', $this->payload(['status' => 'taking']))->assertStatus(201)->json('data.id');
+        $this->patchJson("/api/courses/{$id}/status", ['status' => 'dropped'])->assertStatus(422);
+
+        // სხვა ანგარიშზე დარჩენილი ძველი მნიშვნელობა — მიგრაცია „გასავლელში" აბრუნებს
+        $started = Course::findOrFail($id)->started_at;
+        DB::table('courses')->where('id', $id)->update(['status' => 'dropped']);
+        $other = $this->postJson('/api/courses', $this->payload(['title' => 'Done one', 'status' => 'done']))->json('data.id');
+
+        (require database_path('migrations/2026_11_12_000014_retire_dropped_course_status.php'))->up();
+
+        $course = Course::findOrFail($id);
+        $this->assertSame('to_take', $course->status);
+        $this->assertNull($course->finished_at);
+        // კურსი ერთხელ მართლა დაიწყო — ეს თარიღი რჩება
+        $this->assertEquals($started, $course->started_at);
+        // სხვა სტატუსს მიგრაცია არ ეხება
+        $this->assertSame('done', Course::findOrFail($other)->status);
+        $this->assertNotNull(Course::findOrFail($other)->finished_at);
+    }
+
+    public function test_an_old_export_with_the_dropped_status_imports_as_to_take(): void
+    {
+        $json = json_encode([
+            'app' => 'mediary', 'module' => 'course', 'version' => 1,
+            'records' => [
+                ['id' => 1, 'title' => 'Abandoned once', 'category' => 'Programming', 'status' => 'dropped', 'tags' => []],
+                ['id' => 2, 'title' => 'Finished', 'category' => 'Programming', 'status' => 'done', 'tags' => []],
+            ],
+        ]);
+        $path = tempnam(sys_get_temp_dir(), 'mediary-test-');
+        file_put_contents($path, $json);
+
+        $plan = $this->post('/api/import/plan', ['file' => new UploadedFile($path, 'mediary-course-2026-10-01.json', null, null, true)])
+            ->assertOk()->json();
+
+        foreach ([0, 1] as $index) {
+            $this->postJson('/api/import/item', ['token' => $plan['token'], 'module' => 'course', 'index' => $index])
+                ->assertOk()->assertJsonPath('ok', true);
+        }
+
+        $this->assertSame('to_take', Course::where('title', 'Abandoned once')->firstOrFail()->status);
+        $this->assertSame('done', Course::where('title', 'Finished')->firstOrFail()->status);
     }
 
     /**

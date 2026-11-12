@@ -4299,8 +4299,7 @@
     "statuses": {
       "to_take": "To take",
       "taking": "Taking",
-      "done": "Done",
-      "dropped": "Dropped"
+      "done": "Done"
     },
     "sort_newest": "Newest",
     "sort_oldest": "Oldest",
