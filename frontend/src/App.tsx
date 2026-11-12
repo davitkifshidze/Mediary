@@ -11,6 +11,7 @@ import { DICTIONARIES } from '@/lib/dictionaries'
 import { useAuth } from '@/lib/auth'
 import { useAuditEvents, useVisitTracker } from '@/lib/audit'
 import { PlayerProvider } from '@/lib/player'
+import { RecordShareProvider } from '@/components/share/RecordShare'
 import { ModulesProvider, useModules } from '@/lib/modules'
 import { useNoteReminderWatcher } from '@/lib/noteReminders'
 import { useDutyReminderWatcher } from '@/lib/dutyReminders'
@@ -39,6 +40,7 @@ const StatusBulkPage = lazy(() => import('@/pages/StatusBulkPage').then((m) => (
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 const TransferPage = lazy(() => import('@/pages/TransferPage').then((m) => ({ default: m.TransferPage })))
 const ShareLinksPage = lazy(() => import('@/pages/ShareLinksPage').then((m) => ({ default: m.ShareLinksPage })))
+const GuestRecordPage = lazy(() => import('@/pages/GuestRecordPage').then((m) => ({ default: m.GuestRecordPage })))
 const NotificationsPage = lazy(() => import('@/pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })))
 const MediaSyncPage = lazy(() => import('@/pages/MediaSyncPage').then((m) => ({ default: m.MediaSyncPage })))
 const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default: m.StatsPage })))
@@ -439,6 +441,9 @@ export default function App() {
         <Route path="/u/:username" element={<PublicProfilePage />} />
         {/* გაზიარების ბმული: ნახვა შესვლის გარეშეც, `/u/:username`-ის ყალიბი */}
         <Route path="/share/:token" element={<SharePage />} />
+        {/* სტუმრის შიდა გვერდი — ერთი ჩანაწერი, ორივე გზით; რა ჩანს, მფლობელი წყვეტს */}
+        <Route path="/share/:token/:domain/:id" element={<GuestRecordPage via="link" />} />
+        <Route path="/u/:username/:domain/:id" element={<GuestRecordPage via="profile" />} />
         <Route
           path="/*"
           element={
@@ -446,7 +451,10 @@ export default function App() {
               <ModulesProvider>
                 {/* რიგი მარშრუტებზე მაღლა ცხოვრობს */}
                 <PlayerProvider>
-                  <AppShell />
+                  {/* ერთი ჩანაწერის „გაზიარება" — ყველა მოდულის მენიუ ერთ ფანჯარას ხსნის */}
+                  <RecordShareProvider>
+                    <AppShell />
+                  </RecordShareProvider>
                 </PlayerProvider>
               </ModulesProvider>
             </Protected>

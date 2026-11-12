@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRecordShare } from '@/components/share/RecordShare'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, ExternalLink, Globe, Plus, RefreshCw, SquarePen, Trash2 } from 'lucide-react'
 import {
@@ -67,6 +68,7 @@ export function BookmarkDetail({
   onDelete: () => void
 }) {
   const { t, i18n } = useTranslation()
+  const share = useRecordShare()
   // გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen('bookmark', bookmark.id)
   const lang = useContentLang(i18n.language)
@@ -125,6 +127,7 @@ export function BookmarkDetail({
     favoriteAction(bookmark.is_favorite, () => favorite.mutate(), t),
     { key: 'add-link', label: t('bookmarks.addLink'), icon: Plus, run: () => setLinkEdit('new') },
     { key: 'refresh', label: t('bookmarks.refresh.one'), icon: RefreshCw, run: () => fromLink.mutate(bookmark.id) },
+    share.action({ domain: 'bookmark', id: bookmark.id, title: bookmark.title }),
     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: onEdit },
     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: onDelete },
   ]

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useRecordShare } from '@/components/share/RecordShare'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ExternalLink,
@@ -82,6 +83,7 @@ export function CoursesPage() {
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
+  const share = useRecordShare()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
@@ -309,6 +311,7 @@ export function CoursesPage() {
                       })),
                     },
                     favoriteAction(course.is_favorite, () => favorite.mutate(course.id), t),
+                    share.action({ domain: 'course', id: course.id, title: course.title }),
                     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(course) },
                     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: askDelete },
                   ]

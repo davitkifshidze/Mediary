@@ -23,7 +23,7 @@ Mediary — a personal, bilingual (Georgian/English), multi-user media catalog.
 - Push only when asked; never with `--all`/`--mirror`/`--tags`, and never from a clone made before 2026-09-17 (its history still carries a leaked database dump).
 - Never commit a database dump (`*.sql` and `*.sql.gz` are git-ignored); a library moves between machines through `/backups`.
 - Keep this file under ~25k characters: add a rule only when it is load-bearing and not derivable from the code. The previous exhaustive version (incident notes, per-feature traps) is in git history: `git show 4ddeaa5:CLAUDE.md`.
-- Decided and closed — do not re-propose: the watch-link bot; image scraping; Georgian book lookup through an external source; the reminders' email channel; tags on movie/series/anime; game DLC/HowLongToBeat/Metacritic/language fields; song files, notes and gallery; board-game status; course lecturer/rating/lessons/length; icon-only row actions; the `*` permission wildcard; a share button inside module pages.
+- Decided and closed — do not re-propose: the watch-link bot; image scraping; Georgian book lookup through an external source; the reminders' email channel; tags on movie/series/anime; game DLC/HowLongToBeat/Metacritic/language fields; song files, notes and gallery; board-game status; course lecturer/rating/lessons/length; icon-only row actions; the `*` permission wildcard; a **list** share button inside module pages (sharing one record from its page or card menu is open — `RecordShare`).
 
 ## Run (dev)
 
@@ -76,7 +76,7 @@ Knowledge graph: `python -m graphify query "<question>"` before broad searches, 
 - Long work: `BackgroundProcess` (`start /B`) for downloads and backups; queue batches start their own worker. A Symfony `Process` on Windows must get its environment through `ProcessEnv` (otherwise it loses `SystemRoot` inside a web request).
 - Time: `APP_TIMEZONE=Asia/Tbilisi`; use `App\Support\AppTime`, never `->utc()`.
 - Errors: the machine code travels in `message` (`{"message": "credential_missing"}`) and must be registered in the SPA's `lib/errors.ts` and in both locales (`npm run lint` checks the literal ones).
-- Social: public profiles (`/u/:username`; profile → module → record visibility, all private by default; `note` is never public), matching, chat (access by participation, not ownership), share links (`/share/:token`; the token is stored hashed; the one deliberate exception to record visibility).
+- Social: public profiles (`/u/:username`; profile → module → record visibility, all private by default; `note` is never public), matching, chat (access by participation, not ownership), share links (`/share/:token`; the token is stored hashed; the one deliberate exception to record visibility). A guest opens one record on its own page (`/share/:token/:domain/:id`, `/u/:username/:domain/:id`) built only by `RecordPage` — the narrow card, description and classifier, plus the blocks the owner switched on (gallery · cast · trailer · my rating · status: columns on the link, `module_user.settings.public_blocks` for the profile); a locked photo, a locked or hidden actor and private fields never leave.
 
 ### Frontend
 

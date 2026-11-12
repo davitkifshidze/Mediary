@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useRecordShare } from '@/components/share/RecordShare'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { usePagedList } from '@/lib/paged'
 import { usePageSize } from '@/lib/pageSize'
@@ -82,6 +83,7 @@ export function BoardGamesPage() {
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
+  const share = useRecordShare()
   const navigate = useNavigate()
 
   const [params, setParams] = useSearchParams()
@@ -326,6 +328,7 @@ export function BoardGamesPage() {
                   ? [{ key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: () => window.open(href, '_blank', 'noopener,noreferrer') }]
                   : []),
                 favoriteAction(game.is_favorite, () => favorite.mutate(game.id), t),
+                share.action({ domain: 'board_game', id: game.id, title: game.title }),
                 { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(game) },
                 {
                   key: 'delete',

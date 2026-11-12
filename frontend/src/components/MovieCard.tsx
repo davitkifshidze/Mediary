@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useRecordShare } from '@/components/share/RecordShare'
 import { AlertTriangle, Film, LockOpen, PlayCircle, Star } from 'lucide-react'
 import { PosterImage } from './PosterImage'
 import { RecordActionBar } from '@/components/RecordActionBar'
@@ -48,6 +49,7 @@ function useMovieRecord(movie: MovieListItem, type: MediaType) {
   const nav = useNavigate()
   const loc = useLocation()
   const confirm = useConfirm()
+  const share = useRecordShare()
   const { toast } = useToast()
   const api = mediaApi(type)
   // სტატუსების სია ლექსიკონიდან (ქეში ერთია, ე.ი. ბარათზე დამატებითი მოთხოვნა არაა)
@@ -118,6 +120,7 @@ function useMovieRecord(movie: MovieListItem, type: MediaType) {
     statusActions(t('form.status'), statuses, movie.status, lang, (key) => statusMut.mutate(key)),
     favoriteAction(movie.is_favorite, toggleFavorite, t),
     ...lockMenuActions(!!movie.locked, { relock: () => relockMut.mutate(), manage: () => setLocking(true) }, t),
+    share.action({ domain: type, id: movie.id, title: movieTitle(movie, lang) }),
     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => nav(`${detailBase}/${movie.id}/edit`) },
     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete() },
   ]

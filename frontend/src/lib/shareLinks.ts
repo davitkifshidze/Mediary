@@ -59,6 +59,22 @@ export function shareMeta(domain: ShareDomainKey): ShareDomainMeta {
   return SHARE_DOMAIN_META[domain]
 }
 
+/** მედია — მსახიობები და თრეილერი მხოლოდ მას აქვს (`MediaDomain`) */
+const MEDIA: readonly ShareDomainKey[] = ['movie', 'series', 'anime']
+
+/** ჩანაწერს თავისი გალერეა აქვს — backend-ის `HasGallery` */
+const WITH_GALLERY: readonly ShareDomainKey[] = ['movie', 'series', 'anime', 'game', 'book', 'place', 'bookmark']
+
+/**
+ * სტუმრის შიდა გვერდის ბლოკები, რომლებიც ამ დომენს **საერთოდ აქვს** — `RecordPage::build()`-ის
+ * წესი: გადამრთველი მხოლოდ იქ იხატება, სადაც რამეს ცვლის.
+ */
+export function shareBlocks(domain: ShareDomainKey): { gallery: boolean; cast: boolean; trailer: boolean } {
+  const media = MEDIA.includes(domain)
+
+  return { gallery: WITH_GALLERY.includes(domain), cast: media, trailer: media }
+}
+
 /**
  * **რომელი ფარგალი არსებობს ამ დომენზე** — `ShareDomain::modes()`-ის სარკე.
  * ⚠️ სხვა რეჟიმს სერვერი `share_scope_unsupported`-ით (422) აბრუნებს.

@@ -3,6 +3,7 @@ import { SelectWithAdd } from '@/components/ui/inline-add'
 import { useDictionaryAdd, useStatusAdd } from '@/lib/dictionaries'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useRecordShare } from '@/components/share/RecordShare'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { usePagedList } from '@/lib/paged'
 import { usePageSize } from '@/lib/pageSize'
@@ -127,6 +128,7 @@ export function BookmarksPage() {
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
+  const share = useRecordShare()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი სტრიქონები
@@ -489,6 +491,7 @@ export function BookmarksPage() {
                 { key: 'add-link', label: t('bookmarks.addLink'), icon: Plus, run: () => setLinkFor(bookmark) },
                 { key: 'gallery', label: t('bookmarks.galleryTitle'), icon: Images, run: () => openDetail(bookmark, 'gallery') },
                 { key: 'refresh', label: t('bookmarks.refresh.one'), icon: RefreshCw, run: () => fromLink.mutate(bookmark.id) },
+                share.action({ domain: 'bookmark', id: bookmark.id, title: bookmark.title }),
                 { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(bookmark) },
                 { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete(bookmark) },
               ]

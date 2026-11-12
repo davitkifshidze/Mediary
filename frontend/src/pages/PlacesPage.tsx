@@ -3,6 +3,7 @@ import { SelectWithAdd } from '@/components/ui/inline-add'
 import { useDictionaryAdd } from '@/lib/dictionaries'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useRecordShare } from '@/components/share/RecordShare'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   FileText,
@@ -134,6 +135,7 @@ export function PlacesPage() {
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
+  const share = useRecordShare()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   // ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
@@ -364,6 +366,7 @@ export function PlacesPage() {
                       })),
                     },
                     favoriteAction(place.is_favorite, () => favorite.mutate(place.id), t),
+                    share.action({ domain: 'place', id: place.id, title: place.name }),
                     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(place) },
                     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: askDelete },
                   ]

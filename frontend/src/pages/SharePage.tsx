@@ -15,6 +15,7 @@ import {
   UserPlus,
   FilterX,
 } from 'lucide-react'
+import { guestRecordPath } from '@/api/guestRecord'
 import {
   fetchPublicShare,
   fetchPublicShareItems,
@@ -383,6 +384,7 @@ export function SharePage() {
                       card={card}
                       lang={lang}
                       aspect={shape.aspect}
+                      to={guestRecordPath({ kind: 'link', token }, card.domain, card.id)}
                       selectable={canAdd && !card.in_library}
                       selected={library.selected.has(card.id)}
                       onToggle={() => library.toggle(card.id)}
@@ -413,6 +415,9 @@ export function SharePage() {
  * ერთი ბარათი — კადრი, სათაური, ქვესათაური, წელი, ჟანრები, სტატუსი, „უკვე გაქვს",
  * მონიშვნა და (ვიდეოს, სიმღერის, ბუკმარკისა და კურსის) წყაროს ბმული.
  *
+ * ⚠️ კადრი და სათაური ჩანაწერის **შიდა გვერდს** ხსნის (`to`); მონიშვნა და „უკვე გაქვს"
+ * ბმულის გარეთ დგას — ბმულში ღილაკი არასწორი HTML-ია.
+ *
  * ⚠️ **სტატუსი ორი ფორმითაა**: ლექსიკონიან სექციაზე ობიექტი (სახელი
  * მფლობელის ლექსიკონიდან), enum-იანზე (თამაში, წიგნი, ადგილი, კურსი) —
  * გასაღები, რომელიც i18n-ით ითარგმნება.
@@ -421,6 +426,7 @@ function ShareCardTile({
   card,
   lang,
   aspect,
+  to,
   selectable,
   selected,
   onToggle,
@@ -428,6 +434,8 @@ function ShareCardTile({
   card: ShareCard
   lang: 'ka' | 'en'
   aspect: string
+  /** ჩანაწერის შიდა გვერდი */
+  to: string
   selectable: boolean
   selected: boolean
   onToggle: () => void
@@ -453,19 +461,21 @@ function ShareCardTile({
           selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
         )}
       >
-        {image ? (
-          <img src={image} alt="" loading="lazy" className="size-full object-cover" />
-        ) : (
-          <div className="grid size-full place-items-center text-xs text-muted-foreground">—</div>
-        )}
+        <Link to={to} aria-label={title} className="block size-full" data-testid="share-card-open">
+          {image ? (
+            <img src={image} alt="" loading="lazy" className="size-full object-cover" />
+          ) : (
+            <span className="grid size-full place-items-center text-xs text-muted-foreground">—</span>
+          )}
+        </Link>
         <InLibraryMark mine={card.in_library} />
         {selectable && <SelectBox title={title} selected={selected} onToggle={onToggle} />}
       </div>
       <div className="mt-2 min-w-0 space-y-1">
         <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
-          <span className="truncate" title={title}>
+          <Link to={to} className="truncate hover:text-primary" title={title}>
             {title}
-          </span>
+          </Link>
           {card.url && (
             <a
               href={card.url}

@@ -187,6 +187,10 @@ describe('ShareLinkDialog', () => {
       show_status: true,
       // ფილმსაც აქვს „ჩემი ქულა" (`my_rating`), ე.ი. გადამრთველი ფილმზეც იგზავნება
       show_rating: true,
+      // შიდა გვერდის ბლოკები ახალ ბმულზე დახურულია
+      show_gallery: false,
+      show_cast: false,
+      show_trailer: false,
       expires_days: 30,
     })
     // შედეგის ეკრანი: ბმული და კოპირება
@@ -261,6 +265,8 @@ describe('ShareLinkDialog', () => {
       name: null,
       show_status: true,
       show_rating: true,
+      // წიგნს გალერეა აქვს, მსახიობები და თრეილერი — არა
+      show_gallery: false,
       expires_days: 30,
     })
   })
@@ -279,6 +285,9 @@ describe('ShareLinkDialog', () => {
       unavailable: ['course'],
       show_status: true,
       show_rating: false,
+      show_gallery: true,
+      show_cast: false,
+      show_trailer: false,
       expires_at: null,
       revoked_at: null,
       state: 'active',
@@ -305,6 +314,10 @@ describe('ShareLinkDialog', () => {
       show_status: true,
       // ფიქსტურაში გადამრთველი გამორთულია — ფილმზეც ისე ინახება, როგორც იყო
       show_rating: false,
+      // ბლოკებიც ბმულის შენახული მნიშვნელობით იხსნება
+      show_gallery: true,
+      show_cast: false,
+      show_trailer: false,
     })
   })
 

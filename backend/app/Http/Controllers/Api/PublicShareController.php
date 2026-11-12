@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Modules\FieldSettings;
 use App\Services\Profile\PublicProfileService;
+use App\Services\Share\RecordPage;
 use App\Services\Share\ShareImporter;
 use App\Services\Share\ShareMatcher;
 use App\Services\Share\ShareResolver;
@@ -40,7 +41,9 @@ use Illuminate\Support\Facades\DB;
  * ⚠️ **ბარათი ყოველთვის ვიწროა** — `PublicDomain::card()` + ჟანრები, და
  * არასდროს `MovieResource`: სრული რესურსი პირად ველებს გაატარებდა, ხვალ
  * დამატებული ველი კი ჩუმად გაჟონავდა. ჩანიშვნები, საკუთარი ველები,
- * ფაილები, გალერეა, ყურების ჟურნალი და მსახიობების შენეული რიგი აქ არ გადის.
+ * ფაილები, ყურების ჟურნალი და მსახიობების შენეული რიგი აქ არ გადის. გალერეა,
+ * მსახიობები და თრეილერი მხოლოდ ჩანაწერის შიდა გვერდზე ჩანს (`record()`) და
+ * მხოლოდ მაშინ, როცა მფლობელმა ის ბლოკი ბმულზე ჩართო (`RecordPage`).
  */
 class PublicShareController extends Controller
 {
@@ -225,6 +228,48 @@ class PublicShareController extends Controller
                 'total' => $songs->total(),
             ],
         ]);
+    }
+
+    /**
+     * **ბმულში მყოფი ერთი ჩანაწერის შიდა გვერდი.**
+     *
+     * ⚠️ ჩანაწერი **ბმულის ფარგლის query-ში** იძებნება და არა id-ით ცხრილში: იგივე
+     * ბმული სხვა ჩანაწერის id-ით **404**-ია (`share_record_not_found`) — კლიენტს
+     * ვენდობით იმაში, *რას* ითხოვს, და არა იმაში, *რა არის* ბმულში. ჩაკეტილი
+     * ჩანაწერი ფარგალში საერთოდ არ ხვდება (`withoutLocked()`).
+     * ⚠️ სია (პლეილისტი) აქ არ იხსნება — მას თავისი გვერდი აქვს (`playlist()`).
+     */
+    public function record(Request $request, string $token, string $domain, int $id): JsonResponse
+    {
+        [$link, $owner] = ShareResolver::resolve($token);
+
+        $domains = ShareScope::liveDomains($link, $owner);
+        if (! isset($domains[$domain]) || ! RecordPage::supports($domain)) {
+            ShareResolver::deny('share_not_found', 404);
+        }
+
+        $record = ShareDomain::withClassifier(ShareScope::query($owner, $domain, $domains[$domain]), $domain)
+            ->whereKey($id)
+            ->first();
+
+        if (! $record) {
+            ShareResolver::deny('share_record_not_found', 404);
+        }
+
+        $viewer = $request->user();
+        $own = $viewer !== null && (int) $viewer->id === (int) $owner->id;
+        // გაზიარების ბმულიდან გახსნა ჟურნალში `share`-ით; მფლობელი არ ითვლება
+        $this->audit->openFromPublic($record, $request, $owner, AuditLogger::OPEN_SHARE);
+
+        $hidden = $this->fields->hiddenOnPublic($owner, ShareDomain::module($domain));
+        $page = RecordPage::build($owner, $domain, $record, RecordPage::linkBlocks($link), $hidden);
+
+        // „უკვე გაქვს" — სიის ბარათის იგივე წესი (`ShareMatcher`)
+        if ($viewer !== null && ! $own) {
+            $page['record']['in_library'] = ShareMatcher::matches($viewer, $domain, $record->newCollection([$record]))[(int) $record->getKey()] ?? null;
+        }
+
+        return response()->json($page);
     }
 
     /* ---------- დამხმარეები ---------- */

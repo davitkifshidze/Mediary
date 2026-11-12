@@ -168,7 +168,7 @@ Route::middleware('throttle:login')->group(function () {
 });
 
 /* ---------- საჯარო პროფილი — ავტორიზაციის გარეშე ----------
-   ⚠️ **ეს თერთმეტი endpoint-ია `auth:sanctum`-ის გარეთ არსებული დომენური
+   ⚠️ **ეს თორმეტი endpoint-ია `auth:sanctum`-ის გარეთ არსებული დომენური
    ზედაპირი**; მის გარეთ ღიაა კიდევ ხუთი — `/health`, `register`, `login`
    და პაროლის აღდგენის წყვილი (`GET|POST /auth/reset/{token}`, ორივე
    `throttle:login`-ის უკან). ეს ყველაზე სენსიტიური სიაა პროექტში —
@@ -185,8 +185,9 @@ Route::middleware('throttle:login')->group(function () {
      9. `GET  /public/profiles/{username}/personal-media/{media}/{file|thumb}` — მისი ფაილი/ესკიზი
     10. `POST /public/profiles/{username}/albums/{album}/unlock`     — **ერთადერთი write**
     11. `GET  /public/profiles/{username}/{domain}`                  — დომენის ბარათები
+    12. `GET  /public/profiles/{username}/{domain}/{id}`             — ერთი ჩანაწერის შიდა გვერდი
 
-   ⚠️ **ათი read-only-ია, მეთერთმეტე — არა** (კომენტარი ადრე „ორივე
+   ⚠️ **თერთმეტი read-only-ია, `unlockAlbum` — არა** (კომენტარი ადრე „ორივე
    read-only-ია"-ს ამბობდა, რაც ორმაგად მცდარი იყო). `unlockAlbum` პაროლს
    ამოწმებს და **სერვერის სესიას ცვლის**; მისი ორი დამცავია
    `throttle:album-unlock` (ანონიმზე გასაღები IP + ალბომი) და ცხადი შემოწმება,
@@ -194,8 +195,8 @@ Route::middleware('throttle:login')->group(function () {
    პირადი ალბომის პაროლის გამოცნობის კარი იქნებოდა. სესიის გარეშე პაროლი
    საერთოდ არ იცდება (409 `session_required`).
 
-   თერთმეტივე სამ ფენას ერთდროულად ითხოვს (პროფილი → მოდული → ჩანაწერი), ყველა
-   default-ით `private`, და თერთმეტივე `PublicProfileService::resolve()`-ზე გადის —
+   თორმეტივე სამ ფენას ერთდროულად ითხოვს (პროფილი → მოდული → ჩანაწერი), ყველა
+   default-ით `private`, და თორმეტივე `PublicProfileService::resolve()`-ზე გადის —
    ე.ი. მთელი მექანიზმი ერთი ცვლადით ითიშება: `PUBLIC_PROFILES=false`.
    ⚠️ გალერეის სამი endpoint ხილვადობას **ერთ სერვისში** ითვლის
    (`PublicGallery`) — ოთხი გალერეის მარშრუტი ერთსა და იმავე სამ წესს კითხულობს.
@@ -231,14 +232,19 @@ Route::post('/public/profiles/{username}/albums/{album}/unlock', [PublicProfileC
     ->middleware('throttle:album-unlock');
 
 Route::get('/public/profiles/{username}/{domain}', [PublicProfileController::class, 'items']);
+/* ერთი ჩანაწერის შიდა გვერდი. ⚠️ `playlists/{playlist}`-ისა და `personal-albums/{album}`-ის
+   **ქვემოთ** დგას — თორემ ისინი დომენებად წაიკითხებოდა. მოდელი არ იბმება. */
+Route::get('/public/profiles/{username}/{domain}/{id}', [PublicProfileController::class, 'record'])
+    ->whereNumber('id');
 
 /* ---------- გაზიარების ბმული — ავტორიზაციის გარეშე ----------
-   ⚠️ **კიდევ სამი read-only endpoint `auth:sanctum`-ის გარეთ** (ზედა სიას
-   ემატება — სულ თოთხმეტი დომენური მარშრუტი):
+   ⚠️ **კიდევ ოთხი read-only endpoint `auth:sanctum`-ის გარეთ** (ზედა სიას
+   ემატება — სულ თექვსმეტი დომენური მარშრუტი):
 
-    12. `GET  /public/shares/{token}`                      — ვინ გაგიზიარა, სექციები რაოდენობებით
-    13. `GET  /public/shares/{token}/{domain}`             — სექციის ბარათები (ძებნა, ჟანრი, გვერდები)
-    14. `GET  /public/shares/{token}/playlists/{playlist}` — პლეილისტის სიმღერები რიგით
+    13. `GET  /public/shares/{token}`                      — ვინ გაგიზიარა, სექციები რაოდენობებით
+    14. `GET  /public/shares/{token}/{domain}`             — სექციის ბარათები (ძებნა, ჟანრი, გვერდები)
+    15. `GET  /public/shares/{token}/playlists/{playlist}` — პლეილისტის სიმღერები რიგით
+    16. `GET  /public/shares/{token}/{domain}/{id}`        — ერთი ჩანაწერის შიდა გვერდი
 
    ⚠️ **სამ ფენას არ ეკითხება** — ბმული თვითონაა მფლობელის თანხმობა, ე.ი. ფარგალში
    მოხვედრილი პირადი ჩანაწერიც ჩანს. დაცვა: 48-სიმბოლოიანი შემთხვევითი ტოკენი
@@ -254,6 +260,10 @@ Route::middleware('throttle:share')->group(function () {
     Route::get('/public/shares/{token}/playlists/{playlist}', [PublicShareController::class, 'playlist'])
         ->where('token', '[A-Za-z0-9]{20,100}')
         ->whereNumber('playlist');
+    // ⚠️ პლეილისტის მარშრუტის **ქვემოთ** — თორემ `playlists` დომენად წაიკითხებოდა
+    Route::get('/public/shares/{token}/{domain}/{id}', [PublicShareController::class, 'record'])
+        ->where('token', '[A-Za-z0-9]{20,100}')
+        ->whereNumber('id');
 });
 
 Route::middleware('auth:sanctum')->group(function () {

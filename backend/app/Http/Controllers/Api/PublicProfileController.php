@@ -11,6 +11,7 @@ use App\Services\Modules\FieldSettings;
 use App\Services\Personal\PersonalGallery;
 use App\Services\Profile\PublicGallery;
 use App\Services\Profile\PublicProfileService;
+use App\Services\Share\RecordPage;
 use App\Services\Share\ShareImporter;
 use App\Services\Share\ShareMatcher;
 use App\Support\AlbumLock;
@@ -35,12 +36,12 @@ use Illuminate\Validation\Rule;
  * (პროფილი → მოდული → ჩანაწერი), ყველა default-ით `private`, და მთელი მექანიზმი
  * ერთი გადამრთველით ითიშება: `PUBLIC_PROFILES=false` (`config/mediary.php`).
  *
- * ⚠️ **თერთმეტი მარშრუტია და ერთი მათგანი წერს** (აქამდე ეს კომენტარი
+ * ⚠️ **თორმეტი მარშრუტია და ერთი მათგანი წერს** (აქამდე ეს კომენტარი
  * „მხოლოდ ორი GET"-ს ამბობდა და ორივეში ცდებოდა; მოგვიანებით კიდევ სამი
  * დაემატა, მერე — ფლეილისტის შიგთავსი, პირადი გალერეის ალბომი და მისი
- * ფაილი). ათი GET-ია — პროფილის თავი, გალერეის შეჯამება, ჯგუფები,
+ * ფაილი, ბოლოს — ერთი ჩანაწერის შიდა გვერდი). თერთმეტი GET-ია — პროფილის თავი, გალერეის შეჯამება, ჯგუფები,
  * ფოტოების გვერდი, ერთი ფაილი, ვიდეო-ბმულები, ფლეილისტის შიგთავსი, პირადი
- * ალბომის შიგთავსი და მისი ფაილი/ესკიზი, დომენის ბარათები — ხოლო
+ * ალბომის შიგთავსი და მისი ფაილი/ესკიზი, დომენის ბარათები, ერთი ჩანაწერის შიდა გვერდი — ხოლო
  * `unlockAlbum()` პაროლს ამოწმებს და **სერვერის სესიას ცვლის**. სწორედ
  * ამიტომ აქვს მას `throttle:album-unlock` (ანონიმზე IP + ალბომი) და ცხადი
  * შემოწმება, რომ ალბომი **ამ** პროფილისაა და საჯაროა — თორემ საჯარო კარი
@@ -170,6 +171,51 @@ class PublicProfileController extends Controller
                 'total' => $page->total(),
             ],
         ]);
+    }
+
+    /**
+     * **საჯარო ჩანაწერის შიდა გვერდი** — `GET /public/profiles/{username}/{domain}/{id}`.
+     *
+     * ⚠️ ჩანაწერი იმავე query-ში იძებნება, რომლითაც სია დგება (`PublicProfileService::query()` —
+     * პროფილი → მოდული → ჩანაწერი, ჩაკეტილის გარეშე): პირადი, ურნაში მყოფი, ჩაკეტილი ან
+     * სხვისი ჩანაწერი **404**-ია. მოდელი როუტში არ იბმება (`playlist()`-ის მიზეზი).
+     * ⚠️ რა ბლოკი ჩანს (გალერეა · მსახიობები · თრეილერი · ქულა · სტატუსი), **მფლობელის**
+     * მოდულის პარამეტრია (`RecordPage::profileBlocks()`); ალბომსა და სიას თავისი გვერდი აქვს.
+     */
+    public function record(Request $request, string $username, string $domain, int $id)
+    {
+        $user = $this->profiles->resolve($username);
+        abort_unless($user, 404);
+
+        abort_unless(PublicDomain::has($domain) && RecordPage::supports($domain), 404);
+        abort_unless(in_array($domain, $this->profiles->domains($user), true), 404);
+
+        $query = $this->profiles->query($user, $domain);
+        if (ShareDomain::has($domain)) {
+            ShareDomain::withClassifier($query, $domain);
+        }
+
+        $record = $query->whereKey($id)->first();
+        abort_unless($record, 404);
+
+        $module = PublicDomain::recordModule($domain, $record);
+        // საჯარო პროფილიდან გახსნა ჟურნალში `public`-ით; მფლობელი არ ითვლება
+        $this->audit->openFromPublic($record, $request, $user, AuditLogger::OPEN_PUBLIC);
+
+        $page = RecordPage::build(
+            $user,
+            $domain,
+            $record,
+            RecordPage::profileBlocks($user, $module),
+            $this->fields->hiddenOnPublic($user, $module),
+        );
+
+        $viewer = $request->user();
+        if ($viewer !== null && (int) $viewer->id !== (int) $user->id && ShareDomain::has($domain)) {
+            $page['record']['in_library'] = ShareMatcher::matches($viewer, $domain, $record->newCollection([$record]))[(int) $record->getKey()] ?? null;
+        }
+
+        return response()->json($page);
     }
 
     /**

@@ -75,6 +75,10 @@ export interface ShareLink {
   unavailable: ShareDomainKey[]
   show_status: boolean
   show_rating: boolean
+  /** სტუმრის შიდა გვერდის ბლოკები — ნაგულისხმევად დახურულია */
+  show_gallery: boolean
+  show_cast: boolean
+  show_trailer: boolean
   expires_at: string | null
   revoked_at: string | null
   state: 'active' | 'expired' | 'revoked'
@@ -101,6 +105,9 @@ export interface ShareLinkInput {
   name?: string | null
   show_status?: boolean
   show_rating?: boolean
+  show_gallery?: boolean
+  show_cast?: boolean
+  show_trailer?: boolean
   expires_days?: ShareExpiry
   revoked?: boolean
 }

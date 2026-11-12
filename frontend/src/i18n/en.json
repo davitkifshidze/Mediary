@@ -1050,7 +1050,9 @@
       "statusOwner": "As shown on the profile",
       "notCopyable": "This section can't be added to your library",
       "notCopyableHint": "Gallery photos, the personal gallery and private modules are on the profile only to look at — they aren't copied."
-    }
+    },
+    "blocks": "On a record's page:",
+    "blocksHint": "What appears on the inner page of this module's records on your public profile. A locked photo, a locked record and your notes never travel."
   },
   "matches": {
     "title": "Matches",
@@ -2706,7 +2708,7 @@
     "nickname": "Nickname",
     "nicknameHint": "Only you see it; the real name stays unchanged.",
     "nicknameSaved": "The nickname is saved",
-    "share": "Share",
+    "share": "Share in chat",
     "shareTitle": "Share a record in chat",
     "shareHint": "“{{name}}” is sent as a card. From a private record the other side sees only the title — sharing does not change visibility.",
     "shareNote": "Comment",
@@ -4757,7 +4759,7 @@
     "classifierEmpty": "This section's classifier is empty",
     "playlistRevealsSongs": "Every song in a playlist is shown — private ones too. “Public only” applies to the playlist itself, not to its songs.",
     "stepRecipient": "What the recipient sees",
-    "stepRecipientHint": "The recipient always sees a narrow card — main photo, title, year and genre or category. Your notes, custom fields, files and gallery never travel through a link.",
+    "stepRecipientHint": "The recipient always sees the main photo, title, year, genre or category and the description. Your notes, custom fields and files never travel through a link; the gallery, cast and trailer do only if you switch them on here.",
     "showStatus": "My status",
     "showStatusHint": "Show your status on the card — for example “Watched” or “To watch”.",
     "showRating": "My rating",
@@ -4855,7 +4857,9 @@
       "have": "Already had: {{count}}",
       "trash": "In your trash: {{count}}",
       "failed": "Failed: {{count}}"
-    }
+    },
+    "insideTitle": "On a record's own page",
+    "insideHint": "Clicking a card opens the record's page — with its description and genres. Here you choose whether the gallery, cast and trailer appear there. A locked photo or a locked actor never travels."
   },
   "duty": {
     "title": "Duty shifts",
@@ -5280,5 +5284,44 @@
     "tmdbTitle": "Data from TMDB",
     "tmdbDesc": "Title, description, genres, cast and poster — for the records of this module. In the window you choose what to refresh and for which records.",
     "hideWarning": "Without sync, new seasons and episodes will not be fetched — hide it anyway?"
+  },
+  "recordShare": {
+    "action": "Share",
+    "title": "Share: {{name}}",
+    "linkMode": "A link to this record only",
+    "linkModeHint": "Creates a secret address for this one record — with an expiry and only what you choose to show. The record does not become public: only people you give the link to can see it, and you can revoke it at any time.",
+    "profileMode": "Personal link",
+    "profileModeHint": "A link on your public page straight to this record. It is permanent and visible to everyone who opens your page — the profile, the module and the record itself must be public for it.",
+    "shown": "What to show",
+    "shownHint": "The recipient always sees the main photo, title, year, genre and description. Here you choose the rest. Locked photos, locked actors and your notes never travel.",
+    "blocks": {
+      "status": "My status",
+      "rating": "My rating",
+      "gallery": "Gallery",
+      "cast": "Cast",
+      "trailer": "Trailer"
+    },
+    "profileReady": "This record is visible on your public page. Which blocks appear on its page is chosen in the module's visibility settings.",
+    "notPublic": "This record is not visible on your public page right now. A personal link needs all three to be open:",
+    "layers": {
+      "profile": "The profile is public",
+      "module": "The module is shown on the public page",
+      "record": "The record is public"
+    },
+    "makePublic": "Make public",
+    "stillClosed": "Everything is open, yet the record is still hidden — a locked record never appears on the public page.",
+    "toProfile": "Open the profile",
+    "usernameNeeded": "A personal link needs a username — set one first."
+  },
+  "guestRecord": {
+    "back": "Back to the list",
+    "notFound": "Record not found",
+    "notFoundHint": "It is not in this link, or the owner has stopped sharing it.",
+    "trailer": "Trailer",
+    "noTrailer": "No trailer",
+    "cast": "Cast",
+    "noCast": "No cast",
+    "gallery": "Gallery",
+    "noPhotos": "No photos"
   }
 }

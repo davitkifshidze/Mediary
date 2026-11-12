@@ -16,7 +16,7 @@ import { fetchGenres } from '@/api/media'
 import { useShareDomains } from '@/hooks/useShareDomains'
 import { copyText } from '@/lib/clipboard'
 import { errorMessage } from '@/lib/errors'
-import { buildDomains, shareMeta, shareTokenOf, specComplete } from '@/lib/shareLinks'
+import { buildDomains, shareBlocks, shareMeta, shareTokenOf, specComplete } from '@/lib/shareLinks'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { StepSection } from '@/components/ui/step-section'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -90,6 +90,10 @@ export function ShareLinkDialog({
   const [name, setName] = useState(link?.name ?? '')
   const [showStatus, setShowStatus] = useState(link?.show_status ?? true)
   const [showRating, setShowRating] = useState(link?.show_rating ?? true)
+  // ჩანაწერის შიდა გვერდის ბლოკები — ახალ ბმულზე დახურულია, მფლობელი ცხადად რთავს
+  const [showGallery, setShowGallery] = useState(link?.show_gallery ?? false)
+  const [showCast, setShowCast] = useState(link?.show_cast ?? false)
+  const [showTrailer, setShowTrailer] = useState(link?.show_trailer ?? false)
   const [expiry, setExpiry] = useState<ExpiryChoice>(editing ? 'keep' : '30')
   const [result, setResult] = useState<ShareLink | null>(null)
   const [copied, setCopied] = useState(false)
@@ -110,6 +114,9 @@ export function ShareLinkDialog({
   )
   // „ჩემი შეფასება" მხოლოდ იქ, სადაც შეფასება მართლა შენია (`ShareDomain::personal_rating`)
   const ratingRelevant = selected.some((d) => shareMeta(d).personalRating)
+  // ბლოკის გადამრთველი მხოლოდ იქ, სადაც არჩეულ სექციებს ის ბლოკი საერთოდ აქვს
+  const galleryRelevant = selected.some((d) => shareBlocks(d).gallery)
+  const mediaRelevant = selected.some((d) => shareBlocks(d).cast)
 
   const preview = useQuery({
     queryKey: ['share-preview', domains],
@@ -137,6 +144,8 @@ export function ShareLinkDialog({
         show_status: showStatus,
         // ⚠️ შეფასების უქონელ სექციებზე გადამრთველი არ ჩანს — შენახული მნიშვნელობა არ იცვლება
         ...(ratingRelevant ? { show_rating: showRating } : {}),
+        ...(galleryRelevant ? { show_gallery: showGallery } : {}),
+        ...(mediaRelevant ? { show_cast: showCast, show_trailer: showTrailer } : {}),
         ...(days !== undefined ? { expires_days: days } : {}),
       }
 
@@ -292,6 +301,36 @@ export function ShareLinkDialog({
                   <span className="block text-xs text-muted-foreground">{t('share.showRatingHint')}</span>
                 </span>
               </label>
+            )}
+
+            {/* ---------- ჩანაწერის შიდა გვერდი ---------- */}
+            {(galleryRelevant || mediaRelevant) && (
+              <div>
+                <p className="mb-2 flex items-center gap-1.5 text-sm font-medium">
+                  {t('share.insideTitle')}
+                  <InfoHint info={t('share.insideHint')} />
+                </p>
+                <div className="flex flex-wrap gap-x-6 gap-y-2">
+                  {galleryRelevant && (
+                    <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+                      <Checkbox checked={showGallery} onCheckedChange={(v) => setShowGallery(v === true)} />
+                      {t('recordShare.blocks.gallery')}
+                    </label>
+                  )}
+                  {mediaRelevant && (
+                    <>
+                      <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+                        <Checkbox checked={showCast} onCheckedChange={(v) => setShowCast(v === true)} />
+                        {t('recordShare.blocks.cast')}
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+                        <Checkbox checked={showTrailer} onCheckedChange={(v) => setShowTrailer(v === true)} />
+                        {t('recordShare.blocks.trailer')}
+                      </label>
+                    </>
+                  )}
+                </div>
+              </div>
             )}
 
             <div className="grid gap-4 sm:grid-cols-2">

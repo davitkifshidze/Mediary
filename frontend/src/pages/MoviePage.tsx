@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useRecordShare } from '@/components/share/RecordShare'
 import {
   ArrowLeft,
   Bell,
@@ -9,6 +10,7 @@ import {
   ExternalLink,
   Loader2,
   Share2,
+  Link2,
   SquarePen,
   Play,
   Plus,
@@ -66,6 +68,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const confirm = useConfirm()
+  const share = useRecordShare()
   const { toast } = useToast()
   const { enqueue, isQueued } = useQueue()
   const api = mediaApi(type)
@@ -248,6 +251,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   const heroActions: MenuAction[] = [
     statusActions(t('form.status'), statuses, m.status, lang, (key) => statusMut.mutate(key)),
     favoriteAction(m.is_favorite, toggleFavorite, t),
+    share.action({ domain: type, id: m.id, title: movieTitle(m, lang) }),
     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => nav(`${detailBase}/${m.id}/edit`) },
     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete() },
   ]
@@ -387,6 +391,16 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   <SquarePen className="size-3.5" />
                   {t('actions.edit')}
                 </Link>
+                {/* გაზიარება ბმულით: მხოლოდ ამ ჩანაწერზე ან საჯარო გვერდის ბმულით */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid="record-share"
+                  onClick={() => share.open({ domain: type, id: m.id, title: movieTitle(m, lang) })}
+                >
+                  <Link2 className="size-3.5" />
+                  {t('recordShare.action')}
+                </Button>
                 {/* გაზიარება ჩატში ბარათად.
                     ⚠️ **გაზიარება ხილვადობას არ ცვლის**: პირადი ჩანაწერიდან
                     თანამოსაუბრემდე მხოლოდ სათაური და გლობალური იდენტობა

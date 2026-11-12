@@ -4,6 +4,7 @@ import { AddButton, AddChip, useInlineAdd } from '@/components/ui/inline-add'
 import { PlaylistDialog } from '@/components/PlaylistDialog'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useRecordShare } from '@/components/share/RecordShare'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { usePagedList } from '@/lib/paged'
 import { usePageSize } from '@/lib/pageSize'
@@ -109,6 +110,7 @@ export function SongsPage() {
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
+  const share = useRecordShare()
   const navigate = useNavigate()
 
   const [params, setParams] = useSearchParams()
@@ -402,6 +404,7 @@ export function SongsPage() {
                   run: () => window.open(song.url, '_blank', 'noopener,noreferrer'),
                 },
                 favoriteAction(song.is_favorite, () => favorite.mutate(song.id), t),
+                share.action({ domain: 'song', id: song.id, title: song.title }),
                 { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(song) },
                 {
                   key: 'delete',

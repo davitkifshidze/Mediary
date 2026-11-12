@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useRecordShare } from '@/components/share/RecordShare'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { usePagedList } from '@/lib/paged'
 import { usePageSize } from '@/lib/pageSize'
@@ -84,6 +85,7 @@ export function BooksPage() {
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
+  const share = useRecordShare()
   const navigate = useNavigate()
 
   const [params, setParams] = useSearchParams()
@@ -354,6 +356,7 @@ export function BooksPage() {
                 { key: 'quote', label: t('books.menuAddQuote'), icon: Quote, separator: true, run: () => setQuoteFor(book) },
                 { key: 'progress', label: t('books.menuProgress'), icon: BookOpenCheck, run: () => setProgressFor(book) },
                 { key: 'gallery', label: t('books.menuGallery'), icon: Images, run: () => setOpened(book) },
+                share.action({ domain: 'book', id: book.id, title: title(book) }),
                 { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(book) },
                 { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: askDelete },
               ]

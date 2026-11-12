@@ -11,6 +11,7 @@ import {
   type PublicDomainKey,
 } from '@/api/publicProfile'
 import type { ShareDomainKey } from '@/api/shareLinks'
+import { guestRecordPath } from '@/api/guestRecord'
 import { openConversation } from '@/api/chat'
 import { useAuth } from '@/lib/auth'
 import { errorMessage } from '@/lib/errors'
@@ -338,6 +339,12 @@ export function PublicProfilePage() {
                       key={`${card.domain}-${card.id}`}
                       card={card}
                       lang={lang}
+                      // ალბომს თავისი გვერდი აქვს — შიდა გვერდი მხოლოდ ჩანაწერს
+                      to={
+                        card.domain === 'gallery_album'
+                          ? null
+                          : guestRecordPath({ kind: 'profile', username: profile.profile.username }, card.domain, card.id)
+                      }
                       selectable={canAdd && !card.in_library}
                       selected={library.selected.has(card.id)}
                       onToggle={() => library.toggle(card.id)}
@@ -426,16 +433,20 @@ function PublicPlaylistTile({
 function PublicCardTile({
   card,
   lang,
+  to,
   selectable,
   selected,
   onToggle,
 }: {
   card: PublicCard
   lang: 'ka' | 'en'
+  /** ჩანაწერის შიდა გვერდი; `null` — არ აქვს */
+  to: string | null
   selectable: boolean
   selected: boolean
   onToggle: () => void
 }) {
+  const { t } = useTranslation()
   const title =
     (lang === 'ka' ? card.title_ka : card.title_en) ||
     card.title_en ||
@@ -489,29 +500,31 @@ function PublicCardTile({
     </>
   )
 
-  // ვიდეოსა და სიმღერას გარე ბმული აქვს — სწორედ იმისთვისაა გაზიარებული, რომ გაიხსნას
-  if (card.url) {
-    return (
-      <div className="relative min-w-0">
-        <a
-          href={card.url}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="group block focus:outline-none"
-        >
-          {body}
-          <span className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-foreground">
-            <ExternalLink className="size-3" />
-          </span>
-        </a>
-        {marks}
-      </div>
-    )
-  }
+  /* ბარათი ჩანაწერის შიდა გვერდს ხსნის; ვიდეოს, სიმღერის, ბუკმარკისა და კურსის გარე ბმული
+     ცალკე ნიშანია ბარათის ქვეშ — სწორედ იმისთვისაა გაზიარებული, რომ გაიხსნას */
+  const source = card.url && (
+    <a
+      href={card.url}
+      target="_blank"
+      rel="noreferrer noopener"
+      aria-label={t('share.page.openSource')}
+      title={t('share.page.openSource')}
+      className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+    >
+      <ExternalLink className="size-3" />
+    </a>
+  )
 
   return (
-    <div className="relative min-w-0">
-      {body}
+    <div className="relative min-w-0" data-testid="public-card">
+      {to ? (
+        <Link to={to} className="block" data-testid="public-card-open">
+          {body}
+        </Link>
+      ) : (
+        body
+      )}
+      {source}
       {marks}
     </div>
   )

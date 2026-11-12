@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRecordShare } from '@/components/share/RecordShare'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BookOpen, BookOpenCheck, Download, ExternalLink, FileText, Paperclip, Quote, Trash2, Upload } from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
@@ -68,6 +69,7 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
     onSuccess: () => void favoriteQc.invalidateQueries({ queryKey: ['books'] }),
   })
   const { t, i18n } = useTranslation()
+  const share = useRecordShare()
   // გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი)
   useRecordOpen('book', book.id)
   const lang = useContentLang(i18n.language)
@@ -108,6 +110,7 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
     favoriteAction(book.is_favorite, () => favorite.mutate(), t),
     { key: 'quote', label: t('books.menuAddQuote'), icon: Quote, separator: true, run: () => setQuoteOpen(true) },
     { key: 'progress', label: t('books.menuProgress'), icon: BookOpenCheck, run: () => setProgressOpen(true) },
+    share.action({ domain: 'book', id: book.id, title }),
   ]
 
   return (

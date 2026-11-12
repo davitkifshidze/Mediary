@@ -32,7 +32,7 @@ class ShareLink extends Model
 
     public const DEFAULT_EXPIRY_DAYS = 30;
 
-    protected $fillable = ['name', 'domains', 'show_status', 'show_rating', 'expires_at'];
+    protected $fillable = ['name', 'domains', 'show_status', 'show_rating', 'show_gallery', 'show_cast', 'show_trailer', 'expires_at'];
 
     /** ⚠️ ტოკენი არც ერთ მასივად გადაქცევაში არ უნდა გავიდეს (აუდიტი, JSON) */
     protected $hidden = ['token', 'token_hash'];
@@ -43,6 +43,9 @@ class ShareLink extends Model
             'domains' => 'array',
             'show_status' => 'boolean',
             'show_rating' => 'boolean',
+            'show_gallery' => 'boolean',
+            'show_cast' => 'boolean',
+            'show_trailer' => 'boolean',
             'token' => 'encrypted',
             'expires_at' => 'datetime',
             'revoked_at' => 'datetime',

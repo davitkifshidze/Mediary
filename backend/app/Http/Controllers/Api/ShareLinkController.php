@@ -118,6 +118,10 @@ class ShareLinkController extends Controller
             'domains' => ShareScope::normalize($user, $data['domains']),
             'show_status' => (bool) ($data['show_status'] ?? true),
             'show_rating' => (bool) ($data['show_rating'] ?? true),
+            // შიდა გვერდის ბლოკები ნაგულისხმევად დახურულია — მფლობელი ცხადად რთავს
+            'show_gallery' => (bool) ($data['show_gallery'] ?? false),
+            'show_cast' => (bool) ($data['show_cast'] ?? false),
+            'show_trailer' => (bool) ($data['show_trailer'] ?? false),
         ]);
         $link->user_id = $user->id;
         $link->expires_at = $this->expiry(
@@ -153,7 +157,7 @@ class ShareLinkController extends Controller
             $shareLink->domains = ShareScope::normalize($user, $data['domains']);
         }
 
-        foreach (['name', 'show_status', 'show_rating'] as $key) {
+        foreach (['name', 'show_status', 'show_rating', 'show_gallery', 'show_cast', 'show_trailer'] as $key) {
             if (array_key_exists($key, $data)) {
                 $shareLink->{$key} = $data[$key];
             }
@@ -224,6 +228,9 @@ class ShareLinkController extends Controller
             'name' => ['sometimes', 'nullable', 'string', 'max:80'],
             'show_status' => ['sometimes', 'boolean'],
             'show_rating' => ['sometimes', 'boolean'],
+            'show_gallery' => ['sometimes', 'boolean'],
+            'show_cast' => ['sometimes', 'boolean'],
+            'show_trailer' => ['sometimes', 'boolean'],
             // `null` — უვადო
             'expires_days' => ['sometimes', 'nullable', Rule::in(ShareLink::EXPIRY_DAYS)],
         ];
@@ -313,6 +320,9 @@ class ShareLinkController extends Controller
             'unavailable' => array_values(array_diff(array_keys((array) $link->domains), array_keys($live))),
             'show_status' => $link->show_status,
             'show_rating' => $link->show_rating,
+            'show_gallery' => (bool) $link->show_gallery,
+            'show_cast' => (bool) $link->show_cast,
+            'show_trailer' => (bool) $link->show_trailer,
             'expires_at' => $link->expires_at?->toIso8601String(),
             'revoked_at' => $link->revoked_at?->toIso8601String(),
             'state' => $link->state(),
