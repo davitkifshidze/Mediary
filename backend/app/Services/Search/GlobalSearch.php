@@ -26,6 +26,7 @@ use App\Models\Video;
 use App\Support\CustomFields;
 use App\Support\CustomModules;
 use App\Support\Like;
+use App\Support\ModuleList;
 use App\Support\RecordLocks;
 use App\Support\RichText;
 use App\Support\Snippet;
@@ -202,6 +203,8 @@ class GlobalSearch
                 'module' => 'video',
                 'model' => Video::class,
                 'custom' => 'video',
+                // კურსში მცხოვრები ვიდეო აქ არ გამოდის — ის კურსის ქვეშ იძებნება
+                'scope' => fn ($query) => ModuleList::narrow($query),
                 'title_rank' => ['columns' => ['title']],
                 // არხიც იძებნება („Warner Bros." → მისი ყველა ტრეილერი)
                 'columns' => [
@@ -318,6 +321,8 @@ class GlobalSearch
                 ],
                 'json' => ['tags' => 'tags'],
                 'relations' => [
+                    // კურსში მცხოვრები ვიდეოები (ფლეილისტიდან) — სათაურით
+                    ['relation' => 'ownVideos', 'fields' => ['video' => ['title']]],
                     ['relation' => 'files', 'fields' => ['file' => ['original_name']]],
                 ],
                 'image' => 'thumbnail_path',

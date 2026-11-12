@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\CustomModules;
 use App\Support\DictionaryRecords;
 use App\Support\DictionaryTrash;
+use App\Support\ModuleList;
 use App\Support\ModuleSettings;
 use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Model;
@@ -366,7 +367,8 @@ class StatusController extends Controller
         /** @var class-string<Model> $model */
         $model = StatusDomain::model($domain);
 
-        $counts = $model::withoutGlobalScope('owner')
+        // მთვლელი იმავე ჩანაწერებს ითვლის, რასაც სია აჩვენებს (კურსში მცხოვრები ვიდეო — არა)
+        $counts = ModuleList::narrow($model::withoutGlobalScope('owner'))
             ->where('user_id', $userId)
             ->whereNotNull('status_id')
             ->selectRaw('status_id, count(*) as aggregate')

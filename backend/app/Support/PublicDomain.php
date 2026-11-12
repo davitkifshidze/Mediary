@@ -378,7 +378,8 @@ final class PublicDomain
         return match (true) {
             self::isCustom($domain) => CustomRecord::queryFor($domain),
             $domain === self::CUSTOM => CustomRecord::query(),
-            default => self::model($domain)::query(),
+            // კურსში მცხოვრები ვიდეო ვიდეოების მოდულის ჩანაწერი არ არის — პროფილზეც არ გადის
+            default => ModuleList::narrow(self::model($domain)::query()),
         };
     }
 

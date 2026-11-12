@@ -281,8 +281,12 @@ class CoursePlaylistTest extends TestCase
         $this->assertSame([$course->id, 1], [$video->course_id, $video->sort_order]);
         $this->assertSame([$course->id, 2], [$mine->fresh()->course_id, $mine->fresh()->sort_order]);
 
-        // საქაღალდე ფლეილისტის რიგითაა; კურსი თავის რიცხვს ამბობს
-        $this->getJson("/api/videos?course={$course->id}")->assertOk()->assertJsonPath('data.*.title', ['One', 'Mine']);
+        // ფლეილისტის ვიდეო კურსში ცხოვრობს (წყაროდ კურსი), უკვე არსებული კი ვიდეოების სიაში რჩება
+        $this->assertFalse($video->listed);
+        $this->assertSame(['course', $course->id], [$video->origin_type, $video->origin_id]);
+        $this->assertTrue($mine->fresh()->listed);
+        $this->getJson("/api/videos?course={$course->id}")->assertOk()->assertJsonPath('data.*.title', ['Mine']);
+        $this->assertFalse($this->getJson("/api/courses/{$course->id}/playlist")->json('playlist.items.0.video.listed'));
         $this->getJson("/api/courses/{$course->id}")->assertOk()->assertJsonPath('data.videos_count', 2)->assertJsonPath('data.downloaded_count', 0);
 
         // მეორე დამატება ასლს აღარ ქმნის

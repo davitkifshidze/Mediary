@@ -20,6 +20,7 @@ import {
   ExternalLink,
   FileX,
   FolderOpen,
+  FolderOutput,
   Globe,
   HardDriveDownload,
   Link2,
@@ -31,6 +32,7 @@ import {
   RefreshCw,
   Search,
   Tags,
+  Tv,
   FilterX,
 } from 'lucide-react'
 import {
@@ -38,6 +40,7 @@ import {
   deleteVideo,
   pickRandomVideos,
   resyncVideo,
+  setVideoListed,
   setVideoStatus,
   deleteVideoDownload,
   downloadBusy,
@@ -58,6 +61,7 @@ import {
 } from '@/api/videos'
 import { fetchWebVideoDetails } from '@/api/web'
 import { fetchCourses } from '@/api/courses'
+import { VideoSource } from '@/components/VideoSource'
 import { useModules } from '@/lib/modules'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { storageUrl } from '@/lib/api'
@@ -579,6 +583,19 @@ export function VideosPage() {
 
   /* ერთი მენიუ სამივე განლაგებაზე: გახსნა · დაკვრა · წყარო · სტატუსი ▸ · რჩეული ·
      (ჩამოტვირთვა) · — · რედაქტირება · წაშლა */
+  /** „ვიდეოებიდან ამოღება" — ვიდეო კურსში რჩება და სიიდან ქრება */
+  const unlist = useMutation({
+    mutationFn: (v: Video) => setVideoListed(v.id, false),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['videos'] })
+      qc.invalidateQueries({ queryKey: ['video-types'] })
+      qc.invalidateQueries({ queryKey: ['course-playlist'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      toast({ title: t('videos.unlisted', { course: v.course?.title ?? t('nav.courses') }), variant: 'success' })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
   const videoActions = (v: Video): MenuAction[] => [
     { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(v) },
     { key: 'play', label: t('playback.playFromHere'), icon: MENU_ICONS.play, run: () => playHere(v) },
@@ -607,6 +624,10 @@ export function VideosPage() {
           { key: 'local', label: t('videos.local.play'), icon: MonitorPlay, run: () => setLocal(v) },
           { key: 'drop', label: t('videos.local.remove'), icon: FileX, run: () => void askDropDownload(v) },
         ]
+      : []),
+    /* კურსის ვიდეო, რომელიც ვიდეოებშიც ჩანს — უკან კურსში: არაფერი იშლება */
+    ...(v.course_id
+      ? [{ key: 'unlist', label: t('videos.unlist'), icon: FolderOutput, disabled: unlist.isPending, run: () => unlist.mutate(v) }]
       : []),
     share.action({ domain: 'video', id: v.id, title: v.title }),
     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(v) },
@@ -764,13 +785,19 @@ export function VideosPage() {
                   meta={
                     <>
                       {v.type && <span>{videoTypeName(v.type, lang)}</span>}
-                      {v.course && (
+                      <VideoSource origin={v.origin} />
+                      {v.course && v.origin?.kind !== 'course' && (
                         <span className="inline-flex min-w-0 items-center gap-1">
                           <FolderOpen className="size-3 shrink-0" />
                           <span className="truncate">{v.course.title}</span>
                         </span>
                       )}
-                      {v.channel && <span className="truncate">{v.channel}</span>}
+                      {v.channel && (
+                        <span className="inline-flex min-w-0 items-center gap-1" title={`${t('fields.name.video.channel')}: ${v.channel}`}>
+                          <Tv className="size-3 shrink-0" />
+                          <span className="truncate">{v.channel}</span>
+                        </span>
+                      )}
                       {v.published_at && <span>{fmt.date(v.published_at)}</span>}
                       {v.duration ? <span>{formatDuration(v.duration)}</span> : null}
                       {formatSource(v) && <span>{formatSource(v)}</span>}
@@ -1005,7 +1032,9 @@ function VideoForm({
   /* ველი ჩანს, როცა კურსების მოდული ჩართულია — ცარიელი სიითაც: პირველი კურსი
      აქვე ემატება („+"). შენახული კურსი ურნაში შეიძლება იყოს — მაშინ სიაში არ
      ჩანს, ველი კი მაინც უნდა ჩანდეს. */
-  const hasCourses = has('course') || !!video?.course_id
+  /* ⚠️ კურსის ველი მხოლოდ იქ, სადაც კურსი შუაშია — კურსზე მიბმული ვიდეოს რედაქტირებისას.
+     ხელით დამატებულ ვიდეოს კურსი არ ეკითხება: ყოველ ვიდეოს ერთი სახლი აქვს. */
+  const hasCourses = !!video?.course_id
   // „+" — კურსის იგივე ფორმა, რაც კურსების გვერდზე; შენახული კურსი მაშინვე არჩეულია
   const addCourse: AddDialog | undefined = has('course')
     ? (close, pick) => (

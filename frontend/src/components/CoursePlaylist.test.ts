@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   addPlaylistVideos: vi.fn(),
   fetchPlaylistPlan: vi.fn(),
   updateModuleSettings: vi.fn(),
+  setVideoListed: vi.fn(),
   // ვიდეოების მოდული ჩართულია? (არჩევა მხოლოდ მაშინ ჩანს)
   videoModule: false,
   modules: [] as { key: string; user_settings?: Record<string, unknown> }[],
@@ -50,6 +51,7 @@ vi.mock('@/api/account', async (original) => ({
 vi.mock('@/api/videos', async (original) => ({
   ...(await original<typeof import('@/api/videos')>()),
   fetchVideoTypes: async () => [{ id: 4, key: 'study', name_ka: 'სასწავლო', name_en: 'Study', icon: null, color: null, sort_order: 0 }],
+  setVideoListed: mocks.setVideoListed,
 }))
 
 vi.mock('@/lib/statuses', async (original) => ({
@@ -237,7 +239,7 @@ describe('CoursePlaylistSection', () => {
 describe('CoursePlaylistSection — adding to videos', () => {
   const withVideo: CoursePlaylist = {
     ...playlist,
-    items: [item(1, 'One', 600), { ...item(2, 'Two', 3723), video: { id: 5, download_status: 'ready', download_error: null, download_stale: false } }, item(3, 'Three', null)],
+    items: [item(1, 'One', 600), { ...item(2, 'Two', 3723), video: { id: 5, listed: false, download_status: 'ready', download_error: null, download_stale: false } }, item(3, 'Three', null)],
   }
 
   it('without the video module there is nothing to pick', async () => {
@@ -256,10 +258,19 @@ describe('CoursePlaylistSection — adding to videos', () => {
     mocks.updateModuleSettings.mockResolvedValue(undefined)
     const el = await mount()
 
-    // უკვე დამატებულს ჩექბოქსის ნაცვლად ბეჯი აქვს; საქაღალდის ბმული სათაურშია
+    // უკვე შენახულს ჩექბოქსის ნაცვლად ბეჯი აქვს; სათაურში — რამდენია კურსში
     expect(el.querySelectorAll('[data-testid="playlist-pick"]')).toHaveLength(2)
     expect(rows(el)[1].querySelector('[data-testid="playlist-in-videos"]')?.textContent).toBe(i18n.t('videos.local.ready'))
-    expect(el.querySelector('[data-testid="playlist-folder-link"]')?.getAttribute('href')).toBe('/videos?course=7')
+    expect(el.querySelector('[data-testid="playlist-saved"]')?.textContent).toBe(i18n.t('courses.playlist.savedCount', { count: 1, local: 1 }))
+    // კურსში მცხოვრები ვიდეო ვიდეოების სიაში არ არის — საქაღალდის ბმულიც არ ჩანს
+    expect(el.querySelector('[data-testid="playlist-folder-link"]')).toBeNull()
+
+    // „ვიდეოებში გადატანა" ვიდეოს სიაში აჩენს — არაფერი იშლება
+    const move = rows(el)[1].querySelector<HTMLButtonElement>('[data-testid="playlist-listing"]')!
+    expect(move.textContent).toBe(i18n.t('videos.moveToVideos'))
+    await act(async () => move.click())
+    await flush()
+    expect(mocks.setVideoListed).toHaveBeenCalledWith(5, true)
 
     await act(async () => el.querySelector<HTMLButtonElement>('[data-testid="playlist-pick-all"]')!.click())
     expect(el.querySelector('[data-testid="playlist-picked"]')?.textContent).toBe(
@@ -299,8 +310,8 @@ describe('CoursePlaylistSection — adding to videos', () => {
       ...withVideo,
       items: [
         item(1, 'One', 600),
-        { ...item(2, 'Two', 3723), video: { id: 5, download_status: 'failed', download_error: 'storage_quota_exceeded', download_stale: false } },
-        { ...item(3, 'Three', null), video: { id: 6, download_status: 'queued', download_error: null, download_stale: false } },
+        { ...item(2, 'Two', 3723), video: { id: 5, listed: false, download_status: 'failed', download_error: 'storage_quota_exceeded', download_stale: false } },
+        { ...item(3, 'Three', null), video: { id: 6, listed: false, download_status: 'queued', download_error: null, download_stale: false } },
       ],
     }
     mocks.fetchCoursePlaylist.mockResolvedValue(failed)

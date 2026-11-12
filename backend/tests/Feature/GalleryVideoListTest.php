@@ -57,6 +57,24 @@ class GalleryVideoListTest extends TestCase
         $this->getJson('/api/gallery/videos?owner_type=record')->assertOk()->assertJsonCount(2, 'data');
     }
 
+    public function test_the_cut_drills_from_modules_to_records(): void
+    {
+        $this->seedVideos();
+
+        $modules = collect($this->getJson('/api/gallery/videos/modules')->assertOk()->json('data'))->keyBy('kind');
+        $this->assertSame(['videos' => 2, 'records' => 1], ['videos' => $modules['movie']['videos'], 'records' => $modules['movie']['records']]);
+        $this->assertSame(1, $modules['actor']['videos']);
+
+        $this->getJson('/api/gallery/videos/records?type=movie')->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.title', 'Dune')
+            ->assertJsonPath('data.0.videos', 2)
+            ->assertJsonPath('meta.total', 1);
+        // მსახიობს სახელი `name`-შია — სათაური მაინც მოდის
+        $this->getJson('/api/gallery/videos/records?type=actor')->assertOk()->assertJsonPath('data.0.title', 'Zendaya');
+        $this->getJson('/api/gallery/videos/records?type=nonsense')->assertStatus(422);
+    }
+
     public function test_search_matches_title_or_channel_and_sort_orders_the_list(): void
     {
         $this->seedVideos();

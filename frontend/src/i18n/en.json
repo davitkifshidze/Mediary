@@ -152,7 +152,7 @@
     "metaNeedsKey": "Description, date, duration and tags for YouTube need a key or yt-dlp — add the key under “Credentials”.",
     "tagsPlaceholder": "music, tutorial",
     "saved": "Video saved",
-    "source": "Source",
+    "source": "Link",
     "openExternal": "Open on the source site",
     "deleteTitle": "Delete video",
     "deleteHint": "“{{name}}” will be deleted.",
@@ -197,7 +197,7 @@
       "tabInfo": "The downloaded file lives on this server and plays without the network — in its own player, with seeking. Deleting removes only the file; the record and the link stay.",
       "playerHint": "This is the local copy, not the source — a play counts as a watch, as in the player.",
       "total": "{{count}} videos · {{size}}",
-      "onlyDownloaded": "Only downloaded",
+      "onlyDownloaded": "Downloaded",
       "size": "Size and format",
       "date": "Downloaded",
       "error": "Reason",
@@ -219,7 +219,16 @@
     "noCourse": "No course",
     "resync": "Refresh details",
     "resynced": "Details refreshed",
-    "sourceSize": "Source resolution and approximate size"
+    "sourceSize": "Source resolution and approximate size",
+    "origin": {
+      "full": "From: {{module}} — {{name}}",
+      "moduleOnly": "From: {{module}}",
+      "actor": "Actor"
+    },
+    "unlist": "Remove from videos",
+    "unlisted": "Removed from the list — it stays in the course: {{course}}",
+    "moveToVideos": "Move to videos",
+    "movedToVideos": "The video is now in the videos list"
   },
   "requests": {
     "status": {
@@ -1346,7 +1355,8 @@
     "missing_field": "The record is missing a required field.",
     "database_archive_invalid": "This is not a database export JSON ZIP.",
     "database_archive_library": "This is a “My full export” — it goes in on the “Import” tab (adding).",
-    "playlist_missing": "The course link is not a YouTube playlist."
+    "playlist_missing": "The course link is not a YouTube playlist.",
+    "video_needs_course": "This video belongs to no course — off the list it would show nowhere."
   },
   "fields": {
     "title": "Fields",
@@ -2194,14 +2204,16 @@
     "albumAccountPassword": "Account password",
     "albumAccountPasswordHint": "Changing or removing the lock asks for your Mediary account password — a forgotten album password is no longer a dead end.",
     "lockedGridHint": "The album is locked — {{count}} photos are hidden. The files never leave the server.",
-    "videoGroup": {
-      "record": "By record",
-      "module": "By module"
-    },
+    "videoGroup": {},
     "castSourceOf": {
       "movie": "Stills from this film",
       "series": "Stills from this series",
       "anime": "Stills from this anime"
+    },
+    "videoLevels": {
+      "modules": "Modules",
+      "moduleCount": "{{videos}} video(s) · {{records}} record(s)",
+      "videoCount": "{{count}} video(s)"
     }
   },
   "boardGames": {
@@ -4233,25 +4245,27 @@
     "photoDeleteTitle": "Delete the photo?",
     "playlist": {
       "title": "Videos ({{count}})",
-      "hint": "The list comes from YouTube — with your key or, without one, through yt-dlp — and is kept for 24 hours; “Refresh” fetches it now. Click to play from there to the end, the arrow opens it on YouTube; ticked videos are added to videos, in the course’s folder.",
+      "hint": "The list comes from YouTube — with your key or, without one, through yt-dlp — and is kept for 24 hours; “Refresh” fetches it now. Click to play from there to the end, the arrow opens it on YouTube. Ticked videos are saved in the course; they show in the videos list only after “Move to videos”.",
       "total": "{{duration}} in total",
       "refresh": "Refresh",
       "openOnYoutube": "Open on YouTube",
       "empty": "The playlist has no videos",
       "importHint": "The picked videos are added to the videos module, in this course’s folder. Type and status are the same for all and are remembered for next time; a video you already have is not copied.",
-      "addToVideos": "Add to videos",
+      "addToVideos": "Save in the course",
       "added": "Added {{created}}, already there {{existing}}",
       "picked": "{{count}} picked",
       "pickAll": "Pick all ({{count}})",
       "pick": "Pick",
       "inVideos": "In videos",
-      "inVideosCount": "In videos {{count}} · local {{local}}",
+      "inVideosCount": "In videos {{count}}",
       "download": "Download",
       "queued": "{{count}} queued for download",
       "planLoading": "Measuring the size…",
       "plan": "About ~{{size}} · {{free}} free",
       "planUnknown": "The size could not be measured · {{free}} free",
-      "planTooBig": "Not all of it fits — the videos past the quota will fail."
+      "planTooBig": "Not all of it fits — the videos past the quota will fail.",
+      "inCourse": "In the course",
+      "savedCount": "In the course {{count}} · local {{local}}"
     }
   },
   "places": {

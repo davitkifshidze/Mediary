@@ -115,8 +115,10 @@ final class ExportDomain
             'model' => Video::class,
             'with' => ['status', 'type', 'course', 'files', 'notes'],
             'fields' => [
-                // `course` — კურსის სათაური („საქაღალდე"); იმპორტი არსებულ კურსს სათაურით პოულობს
-                'id', 'title', 'type', 'course', 'status', 'status_name', 'tags', 'url', 'platform',
+                /* `course` — კურსის სათაური; იმპორტი არსებულ კურსს სათაურით პოულობს.
+                   `listed` — ვიდეოების სიაშია თუ კურსში ცხოვრობს; `origin_type` — საიდან
+                   მოვიდა (id სხვა ბაზაში არაფერს ნიშნავს: კურსზე ნაპოვნი კურსი აღდგება) */
+                'id', 'title', 'type', 'course', 'listed', 'origin_type', 'status', 'status_name', 'tags', 'url', 'platform',
                 'external_id', 'embed_url', 'channel', 'published_at', 'duration', 'source_size', 'resolution', 'is_favorite', 'watch_count',
                 'watched_at', 'description', 'thumbnail_path', 'thumbnail_url', 'download_name', 'visibility', 'created_at',
                 'custom_fields', 'files', 'notes',

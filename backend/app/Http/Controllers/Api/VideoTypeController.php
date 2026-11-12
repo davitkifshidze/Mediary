@@ -120,7 +120,11 @@ class VideoTypeController extends Controller
 
     private function ordered()
     {
-        return VideoType::query()->withCount('videos')->orderBy('sort_order')->orderBy('id');
+        // რიცხვი — მხოლოდ ვიდეოების სიაში მყოფი (კურსში მცხოვრები ფილტრში არ გამოჩნდება)
+        return VideoType::query()
+            ->withCount(['videos' => fn ($q) => $q->listed()])
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     private function validated(Request $request): array

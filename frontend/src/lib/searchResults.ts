@@ -67,7 +67,7 @@ const MEDIA_DOMAINS = ['movie', 'series', 'anime']
  * პირდაპირი ბმული არ არსებობს — ძებნით გახსნილი სექცია კი სწორედ იმ
  * ჩანაწერს აჩვენებს.
  */
-export function resultPath(item: SearchItem, routeBase: string | undefined): string | null {
+export function resultPath(item: Pick<SearchItem, 'domain' | 'id' | 'title'>, routeBase: string | undefined): string | null {
   if (item.domain === 'cast') return `/actors/${item.id}`
   if (item.domain === 'playlist') return `/playlists/${item.id}`
   if (item.domain === 'gallery') return '/gallery/videos'

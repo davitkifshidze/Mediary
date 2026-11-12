@@ -22,6 +22,20 @@ export function downloadBusy(v: { download_status: VideoDownloadState | null; do
   return (v.download_status === 'running' || v.download_status === 'queued') && !v.download_stale
 }
 
+/**
+ * საიდან მოვიდა ვიდეო — რომელი მოდულის რომელი ჩანაწერიდან („ვიდეოებში დამატება")
+ * ან რომელი კურსის ფლეილისტიდან. ⚠️ სათაური `null`-ია, თუ წყარო ურნაშია, წაშლილია
+ * ან დამალულია — მაშინ მხოლოდ მოდული იწერება.
+ */
+export interface VideoOrigin {
+  /** `bookmark` · `game` · `movie` · … · `actor` · `course` */
+  kind: string
+  id: number
+  module: string | null
+  title: string | null
+  title_ka: string | null
+}
+
 export interface Video {
   id: number
   title: string
@@ -36,6 +50,10 @@ export interface Video {
   /** კურსი — „საქაღალდე" ვიდეოებში; ურნაში მყოფ კურსზე `course` `null`-ია, `course_id` რჩება */
   course_id: number | null
   course?: VideoCourse | null
+  /** წყარო (`null` = ბმულით ხელით დამატებული) */
+  origin?: VideoOrigin | null
+  /** ვიდეოების სიაშია? — კურსის ფლეილისტის ვიდეო კურსში ცხოვრობს (`false`), სანამ არ გადმოიტან */
+  listed?: boolean
   /** მართვადი სტატუსი; ამ მოდულს ის აქამდე არ ჰქონდა */
   status: Status | null
   /** საჯარო პროფილის წინაპირობა */
@@ -249,6 +267,8 @@ export interface VideoInput {
   remove_thumbnail?: boolean
   /** ბმულიდან ჩარჩოში ჩასმული ფოტო (URL); ატვირთულზე სერვერი იგნორირებს */
   thumbnail_url?: string | null
+  /** წყარო — მხოლოდ შექმნისას: რომელი ჩანაწერის ფანჯრიდან დაემატა (`cast_member` = მსახიობი) */
+  origin?: { type: string; id: number }
 }
 
 function toFormData(input: VideoInput): FormData {
@@ -271,6 +291,10 @@ function toFormData(input: VideoInput): FormData {
   if (input.thumbnail) fd.append('thumbnail', input.thumbnail)
   if (input.remove_thumbnail) fd.append('remove_thumbnail', '1')
   if (input.thumbnail_url) fd.append('thumbnail_url', input.thumbnail_url)
+  if (input.origin) {
+    fd.append('origin_type', input.origin.type)
+    fd.append('origin_id', String(input.origin.id))
+  }
   return fd
 }
 
@@ -419,6 +443,15 @@ export async function deleteVideo(id: number): Promise<void> {
 
 export async function toggleVideoFavorite(id: number): Promise<Video> {
   const { data } = await api.patch(`/videos/${id}/favorite`)
+  return data.data
+}
+
+/**
+ * კურსის ვიდეო: „ვიდეოებში გადატანა" (`true`) / „ვიდეოებიდან ამოღება" (`false`).
+ * არაფერი იშლება — ვიდეო კურსში რჩება. კურსის გარეშე ვიდეოზე `false` — 422 `video_needs_course`.
+ */
+export async function setVideoListed(id: number, listed: boolean): Promise<Video> {
+  const { data } = await api.put(`/videos/${id}/listing`, { listed })
   return data.data
 }
 

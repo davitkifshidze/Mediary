@@ -7,6 +7,7 @@ use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasStatus;
 use App\Models\Concerns\HasTrash;
 use App\Services\Storage\StorageMeter;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -65,6 +66,9 @@ class Video extends Model
         'download_size' => 'integer',
         'downloaded_at' => 'datetime',
         'download_started_at' => 'datetime',
+        // ვიდეოების სიაშია? (კურსის ფლეილისტის ვიდეო კურსში ცხოვრობს — `false`)
+        'listed' => 'boolean',
+        'origin_id' => 'integer',
     ];
 
     /**
@@ -117,6 +121,17 @@ class Video extends Model
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class, 'course_id');
+    }
+
+    /**
+     * **ვიდეოების მოდულის ჩანაწერები** — ბმულით ხელით დამატებული და სხვა
+     * მოდულიდან ცხადად გადმოტანილი. კურსის ფლეილისტიდან შექმნილი ვიდეო კურსში
+     * ცხოვრობს და აქ არ ხვდება, სანამ „ვიდეოებში გადატანით" არ გადმოვა.
+     * ⚠️ მოდულის ყველა სია ამას `ModuleList::narrow()`-ით იყენებს.
+     */
+    public function scopeListed(Builder $query): Builder
+    {
+        return $query->where($this->qualifyColumn('listed'), true);
     }
 
     /* ---------- მიმაგრებული შიგთავსი — სექციის საკუთარი ცხრილები ---------- */

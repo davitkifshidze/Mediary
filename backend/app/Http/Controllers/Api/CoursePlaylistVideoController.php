@@ -14,6 +14,7 @@ use App\Support\CredentialProviders;
 use App\Support\DuplicateLink;
 use App\Support\MissingCredential;
 use App\Support\StorageFolder;
+use App\Support\VideoOrigin;
 use App\Support\VideoUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,8 @@ use Illuminate\Validation\Rule;
  * გაკეთდეს ვიდეოებში და იქ ჩაყაროს ვიდეოები, შეგეძლოს მინიშნება რომელი
  * ვიდეოები ჩამოიწეროს". არჩეული ელემენტები ვიდეოების მოდულში ჩანაწერებად
  * იქმნება და კურსს მიებმება (`videos.course_id`, რიგი — `sort_order`).
+ * ⚠️ ასეთი ვიდეო **კურსში ცხოვრობს** (`listed = false`): ვიდეოების მოდულის სიაში
+ * არ ჩანს, სანამ „ვიდეოებში გადატანით" არ გადმოვა (`PUT /videos/{id}/listing`).
  *
  * ⚠️ ელემენტები **ქეშირებული ფლეილისტიდან** მოდის (`YouTubePlaylist::fetch()`):
  * სათაური, ხანგრძლივობა, თარიღი და არხი უკვე იქაა, ე.ი. N× `LinkResolver`
@@ -210,7 +213,12 @@ class CoursePlaylistVideoController extends Controller
             'channel' => isset($list['channel']) ? mb_substr((string) $list['channel'], 0, 255) : null,
             'type_id' => (int) $data['type_id'],
             'course_id' => $course->id,
-            // ფლეილისტის რიგი — საქაღალდე ამ რიგით ილაგება
+            /* ფლეილისტის ვიდეო კურსში ცხოვრობს: ვიდეოების სიაში მხოლოდ
+               „ვიდეოებში გადატანით" ხვდება; წყაროდ კურსი აწერია */
+            'listed' => false,
+            'origin_type' => VideoOrigin::COURSE,
+            'origin_id' => $course->id,
+            // ფლეილისტის რიგი — კურსის ფანჯარა ამ რიგით ალაგებს
             'sort_order' => (int) $item['position'],
             'tags' => [],
         ]);

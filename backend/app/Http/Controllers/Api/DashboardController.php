@@ -25,6 +25,7 @@ use App\Models\Video;
 use App\Support\AppTime;
 use App\Support\CustomModules;
 use App\Support\DutyPeriod;
+use App\Support\ModuleList;
 use App\Support\ModuleOrder;
 use App\Support\RecordLocks;
 use Illuminate\Database\Eloquent\Builder;
@@ -191,6 +192,11 @@ class DashboardController extends Controller
            ⚠️ მხოლოდ `not exists` / `not in` ქვე-პირობებია — ახალი query არ ემატება. */
         if ($query->getModel() instanceof GalleryImage) {
             return $query->listed();
+        }
+
+        // ვიდეო — მხოლოდ მოდულის სიაში მყოფი (კურსში მცხოვრები კურსისაა); ისევ ერთი პირობა
+        if ($query->getModel() instanceof Video) {
+            return ModuleList::narrow($query);
         }
 
         if ($key !== 'duty') {

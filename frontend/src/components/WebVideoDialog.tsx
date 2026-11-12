@@ -245,9 +245,12 @@ export function WebVideoDialog({
         status: defaultStatus?.key,
         description: video.description ?? undefined,
         duration: video.duration,
-        // ცარიელი არ იგზავნება: სერვერმა არხი oEmbed-იდან შეავსოს
-        channel: video.channel ?? undefined,
+        /* ⚠️ არხი მხოლოდ მაშინ, როცა ნამდვილად არხია (YouTube-ის შედეგი): სხვა წყაროს
+           იმავე ველში საიტის ან გვერდის სახელი მოაქვს. ცარიელს სერვერი oEmbed-იდან ავსებს. */
+        channel: (video.engine === 'youtube' ? video.channel : null) ?? undefined,
         published_at: video.published ?? undefined,
+        // წყარო — ჩანაწერი, რომლის ფანჯრიდანაც ვიდეო დაემატა (ჯერ შეუქმნელზე არ იწერება)
+        origin: id ? { type: target, id } : undefined,
       }),
     onSuccess: (created, video) => {
       setInVideos((cur) => ({ ...cur, [video.link]: { id: created.id, title: created.title } }))

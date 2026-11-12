@@ -16,11 +16,14 @@ use App\Services\Video\VideoSearch;
 use App\Support\ColumnTrash;
 use App\Support\DuplicateLink;
 use App\Support\Like;
+use App\Support\ModuleList;
 use App\Support\RichText;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
+use App\Support\VideoOrigin;
 use App\Support\VideoUrl;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 /**
@@ -36,7 +39,9 @@ class VideoController extends Controller
 
     public function index(Request $request, VideoSearch $search)
     {
-        $query = Video::query()
+        /* ⚠️ მხოლოდ მოდულის ვიდეოები: კურსის ფლეილისტის ვიდეო კურსში ცხოვრობს და
+           აქ „ვიდეოებში გადატანამდე" არ ჩანს — კურსის საქაღალდეშიც (`?course=`) */
+        $query = ModuleList::narrow(Video::query())
             ->with(['type', 'course'])
             ->withCount(['images', 'documents', 'notes']);
         // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
@@ -85,7 +90,7 @@ class VideoController extends Controller
                 $query->where('title', 'like', Like::contains($term));
             }
 
-            return VideoResource::collection($this->randomRecords($request, $query, 'videos.id'));
+            return VideoResource::collection($this->withOrigins($this->randomRecords($request, $query, 'videos.id')));
         }
 
         match ($request->string('sort')->toString()) {
@@ -106,10 +111,10 @@ class VideoController extends Controller
         // თანაბარ relevance-ზე არჩეული სორტირება რჩება ძალაში.
         $q = $request->string('q')->toString();
 
-        return VideoResource::collection($this->paginated(
+        return VideoResource::collection($this->withOrigins($this->paginated(
             $request,
             $q === '' ? $query : $search->search($query, $q),
-        ));
+        )));
     }
 
     /**
@@ -118,26 +123,27 @@ class VideoController extends Controller
      */
     public function similar(Video $video, VideoSearch $search)
     {
-        $base = Video::query()
+        $base = ModuleList::narrow(Video::query())
             ->whereKeyNot($video->getKey())
             ->with('type')
             ->withCount(['images', 'documents', 'notes']);
 
-        return VideoResource::collection($search->similar($base, $video));
+        return VideoResource::collection($this->withOrigins($search->similar($base, $video)));
     }
 
     /**
      * **კურსების „საქაღალდეები"** — კურსები, რომლებსაც ერთი ვიდეო მაინც აქვს
-     * (ბადის ზემოთ ჩიპებად). სახელი, ფოტო და რიცხვი კურსისაა.
+     * (ბადის ზემოთ ჩიპებად). სახელი და ფოტო კურსისაა, რიცხვი — მხოლოდ იმ ვიდეოებისა,
+     * რომლებიც ვიდეოების სიაშია (კურსში მცხოვრები აქ არ ითვლება).
      * ⚠️ ურნაში მყოფი კურსი აქ არ ჩანს (`trash` scope), მისი ვიდეოები კი სიაში რჩება.
      */
     public function folders()
     {
         $courses = Course::query()
-            ->whereHas('videos')
+            ->whereHas('videos', fn ($q) => $q->listed())
             ->withCount([
-                'videos',
-                'videos as downloaded_count' => fn ($q) => $q->where('download_status', Video::DOWNLOAD_READY),
+                'videos' => fn ($q) => $q->listed(),
+                'videos as downloaded_count' => fn ($q) => $q->listed()->where('download_status', Video::DOWNLOAD_READY),
             ])
             ->orderBy('title')
             ->get();
@@ -153,6 +159,26 @@ class VideoController extends Controller
 
     public function show(Video $video)
     {
+        return new VideoResource($video->load(['type', 'course']));
+    }
+
+    /**
+     * **„ვიდეოებში გადატანა" / „ვიდეოებიდან ამოღება"** — კურსის ვიდეო ან კურსში
+     * ცხოვრობს, ან ვიდეოების სიაშიც ჩანს. არაფერი იშლება: ვიდეო, მისი ფაილები და
+     * ლოკალური ასლი ადგილზე რჩება.
+     * ⚠️ კურსის გარეშე ვიდეოს სიიდან ამოღება არ შეიძლება — ის ვეღარსად გამოჩნდებოდა.
+     */
+    public function listing(Request $request, Video $video)
+    {
+        $data = $request->validate(['listed' => ['required', 'boolean']]);
+
+        if (! $data['listed'] && ! $video->course_id) {
+            return response()->json(['message' => 'video_needs_course'], 422);
+        }
+
+        $video->listed = (bool) $data['listed'];
+        $video->save();
+
         return new VideoResource($video->load(['type', 'course']));
     }
 
@@ -258,6 +284,21 @@ class VideoController extends Controller
 
     /* ---------- დამხმარეები ---------- */
 
+    /**
+     * სიის ვიდეოებს წყაროს ბარათი ერთად ებმება (თითო ტიპზე ერთი query და არა თითო ვიდეოზე).
+     *
+     * @template T of \Illuminate\Contracts\Pagination\LengthAwarePaginator|Collection
+     *
+     * @param  T  $videos
+     * @return T
+     */
+    private function withOrigins($videos)
+    {
+        VideoOrigin::attach($videos instanceof Collection ? $videos : $videos->getCollection());
+
+        return $videos;
+    }
+
     private function validated(Request $request, ?Video $video = null): array
     {
         // ⚠️ სტატუსი და ტიპი სავალდებულოა — ჩანაწერი ვერცერთის გარეშე ვერ შეინახება.
@@ -287,6 +328,10 @@ class VideoController extends Controller
                 'integer',
                 Rule::exists('courses', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
+            /* წყარო — რომელი მოდულის რომელი ჩანაწერიდან დაემატა („ვიდეოებში დამატება").
+               მხოლოდ შექმნისას იწერება; ჩანაწერი ჩემი უნდა იყოს (`apply()`) */
+            'origin_type' => ['nullable', 'string', 'required_with:origin_id', VideoOrigin::rule()],
+            'origin_id' => ['nullable', 'integer', 'min:1', 'required_with:origin_type'],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'duration' => ['nullable', 'integer', 'min:0', 'max:864000'],
             'tags' => ['nullable', 'array', 'max:20'],
@@ -311,6 +356,16 @@ class VideoController extends Controller
         }
         if (array_key_exists('course_id', $data)) {
             $video->course_id = $data['course_id'] ?: null;
+            // კურსს მოწყვეტილი ვიდეო ვიდეოების სიაში ბრუნდება — სხვაგან ვეღარ გამოჩნდებოდა
+            if (! $video->course_id) {
+                $video->listed = true;
+            }
+        }
+        if (! $video->exists && ! empty($data['origin_type']) && ! empty($data['origin_id'])) {
+            // სხვისი ან არარსებული ჩანაწერი წყაროდ არ იწერება — 404, როგორც ყველა უცხო ჩანაწერზე
+            abort_if(VideoOrigin::find($data['origin_type'], (int) $data['origin_id']) === null, 404);
+            $video->origin_type = $data['origin_type'];
+            $video->origin_id = (int) $data['origin_id'];
         }
         if (! empty($data['status'])) {
             $video->applyStatusKey($data['status']);

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, ExternalLink, FolderOpen, FolderPlus, ListVideo, Loader2, Play, RefreshCw, TriangleAlert } from 'lucide-react'
+import { Download, ExternalLink, FolderInput, FolderOpen, FolderOutput, FolderPlus, ListVideo, Loader2, Play, RefreshCw, TriangleAlert } from 'lucide-react'
 import {
   addPlaylistVideos,
   fetchCoursePlaylist,
@@ -12,7 +12,7 @@ import {
   type CoursePlaylistItem,
   type CoursePlaylistVideo,
 } from '@/api/courses'
-import { downloadBusy } from '@/api/videos'
+import { downloadBusy, setVideoListed } from '@/api/videos'
 import { errorMessage, translateCode } from '@/lib/errors'
 import { formatBytes } from '@/lib/utils'
 import { useModules } from '@/lib/modules'
@@ -57,7 +57,7 @@ import { PlaylistImportDialog, type PlaylistImportChoice } from '@/components/Pl
    **უარყოფითია**: ბაზის ჩანაწერის id-ს (`link-12`) ვერასდროს დაემთხვევა.
    ============================================================ */
 
-/** ვიდეოებში მყოფი ელემენტის ბეჯი — ლოკალური / მიმდინარე / რიგში / ჩავარდნილი / უბრალოდ ვიდეოებშია */
+/** შენახული ელემენტის ბეჯი — ლოკალური / მიმდინარე / რიგში / ჩავარდნილი / კურსშია ან ვიდეოებშიცაა */
 function videoBadge(video: CoursePlaylistVideo, t: (key: string) => string): { label: string; className?: string; title?: string } {
   if (video.download_stale) return { label: t('videos.local.stalled'), className: 'bg-[var(--status-towatch)]/15 text-[var(--status-towatch)]' }
   switch (video.download_status) {
@@ -74,7 +74,8 @@ function videoBadge(video: CoursePlaylistVideo, t: (key: string) => string): { l
         title: translateCode(video.download_error) || undefined,
       }
     default:
-      return { label: t('courses.playlist.inVideos'), className: 'bg-muted text-muted-foreground' }
+      // კურსში ცხოვრობს, თუ ვიდეოების სიაშიც გადატანილია
+      return { label: t(video.listed ? 'courses.playlist.inVideos' : 'courses.playlist.inCourse'), className: 'bg-muted text-muted-foreground' }
   }
 }
 
@@ -132,6 +133,18 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
     }
   }
 
+  /** „ვიდეოებში გადატანა" / „ვიდეოებიდან ამოღება" — ვიდეო ორივე შემთხვევაში კურსში რჩება */
+  const listing = useMutation({
+    mutationFn: (vars: { id: number; listed: boolean }) => setVideoListed(vars.id, vars.listed),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['course-playlist'] })
+      qc.invalidateQueries({ queryKey: ['videos'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      toast({ title: t(vars.listed ? 'videos.movedToVideos' : 'videos.unlisted', { course: course.title }), variant: 'success' })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
   const add = useMutation({
     mutationFn: (choice: PlaylistImportChoice) =>
       addPlaylistVideos(course.id, { video_ids: picked, ...choice, download: importing === 'download' }),
@@ -170,7 +183,9 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
   const pickedText = [t('courses.playlist.picked', { count: picked.length }), pickedDuration ? `~${pickedDuration}` : null]
     .filter(Boolean)
     .join(' · ')
-  const inVideos = items.filter((it) => it.video).length
+  /** კურსში შენახული (ვიდეოს ჩანაწერი აქვს) და მათგან ვიდეოების სიაში გადატანილი */
+  const saved = items.filter((it) => it.video).length
+  const inVideos = items.filter((it) => it.video?.listed).length
   const local = items.filter((it) => it.video?.download_status === 'ready').length
 
   /* ეს კურსი უკრავს? — `origin`-ით (იხ. ზემოთ) */
@@ -193,15 +208,21 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
       hint={t('courses.playlist.hint')}
       action={
         <div className="flex flex-wrap items-center justify-end gap-3">
-          {/* კურსის „საქაღალდე" ვიდეოებში */}
-          {canImport && (inVideos > 0 || (course.videos_count ?? 0) > 0) && (
+          {/* რამდენია კურსში შენახული და რამდენს აქვს ლოკალური ასლი */}
+          {canImport && saved > 0 && (
+            <span className="text-xs text-muted-foreground" data-testid="playlist-saved">
+              {t('courses.playlist.savedCount', { count: saved, local })}
+            </span>
+          )}
+          {/* ვიდეოების სიაში გადატანილები — კურსის საქაღალდე ვიდეოებში */}
+          {canImport && inVideos > 0 && (
             <Link
               to={`/videos?course=${course.id}`}
               className={buttonVariants({ variant: 'outline', size: 'sm' })}
               data-testid="playlist-folder-link"
             >
               <FolderOpen className="size-4" />
-              {t('courses.playlist.inVideosCount', { count: Math.max(inVideos, course.videos_count ?? 0), local })}
+              {t('courses.playlist.inVideosCount', { count: inVideos })}
             </Link>
           )}
           {total && (
@@ -323,6 +344,21 @@ export function CoursePlaylistSection({ course }: { course: Course }) {
                       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{formatDuration(item.duration)}</span>
                     )}
                   </button>
+                  {/* შენახული ვიდეო: ვიდეოების სიაში გადატანა ან უკან ამოღება — არაფერი იშლება */}
+                  {canImport && item.video && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={listing.isPending}
+                      onClick={() => listing.mutate({ id: item.video!.id, listed: !item.video!.listed })}
+                      data-testid="playlist-listing"
+                    >
+                      {item.video.listed ? <FolderOutput className="size-3.5" /> : <FolderInput className="size-3.5" />}
+                      {t(item.video.listed ? 'videos.unlist' : 'videos.moveToVideos')}
+                    </Button>
+                  )}
                   <a
                     href={item.url}
                     target="_blank"

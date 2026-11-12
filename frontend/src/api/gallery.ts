@@ -925,8 +925,41 @@ export async function setGalleryPrimary(id: number): Promise<{ poster_path: stri
 /** ვიდეოების გვერდის პარამეტრები */
 export type GalleryVideoOwnerType = 'record' | 'actor'
 export type GalleryVideoSort = 'new' | 'old' | 'title'
-/** დაჯგუფება სერვერზე იწყობა (ჯგუფი გვერდებზე არ იხლიჩება) */
-export type GalleryVideoGroup = 'record' | 'module'
+
+/** ვიდეოების ჭრილის პირველი საფეხური — მოდული, რომლის ჩანაწერებსაც ვიდეო-ბმული აქვთ */
+export interface GalleryVideoModule {
+  /** `movie` · `bookmark` · … · `actor` */
+  kind: string
+  videos: number
+  records: number
+  /** ბოლო ბმულების ესკიზები (დაშორებული URL) */
+  thumbnails: string[]
+}
+
+export async function fetchGalleryVideoModules(): Promise<GalleryVideoModule[]> {
+  const { data } = await api.get('/gallery/videos/modules')
+  return data.data
+}
+
+/** მეორე საფეხური — ერთი მოდულის ჩანაწერი თავისი ვიდეოების რაოდენობით */
+export interface GalleryVideoRecord {
+  kind: string
+  id: number
+  videos: number
+  thumbnail: string | null
+  /** `null`, თუ ჩანაწერი ურნაშია ან დამალულია */
+  title: string | null
+  title_ka: string | null
+}
+
+export async function fetchGalleryVideoRecords(params: {
+  type: string
+  page?: number
+  per_page?: number
+}): Promise<{ data: GalleryVideoRecord[]; meta: GalleryVideoPage['meta'] }> {
+  const { data } = await api.get('/gallery/videos/records', { params })
+  return data
+}
 
 export async function fetchGalleryVideos(
   params: {
@@ -938,7 +971,6 @@ export async function fetchGalleryVideos(
     /** მოდული (`movie` · `song` · … · `actor`) */
     type?: string
     sort?: GalleryVideoSort
-    group?: GalleryVideoGroup
   } = {},
 ): Promise<GalleryVideoPage> {
   const { data } = await api.get('/gallery/videos', { params })

@@ -7,11 +7,13 @@ use App\Models\CustomCategory;
 use App\Models\Genre;
 use App\Models\Status;
 use App\Models\User;
+use App\Models\Video;
 use App\Services\Export\RecordExporter;
 use App\Support\CustomModules;
 use App\Support\ExportDomain;
 use App\Support\StatusDomain;
 use App\Support\StorageFolder;
+use App\Support\VideoOrigin;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -107,6 +109,7 @@ class MediaryWriter
 
         $this->dictionaries($user, $module, $model, $record);
         $this->course($user, $module, $model, $record);
+        $this->videoHome($model);
         $this->photo($user, $module, $model, $record, $files);
 
         if ($created = MediarySchema::moment($record['created_at'] ?? null)) {
@@ -253,6 +256,28 @@ class MediaryWriter
         if ($match) {
             $model->setAttribute('course_id', $match->getKey());
         }
+    }
+
+    /**
+     * ვიდეოს „სახლი". კურსში მცხოვრები ვიდეო (`listed = false`) ასეთად მხოლოდ მაშინ
+     * რჩება, როცა მისი კურსი აქ მოიძებნა — თორემ ვეღარსად გამოჩნდებოდა. წყაროს id
+     * სხვა ბაზის რიცხვია: კურსზე ის ნაპოვნი კურსია, სხვა მოდულის წყარო არ გადმოდის.
+     */
+    private function videoHome(Model $model): void
+    {
+        if (! $model instanceof Video) {
+            return;
+        }
+
+        $course = $model->getAttribute('course_id');
+
+        if (! $course) {
+            $model->setAttribute('listed', true);
+        }
+
+        $fromCourse = $course && $model->getAttribute('origin_type') === VideoOrigin::COURSE;
+        $model->setAttribute('origin_type', $fromCourse ? VideoOrigin::COURSE : null);
+        $model->setAttribute('origin_id', $fromCourse ? $course : null);
     }
 
     /** ჟანრები — ფილმზე საერთო (`genres`), სიმღერასა და თამაშზე ჩემი ლექსიკონი */

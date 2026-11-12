@@ -8,6 +8,7 @@ import {
   Loader2,
   Play,
   TriangleAlert,
+  Tv,
 } from 'lucide-react'
 import { downloadBusy, type Video } from '@/api/videos'
 import { storageUrl } from '@/lib/api'
@@ -18,6 +19,7 @@ import { openOnClick } from '@/lib/recordClick'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { CardActions } from '@/components/RecordView'
 import { VideoBadges } from '@/components/VideoBadges'
+import { VideoSource } from '@/components/VideoSource'
 
 /* ============================================================
    **ვიდეოს ბარათი** — `VideosPage`-დან ცალკე გამოვიდა.
@@ -159,16 +161,19 @@ export function VideoCard({
             className="flex min-h-4 items-center gap-3 overflow-hidden whitespace-nowrap text-xs text-muted-foreground"
             data-testid="video-meta"
           >
-            {/* კურსი — „საქაღალდე" */}
-            {v.course && (
+            {/* წყარო — რომელი ჩანაწერიდან (ან კურსიდან) მოვიდა; ხელით მიბმული კურსი — საქაღალდედ */}
+            <VideoSource origin={v.origin} />
+            {v.course && v.origin?.kind !== 'course' && (
               <span className="inline-flex min-w-0 items-center gap-1" title={v.course.title} data-testid="video-course">
                 <FolderOpen className="size-3 shrink-0" />
                 <span className="truncate">{v.course.title}</span>
               </span>
             )}
+            {/* არხი — ნიშნით, რომ სათაურში ან წყაროში არ აირიოს */}
             {v.channel && (
-              <span className="min-w-0 truncate" title={v.channel}>
-                {v.channel}
+              <span className="inline-flex min-w-0 items-center gap-1" title={`${t('fields.name.video.channel')}: ${v.channel}`} data-testid="video-channel">
+                <Tv className="size-3 shrink-0" />
+                <span className="truncate">{v.channel}</span>
               </span>
             )}
             {v.published_at && (

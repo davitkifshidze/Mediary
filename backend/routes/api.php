@@ -652,6 +652,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // „მსგავსი ვიდეოები" — ჩემი ბიბლიოთეკიდან
         Route::get('/videos/{video}/similar', [VideoController::class, 'similar']);
         Route::patch('/videos/{video}/favorite', [VideoController::class, 'toggleFavorite']);
+        // კურსის ვიდეო: „ვიდეოებში გადატანა" / „ვიდეოებიდან ამოღება" (არაფერი იშლება)
+        Route::put('/videos/{video}/listing', [VideoController::class, 'listing']);
         Route::post('/videos/{video}/watched', [VideoController::class, 'markWatched']);
         // მეტამონაცემის ხელახლა წამოღება ბმულიდან (ხანგრძლივობა, ზომა, გარჩევადობა…)
         Route::post('/videos/{video}/resync', [VideoController::class, 'resync']);
@@ -1168,6 +1170,9 @@ Route::middleware('auth:sanctum')->group(function () {
            უნდა იდგეს, თორემ „videos" ტიპად წაიკითხება (იგივე წესი, რაც
            „groups"/„photos"-ს აქვს). */
         Route::get('/gallery/videos', [GalleryVideoController::class, 'index']);
+        // ვიდეოების ჭრილის ორი ზედა საფეხური: მოდულები → ერთი მოდულის ჩანაწერები
+        Route::get('/gallery/videos/modules', [GalleryVideoController::class, 'modules']);
+        Route::get('/gallery/videos/records', [GalleryVideoController::class, 'records']);
         Route::post('/gallery/videos', [GalleryVideoController::class, 'store']);
         Route::delete('/gallery/videos/{galleryVideo}', [GalleryVideoController::class, 'destroy']);
         /* **ალბომები და ფოტოს გადატანა.**

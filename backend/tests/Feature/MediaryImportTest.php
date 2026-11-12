@@ -8,6 +8,8 @@ use App\Models\BookFile;
 use App\Models\Bookmark;
 use App\Models\BookNote;
 use App\Models\CastMember;
+use App\Models\Course;
+use App\Models\CourseCategory;
 use App\Models\GalleryImage;
 use App\Models\Genre;
 use App\Models\Module;
@@ -18,6 +20,7 @@ use App\Models\Place;
 use App\Models\Series;
 use App\Models\Status;
 use App\Models\User;
+use App\Models\Video;
 use App\Services\Modules\CustomFieldService;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -390,6 +393,42 @@ class MediaryImportTest extends TestCase
     }
 
     /* ---------- დამხმარეები ---------- */
+
+    /**
+     * ვიდეოს „სახლი" იმპორტში: კურსში მცხოვრები ვიდეო ასეთად მხოლოდ მაშინ რჩება, როცა
+     * კურსი აქ მოიძებნა (წყაროდ ის კურსი); უკურსოდ — ვიდეოების სიაში ჩნდება, წყაროს გარეშე.
+     */
+    public function test_a_course_lesson_keeps_its_home_only_when_the_course_is_found(): void
+    {
+        $bob = $this->makeUser('carl', ['video', 'course']);
+        $this->actingAs($bob);
+        CourseCategory::ensureDefaults($bob->id);
+        $course = Course::create([
+            'user_id' => $bob->id, 'title' => 'Laravel', 'status' => 'taking',
+            'category_id' => CourseCategory::where('user_id', $bob->id)->value('id'),
+        ]);
+
+        $record = fn (string $title, ?string $courseTitle) => [
+            'id' => 1, 'title' => $title, 'type' => 'Study', 'course' => $courseTitle, 'listed' => false, 'origin_type' => 'course',
+            'status' => 'undecided', 'url' => 'https://example.com/'.md5($title), 'platform' => 'other', 'tags' => [],
+        ];
+        $json = json_encode([
+            'app' => 'mediary', 'module' => 'video', 'version' => 1,
+            'records' => [$record('Lesson', 'Laravel'), $record('Orphan', 'No such course'), ['origin_type' => 'bookmark'] + $record('From a bookmark', null)],
+        ]);
+
+        $plan = $this->plan($bob, $json, 'mediary-video-2026-11-12.json');
+        $ids = array_map(fn (int $i) => $this->item($bob, $plan, 'video', $i)['id'], [0, 1, 2]);
+        [$lesson, $orphan, $other] = array_map(fn (int $id) => Video::withoutGlobalScopes()->findOrFail($id), $ids);
+
+        $this->assertFalse($lesson->listed);
+        $this->assertSame(['course', $course->id, $course->id], [$lesson->origin_type, $lesson->origin_id, $lesson->course_id]);
+        // კურსი ვერ მოიძებნა — ვიდეო სიაში ჩნდება, წყარო კი არ იწერება (სხვა ბაზის id იყო)
+        $this->assertTrue($orphan->listed);
+        $this->assertSame([null, null, null], [$orphan->origin_type, $orphan->origin_id, $orphan->course_id]);
+        $this->assertTrue($other->listed);
+        $this->assertNull($other->origin_type);
+    }
 
     private function makeUser(string $name, array $modules): User
     {

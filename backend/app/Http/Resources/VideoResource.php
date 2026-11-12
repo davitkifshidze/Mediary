@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\VideoOrigin;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -26,6 +27,10 @@ class VideoResource extends JsonResource
                 'title' => $this->course->title,
                 'image' => $this->course->thumbnail_path ?: $this->course->image_url,
             ] : null),
+            /* წყარო — რომელი მოდულის რომელი ჩანაწერიდან მოვიდა (`null` = ხელით დამატებული);
+               `listed` — ვიდეოების სიაშია თუ კურსში ცხოვრობს */
+            'origin' => VideoOrigin::card($this->resource),
+            'listed' => (bool) ($this->listed ?? true),
             // ვიდეოს სტატუსი: ამ მოდულს ის აქამდე საერთოდ არ ჰქონდა
             'status' => StatusResource::brief($this->status),
             // საჯარო პროფილის წინაპირობა; default `private`

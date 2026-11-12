@@ -32,6 +32,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Markdown } from '@/components/ui/markdown'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { VideoBadges } from '@/components/VideoBadges'
+import { VideoSource } from '@/components/VideoSource'
 import { useContentLang } from '@/lib/settings'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { PhotoGrid } from '@/components/ui/photo-grid'
@@ -215,8 +216,10 @@ export function VideoDetail({
           <>
             <VideoSpot video={video} onPlay={() => onPlay(video)} />
             {/* ვინ ატვირთა და როდის (ვებძებნიდან ან ბმულის ჩასმისას) */}
-            {(video.channel || video.published_at || video.duration || formatSource(video)) && (
+            {(video.origin || video.channel || video.published_at || video.duration || formatSource(video)) && (
               <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {/* საიდან მოვიდა — ბმულით წყაროს ჩანაწერზე */}
+                <VideoSource origin={video.origin} onNavigate={onClose} />
                 {video.channel && (
                   <span className="inline-flex items-center gap-1.5" title={t('fields.name.video.channel')}>
                     <Tv className="size-3.5" />

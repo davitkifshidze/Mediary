@@ -22,6 +22,7 @@ use App\Models\Status;
 use App\Models\User;
 use App\Models\Video;
 use App\Support\CustomModules;
+use App\Support\ModuleList;
 use App\Support\RecordLocks;
 use App\Support\SqlDate;
 use App\Support\StatusDomain;
@@ -165,7 +166,8 @@ class LibraryStats
     {
         $model = $map['model'];
 
-        return fn () => $model::withoutGlobalScope('owner')
+        // კურსში მცხოვრები ვიდეო ვიდეოების სტატისტიკაში არ ითვლება
+        return fn () => ModuleList::narrow($model::withoutGlobalScope('owner'))
             ->where('user_id', $user->getKey())
             ->when(! empty($map['custom']), fn ($q) => $q->where('module', $module))
             // ჩანაწერი, რომელიც არ ითვლება (გაუქმებული მორიგეობა)

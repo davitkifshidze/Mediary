@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\GalleryVideoResource;
-use App\Models\CastMember;
 use App\Models\GalleryVideo;
 use App\Services\Serp\SerpApiClient;
 use App\Support\GalleryParent;
 use App\Support\Like;
+use App\Support\RecordTitle;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -119,6 +119,77 @@ class GalleryVideoController extends Controller
                 'last_page' => $page->lastPage(),
             ],
             'facets' => ['types' => (object) $facets],
+        ]);
+    }
+
+    /**
+     * **მოდულები, რომელთა ჩანაწერებსაც ვიდეო-ბმული აქვთ** — ჭრილის პირველი საფეხური:
+     * თითოზე ვიდეოების და ჩანაწერების რაოდენობა და ბოლო ბმულების ესკიზები.
+     */
+    public function modules(): JsonResponse
+    {
+        $rows = GalleryVideo::query()
+            ->selectRaw('videoable_type, count(*) as videos, count(distinct videoable_id) as records')
+            ->groupBy('videoable_type')
+            ->get();
+
+        $modules = $rows->map(fn ($row) => [
+            'kind' => $row->videoable_type === GalleryParent::ACTOR ? 'actor' : $row->videoable_type,
+            'videos' => (int) $row->videos,
+            'records' => (int) $row->records,
+            // ⚠️ ესკიზი დაშორებული URL-ია (არაფერი იწერება) — ბოლო სამი ბმული
+            'thumbnails' => GalleryVideo::query()
+                ->where('videoable_type', $row->videoable_type)
+                ->whereNotNull('thumbnail_url')
+                ->orderByDesc('id')
+                ->limit(3)
+                ->pluck('thumbnail_url')
+                ->all(),
+        ])->sortByDesc('videos')->values();
+
+        return response()->json(['data' => $modules]);
+    }
+
+    /**
+     * **ერთი მოდულის ჩანაწერები, რომლებსაც ვიდეო-ბმული აქვთ** — მეორე საფეხური;
+     * ბოლოს დამატებული თავში. ⚠️ დაჯგუფება ბაზაშია, გვერდი — ჩანაწერებისა.
+     */
+    public function records(Request $request): JsonResponse
+    {
+        $owners = implode('|', [...GalleryParent::recordKeys(), 'actor']);
+
+        $data = $request->validate([
+            'type' => ['required', 'string', 'regex:/^('.$owners.')$/'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        $type = $data['type'] === 'actor' ? GalleryParent::ACTOR : $data['type'];
+
+        $page = GalleryVideo::query()
+            ->where('videoable_type', $type)
+            ->selectRaw('videoable_id, count(*) as videos, max(id) as latest')
+            ->groupBy('videoable_id')
+            ->orderByDesc('latest')
+            ->paginate($data['per_page'] ?? 24)
+            ->withQueryString();
+
+        $rows = collect($page->items());
+        $records = GalleryParent::query($type)?->whereIn('id', $rows->pluck('videoable_id'))->get()->keyBy(fn (Model $record) => $record->getKey()) ?? collect();
+        $thumbs = GalleryVideo::query()->whereIn('id', $rows->pluck('latest'))->pluck('thumbnail_url', 'id');
+
+        return response()->json([
+            'data' => $rows->map(fn ($row) => [
+                'kind' => $data['type'],
+                'id' => (int) $row->videoable_id,
+                'videos' => (int) $row->videos,
+                'thumbnail' => $thumbs[$row->latest] ?? null,
+            ] + RecordTitle::of($records->get($row->videoable_id)))->values(),
+            'meta' => [
+                'page' => $page->currentPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+                'last_page' => $page->lastPage(),
+            ],
         ]);
     }
 
@@ -267,9 +338,8 @@ class GalleryVideoController extends Controller
             }
 
             foreach ($parents->whereIn('id', $rows->pluck('videoable_id')->unique())->get() as $record) {
-                $names[$type.':'.$record->getKey()] = $record instanceof CastMember
-                    ? ($record->name_ka ?: $record->name)
-                    : ($record->title_ka ?? $record->title_en ?? $record->title ?? null);
+                // ადგილს მხოლოდ `name` აქვს — სათაური ყველა ტიპზე ერთი წესით იკითხება
+                $names[$type.':'.$record->getKey()] = RecordTitle::label($record);
             }
         }
 

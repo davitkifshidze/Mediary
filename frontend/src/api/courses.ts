@@ -195,6 +195,8 @@ export interface CoursePlaylistItem {
 
 export interface CoursePlaylistVideo {
   id: number
+  /** ვიდეოების სიაშიც ჩანს (`true`), თუ მხოლოდ კურსში ცხოვრობს */
+  listed: boolean
   download_status: VideoDownloadState | null
   /** ჩავარდნის მიზეზი (მაგ. `storage_quota_exceeded`) */
   download_error: string | null

@@ -38,6 +38,7 @@ use App\Services\Storage\StorageMeter;
 use App\Support\CustomFields;
 use App\Support\CustomModules;
 use App\Support\MediaDomain;
+use App\Support\ModuleList;
 use App\Support\StatusDomain;
 use App\Support\UserSettings;
 use Illuminate\Database\Eloquent\Builder;
@@ -875,7 +876,9 @@ class PurgeService
 
         $table = (new $model)->getTable();
 
-        return $model::withoutGlobalScopes(['owner', 'trash'])
+        /* ვიდეოების წაშლა კურსში მცხოვრებ ვიდეოს არ ეხება — ის კურსისაა და
+           კურსთან ერთად იშლება (`Course::booted()`) */
+        return ModuleList::narrow($model::withoutGlobalScopes(['owner', 'trash']))
             ->where("{$table}.user_id", $user->getKey())
             ->when($how === self::TO_TRASH, fn (Builder $q) => $q->whereNull("{$table}.trashed_at"))
             /* ⚠️ **სამუდამო წაშლა (ანგარიშის წაშლა) ჩაკეტილსაც შლის.**
