@@ -184,14 +184,15 @@ final class ExportDomain
         ],
         'bookmark' => [
             'model' => Bookmark::class,
-            'with' => ['status', 'category', 'files', 'galleryImages', 'galleryVideos'],
+            'with' => ['status', 'category', 'files', 'ownFields', 'galleryImages', 'galleryVideos'],
             'fields' => [
                 'id', 'title', 'url', 'domain', 'category', 'status', 'status_name', 'tags',
                 // დამატებითი ბმულები (CSV-ში JSON-ად, `RecordExporter::flat()`)
                 'links',
                 'description', 'is_favorite', 'visit_count', 'visited_at',
                 'thumbnail_path', 'image_url', 'favicon_url', 'visibility', 'created_at',
-                'custom_fields', 'files', 'gallery',
+                // საკუთარი ველები ღიად გადის (ბაზაში დაშიფრულია) — ეს მფლობელის საკუთარი ასლია
+                'custom_fields', 'files', 'gallery', 'own_fields',
             ],
         ],
         'course' => [
@@ -236,7 +237,7 @@ final class ExportDomain
      * ⚠️ `episode_watches` და არა `episodes` — ეს უკანასკნელი სერიალის **სვეტია**
      * (ეპიზოდების რაოდენობა); ეპიზოდების ნახვა კი `episode_watches`-ია.
      */
-    public const EXTRAS = ['custom_fields', 'files', 'notes', 'gallery', 'cast', 'routes', 'videos', 'watches', 'episode_watches'];
+    public const EXTRAS = ['custom_fields', 'files', 'notes', 'gallery', 'cast', 'routes', 'videos', 'watches', 'episode_watches', 'own_fields'];
 
     /**
      * **ჩანაწერის მთავარი ფოტო**: სვეტი და (თუ აქვს) წყაროს სვეტი.

@@ -62,6 +62,7 @@ const mocks = vi.hoisted(() => ({
   fetchBookmark: vi.fn(),
   fetchBookmarkCategories: vi.fn(),
   fetchBookmarkFiles: vi.fn(),
+  fetchBookmarkFields: vi.fn(),
   markBookmarkVisited: vi.fn(),
   createBookmark: vi.fn(),
   fetchLinkPreview: vi.fn(),
@@ -85,6 +86,7 @@ vi.mock('@/api/bookmarks', async (original) => ({
   fetchBookmark: mocks.fetchBookmark,
   fetchBookmarkCategories: mocks.fetchBookmarkCategories,
   fetchBookmarkFiles: mocks.fetchBookmarkFiles,
+  fetchBookmarkFields: mocks.fetchBookmarkFields,
   markBookmarkVisited: mocks.markBookmarkVisited,
   createBookmark: mocks.createBookmark,
 }))
@@ -192,6 +194,7 @@ async function mount(entry = '/bookmarks') {
   mocks.fetchBookmarks.mockResolvedValue({ items: [bookmark], total: 1, lastPage: 1 })
   mocks.fetchBookmarkCategories.mockResolvedValue(mocks.categories)
   mocks.fetchBookmarkFiles.mockResolvedValue([])
+  mocks.fetchBookmarkFields.mockResolvedValue([])
   mocks.markBookmarkVisited.mockResolvedValue({ ...bookmark, visit_count: 1 })
   mocks.setBookmarkStatus.mockResolvedValue({ ...bookmark, status: statuses[1] })
 

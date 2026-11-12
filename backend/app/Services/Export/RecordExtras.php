@@ -85,6 +85,8 @@ class RecordExtras
                 'size' => (int) $file->size,
             ])->values()->all(),
             'notes', 'routes', 'videos', 'watches' => $this->rows($record, $field),
+            // ბუკმარკის საკუთარი ველები — მნიშვნელობა აქ ღიაა (`BookmarkOwnField`-ის აქსესორი)
+            'own_fields' => $this->rows($record, 'ownFields'),
             'gallery' => [...$this->images($record), ...$this->galleryVideos($record)],
             'cast' => $this->cast($record),
             'episode_watches' => $this->episodes[(int) $record->getAttribute('tmdb_id')] ?? [],

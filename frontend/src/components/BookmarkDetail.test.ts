@@ -51,6 +51,7 @@ const bookmark: Bookmark = {
 
 const mocks = vi.hoisted(() => ({
   fetchBookmarkFiles: vi.fn(),
+  fetchBookmarkFields: vi.fn(),
   markBookmarkVisited: vi.fn(),
   setBookmarkLinks: vi.fn(),
   refreshBookmarkFromLink: vi.fn(),
@@ -62,6 +63,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/api/bookmarks', async (original) => ({
   ...(await original<typeof import('@/api/bookmarks')>()),
   fetchBookmarkFiles: mocks.fetchBookmarkFiles,
+  fetchBookmarkFields: mocks.fetchBookmarkFields,
   markBookmarkVisited: mocks.markBookmarkVisited,
   setBookmarkLinks: mocks.setBookmarkLinks,
   refreshBookmarkFromLink: mocks.refreshBookmarkFromLink,
@@ -128,6 +130,7 @@ const shot = { id: 1, kind: 'image', path: 'bookmarks/files/images/shot.png', ur
 async function mount(gallery = true, files: unknown[] = [shot]) {
   mocks.gallery = gallery
   mocks.fetchBookmarkFiles.mockResolvedValue(files)
+  mocks.fetchBookmarkFields.mockResolvedValue([{ id: 9, label: 'შეკვეთის კოდი', value: 'ORD-55', is_secret: false, readable: true }])
   mocks.markBookmarkVisited.mockResolvedValue({ ...bookmark, visit_count: 5 })
   mocks.setBookmarkLinks.mockResolvedValue(bookmark)
   mocks.fetchGalleryPhotos.mockResolvedValue({ data: [], meta: { page: 1, per_page: 60, total: 0, last_page: 1 } })
@@ -214,6 +217,22 @@ describe('BookmarkDetail', () => {
     expect(button(i18n.t('actions.copy'))).toBeDefined()
     expect(button(i18n.t('actions.edit'))).toBeDefined()
     expect(button(i18n.t('actions.delete'))).toBeDefined()
+  })
+
+  it('shows the own fields of the bookmark under the header, above the extra links', async () => {
+    await mount()
+
+    const fields = document.querySelector<HTMLElement>('[data-testid="bookmark-fields"]')!
+    expect(mocks.fetchBookmarkFields).toHaveBeenCalledWith(5)
+    expect(fields.textContent).toContain('შეკვეთის კოდი')
+    expect(fields.textContent).toContain('ORD-55')
+    expect(fields.querySelector('[data-testid="bookmark-field-copy"]')?.textContent?.trim()).toBe(i18n.t('actions.copy'))
+
+    // „ბმულის გახსნა" ზემოთაა, დამატებითი ბმულები — ქვემოთ
+    const open = document.querySelector('[data-testid="bookmark-open-link"]')!
+    const links = document.querySelector('[data-testid="bookmark-link-cards"]')!
+    expect(open.compareDocumentPosition(fields) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(fields.compareDocumentPosition(links) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('shows each extra link on one row with type, host, price and an "open" link', async () => {

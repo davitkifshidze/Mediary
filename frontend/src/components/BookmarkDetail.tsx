@@ -26,6 +26,7 @@ import { useModules } from '@/lib/modules'
 import { useContentLang } from '@/lib/settings'
 import { useStatuses } from '@/lib/statuses'
 import { cn } from '@/lib/utils'
+import { BookmarkFieldsSection } from '@/components/BookmarkFields'
 import { BookmarkLinkCards, BookmarkLinkDialog } from '@/components/BookmarkLinks'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
 import { ModuleIcon } from '@/components/ModuleIcon'
@@ -254,6 +255,9 @@ export function BookmarkDetail({
             ))}
           </p>
         )}
+
+        {/* ---------- საკუთარი ველები: სახელი · მნიშვნელობა · „კოპირება" ---------- */}
+        <BookmarkFieldsSection bookmark={bookmark} />
 
         {/* ---------- დამატებითი ბმულები: თითო ერთ ხაზზე, რიგი გადათრევით ---------- */}
         <DetailSection

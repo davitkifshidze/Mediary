@@ -2883,7 +2883,25 @@
       "review": "review"
     },
     "webPhotosTitle": "Photos downloaded from the web",
-    "linksReordered": "Link order saved"
+    "linksReordered": "Link order saved",
+    "fields": {
+      "title": "Fields",
+      "hint": "This bookmark's own name → value pairs — a registration certificate, a plate number, an order code. “Copy” puts the value on the clipboard. Every value is encrypted in the database; fields never appear on the public page, in a share link or in the audit log. The app is not a vault — a password manager is the place for real passwords.",
+      "empty": "No fields yet.",
+      "add": "Add a field",
+      "editTitle": "Bookmark fields",
+      "editHint": "Each row is one field: a name and a value. Drag a row to change the order; an empty row is not saved. Up to 20 fields per bookmark.",
+      "label": "Field name",
+      "labelPlaceholder": "e.g. Registration",
+      "value": "Value",
+      "valuePlaceholder": "Value",
+      "secret": "Secret",
+      "secretHint": "A secret field shows as dots in the window — the eye reveals it, and “Copy” works without revealing — and the bookmark search never finds it, neither by name nor by value. An open field is found by both.",
+      "saved": "Fields saved",
+      "copied": "“{{label}}” copied",
+      "unreadable": "Cannot be read",
+      "unreadableHint": "This value was encrypted with another machine's key (the database came from another computer). Type it again — or make a full export on that computer and import it here: values are plain in the export."
+    }
   },
   "bookmarkCategories": {
     "title": "Bookmark categories",

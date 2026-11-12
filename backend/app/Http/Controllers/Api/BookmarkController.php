@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ReordersRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BookmarkResource;
 use App\Models\Bookmark;
+use App\Models\BookmarkOwnField;
 use App\Models\Status;
 use App\Services\Links\LinkResolver;
 use App\Services\Stats\LibraryStats;
@@ -65,12 +66,16 @@ class BookmarkController extends Controller
         }
 
         if ($q = $request->string('q')->toString()) {
+            // ღია საკუთარი ველის სახელი ან მნიშვნელობა (დაშიფრულია — PHP-ში ედრება); საიდუმლო — არა
+            $byField = BookmarkOwnField::bookmarksMatching($q);
+
             $query->where(fn (Builder $inner) => $inner
                 ->where('title', 'like', Like::contains($q))
                 ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // ფორმატის გარეშე
                 ->orWhere('url', 'like', Like::contains($q))
                 ->orWhere('domain', 'like', Like::contains($q))
-                ->orWhere('tags', 'like', Like::contains($q)));
+                ->orWhere('tags', 'like', Like::contains($q))
+                ->when($byField !== [], fn (Builder $found) => $found->orWhereIn('bookmarks.id', $byField)));
         }
 
         match ($request->string('sort')->toString()) {

@@ -2,6 +2,7 @@
 
 namespace App\Services\Import;
 
+use App\Models\BookmarkOwnField;
 use App\Models\CastMember;
 use App\Models\EpisodeWatch;
 use App\Models\TvEpisode;
@@ -50,6 +51,8 @@ class MediaryExtras
                 'custom_fields' => $this->customFields($user, $module, $model, is_array($value) ? $value : [], $envelope, $files),
                 'files' => $this->files($user, $module, $model, $this->list($value), $files),
                 'notes', 'routes', 'videos' => $this->children($user, $module, $model->{$extra}(), $this->list($value)),
+                // მნიშვნელობა ჩაწერისას თავიდან იშიფრება — ამ მანქანის გასაღებით
+                'own_fields' => $this->children($user, $module, $model->ownFields(), $this->ownFields($this->list($value))),
                 'watches' => $this->watches($user, $model, $this->list($value)),
                 'gallery' => $this->gallery($user, $module, $model, $this->list($value), $files),
                 'cast' => $this->cast($user, $model, $this->list($value), $files),
@@ -177,6 +180,24 @@ class MediaryExtras
 
             $relation->make()->forceFill($attrs)->save();
         }
+    }
+
+    /**
+     * ბუკმარკის საკუთარი ველები — ფორმის ზღვრებით (რაოდენობა, მნიშვნელობის სიგრძე):
+     * ხელით აწყობილი ფაილი ფორმაზე მეტს ვერ ჩაწერს.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function ownFields(array $items): array
+    {
+        return array_map(function (array $item) {
+            if (is_string($item['value'] ?? null)) {
+                $item['value'] = mb_substr($item['value'], 0, BookmarkOwnField::VALUE_MAX);
+            }
+
+            return $item;
+        }, array_slice($items, 0, BookmarkOwnField::MAX));
     }
 
     /** ხელახალი ნახვების ჟურნალი — `watched_at`-ის ჩაწერამ პირველი უკვე შექმნა */
@@ -364,8 +385,8 @@ class MediaryExtras
             $attrs[$key] = $value;
         }
 
-        // სავალდებულო ტექსტი (ჩანიშვნის `body`, ვიდეოს `url`) — მის გარეშე რიგი არაფერია
-        foreach (['body', 'url', 'geometry'] as $required) {
+        // სავალდებულო ტექსტი (ჩანიშვნის `body`, ვიდეოს `url`, საკუთარი ველის `label`) — მის გარეშე რიგი არაფერია
+        foreach (['body', 'url', 'geometry', 'label'] as $required) {
             if (isset($columns[$required]) && ! $columns[$required]['nullable'] && ! isset($attrs[$required])) {
                 return null;
             }

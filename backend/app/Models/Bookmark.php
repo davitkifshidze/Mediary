@@ -32,6 +32,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * ⚠️ **გალერეის მშობელია** (`HasGallery` + `GalleryParent`):
  * ვებიდან მოტანილი ფოტო `gallery_images`-შია, ჩემი ატვირთული („შოპინგის"
  * სკრინშოტი) — `bookmark_files`-ში, დამატებითი ბმულები კი `links` სვეტში.
+ * საკუთარი „სახელი → მნიშვნელობა" ველები — `bookmark_own_fields`-ში, დაშიფრული.
  * მთავარი ფოტოს წყაროს სვეტი განზრახ არ არსებობს (ადგილის წესი): გალერეიდან
  * არჩეული ფოტოს გზაც `thumbnail_path`-შია და მას `StorageFolder::inGallery()`
  * არჩევს — ერთი ფაილი კვოტაში ორჯერ არ იხდის.
@@ -110,6 +111,8 @@ class Bookmark extends Model
                ე.ი. ფაილი დისკზე და კვოტა მრიცხველში დარჩებოდა; ურნაში მყოფი
                ფაილი კი scope-ით ვერც მოიძებნებოდა. */
             $bookmark->files()->withoutGlobalScopes(['owner', 'trash'])->get()->each->delete();
+            // საკუთარი ველები ჩანაწერთან ერთად ქრება (ურნაში ყოფნისას ადგილზეა)
+            $bookmark->ownFields()->withoutGlobalScopes(['owner'])->get()->each->delete();
 
             $bookmark->deleteGalleryMedia();
         });
@@ -133,6 +136,12 @@ class Bookmark extends Model
     public function files(): HasMany
     {
         return $this->hasMany(BookmarkFile::class)->orderByDesc('id');
+    }
+
+    /** საკუთარი ველები — შენახული რიგით (`BookmarkOwnField`) */
+    public function ownFields(): HasMany
+    {
+        return $this->hasMany(BookmarkOwnField::class)->orderBy('sort_order')->orderBy('id');
     }
 
     /* ---------- helpers ---------- */

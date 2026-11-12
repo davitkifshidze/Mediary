@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\BookFileController;
 use App\Http\Controllers\Api\BookGenreController;
 use App\Http\Controllers\Api\BookmarkCategoryController;
 use App\Http\Controllers\Api\BookmarkController;
+use App\Http\Controllers\Api\BookmarkFieldController;
 use App\Http\Controllers\Api\BookmarkFileController;
 use App\Http\Controllers\Api\BookNoteController;
 use App\Http\Controllers\Api\CastController;
@@ -909,6 +910,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/bookmarks/{bookmark}/refresh', [BookmarkController::class, 'refresh']);
 
         /* ჩემი ფოტოები („შოპინგის" სკრინშოტი); ვებიდან მოტანილი გალერეაშია */
+        // საკუთარი ველები („სახელი → მნიშვნელობა"): სია მთლიანად იწერება, რიგი — მასივის რიგია
+        Route::get('/bookmarks/{bookmark}/fields', [BookmarkFieldController::class, 'index']);
+        Route::put('/bookmarks/{bookmark}/fields', [BookmarkFieldController::class, 'replace']);
+
         Route::get('/bookmarks/{bookmark}/files', [BookmarkFileController::class, 'index']);
         Route::post('/bookmarks/{bookmark}/files', [BookmarkFileController::class, 'store']);
         Route::delete('/bookmark-files/{bookmarkFile}', [BookmarkFileController::class, 'destroy']);

@@ -19,6 +19,7 @@ use App\Models\BookGenre;
 use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
 use App\Models\BookmarkFile;
+use App\Models\BookmarkOwnField;
 use App\Models\BookNote;
 use App\Models\CastMember;
 use App\Models\CastMemberSyncPref;
@@ -295,6 +296,7 @@ class AuditRegistry
 
         // ცხადად ლოგირდება კონტროლერიდან
         UserCredential::class => 'CredentialController წერს მხოლოდ ველთა სახელებს — ავტომატური `new_values` გასაღებს ჩაწერდა',
+        BookmarkOwnField::class => 'BookmarkFieldController წერს მხოლოდ ღია ველების სახელებს — მნიშვნელობა და საიდუმლო ველი ჟურნალში არ ხვდება',
         DatabaseBackup::class => 'DatabaseBackupController წერს; აღდგენა რიგებს `DB::table()`-ით სვამს, რომ ცრუ „შეიქმნა" არ გაჩნდეს',
         TrashedFile::class => 'ურნის ტექნიკური რიგი; წაშლას/აღდგენას წყარო (ჩატი, ველი) და `TrashBin` ცხადად წერს',
         TrashEntry::class => 'ურნის ტექნიკური რიგი; მსახიობის მოხსნას/აღდგენას `RecordCastController` და `TrashBin` ცხადად წერს',

@@ -221,6 +221,44 @@ export async function setBookmarkLinks(id: number, links: BookmarkLink[]): Promi
   return data.data
 }
 
+/* ---------- საკუთარი ველები ---------- */
+
+/** ერთ ბუკმარკზე მაქსიმუმ რამდენი ველი — backend-ის `BookmarkOwnField::MAX`-ის სარკე */
+export const BOOKMARK_OWN_FIELDS_MAX = 20
+
+/**
+ * ბუკმარკის საკუთარი ველი — „სახელი → მნიშვნელობა". მნიშვნელობა ბაზაში დაშიფრულია და
+ * მხოლოდ ამ მარშრუტით მოდის: ბუკმარკის სია და ბარათი მას არ ატარებს.
+ */
+export interface BookmarkOwnField {
+  id: number
+  label: string
+  value: string | null
+  /** ეკრანზე წერტილებად; ძებნაში არ იძებნება */
+  is_secret: boolean
+  /** `false` — მნიშვნელობა ამ მანქანის გასაღებით არ იშიფრება */
+  readable: boolean
+}
+
+/** შესანახი რიგი: `id`-იანი ახლდება, უ`id`-ო იქმნება, სიაში არმყოფი იშლება */
+export interface BookmarkOwnFieldInput {
+  id?: number
+  label: string
+  value: string | null
+  is_secret: boolean
+}
+
+export async function fetchBookmarkFields(id: number): Promise<BookmarkOwnField[]> {
+  const { data } = await api.get(`/bookmarks/${id}/fields`)
+  return data.data
+}
+
+/** მთელი სია — რიგი სწორედ მასივის რიგია */
+export async function setBookmarkFields(id: number, fields: BookmarkOwnFieldInput[]): Promise<BookmarkOwnField[]> {
+  const { data } = await api.put(`/bookmarks/${id}/fields`, { fields })
+  return data.data
+}
+
 /* ---------- ფოტოები ---------- */
 
 /** ბუკმარკზე მიმაგრებული ჩემი ფოტო („შოპინგის" სკრინშოტი); ვებიდან მოტანილი გალერეაშია */
