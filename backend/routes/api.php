@@ -45,6 +45,7 @@ use App\Http\Controllers\Api\CustomRecordController;
 use App\Http\Controllers\Api\CustomRecordFileController;
 use App\Http\Controllers\Api\CustomRecordNoteController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DashboardFeedController;
 use App\Http\Controllers\Api\DatabaseBackupController;
 use App\Http\Controllers\Api\DatabaseExportController;
 use App\Http\Controllers\Api\DatabaseImportController;
@@ -384,6 +385,9 @@ Route::middleware('auth:sanctum')->group(function () {
     /* ---------- დეშბორდი — მთავარი გვერდის ქარდები ----------
        მოდულის middleware-ის გარეშე: თვითონ წყვეტს, რომელი მოდული ჩანს. */
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    // მთავარი გვერდის არჩევითი ბლოკები — თითო თავის მოთხოვნას აკეთებს და მხოლოდ ჩართული
+    Route::get('/dashboard/continuing', [DashboardFeedController::class, 'continuing']);
+    Route::get('/dashboard/recent', [DashboardFeedController::class, 'recent']);
 
     /* ---------- „მონაცემები": გასაღებები და ლიმიტები ---------- */
     /* ⚠️ **`module:` ჯგუფს მიღმაა და განზრახ.** გასაღები კონტენტის მოდული

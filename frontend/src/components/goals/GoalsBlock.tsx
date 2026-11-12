@@ -30,7 +30,7 @@ export function GoalsBlock() {
   const shown = goals.slice(0, SHOWN)
 
   return (
-    <section aria-label={t('goals.title')} style={toolAccent('goals')} className="mb-6 rounded-md border border-border bg-card p-4" data-testid="goals-block">
+    <section aria-label={t('goals.title')} style={toolAccent('goals')} className="h-full rounded-md border border-border bg-card p-4" data-testid="goals-block">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h2 className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold">
           <Target className="size-4 shrink-0 text-[var(--mod)]" />

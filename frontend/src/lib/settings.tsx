@@ -2,6 +2,7 @@ import * as React from 'react'
 import { saveSettings } from '@/api/account'
 import { useToast } from '@/components/ui/feedback'
 import { useAuth } from '@/lib/auth'
+import type { DashboardItem } from '@/lib/dashboardLayout'
 import { errorMessage } from '@/lib/errors'
 import { safeGet, safeSet } from '@/lib/storage'
 
@@ -73,6 +74,13 @@ export interface Settings {
   playerMaxWidth: number
 
   /* ---------- მიზნები ---------- */
+  /**
+   * **მთავარი გვერდის განლაგება** — ერთეულების რიგი, ჩართვა და სიგანე
+   * (`lib/dashboardLayout.ts`). `null` — ნაგულისხმევი; შენახული სია ყოველ ჯერზე
+   * ნორმალიზდება, ე.ი. ახალი მოდული ან ბლოკი ბოლოში თავისით ემატება.
+   */
+  dashboard: DashboardItem[] | null
+
   /* ---------- ურნა ---------- */
   /**
    * **ურნის ვადა დღეებში** — რამდენ ხანს ინახება წაშლილი, სანამ ღამის
@@ -125,6 +133,7 @@ const DEFAULT_SETTINGS: Settings = {
   autoResync: true,
   dateFormat: 'ka-GE',
   playerMaxWidth: 560,
+  dashboard: null,
   trashDays: 30,
 }
 

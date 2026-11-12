@@ -1642,7 +1642,28 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "nav": "Dashboard"
+    "nav": "Dashboard",
+    "customize": "Customize",
+    "editHint": "Turn blocks and module cards on or off, drag them into the order you want and pick a width: full, half or a third. Changes apply after “Save”; on a phone everything stacks in one column in the same order. A new module or block is added at the end of the list. A block with nothing to show hides itself on the page.",
+    "reset": "Back to default",
+    "saved": "Dashboard saved",
+    "show": "Show “{{name}}”",
+    "all": "All",
+    "soonToday": "Today",
+    "width": {
+      "label": "Width",
+      "full": "Full",
+      "half": "Half",
+      "third": "A third"
+    },
+    "blocks": {
+      "goals": "Goals",
+      "continue": "Continue",
+      "recent": "Recently added",
+      "soon": "Soon",
+      "reminders": "Reminders",
+      "duty": "Duty this week"
+    }
   },
   "purge": {
     "title": "Bulk delete",

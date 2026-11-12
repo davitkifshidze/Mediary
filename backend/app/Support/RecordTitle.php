@@ -47,7 +47,14 @@ final class RecordTitle
         }
 
         foreach ($attributes as $attribute) {
-            $value = $record->{$attribute} ?? null;
+            /* ⚠️ მხოლოდ ნამდვილი ატრიბუტი ან აქსესორი: წიგნს, თამაშსა და სამაგიდოს `title()` **მეთოდი**
+               აქვს, სვეტი კი არა — `$record->title` მას რელაციად წაიკითხავდა და მხოლოდ ქართულსათაურიან
+               ჩანაწერზე `LogicException`-ით ჩავარდებოდა. */
+            if (! array_key_exists($attribute, $record->getAttributes()) && ! $record->hasGetMutator($attribute) && ! $record->hasAttributeGetMutator($attribute)) {
+                continue;
+            }
+
+            $value = $record->getAttribute($attribute);
 
             if (is_string($value) && trim($value) !== '') {
                 return $value;
