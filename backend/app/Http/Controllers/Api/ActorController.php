@@ -37,7 +37,6 @@ class ActorController extends Controller
         $data = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'gender' => ['nullable', 'in:female,male'],
-            'known_for' => ['nullable', 'string', 'max:60'],
             'tag' => ['nullable', 'string', 'max:60'],
             'photos' => ['nullable', 'in:with,without'],
             'records_min' => ['nullable', 'integer', Rule::in(ActorIndex::RECORD_STEPS)],

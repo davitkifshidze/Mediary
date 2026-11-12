@@ -22,7 +22,7 @@ import { resyncActor } from '@/api/media'
 import { relockRecord } from '@/api/locks'
 import { actorLockBase, lockMenuActions } from '@/lib/locks'
 import { RecordLockDialog } from '@/components/locks/RecordLock'
-import { actorName, deptKey } from '@/lib/actors'
+import { actorName } from '@/lib/actors'
 import { actorViewOf, type ActorView } from '@/lib/actorViews'
 import { errorMessage } from '@/lib/errors'
 import { useFilterDraft } from '@/lib/filters'
@@ -68,7 +68,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
    ============================================================ */
 
 interface PanelFilters {
-  known_for: string
   tag: string
   photos: string
   records: string
@@ -84,7 +83,7 @@ const EMPTY_TEXT = {
   gallery: { title: 'actors.emptyGallery', hint: 'actors.emptyGalleryHint' },
 } as const satisfies Record<ActorView, { title: string; hint: string }>
 
-const EMPTY_FILTERS: PanelFilters = { known_for: '', tag: '', photos: '', records: '', synced: '', locked: '' }
+const EMPTY_FILTERS: PanelFilters = { tag: '', photos: '', records: '', synced: '', locked: '' }
 const PANEL_KEYS = Object.keys(EMPTY_FILTERS) as (keyof PanelFilters)[]
 
 export function ActorsPage() {
@@ -125,7 +124,6 @@ export function ActorsPage() {
   const filters: ActorFilters = {
     q: term || undefined,
     gender: gender === 'female' || gender === 'male' ? gender : undefined,
-    known_for: applied.known_for || undefined,
     tag: applied.tag || undefined,
     photos: applied.photos === 'with' || applied.photos === 'without' ? applied.photos : undefined,
     records_min: applied.records ? Number(applied.records) : undefined,
@@ -438,21 +436,6 @@ export function ActorsPage() {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
-          {!!options?.known_for.length && (
-            <FilterGroup title={t('actors.filter.knownFor')} count={draft.known_for ? 1 : 0}>
-              <FilterOptionList>
-                {options.known_for.map((value) => (
-                  <FilterOption
-                    key={value}
-                    label={t(`actors.dept.${deptKey(value)}`, { defaultValue: value })}
-                    checked={draft.known_for === value}
-                    onChange={(on) => pick('known_for', value, on)}
-                  />
-                ))}
-              </FilterOptionList>
-            </FilterGroup>
-          )}
-
           {!!options?.tags.length && (
             <FilterGroup title={t('actors.filter.tag')} count={draft.tag ? 1 : 0}>
               <FilterOptionList>

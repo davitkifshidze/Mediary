@@ -3349,8 +3349,8 @@
     "stepSearchHint": "The library is searched first, then TMDB. Searching only happens on the button.",
     "tmdbMissingKey": "You have no TMDB key (“Credentials”) — the search covers your library only.",
     "tmdbOffline": "TMDB did not answer — the list holds library results only. Adding by hand still works.",
-    "namePlaceholderKa": "ნინო ქასრაძე",
-    "namePlaceholderEn": "Nino Kasradze",
+    "namePlaceholderKa": "ანჯელინა ჯოლი",
+    "namePlaceholderEn": "Angelina Jolie",
     "hide": "Hide",
     "unhide": "Show again",
     "hiddenToast": "{{name}} is hidden",
@@ -5108,7 +5108,6 @@
     "emptyHint": "An actor appears here once they are on your movie, series or anime, or once you have their photo in the gallery.",
     "emptyFiltered": "No actors match this filter",
     "filter": {
-      "knownFor": "Known for",
       "tag": "Tag",
       "records": "Records",
       "recordsMin": "On {{count}}+ records",

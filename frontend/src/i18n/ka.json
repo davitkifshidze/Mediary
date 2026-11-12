@@ -3349,8 +3349,8 @@
     "stepSearchHint": "ჯერ შენს ბიბლიოთეკაში ვეძებთ, შემდეგ TMDB-ზე. ძებნა მხოლოდ ღილაკზე იწყება.",
     "tmdbMissingKey": "შენი TMDB-ის გასაღები არ არის („მონაცემები“) — იძებნება მხოლოდ ბიბლიოთეკაში.",
     "tmdbOffline": "TMDB არ პასუხობს — სიაში მხოლოდ ბიბლიოთეკის შედეგებია. ხელით შეყვანა მაინც მუშაობს.",
-    "namePlaceholderKa": "ნინო ქასრაძე",
-    "namePlaceholderEn": "Nino Kasradze",
+    "namePlaceholderKa": "ანჯელინა ჯოლი",
+    "namePlaceholderEn": "Angelina Jolie",
     "hide": "დამალვა",
     "unhide": "გამოჩენა",
     "hiddenToast": "{{name}} დაიმალა",
@@ -5108,7 +5108,6 @@
     "emptyHint": "მსახიობი აქ ჩნდება, როცა ის შენს ფილმზე, სერიალზე ან ანიმეზეა, ან როცა გალერეაში მისი ფოტო გაქვს.",
     "emptyFiltered": "ამ ფილტრით მსახიობი არ მოიძებნა",
     "filter": {
-      "knownFor": "ცნობილია",
       "tag": "ტეგი",
       "records": "ჩანაწერები",
       "recordsMin": "{{count}}+ ჩანაწერზე",

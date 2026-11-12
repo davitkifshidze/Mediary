@@ -38,7 +38,7 @@ beforeAll(async () => {
 }, 60_000)
 vi.setConfig({ testTimeout: 15_000 })
 
-const saved = (actor: Partial<Actor> = {}) => ({ actor: { id: 9, name: 'Nino Kasradze', name_ka: null, photo: null, tags: [], ...actor }, existing: false })
+const saved = (actor: Partial<Actor> = {}) => ({ actor: { id: 9, name: 'Angelina Jolie', name_ka: null, photo: null, tags: [], ...actor }, existing: false })
 
 let root: Root | null = null
 let container: HTMLDivElement | null = null
@@ -92,15 +92,21 @@ describe('ActorFormDialog', () => {
     mocks.createActor.mockResolvedValue(saved())
     const onSaved = await render()
 
-    type('actor-name', 'Nino Kasradze')
-    type('actor-name-ka', 'ნინო ქასრაძე')
+    // ნიმუში ცნობილი სახელია; „ან შეიყვანე ხელით" ძებნის ჩარჩოს ზედ არ ეკვრის
+    expect(document.getElementById('actor-name')!.getAttribute('placeholder')).toBe('Angelina Jolie')
+    expect(document.getElementById('actor-name-ka')!.getAttribute('placeholder')).toBe('ანჯელინა ჯოლი')
+    const manual = [...document.querySelectorAll('h3')].find((heading) => heading.textContent?.includes(i18n.t('actors.form.manualTitle')))!
+    expect(manual.closest('section')!.className).toContain('mt-7')
+
+    type('actor-name', 'Angelina Jolie')
+    type('actor-name-ka', 'ანჯელინა ჯოლი')
     type('actor-place', 'თბილისი')
     await act(async () => button(i18n.t('gallery.cast.female')).click())
     await act(async () => button(i18n.t('actors.form.create')).click())
     await flush()
 
     expect(mocks.createActor).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Nino Kasradze', name_ka: 'ნინო ქასრაძე', gender: 1, place_of_birth: 'თბილისი' }),
+      expect.objectContaining({ name: 'Angelina Jolie', name_ka: 'ანჯელინა ჯოლი', gender: 1, place_of_birth: 'თბილისი' }),
     )
     expect(onSaved).toHaveBeenCalledWith(saved())
   })
@@ -134,7 +140,7 @@ describe('ActorFormDialog', () => {
 
   it('edits my hand-made actor without the search block', async () => {
     mocks.updateActor.mockResolvedValue(saved({ name: 'Nino K.' }))
-    await render({ id: 9, name: 'Nino Kasradze', name_ka: 'ნინო', photo: null, tags: [], created_by_me: true, is_private: true })
+    await render({ id: 9, name: 'Angelina Jolie', name_ka: 'ანჯელინა', photo: null, tags: [], created_by_me: true, is_private: true })
 
     expect(document.getElementById('actor-find')).toBeNull()
 
@@ -142,6 +148,6 @@ describe('ActorFormDialog', () => {
     await act(async () => button(i18n.t('actions.save')).click())
     await flush()
 
-    expect(mocks.updateActor).toHaveBeenCalledWith(9, expect.objectContaining({ name: 'Nino K.', name_ka: 'ნინო' }))
+    expect(mocks.updateActor).toHaveBeenCalledWith(9, expect.objectContaining({ name: 'Nino K.', name_ka: 'ანჯელინა' }))
   })
 })

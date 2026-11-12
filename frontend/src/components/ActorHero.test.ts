@@ -101,7 +101,10 @@ describe('ActorHero', () => {
 
   it('keeps the open count inside the hint and resets it for this actor only', async () => {
     mocks.resetActorOpens.mockResolvedValue({ reset: 1 })
-    const box = await mount(actor({ favorite: true, opens: 12 }))
+    const box = await mount(actor({ favorite: true, opens: 12, known_for: 'Directing' }))
+
+    // სფეროს წარწერა რჩება — ნათარგმნი
+    expect(box.querySelector('[data-testid="actor-dept"]')!.textContent).toBe(i18n.t('actors.dept.directing'))
 
     expect(box.querySelector('button[data-kind="toggle"]')!.getAttribute('aria-pressed')).toBe('true')
     // რიცხვი გვერდზე ტექსტად არ წერია — მხოლოდ `i`-ს მინიშნებაშია

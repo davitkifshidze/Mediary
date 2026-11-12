@@ -76,7 +76,6 @@ export type ActorListItem = ActorCard | HiddenActorCard
 export interface ActorFilters {
   q?: string
   gender?: 'female' | 'male'
-  known_for?: string
   tag?: string
   photos?: 'with' | 'without'
   records_min?: number
@@ -102,7 +101,7 @@ export interface ActorList {
   last_page: number
   per_page: number
   facets: { gender: { all: number; female: number; male: number } }
-  options: { known_for: string[]; tags: string[] }
+  options: { tags: string[] }
 }
 
 /** ახალი მსახიობი ან ხელით შექმნილის რედაქტირება */

@@ -39,7 +39,7 @@ const list = (items: (ActorCard | HiddenActorCard)[]): ActorList => ({
   last_page: 1,
   per_page: 40,
   facets: { gender: { all: 5, female: 2, male: 3 } },
-  options: { known_for: ['Acting', 'Directing'], tags: ['portrait'] },
+  options: { tags: ['portrait'] },
 })
 
 const mocks = vi.hoisted(() => ({
@@ -138,12 +138,15 @@ describe('ActorsPage', () => {
     await flush()
     expect(lastFilters()).toMatchObject({ gender: 'female' })
 
-    const option = [...document.querySelectorAll('label')].find((l) => l.textContent?.includes(i18n.t('actors.dept.directing')))!
+    // სფეროს („ცნობილია") ფილტრი აღარ არის — პანელში ტეგი, ჩანაწერები, ფოტოები, სინქრონი და ლოკია
+    expect(document.body.textContent).not.toContain(i18n.t('actors.dept.directing'))
+    const option = [...document.querySelectorAll('label')].find((l) => l.textContent?.includes(i18n.t('actors.filter.photos_with')))!
     await act(async () => option.querySelector<HTMLButtonElement>('[role="checkbox"]')!.click())
     await act(async () => button(i18n.t('filter.apply')).click())
     await flush()
 
-    expect(lastFilters()).toMatchObject({ gender: 'female', known_for: 'Directing' })
+    expect(lastFilters()).toMatchObject({ gender: 'female', photos: 'with' })
+    expect(lastFilters().known_for).toBeUndefined()
   })
 
   it('removes the actor from my records from the right-click menu after confirming', async () => {

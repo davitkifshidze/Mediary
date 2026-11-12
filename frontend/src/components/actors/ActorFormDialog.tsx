@@ -165,11 +165,14 @@ export function ActorFormDialog({
         </QuickFill>
       )}
 
-      {/* ფოტოს ჩარჩო `MediaRow`-ზე (სვეტი 160 px, სიმაღლე — ველებისა); ველები
+      {/* „ან შეიყვანე ხელით": ძებნის წყვეტილ ჩარჩოს სათაური ზედ არ ეკვრის — ზემოთ ჰაერია,
+          ქვემოთ სათაურის გამყოფი ხაზი (`FormSection`). რედაქტირებისას ძებნა არ არის, ე.ი. არც დაშორება.
+          ფოტოს ჩარჩო `MediaRow`-ზე (სვეტი 160 px, სიმაღლე — ველებისა); ველები
           ფორმის 12-სვეტიან ბადეზე ზომებით (ადრე ბადეში ჩადგმული მეორე ბადე ერთ სვეტში იკუმშებოდა) */}
       <FormSection
         title={editing ? undefined : t('actors.form.manualTitle')}
         hint={editing ? undefined : t('actors.form.manualHint')}
+        className={editing ? undefined : 'mt-7'}
         mediaVariant="poster"
         media={
           <PosterUploader

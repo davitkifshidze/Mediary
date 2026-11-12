@@ -155,9 +155,12 @@ class ActorsIndexTest extends TestCase
         $this->assertSame(['Ana', 'Nino'], array_column($female->json('items'), 'name'));
         // ⚠️ მთვლელი სქესის ფილტრის გარეშე ითვლება — „კაცები" ნულზე არ ჩამოდის
         $female->assertJsonPath('facets.gender', ['all' => 3, 'female' => 2, 'male' => 1])
-            ->assertJsonPath('options.known_for', ['Acting', 'Directing']);
+            // სფერო ფილტრი აღარ არის — არჩევანში მხოლოდ ტეგებია, ბარათზე კი წარწერა რჩება
+            ->assertJsonMissingPath('options.known_for')
+            ->assertJsonPath('items.0.known_for', 'Acting');
 
-        $this->assertSame(['Gio'], $this->names('?known_for=Directing'));
+        // ძველი ბმულის `known_for` არაფერს ჭრის
+        $this->assertCount(3, $this->names('?known_for=Directing'));
         $this->assertSame(['Gio'], $this->names('?photos=with'));
         $this->assertSame(['Ana', 'Nino'], $this->names('?photos=without&locale=en'));
         $this->assertSame(['Nino'], $this->names('?records_min=2'));

@@ -175,28 +175,16 @@ final class ActorIndex
     }
 
     /**
-     * ფილტრის არჩევანი — „ცნობილია" (TMDB-ის `known_for_department`) ავზში
-     * არსებული მნიშვნელობებით და ჩემი ტეგები.
+     * ფილტრის არჩევანი — ჩემი ტეგები. ⚠️ სფერო (TMDB-ის `known_for_department`) ფილტრი აღარ არის:
+     * ის მხოლოდ მსახიობის წარწერაა (`known_for` ბარათზე და გვერდზე).
      *
-     * @return array{known_for: list<string>, tags: list<string>}
+     * @return array{tags: list<string>}
      */
     public function options(): array
     {
-        $knownFor = $this->query()
-            ->reorder()
-            ->toBase()
-            ->select('cast_members.known_for')
-            ->whereNotNull('cast_members.known_for')
-            ->distinct()
-            ->pluck('known_for')
-            ->map(fn ($value) => (string) $value)
-            ->sort()
-            ->values()
-            ->all();
-
         $tags = collect($this->tags())->flatten()->unique(fn ($tag) => mb_strtolower($tag))->sort()->values()->all();
 
-        return ['known_for' => $knownFor, 'tags' => $tags];
+        return ['tags' => $tags];
     }
 
     /** @return list<string> */
@@ -223,10 +211,6 @@ final class ActorIndex
 
         if ($withGender && ($gender = $filters['gender'] ?? null)) {
             $query->where('cast_members.gender', $gender === 'female' ? CastMember::GENDER_FEMALE : CastMember::GENDER_MALE);
-        }
-
-        if (($knownFor = $filters['known_for'] ?? null) !== null && $knownFor !== '') {
-            $query->where('cast_members.known_for', $knownFor);
         }
 
         if (($tag = trim((string) ($filters['tag'] ?? ''))) !== '') {

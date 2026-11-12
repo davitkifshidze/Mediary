@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Cake, ChevronDown, ChevronUp, ExternalLink, Globe, Link2, Loader2, Lock, MapPin, RefreshCw, RotateCcw, SquarePen, Star, Trash2 } from 'lucide-react'
 import { resyncActor, type Actor } from '@/api/media'
+import { deptKey } from '@/lib/actors'
 import { errorMessage } from '@/lib/errors'
 import { useDateFormat } from '@/lib/dates'
 import { cn } from '@/lib/utils'
@@ -146,8 +147,9 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
               <InfoHint info={t('actor.opensInfo', { count: actor.opens ?? 0 })} />
             </span>
             {actor.known_for && (
-              <span className="mt-1.5 rounded-md bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
-                {actor.known_for}
+              <span className="mt-1.5 rounded-md bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground" data-testid="actor-dept">
+                {/* TMDB-ის სფერო (`Acting`, `Directing`…) — ნათარგმნი; უცნობი როგორც მოვიდა */}
+                {t(`actors.dept.${deptKey(actor.known_for)}`, { defaultValue: actor.known_for })}
               </span>
             )}
             {actor.popularity != null && (
