@@ -3237,7 +3237,8 @@
     "restoreDefaultsHint": "Adds only the default statuses that are missing — a deleted one comes back from the trash, still linked to its old records. Nothing is deleted and renamed statuses stay as they are.",
     "defaultsRestored": "Restored: {{count}}",
     "defaultsComplete": "You already have every default status",
-    "defaultsSkipped": "{{count}} not added — you already have a status with that name"
+    "defaultsSkipped": "{{count}} not added — you already have a status with that name",
+    "hideAnyway": "Hide anyway"
   },
   "playback": {
     "resize": "Resize the panel",
@@ -5248,5 +5249,36 @@
       "pilot": "Pilot"
     },
     "dateUnknown": "Date unknown"
+  },
+  "mediaSync": {
+    "section": "Sync",
+    "hint": "Refresh movie data from TMDB — title, description, genres, cast, poster.",
+    "hintSeries": "Fetch seasons and episodes for every series at once, and refresh series data from TMDB.",
+    "hintAnime": "Fetch seasons and episodes for every anime at once, and refresh anime data from TMDB.",
+    "episodesTitle": "Seasons and episodes",
+    "episodesTitleSeries": "Seasons and episodes — every series",
+    "episodesTitleAnime": "Seasons and episodes — every anime",
+    "episodesHint": "Each season is a separate TMDB request, so normally only unfinished series are refreshed — a finished one gets no new episodes. The run happens on the server: closing the page does not stop it. Anything fetched in the last {{hours}} hours is skipped, so an interrupted run continues instead of starting over.",
+    "all": "All — finished ones too",
+    "planLine": "To run: {{count}}",
+    "planFresh": "already fresh: {{count}}",
+    "planEnded": "finished, skipped: {{count}}",
+    "start": "Start",
+    "stop": "Stop",
+    "running": "Running: {{done}} / {{total}}",
+    "done": "Finished",
+    "stopped": "Stopped — “Start” carries on with the rest",
+    "updated": "updated: {{count}}",
+    "skipped": "skipped: {{count}}",
+    "failed": "failed: {{count}}",
+    "reasonUnknown": "Reason unknown",
+    "reason": {
+      "sync_paused": "“Do not update” is on",
+      "record_not_found": "The record no longer exists"
+    },
+    "nothingRan": "Nothing ran",
+    "tmdbTitle": "Data from TMDB",
+    "tmdbDesc": "Title, description, genres, cast and poster — for the records of this module. In the window you choose what to refresh and for which records.",
+    "hideWarning": "Without sync, new seasons and episodes will not be fetched — hide it anyway?"
   }
 }

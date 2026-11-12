@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Cast\CastEnricher;
 use App\Services\Credentials\CredentialStore;
+use App\Services\Episodes\EpisodeSync;
 use App\Services\Gallery\GalleryFetcher;
 use App\Services\Sync\ItemSyncer;
 use App\Services\Translation\ItemTranslator;
@@ -65,8 +66,17 @@ class RunBatchItem implements ShouldQueue
     /** მსახიობის ერთეულის „ტიპი" — მედია-დომენი არ არის */
     public const ACTOR = 'actor';
 
+    /**
+     * სეზონები და სერიები — ერთეული სერიალი ან ანიმეა (`EpisodeSync`). ფილმს სეზონი არ
+     * აქვს, ამიტომ ამ სახის პარტია მხოლოდ TV-დომენებს იღებს.
+     */
+    public const KIND_EPISODES = 'episodes';
+
     /** მხარდაჭერილი ოპერაციები — SPA-ს რიგის იმავე სახელებით */
-    public const KINDS = ['sync', 'gallery', 'translate', self::KIND_CAST];
+    public const KINDS = ['sync', 'gallery', 'translate', self::KIND_CAST, self::KIND_EPISODES];
+
+    /** ერთეულებს შორის პაუზის ჭერი (`options.delay_ms`) — წყაროს ლიმიტის დასაზოგად */
+    private const MAX_DELAY_MS = 5000;
 
     public int $tries = 1;
 
@@ -141,6 +151,8 @@ class RunBatchItem implements ShouldQueue
             if ($done) {
                 $item?->update(['status' => BatchItem::OK]);
             }
+
+            $this->pause();
         } catch (Throwable $e) {
             /* ⚠️ **`saveQuietly`-ს აქ აზრი არ აქვს, `update` სჭირდება**: ეს
                რიგი `AuditRegistry`-ში არაა (ის მიწოდების ჟურნალია და არა
@@ -172,6 +184,19 @@ class RunBatchItem implements ShouldQueue
                მოთხოვნა, Gemini-ს კვოტა) — ჩავარდნა ერთხელ ჩაიწერება და
                ხელახლა გაშვება მომხმარებლის გადაწყვეტილებაა. */
             throw $e;
+        }
+    }
+
+    /**
+     * პაუზა შემდეგ ერთეულამდე (`options.delay_ms`) — TMDB-ის ლიმიტს ზოგავს: სერიალის
+     * თითო სეზონი ცალკე მოთხოვნაა, „ყველა სერიალზე" გაშვება კი ასობით მოთხოვნაა ზედიზედ.
+     */
+    private function pause(): void
+    {
+        $delay = min(self::MAX_DELAY_MS, max(0, (int) ($this->options['delay_ms'] ?? 0)));
+
+        if ($delay > 0) {
+            usleep($delay * 1000);
         }
     }
 
@@ -249,6 +274,8 @@ class RunBatchItem implements ShouldQueue
             // ⚠️ `options()` ნედლ შესატანს ნაგულისხმევებით ავსებს — იგივე გზა,
             // რასაც `GalleryController::fetch()` გადის
             'gallery' => $gallery->fetch($user, $record, $gallery->options($this->options)),
+            // სეზონები და სერიები — იგივე სერვისი, რასაც სერიალის გვერდის ღილაკი იძახებს
+            self::KIND_EPISODES => app(EpisodeSync::class)->sync($record),
             default => null,
         };
 

@@ -73,6 +73,7 @@ import {
   Play,
   Puzzle,
   Radio,
+  RefreshCw,
   Rocket,
   ScrollText,
   Settings,
@@ -169,7 +170,8 @@ const GROUPS = [
   },
   {
     key: 'files',
-    icons: { Folder, FolderOpen, FolderHeart, Paperclip, LinkIcon, Download, HardDriveDownload, Upload, Layers, LayoutGrid, List, ListChecks, Boxes },
+    // `RefreshCw`: მედიის ქვემენიუს „სინქრონიზაცია"
+    icons: { Folder, FolderOpen, FolderHeart, Paperclip, LinkIcon, Download, HardDriveDownload, Upload, RefreshCw, Layers, LayoutGrid, List, ListChecks, Boxes },
   },
   {
     key: 'people',

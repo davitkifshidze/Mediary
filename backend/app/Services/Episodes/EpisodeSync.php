@@ -87,6 +87,11 @@ class EpisodeSync
             $record->forceFill(['seasons' => $seasons, 'episodes' => $episodes])->save();
         }
 
+        /* როდის ჩამოიტვირთა — „ყველა სერიალზე" გაშვება ამით იგებს, რომელი უკვე განახლდა
+           (შეწყვეტილი გაშვება გრძელდება და არა თავიდან იწყება). ⚠️ უხმოდ: ეს გაშვების
+           კვალია და არა ჩანაწერის რედაქტირება — ჟურნალში ცალკე რიგი არ უნდა გაჩნდეს. */
+        $record->forceFill(['episodes_synced_at' => now()])->saveQuietly();
+
         return ['ok' => true, 'seasons' => $seasons, 'episodes' => $episodes, 'error' => null];
     }
 

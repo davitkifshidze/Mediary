@@ -81,7 +81,12 @@ class BatchController extends Controller
         $data = $request->validate([
             'kind' => ['required', Rule::in(RunBatchItem::KINDS)],
             'items' => ['required', 'array', 'min:1', 'max:'.self::MAX_ITEMS],
-            'items.*.type' => ['required', Rule::in($castKind ? [RunBatchItem::ACTOR] : MediaDomain::TYPES)],
+            'items.*.type' => ['required', Rule::in(match (true) {
+                $castKind => [RunBatchItem::ACTOR],
+                // სეზონი მხოლოდ სერიალსა და ანიმეს აქვს
+                $request->input('kind') === RunBatchItem::KIND_EPISODES => MediaDomain::TV_TYPES,
+                default => MediaDomain::TYPES,
+            })],
             'items.*.id' => ['required', 'integer', 'min:1'],
             'options' => ['nullable', 'array'],
         ]);

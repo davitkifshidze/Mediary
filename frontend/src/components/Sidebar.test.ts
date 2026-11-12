@@ -272,6 +272,24 @@ describe('Sidebar sub-item colours', () => {
    ვერ დააყენებდა.
    ============================================================ */
 describe('Sidebar module order', () => {
+  /* ქვემენიუს „სინქრონიზაცია" ბმულია ცალკე გვერდზე და არა `?view=`: სიას არ ავიწროებს.
+     ⚠️ იმ გვერდზე მხოლოდ ის ინთება — სიის სექცია მასთან ერთად აქტიური არ არის. */
+  it('gives a media module a sync link to its own page, lit only there', async () => {
+    const el = await mount('/series/sync', [moduleRow('series', '/series', 1)])
+    const button = moduleButton(el, 'series')!
+    if (button.getAttribute('aria-expanded') !== 'true') await act(async () => button.click())
+
+    const items = subItems(button)
+    expect(items).toContainEqual({ text: i18n.t('mediaSync.section'), href: '/series/sync' })
+    // „მალე" სიის სექციაა — ბმული არ არის
+    expect(items).toContainEqual({ text: i18n.t('soon.section'), href: null })
+
+    const lit = [...(button.nextElementSibling?.querySelectorAll('[data-sub-item]') ?? [])]
+      .filter((x) => x.className.includes('font-semibold'))
+      .map((x) => x.textContent?.trim())
+    expect(lit).toEqual([i18n.t('mediaSync.section')])
+  })
+
   it('draws media and page modules in one list, in the server order', async () => {
     const el = await mount('/', [
       moduleRow('song', '/songs', 1),

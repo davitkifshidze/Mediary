@@ -46,7 +46,7 @@ final class StatusDomain
      *
      * ⚠️ სარკე: `frontend/src/lib/statusSections.ts` → `PSEUDO_SECTIONS`.
      */
-    public const RESERVED_KEYS = ['all', 'favorite', 'downloaded', 'locked', 'soon'];
+    public const RESERVED_KEYS = ['all', 'favorite', 'downloaded', 'locked', 'soon', 'sync'];
 
     /** მედია-დომენების საერთო ნაკრები — ვიდეოსაც იგივე ჰქონდეს (ის ხომ იყურება) */
     /* ⚠️ **ფერი ყველას თავისი** (`color` — SPA-ს პალიტრის გასაღები `c1…c12`,

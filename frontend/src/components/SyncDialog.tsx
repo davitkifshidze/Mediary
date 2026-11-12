@@ -45,7 +45,16 @@ import { useToast } from '@/components/ui/feedback'
 type Scope = 'all' | 'status' | 'favorite' | 'genre' | 'specific'
 type Flow = 'records' | 'cast'
 
-export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export function SyncDialog({
+  open,
+  onOpenChange,
+  only,
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  /** მხოლოდ ეს მოდული — მოდულის საკუთარი „სინქრონიზაციის" გვერდიდან გახსნილი ფანჯარა */
+  only?: MediaType
+}) {
   const { t } = useTranslation()
 
   /* დომენები ჩართული მედია-მოდულებიდან მოდის. ხელით ჩაწერილი
@@ -53,7 +62,10 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
      სთავაზობდა. `null` = „ყველა ხელმისაწვდომი“ — მოდულები შეიძლება დიალოგის
      შემდეგ ჩაიტვირთოს და საწყისი მნიშვნელობა ცარიელი არ უნდა გაიყინოს. */
   const { mediaModules } = useModules()
-  const domains = useMemo(() => mediaModules.map((m) => m.type), [mediaModules])
+  const domains = useMemo(
+    () => mediaModules.map((m) => m.type).filter((type) => !only || type === only),
+    [mediaModules, only],
+  )
   const [picked, setPicked] = useState<MediaType[] | null>(null)
   const types = useMemo(
     () => (picked ?? domains).filter((d) => domains.includes(d)),

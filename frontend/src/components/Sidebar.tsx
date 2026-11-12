@@ -73,7 +73,15 @@ import { isCustomModule } from '@/lib/customModules'
  * მათ ადგილს ცვლის და ნებისმიერ სექციას მალავს.
  */
 /** მოდულის ქვეპუნქტი; ⚠️ `color` სავალდებულოა — იხ. `SubItem` */
-type VideoSection = { id: string; label: string; icon?: string | null; color: string; search: string }
+type VideoSection = {
+  id: string
+  label: string
+  icon?: string | null
+  color: string
+  search: string
+  /** ბმული ცალკე გვერდზე (მოდულის მისამართს ემატება) — პუნქტი სიას არ ავიწროებს */
+  path?: string
+}
 
 /**
  * დომენი მხოლოდ დომენის საკუთარი მარშრუტებისთვის — /genres, /status, /actors
@@ -424,6 +432,7 @@ export function Sidebar({
               icon: row.pseudo.icon,
               color: row.pseudo.color,
               search: sectionSearch(row),
+              path: row.pseudo.path,
             },
       )
 
@@ -523,6 +532,9 @@ export function Sidebar({
     )
   }
 
+  /** მოდულის ქვეგვერდზე ვდგავართ (`/movies/sync`) და არა სიაზე ან ჩანაწერზე */
+  const onSubPage = (libraryPath: string) => location.pathname === `${libraryPath}/sync`
+
   /** მედია-დომენის განყოფილება — სექციები სტატუსის ლექსიკონიდან */
   const mediaSection = (m: ModuleInfo, type: MediaType) => {
     const d = MEDIA[type]
@@ -549,7 +561,23 @@ export function Sidebar({
         {sectionOpen && (
           <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
             {sectionsFor(type).map((sec) => {
-              const active = isActiveDomain && activeView === sec.id
+              /* **ბმული ცალკე გვერდზე** („სინქრონიზაცია"): სიას არ ავიწროებს, თავის გვერდს
+                 ხსნის. ⚠️ იმ გვერდზე სიის სექციები არ ინთება — ორი აქტიური პუნქტი ტყუილია. */
+              if (sec.path) {
+                return (
+                  <SubItem
+                    key={sec.id}
+                    active={location.pathname === `${d.libraryPath}${sec.path}`}
+                    color={sec.color}
+                    icon={sec.icon}
+                    label={sec.label}
+                    to={`${d.libraryPath}${sec.path}`}
+                    onClick={() => setDrawerOpen(false)}
+                  />
+                )
+              }
+
+              const active = isActiveDomain && !onSubPage(d.libraryPath) && activeView === sec.id
               return (
                 <SubItem
                   key={sec.id}

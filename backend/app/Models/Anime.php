@@ -85,6 +85,8 @@ class Anime extends Model
         'watched_at' => 'datetime',
         // შემდეგი ეპიზოდის ეთერი (TMDB-ის `next_episode_to_air`)
         'next_air_at' => 'date',
+        // სეზონებისა და სერიების ბოლო ჩამოტვირთვა — „ყველა სერიალზე" გაშვება მას ეყრდნობა
+        'episodes_synced_at' => 'datetime',
         'next_season' => 'integer',
         'next_episode' => 'integer',
         'sort_order' => 'integer',

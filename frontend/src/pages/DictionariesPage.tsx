@@ -46,7 +46,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useToast } from '@/components/ui/feedback'
+import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -289,6 +289,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { toast } = useToast()
+  const confirm = useConfirm()
   const { all } = useModules()
 
   const [editing, setEditing] = useState<DictionaryItem | 'new' | null>(null)
@@ -338,6 +339,28 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
     onSettled: () => qc.invalidateQueries({ queryKey: ['modules'] }),
   })
+
+  /**
+   * მენიუში ჩვენება / დამალვა. ⚠️ ზოგი პუნქტის დამალვა რაღაცას გართმევს („სინქრონიზაციის"
+   * გარეშე ახალი სეზონები და სერიები არ ჩამოიტვირთება) — ასეთს დამალვამდე გაფრთხილება აქვს.
+   */
+  const toggleSection = async (row: { id: string | number; hidden: boolean; pseudo?: { hideWarningKey?: string } | null }) => {
+    if (!layout) return
+
+    const warning = row.pseudo?.hideWarningKey
+    if (!row.hidden && warning) {
+      const ok = await confirm({
+        title: t('dictionaries.hide'),
+        description: t(warning),
+        confirmText: t('dictionaries.hideAnyway'),
+        cancelText: t('confirm.cancel'),
+        variant: 'destructive',
+      })
+      if (!ok) return
+    }
+
+    sections.mutate(toggleHidden(layout, String(row.id)))
+  }
 
   /**
    * გადალაგება: drag & drop **და** ისრები — ორივე ერთსა და იმავე ფუნქციას
@@ -457,7 +480,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
                     label: t(row.hidden ? 'dictionaries.show' : 'dictionaries.hide'),
                     icon: row.hidden ? CircleOff : Circle,
                     disabled: sections.isPending,
-                    run: () => sections.mutate(toggleHidden(layout, String(row.id))),
+                    run: () => void toggleSection({ id: row.id, hidden: row.hidden, pseudo }),
                   }]
                 : []),
               ...(item
@@ -517,7 +540,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
                         size="lg"
                         checked={!row.hidden}
                         disabled={sections.isPending}
-                        onCheckedChange={() => sections.mutate(toggleHidden(layout, String(row.id)))}
+                        onCheckedChange={() => void toggleSection({ id: row.id, hidden: row.hidden, pseudo })}
                         aria-label={t(row.hidden ? 'dictionaries.show' : 'dictionaries.hide')}
                       />
                       {t('dictionaries.inMenu')}

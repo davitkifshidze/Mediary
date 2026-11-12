@@ -1246,6 +1246,10 @@ Route::middleware('auth:sanctum')->group(function () {
        **ქმნის** ეპიზოდების რიგებს, მეორე კი არსებულ ჩანაწერს ცვლის —
        POST-ად დაწერილი მონიშვნა `create`-ად იკითხებოდა და მხოლოდ
        რედაქტირების უფლების მქონე როლს ცრუ 403 დაუბრუნდებოდა. */
+    // „ყველა სერიალზე" გაშვების გეგმა — თვითონ გაშვება ფონური პარტიაა (`POST /batches`, `kind: episodes`)
+    Route::get('/media/episodes/{type}/plan', [EpisodeController::class, 'plan'])
+        ->middleware(['module:@type', 'permission:@type,update'])
+        ->whereIn('type', MediaDomain::TV_TYPES);
     Route::get('/media/episodes/{type}/{id}', [EpisodeController::class, 'index'])
         ->middleware(['module:@type', 'permission:@type,view'])
         ->whereIn('type', MediaDomain::TV_TYPES)->whereNumber('id');

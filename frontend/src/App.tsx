@@ -40,6 +40,7 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ de
 const TransferPage = lazy(() => import('@/pages/TransferPage').then((m) => ({ default: m.TransferPage })))
 const ShareLinksPage = lazy(() => import('@/pages/ShareLinksPage').then((m) => ({ default: m.ShareLinksPage })))
 const NotificationsPage = lazy(() => import('@/pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })))
+const MediaSyncPage = lazy(() => import('@/pages/MediaSyncPage').then((m) => ({ default: m.MediaSyncPage })))
 const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default: m.StatsPage })))
 const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })))
 const SyncPage = lazy(() => import('@/pages/SyncPage').then((m) => ({ default: m.SyncPage })))
@@ -181,6 +182,8 @@ function mediaRoutes(type: MediaType) {
   return [
     <Route key={`${type}-lib`} path={lib} element={<LibraryPage type={type} />} />,
     <Route key={`${type}-new`} path={`${base}/new`} element={<MovieFormPage type={type} />} />,
+    // ქვემენიუს „სინქრონიზაცია" — მოდულის საკუთარი გვერდი (სტატიკური გზა `:id`-ზე ძლიერია)
+    <Route key={`${type}-sync`} path={`${base}/sync`} element={<MediaSyncPage type={type} />} />,
     <Route key={`${type}-show`} path={`${base}/:id`} element={<MoviePage type={type} />} />,
     <Route key={`${type}-edit`} path={`${base}/:id/edit`} element={<MovieFormPage type={type} />} />,
   ]

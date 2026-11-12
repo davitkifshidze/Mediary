@@ -33,6 +33,59 @@ class EpisodeController extends Controller
         private readonly EpisodeProgress $progress,
     ) {}
 
+    /** ამ ხნის განმავლობაში უკვე ჩამოტვირთული სერიალი გეგმაში აღარ ხვდება — შეწყვეტილი გაშვება გრძელდება */
+    public const RESUME_HOURS = 6;
+
+    /** TMDB-ის მდგომარეობები, რომლის შემდეგაც ახალი სერია აღარ ემატება */
+    public const ENDED = ['Ended', 'Canceled'];
+
+    /**
+     * **„სეზონები და სერიები — ყველა სერიალზე": რა გაეშვება.**
+     *
+     * ნაგულისხმევად მხოლოდ **დაუსრულებელი** სერიალები: დასრულებულს ახალი სერია აღარ
+     * ემატება, მისი გადამოწმება კი TMDB-ის მოთხოვნებს ფუჭად ხარჯავს (თითო სეზონი ცალკე
+     * მოთხოვნაა). `all=1` — ყველა. ბოლო რამდენიმე საათში უკვე ჩამოტვირთული გამოიტოვება —
+     * შეწყვეტილი გაშვება ასე გრძელდება და არა თავიდან იწყება; `force=1` — მაინც ყველა.
+     *
+     * ⚠️ TMDB id-ის გარეშე და „აღარ განაახლო" ჩანაწერი გეგმაში არ არის; დამალული
+     * (ჩაკეტილი) — არც ის: სია სათაურებს აჩვენებს.
+     */
+    public function plan(Request $request, string $type)
+    {
+        abort_unless(in_array($type, MediaDomain::TV_TYPES, true), 404);
+
+        $base = fn () => MediaDomain::query($type)->whereNotNull('tmdb_id')->where('sync_paused', false);
+        // დაუსრულებელი: TMDB-ის მდგომარეობა უცნობია ან „დასრულდა / გაუქმდა" არ არის
+        $unfinished = fn () => $base()->where(fn ($q) => $q->whereNull('tmdb_status')->orWhereNotIn('tmdb_status', self::ENDED));
+
+        $total = $base()->count();
+        $open = $unfinished()->count();
+        $all = $request->boolean('all');
+        $scope = $all ? $base() : $unfinished();
+
+        if (! $request->boolean('force')) {
+            $since = now()->subHours(self::RESUME_HOURS);
+            $scope->where(fn ($q) => $q->whereNull('episodes_synced_at')->orWhere('episodes_synced_at', '<', $since));
+        }
+
+        $records = $scope->orderBy('id')->get();
+        $inScope = $all ? $total : $open;
+
+        return response()->json([
+            'items' => $records->map(fn (Model $record) => [
+                'type' => $type,
+                'id' => $record->id,
+                'title' => $record->title_ka ?: $record->title_en,
+            ])->values(),
+            // ყველა, რასაც TMDB id აქვს · მათგან დასრულებული · ამ არჩევანში · უკვე ახალი (გამოიტოვება)
+            'total' => $total,
+            'ended' => $total - $open,
+            'in_scope' => $inScope,
+            'fresh' => $inScope - $records->count(),
+            'resume_hours' => self::RESUME_HOURS,
+        ]);
+    }
+
     /** სეზონები + ჩემი მონიშვნები + პროგრესი */
     public function index(Request $request, string $type, int $id)
     {

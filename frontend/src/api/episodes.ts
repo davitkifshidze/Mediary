@@ -10,6 +10,28 @@ import { api } from '@/lib/api'
 
 export type TvType = 'series' | 'anime'
 
+/** „სეზონები და სერიები — ყველა სერიალზე": რა გაეშვება */
+export interface EpisodePlan {
+  items: { type: TvType; id: number; title: string | null }[]
+  /** ყველა, რასაც TMDB id აქვს */
+  total: number
+  /** მათგან დასრულებული (TMDB: დასრულდა / გაუქმდა) — ნაგულისხმევად გეგმაში არ არის */
+  ended: number
+  /** ამ არჩევანში რამდენია */
+  in_scope: number
+  /** მათგან უკვე ჩამოტვირთულია ბოლო საათებში — გამოიტოვება (შეწყვეტილი გაშვება ასე გრძელდება) */
+  fresh: number
+  resume_hours: number
+}
+
+export async function fetchEpisodePlan(type: TvType, opts: { all?: boolean; force?: boolean } = {}): Promise<EpisodePlan> {
+  const { data } = await api.get<EpisodePlan>(`/media/episodes/${type}/plan`, {
+    params: { ...(opts.all ? { all: 1 } : {}), ...(opts.force ? { force: 1 } : {}) },
+  })
+
+  return data
+}
+
 export interface Episode {
   id: number
   episode: number

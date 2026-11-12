@@ -28,7 +28,7 @@ import type { Status } from '@/api/types'
    ამიტომ განლაგება `modules.user_settings`-იდან პირდაპირ იკითხება.
    ============================================================ */
 
-export type PseudoSectionId = 'all' | 'favorite' | 'downloaded' | 'locked' | 'soon'
+export type PseudoSectionId = 'all' | 'favorite' | 'downloaded' | 'locked' | 'soon' | 'sync'
 
 export interface PseudoSection {
   id: PseudoSectionId
@@ -42,6 +42,13 @@ export interface PseudoSection {
   color: string
   /** სად დგას, სანამ მომხმარებელი არ გადაიტანს */
   defaultAt: 'start' | 'end'
+  /**
+   * **ბმული ცალკე გვერდზე** (მოდულის მისამართს ემატება — `/movies` + `/sync`). ასეთი
+   * პუნქტი სიას არ ავიწროებს (`?view=` არ იწერება) — თავის გვერდს ხსნის.
+   */
+  path?: string
+  /** დამალვამდე საკითხავი გაფრთხილება (i18n) — რას კარგავ, თუ მენიუდან ამოიღებ */
+  hideWarningKey?: string
 }
 
 /** „ყველა" მოდულის საკუთარ ფერს იღებს (`--mod`) — ის მოდულის მთელი სიაა */
@@ -86,11 +93,26 @@ const SOON: PseudoSection = {
   defaultAt: 'end',
 }
 
+/**
+ * „სინქრონიზაცია" — ბმული მოდულის საკუთარ სინქრონიზაციის გვერდზე: სერიალსა და ანიმეში
+ * „სეზონები და სერიები — ყველა სერიალზე" და „მონაცემები TMDB-დან", ფილმებში — მხოლოდ მეორე.
+ * ⚠️ სამივე მოდულს ერთი და იგივე პუნქტი აქვს — ქვემენიუ ერთნაირია.
+ */
+const SYNC: PseudoSection = {
+  id: 'sync',
+  labelKey: 'mediaSync.section',
+  icon: 'RefreshCw',
+  color: 'var(--tool-sync)',
+  defaultAt: 'end',
+  path: '/sync',
+  hideWarningKey: 'mediaSync.hideWarning',
+}
+
 /** ⚠️ სარკე: `App\Support\StatusDomain::RESERVED_KEYS` (სტატუსი ამ გასაღებებს არ იღებს) */
 export const PSEUDO_SECTIONS: Record<StatusDomain, PseudoSection[]> = {
-  movie: [ALL, FAVORITE, SOON, LOCKED],
-  series: [ALL, FAVORITE, SOON, LOCKED],
-  anime: [ALL, FAVORITE, SOON, LOCKED],
+  movie: [ALL, FAVORITE, SOON, LOCKED, SYNC],
+  series: [ALL, FAVORITE, SOON, LOCKED, SYNC],
+  anime: [ALL, FAVORITE, SOON, LOCKED, SYNC],
   video: [ALL, DOWNLOADED, FAVORITE],
   note: [ALL, FAVORITE],
   bookmark: [ALL, FAVORITE],

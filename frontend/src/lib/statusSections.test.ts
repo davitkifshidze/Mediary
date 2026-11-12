@@ -40,8 +40,8 @@ function move(rows: SectionRow[], id: string, index: number): SectionRow[] {
 }
 
 describe('arrangeSections', () => {
-  // მედიას „მალე" და „ჩაკეტილებიც" აქვს, „რჩეულის" შემდეგ
-  it('starts with "all", ends with "favorite", "soon" and "locked"', () => {
+  // მედიას „მალე", „ჩაკეტილები" და „სინქრონიზაციაც" აქვს, „რჩეულის" შემდეგ
+  it('starts with "all", ends with "favorite", "soon", "locked" and "sync"', () => {
     expect(ids(arrangeSections(STATUSES, PSEUDO_SECTIONS.movie, EMPTY_LAYOUT))).toEqual([
       'all',
       'undecided',
@@ -51,6 +51,7 @@ describe('arrangeSections', () => {
       'favorite',
       'soon',
       'locked',
+      'sync',
     ])
   })
 
@@ -81,32 +82,47 @@ describe('arrangeSections', () => {
     const layout = { hidden: [], placement: placementFromRows(arrangeSections(STATUSES, PSEUDO_SECTIONS.movie, EMPTY_LAYOUT)) }
     const grown = [...STATUSES, status('abandoned', 4)]
 
-    expect(ids(arrangeSections(grown, PSEUDO_SECTIONS.movie, layout)).slice(-4)).toEqual(['abandoned', 'favorite', 'soon', 'locked'])
+    expect(ids(arrangeSections(grown, PSEUDO_SECTIONS.movie, layout)).slice(-5)).toEqual(['abandoned', 'favorite', 'soon', 'locked', 'sync'])
   })
 
   it('drops a pseudo section with a dead anchor to the end instead of losing it', () => {
     const layout = { hidden: [], placement: [{ id: 'favorite', at: 'deleted_status' }] }
 
-    expect(ids(arrangeSections(STATUSES, PSEUDO_SECTIONS.movie, layout)).slice(-3)).toEqual(['favorite', 'soon', 'locked'])
+    expect(ids(arrangeSections(STATUSES, PSEUDO_SECTIONS.movie, layout)).slice(-4)).toEqual(['favorite', 'soon', 'locked', 'sync'])
   })
 
   it('marks hidden rows but keeps them in the list', () => {
     const rows = arrangeSections(STATUSES, PSEUDO_SECTIONS.movie, { hidden: ['favorite', 'watched'], placement: [] })
 
-    expect(rows).toHaveLength(8)
+    expect(rows).toHaveLength(9)
     expect(rows.filter((r) => r.hidden).map((r) => r.id)).toEqual(['watched', 'favorite'])
   })
 
   it('falls back to defaults when there are no statuses at all', () => {
     const rows = arrangeSections([], PSEUDO_SECTIONS.movie, EMPTY_LAYOUT)
 
-    expect(ids(rows)).toEqual(['all', 'favorite', 'soon', 'locked'])
+    expect(ids(rows)).toEqual(['all', 'favorite', 'soon', 'locked', 'sync'])
     expect(placementFromRows(rows)).toEqual([
       { id: 'all', at: 'start' },
       { id: 'favorite', at: 'end' },
       { id: 'soon', at: 'end' },
       { id: 'locked', at: 'end' },
+      { id: 'sync', at: 'end' },
     ])
+  })
+})
+
+describe('pseudo sections', () => {
+  /* „სინქრონიზაცია" ბმულია ცალკე გვერდზე (`path`) და დამალვამდე გაფრთხილება აქვს;
+     სიის სექციებს (`მალე`, `ჩაკეტილი`) არც ერთი არ აქვს */
+  it('marks sync as a link with a hide warning — on all three media modules', () => {
+    for (const domain of ['movie', 'series', 'anime'] as const) {
+      const sync = PSEUDO_SECTIONS[domain].find((s) => s.id === 'sync')!
+      expect(sync.path).toBe('/sync')
+      expect(sync.hideWarningKey).toBe('mediaSync.hideWarning')
+      expect(PSEUDO_SECTIONS[domain].filter((s) => s.id !== 'sync').every((s) => !s.path && !s.hideWarningKey)).toBe(true)
+    }
+    expect(PSEUDO_SECTIONS.video.some((s) => s.id === 'sync')).toBe(false)
   })
 })
 

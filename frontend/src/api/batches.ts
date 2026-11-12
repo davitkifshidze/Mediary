@@ -13,7 +13,8 @@ import { api } from '@/lib/api'
    ============================================================ */
 
 /** ⚠️ `RunBatchItem::KINDS`-ის სარკე; `cast`-ის ერთეული მსახიობია (`type: 'actor'`) */
-export type BatchKind = 'sync' | 'gallery' | 'translate' | 'cast'
+/** `episodes` — სეზონები და სერიები (ერთეული სერიალი ან ანიმეა) */
+export type BatchKind = 'sync' | 'gallery' | 'translate' | 'cast' | 'episodes'
 
 export interface BatchItem {
   type: string
