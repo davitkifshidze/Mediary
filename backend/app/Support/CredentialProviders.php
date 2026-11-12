@@ -55,6 +55,12 @@ final class CredentialProviders
 
     public const TELEGRAM = 'telegram';
 
+    /** „ვისაც ეს მოეწონა" — მსგავსი ფილმები და სერიალები */
+    public const TASTEDIVE = 'tastedive';
+
+    /** მსგავსი ფილმები და სერიალები (`related`) — მხოლოდ საჯარო მონაცემის კითხვა */
+    public const TRAKT = 'trakt';
+
     /**
      * `limits` — მხოლოდ ორ წყაროს აქვს. ⚠️ `default` **კოდის** ნაგულისხმევია:
      * ცარიელი პირადი მნიშვნელობა მას ნიშნავს, `0` კი „ლიმიტი არ მაქვს"-ს
@@ -180,6 +186,32 @@ final class CredentialProviders
             'limits' => [],
             'docs' => 'https://t.me/BotFather',
             'modules' => ['note'],
+        ],
+
+        /* უფასო გასაღები განაცხადით; ლიმიტი საათში 300 მოთხოვნაა — წყაროს
+           ლიმიტია და არა ჩვენი აღრიცხვა, ამიტომ `limits`-ში არ არის. */
+        self::TASTEDIVE => [
+            'required' => ['key'],
+            'fields' => [
+                'key' => ['secret' => true],
+            ],
+            'limits' => [],
+            'docs' => 'https://tastedive.com/account/api_access',
+            'modules' => ['movie', 'series'],
+        ],
+
+        /* ⚠️ **მხოლოდ Client ID** — და ის საიდუმლოა: საჯარო მონაცემის წასაკითხად
+           თვითონ ის არის გასაღები (`trakt-api-key` სათაური). Client Secret აქ
+           განზრახ არ არის: ის მხოლოდ Trakt-ის ანგარიშის სახელით მოქმედებას
+           სჭირდება (OAuth), რასაც აპი არ აკეთებს. */
+        self::TRAKT => [
+            'required' => ['client_id'],
+            'fields' => [
+                'client_id' => ['secret' => true],
+            ],
+            'limits' => [],
+            'docs' => 'https://trakt.tv/oauth/applications',
+            'modules' => ['movie', 'series'],
         ],
     ];
 

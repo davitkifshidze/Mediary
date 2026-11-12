@@ -3671,11 +3671,14 @@
       "serper": "Google Images, cheaply. Every requested page costs one credit.",
       "youtube": "Video description, publish date, duration and tags. Without a key yt-dlp brings the same if it is installed on this machine; without either, only the title and main photo arrive.",
       "telegram": "Sending reminders to Telegram (the notes module). The bot is yours — the token and the chat id belong to your own bot. The check sends a test message to the chat.",
-      "google_maps": "Search a place by name while typing, like Google Maps: address, coordinates, phone, website, opening hours, rating and photos. Without a key places are searched through SerpApi → Serper → OpenStreetMap — on Enter, not while typing."
+      "google_maps": "Search a place by name while typing, like Google Maps: address, coordinates, phone, website, opening hours, rating and photos. Without a key places are searched through SerpApi → Serper → OpenStreetMap — on Enter, not while typing.",
+      "tastedive": "Similar movies and series — “people who liked this also liked”. An extra source for suggestions.",
+      "trakt": "Similar movies and series from Trakt's data. An extra source for suggestions."
     },
     "error": {
       "chat_rejected": "the token works but the chat id does not — message the bot first and check the number",
       "rejected": "the source rejected the key",
+      "blocked": "the source's protection blocked the request — the key was not checked",
       "rate_limited": "the source rate-limited us — try again later",
       "unreachable": "the source is not answering",
       "not_configured": "no key has been entered yet",
@@ -3692,7 +3695,9 @@
       "serper": "Register at serper.dev with a Google account.\nThe key is on the dashboard right away (“API Key”) — copy it.",
       "youtube": "Open console.cloud.google.com and create a project.\nAPIs & Services → Library → find “YouTube Data API v3” and enable it.\nAPIs & Services → Credentials → Create credentials → API key.\nCopy the key.",
       "telegram": "In Telegram find @BotFather and send /newbot.\nGive the bot a name, then a username — it must end in bot.\nBotFather replies with the token (123456:ABC-DEF…) — copy it and paste it here.\nWrite something to your own bot (even “hi”) — until you do, it cannot message you.\nTo find the chat id open https://api.telegram.org/bot<token>/getUpdates and copy the chat.id number.",
-      "google_maps": "Open console.cloud.google.com — the project that holds your YouTube key works too.\nBilling → link a billing account (a card is required; a monthly free allowance applies).\nAPIs & Services → Library → find “Places API (New)” and enable it.\nAPIs & Services → Credentials → Create credentials → API key — restrict it to “Places API (New)”.\nCopy the key."
+      "google_maps": "Open console.cloud.google.com — the project that holds your YouTube key works too.\nBilling → link a billing account (a card is required; a monthly free allowance applies).\nAPIs & Services → Library → find “Places API (New)” and enable it.\nAPIs & Services → Credentials → Create credentials → API key — restrict it to “Places API (New)”.\nCopy the key.",
+      "tastedive": "Sign in at tastedive.com and open tastedive.com/account/api_access.\nFill in the request: an application name and a short description of how you will use the API (website and company can be anything).\nPress “Generate new access key”.\nThe key appears on the same page — copy it.",
+      "trakt": "Sign in at trakt.tv and open trakt.tv/oauth/applications/new.\nAny name; Redirect URI — urn:ietf:wg:oauth:2.0:oob; leave the permissions (/checkin, /scrobble) unticked.\nPress “Save App”.\nCopy the Client ID. You do not need the Client Secret here — never share it."
     },
     "helpNote": {
       "tmdb": "Free, and it does not ask for a card.",
@@ -3703,7 +3708,9 @@
       "serper": "You get 2500 free credits on signup; every requested page costs one credit.",
       "youtube": "Free (10,000 units a day). Without a key yt-dlp brings the full info — it needs no key.",
       "telegram": "Completely free. The token is full access to the bot — do not share it.",
-      "google_maps": "Beyond the allowance it is paid — set a budget alert in Google Cloud. The check is free (an id-only search)."
+      "google_maps": "Beyond the allowance it is paid — set a budget alert in Google Cloud. The check is free (an id-only search).",
+      "tastedive": "Free; the limit is 300 requests an hour. A check spends one request.",
+      "trakt": "Free. The Client ID is enough for reading public data."
     },
     "installation": "Installation settings",
     "installationHint": "These are not keys and cannot be split per user — they are settings of this machine and of the whole installation. Change them in backend/.env.",

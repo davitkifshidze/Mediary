@@ -20,10 +20,12 @@ import {
   ScanSearch,
   Search,
   Send,
+  Shuffle,
   Sparkles,
   SquarePlay,
   Trash2,
   TriangleAlert,
+  Waypoints,
   X,
 } from 'lucide-react'
 import {
@@ -95,6 +97,9 @@ const LOOK: Record<CredentialProvider, { icon: LucideIcon; color: string }> = {
   // ადგილები
   google_maps: { icon: MapPinned, color: 'var(--cred-places)' },
   telegram: { icon: Send, color: 'var(--cred-telegram)' },
+  // მსგავსი ფილმები და სერიალები
+  tastedive: { icon: Shuffle, color: 'var(--cred-tastedive)' },
+  trakt: { icon: Waypoints, color: 'var(--cred-trakt)' },
 }
 
 /** უცნობი (ახალი სერვერის) წყარო ცვივის ნაცვლად ნეიტრალურად იხატება */

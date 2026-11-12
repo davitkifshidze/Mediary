@@ -166,6 +166,8 @@
   /* Google Places (რუკის მწვანე) */
   --cred-places: #1e8e3e;
   --cred-telegram: #2383c2;
+  --cred-tastedive: #c2477f;
+  --cred-trakt: #c8322b;
   --cred-browser: #a8741a;
 
   /* ⚠️ **ერთადერთი ადგილი, სადაც მომრგვალება წყდება.** იხ. `@theme inline` —
@@ -297,6 +299,8 @@
   --cred-youtube: #ee7a74;
   --cred-places: #5bc77a;
   --cred-telegram: #5db4ea;
+  --cred-tastedive: #ee86b4;
+  --cred-trakt: #f2706a;
   --cred-browser: #e3b25a;
 
   /* ⚠️ მუქ თემაზე ცალკე უნდა გამეორდეს: `var()` მნიშვნელობა იქ გამოითვლება,

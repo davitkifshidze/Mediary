@@ -24,6 +24,8 @@ export const CREDENTIAL_PROVIDERS = [
   'youtube',
   'google_maps',
   'telegram',
+  'tastedive',
+  'trakt',
 ] as const
 
 export type CredentialProvider = (typeof CREDENTIAL_PROVIDERS)[number]
@@ -39,6 +41,8 @@ export const CREDENTIAL_BRAND: Record<CredentialProvider, string> = {
   youtube: 'YouTube Data API',
   google_maps: 'Google Places API',
   telegram: 'Telegram',
+  tastedive: 'TasteDive',
+  trakt: 'Trakt',
 }
 
 /**
@@ -55,6 +59,8 @@ const SHORT: Record<CredentialProvider, string> = {
   youtube: 'YouTube',
   google_maps: 'Google Places',
   telegram: 'Telegram',
+  tastedive: 'TasteDive',
+  trakt: 'Trakt',
 }
 
 export function isCredentialProvider(value: unknown): value is CredentialProvider {
@@ -72,7 +78,7 @@ export function credentialShortName(provider: string): string {
  * თორემ ახალი წყარო ჩუმად გაქრებოდა გვერდიდან.
  */
 export const CREDENTIAL_GROUPS = [
-  { key: 'media', providers: ['tmdb', 'rawg', 'igdb', 'youtube'] },
+  { key: 'media', providers: ['tmdb', 'tastedive', 'trakt', 'rawg', 'igdb', 'youtube'] },
   { key: 'translation', providers: ['gemini'] },
   { key: 'web', providers: ['serpapi', 'serper'] },
   // ადგილების ძებნა (SerpApi/Serper-იც ადგილებს ეძებს — `web`-ში რჩებიან)

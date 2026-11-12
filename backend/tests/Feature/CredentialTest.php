@@ -717,6 +717,73 @@ class CredentialTest extends TestCase
         $this->assertSame('rejected', UserCredential::where('user_id', $this->user->id)->first()->last_error);
     }
 
+    /**
+     * TasteDive-ის გასაღები მისამართში მიდის, Trakt-ის Client ID — `trakt-api-key` სათაურში;
+     * ორივე საიდუმლოა და სიაში მხოლოდ ნიღბით ჩანს.
+     */
+    public function test_the_recommendation_sources_are_checked_with_their_own_calls(): void
+    {
+        Http::fake([
+            'tastedive.com/*' => Http::response(['similar' => ['results' => []]], 200),
+            'api.trakt.tv/*' => Http::response([['name' => 'Action', 'slug' => 'action']], 200),
+        ]);
+        $this->own($this->user, CredentialProviders::TASTEDIVE, ['key' => 'td-secret-key']);
+        $this->own($this->user, CredentialProviders::TRAKT, ['client_id' => 'trakt-secret-id']);
+
+        $this->actingAs($this->user)->postJson('/api/credentials/tastedive/test')->assertOk()->assertJsonPath('ok', true);
+        $this->actingAs($this->user)->postJson('/api/credentials/trakt/test')->assertOk()->assertJsonPath('ok', true);
+
+        // ⚠️ უსახელო კლიენტს TasteDive API-მდე არ უშვებს — სახელი ყოველთვის მიდის
+        Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://tastedive.com/api/similar')
+            && $request['k'] === 'td-secret-key'
+            && str_starts_with($request->header('User-Agent')[0] ?? '', 'Mediary/'));
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.trakt.tv/genres/movies'
+            && $request->hasHeader('trakt-api-key', 'trakt-secret-id')
+            && $request->hasHeader('trakt-api-version', '2'));
+
+        $list = collect($this->actingAs($this->user)->getJson('/api/credentials')->assertOk()->json('data'))->keyBy('provider');
+        $this->assertSame('user', $list['tastedive']['source']);
+        $this->assertSame('user', $list['trakt']['source']);
+        $this->assertNull($list['trakt']['fields'][0]['value']);
+        $this->assertStringNotContainsString('trakt-secret-id', json_encode($list->all()));
+        $this->assertStringNotContainsString('td-secret-key', json_encode($list->all()));
+    }
+
+    /** ორივე წყარო არასწორ გასაღებს 403-ით პასუხობს — „წყარომ გასაღები არ მიიღო" */
+    public function test_a_wrong_recommendation_key_is_rejected(): void
+    {
+        Http::fake([
+            'tastedive.com/*' => Http::response(['error' => 'Invalid api key format'], 403),
+            'api.trakt.tv/*' => Http::response('Forbidden', 403),
+        ]);
+        $this->own($this->user, CredentialProviders::TASTEDIVE, ['key' => 'wrong']);
+        $this->own($this->user, CredentialProviders::TRAKT, ['client_id' => 'wrong']);
+
+        foreach (['tastedive', 'trakt'] as $provider) {
+            $this->actingAs($this->user)->postJson("/api/credentials/{$provider}/test")
+                ->assertOk()
+                ->assertJsonPath('ok', false)
+                ->assertJsonPath('error', 'rejected');
+        }
+    }
+
+    /**
+     * დამცავი ფარის HTML-გვერდი (403) გასაღების უარყოფა არ არის: მოთხოვნა API-მდე
+     * არ მისულა, ე.ი. შემოწმება ამბობს „დაბლოკა" და არა „გასაღები არ მიიღო".
+     */
+    public function test_a_shield_page_is_reported_as_blocked_not_as_a_wrong_key(): void
+    {
+        Http::fake(['tastedive.com/*' => Http::response("<!DOCTYPE html>\n<html><body>Access denied</body></html>", 403)]);
+        $this->own($this->user, CredentialProviders::TASTEDIVE, ['key' => 'a-valid-key']);
+
+        $this->actingAs($this->user)->postJson('/api/credentials/tastedive/test')
+            ->assertOk()
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'blocked');
+
+        $this->assertSame('blocked', UserCredential::where('user_id', $this->user->id)->first()->last_error);
+    }
+
     /** ⚠️ სხვისი ჩანაწერი ჩემი endpoint-ით არ იშლება — მოთხოვნა ჩემს რიგზეა */
     public function test_delete_only_touches_my_own_row(): void
     {

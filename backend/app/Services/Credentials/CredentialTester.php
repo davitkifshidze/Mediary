@@ -19,8 +19,10 @@ use Throwable;
  * ⚠️ **თითო წყაროსთვის ყველაზე იაფი გამოძახება ირჩევა და არა „რომელიმე".**
  * SerpApi-ს `GET /account` აქვს, რომელიც კვოტას **არ ხარჯავს** (გადამოწმებული
  * 2026-09-14); Gemini-ს `GET /models` — მოდელების სია, რომელიც დღიურ ლიმიტს
- * არ ეხება; TMDB-ს `/configuration`. თარგმანის გამოძახებით შემოწმება
- * „შევამოწმე, რომ ლიმიტი მაქვს" და „ლიმიტი დავხარჯე"-ს ერთ ღილაკად აქცევდა.
+ * არ ეხება; TMDB-ს `/configuration`; Trakt-ს ჟანრების სია. თარგმანის
+ * გამოძახებით შემოწმება „შევამოწმე, რომ ლიმიტი მაქვს" და „ლიმიტი დავხარჯე"-ს
+ * ერთ ღილაკად აქცევდა. TasteDive-ს ასეთი endpoint არ აქვს — იქ ერთი ძებნა
+ * მიდის (საათობრივი 300-დან ერთი).
  *
  * ⚠️ **Serper-ს უფასო შესამოწმებელი endpoint არ აქვს** — ყოველი გამოძახება
  * კრედიტია. ამიტომ ის `costsCredit` დროშით არის მონიშნული და ინტერფეისი
@@ -113,6 +115,35 @@ class CredentialTester
                    ნიღბავს (`/bot<id>:<secret>`). */
                 CredentialProviders::TELEGRAM => $this->telegram($value('bot_token'), $value('chat_id')),
 
+                /* უფასო შესამოწმებელი endpoint არ აქვს — ერთი ძებნა საათობრივი 300-დან
+                   ერთს ხარჯავს (ფული არ არის, ამიტომ დასტურს არ ითხოვს). არასწორ
+                   გასაღებზე 403-ს აბრუნებს.
+                   ⚠️ კლიენტი თავის სახელს ამბობს (`User-Agent`), როგორც სხვა წყაროებთან.
+                   ⚠️ TasteDive-ის წინ დამცავი ფარი დგას და ზოგ კლიენტს API-მდე არ უშვებს
+                   (HTML-ის 403) — ეს `blocked`-ად ბრუნდება და არა „უარყოფილად"
+                   (იხ. `isShieldPage()`). */
+                CredentialProviders::TASTEDIVE => $this->check(
+                    SourceLog::request(15)
+                        ->withHeaders(['User-Agent' => 'Mediary/1.0 (personal library)'])
+                        ->get('https://tastedive.com/api/similar', [
+                            'q' => 'Inception',
+                            'type' => 'movie',
+                            'limit' => 1,
+                            'k' => $value('key'),
+                        ])
+                ),
+
+                // ჟანრების სია — ყველაზე მსუბუქი გამოძახება; არასწორ Client ID-ზე 403
+                CredentialProviders::TRAKT => $this->check(
+                    SourceLog::request(15)
+                        ->withHeaders([
+                            'Content-Type' => 'application/json',
+                            'trakt-api-version' => '2',
+                            'trakt-api-key' => $value('client_id'),
+                        ])
+                        ->get('https://api.trakt.tv/genres/movies')
+                ),
+
                 default => ['ok' => false, 'error' => 'unknown_provider'],
             };
         } catch (Throwable $e) {
@@ -178,10 +209,25 @@ class CredentialTester
         return [
             'ok' => false,
             'error' => match ($res->status()) {
-                401, 403 => 'rejected',
+                401 => 'rejected',
+                403 => $this->isShieldPage($res) ? 'blocked' : 'rejected',
                 429 => 'rate_limited',
                 default => 'http_'.$res->status(),
             },
         ];
+    }
+
+    /**
+     * 403, რომელიც **წყაროს API-ს არ დაუწერია**: მის წინ მდგომმა დამცავმა ფარმა
+     * (Cloudflare და მსგავსი) მოთხოვნა კლიენტის ხელწერით დაბლოკა და HTML-გვერდი
+     * დააბრუნა. გასაღები ამ დროს არავის შეუმოწმებია, ამიტომ „უარყოფილი" ტყუილი
+     * იქნებოდა — ადამიანი სწორ გასაღებს გადაწერდა (TasteDive, ცოცხალი გაზომვა
+     * 2026-11-13: იგივე გასაღები სხვა კლიენტიდან 200-ს იღებს).
+     *
+     * @param  Response  $res
+     */
+    private function isShieldPage($res): bool
+    {
+        return (bool) preg_match('/^\s*<(!doctype|html)\b/i', (string) $res->body());
     }
 }
