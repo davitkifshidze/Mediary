@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowRight } from 'lucide-react'
 import type { VideoOrigin } from '@/api/videos'
 import { moduleName, useModules } from '@/lib/modules'
-import { resultPath } from '@/lib/searchResults'
+import { recordOpenPath } from '@/lib/recordLinks'
 import { useContentLang } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 import { ModuleIcon } from '@/components/ModuleIcon'
@@ -15,8 +15,8 @@ import { ModuleIcon } from '@/components/ModuleIcon'
    მოდულიდან ცხადად გადმოვიდა; მეორეს წყარო აწერია — ბარათზე, სტრიქონში და
    ფანჯარაში ერთი და იგივე კომპონენტით.
 
-   ⚠️ **მისამართი ძებნის შედეგის წესით იგება** (`resultPath`): მოდულის ფესვი
-   `GET /api/modules`-იდან მოდის და არა აქედან; მსახიობს თავისი გვერდი აქვს.
+   ⚠️ **მისამართს `recordOpenPath` აგებს**: მოდულის ფესვი `GET /api/modules`-იდან
+   მოდის და არა აქედან; ბუკმარკი და კურსი id-ით იხსნება, მსახიობს თავისი გვერდი აქვს.
    ⚠️ **სათაურის გარეშე წყარო ბმული არ არის** — ჩანაწერი ურნაშია, წაშლილია ან
    დამალულია, ე.ი. გასახსნელი არაფერია; მოდულის სახელი მაინც იწერება.
    ============================================================ */
@@ -24,9 +24,8 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 /** წყაროს მისამართი, ან `null` — თუ გასახსნელი არაფერია */
 export function originPath(origin: VideoOrigin, routeBase: string | undefined, name: string | null): string | null {
   if (!name) return null
-  if (origin.kind === 'actor') return `/actors/${origin.id}`
 
-  return resultPath({ domain: origin.kind, id: origin.id, title: name }, routeBase)
+  return recordOpenPath({ kind: origin.kind, id: origin.id, title: name }, routeBase)
 }
 
 export function VideoSource({

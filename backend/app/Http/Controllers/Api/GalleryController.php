@@ -217,7 +217,7 @@ class GalleryController extends Controller
     public function groups(Request $request)
     {
         $data = $request->validate([
-            'by' => ['nullable', 'in:record,actor,source,provider,module,album'],
+            'by' => ['nullable', 'in:record,actor,module,album'],
             /* ⚠️ **`type` აღარ არის მხოლოდ მედია-დომენი**: ჩანაწერების
                ჭრილში ტაბებად ყველა მშობელი დგას — სიმღერაც, წიგნიც, თამაშიც —
                ე.ი. `MediaDomain::rule()` მათ 422-ს აძლევდა. */
@@ -253,14 +253,6 @@ class GalleryController extends Controller
                 'groups' => $this->moduleImages->groups($user, $previews),
                 'previews' => [],
             ]);
-        }
-
-        if ($by === 'source') {
-            return $this->sourceGroups($user, $previews);
-        }
-
-        if ($by === 'provider') {
-            return $this->providerGroups($previews);
         }
 
         if ($by === 'actor') {
@@ -411,8 +403,8 @@ class GalleryController extends Controller
                 $groups->push([
                     'kind' => $type,
                     'id' => $row->id,
-                    'title' => $row->title_en ?? $row->title ?? null,
-                    'title_ka' => $row->title_ka ?? null,
+                    // ⚠️ ადგილს მხოლოდ `name` აქვს — სათაური ყველა ტიპზე ერთი წესით იკითხება
+                    ...RecordTitle::of($row),
                     'poster_path' => $this->coverOf($row),
                     'photos' => (int) $row->photos,
                     'bytes' => (int) $row->photo_bytes,
@@ -521,97 +513,6 @@ class GalleryController extends Controller
         }
 
         return null;
-    }
-
-    /**
-     * **„საიდან მოვიდა" ჭრილი** — ჯგუფი = მედია-დომენი.
-     *
-     * ერთ ჯგუფში ორივე სახის ფოტოა: ამ დომენის ჩანაწერების საკუთარი
-     * კადრები/პოსტერები **და** მისი მსახიობების პორტრეტები. სწორედ ეს
-     * პასუხობს კითხვას „ეს ფოტო ფილმიდან მოვიდა თუ სერიალიდან".
-     */
-    private function sourceGroups($user, int $previews)
-    {
-        $groups = collect();
-
-        foreach (MediaDomain::TYPES as $type) {
-            if (! $user->hasModule($type)) {
-                continue;
-            }
-
-            $rows = $this->sourceQuery($type)
-                ->withoutGlobalScope('album_lock')
-                ->selectRaw('count(*) photos, sum(size) bytes')
-                ->first();
-
-            if (! $rows || ! $rows->photos) {
-                continue;
-            }
-
-            $groups->push([
-                // ⚠️ `kind` დომენია, `id` კი 0 — ჯგუფი ერთეული ჩანაწერი არაა,
-                // ამიტომ შიგნით შესვლა `from=`-ით ხდება და არა `owner=`-ით
-                'kind' => $type,
-                'id' => 0,
-                'from' => $type,
-                'title' => $type,
-                'title_ka' => null,
-                'poster_path' => null,
-                'photos' => (int) $rows->photos,
-                'bytes' => (int) $rows->bytes,
-                'has_tmdb' => false,
-            ]);
-        }
-
-        return response()->json([
-            'by' => 'source',
-            'groups' => $groups->values(),
-            'previews' => $this->sourcePreviews($groups, $previews),
-        ]);
-    }
-
-    /**
-     * **„რომელმა წყარომ მოიტანა" ჭრილი** — `gallery_images.source`.
-     *
-     * ⚠️ **ეს `by=source`-ის დუბლი არ არის.** იქ „ფილმიდან თუ სერიალიდან"
-     * იკითხება, აქ კი „TMDB-დან, Wikimedia-დან თუ Google-დან" — ვებძებნის
-     * შემდეგ ეს ორი სხვადასხვა კითხვაა და ორივეს პასუხი სჭირდება.
-     */
-    private function providerGroups(int $previews)
-    {
-        $rows = GalleryImage::withoutGlobalScope('album_lock')
-            ->selectRaw('source, count(*) photos, sum(size) bytes')
-            ->groupBy('source')
-            ->orderByDesc('photos')
-            ->get();
-
-        $groups = $rows->map(fn ($row) => [
-            'kind' => 'provider',
-            // ⚠️ `id` 0-ია: ჯგუფი ერთეული ჩანაწერი არაა (წყაროს ჭრილის იგივე წესი)
-            'id' => 0,
-            'provider' => (string) ($row->source ?: 'tmdb'),
-            'title' => (string) ($row->source ?: 'tmdb'),
-            'title_ka' => null,
-            'poster_path' => null,
-            'photos' => (int) $row->photos,
-            'bytes' => (int) $row->bytes,
-            'has_tmdb' => false,
-        ])->values();
-
-        $previewMap = [];
-
-        foreach ($groups as $group) {
-            $previewMap['provider:'.$group['provider']] = GalleryImage::query()
-                ->where('source', $group['provider'])
-                ->orderByDesc('id')
-                ->limit($previews)
-                ->get(['id', 'path'])
-                ->map(fn (GalleryImage $image) => $image->preview())
-                ->values()
-                ->all();
-        }
-
-        return response()->json(['by' => 'provider', 'groups' => $groups, 'previews' => $previewMap]);
     }
 
     /**
@@ -939,24 +840,6 @@ class GalleryController extends Controller
         });
     }
 
-    /** @param  Collection<int, array<string, mixed>>  $groups */
-    private function sourcePreviews($groups, int $previews): array
-    {
-        $out = [];
-
-        foreach ($groups as $group) {
-            $out[$group['kind'].':0'] = $this->sourceQuery($group['from'])
-                ->orderBy('id')
-                ->limit($previews)
-                ->get(['id', 'path'])
-                ->map(fn (GalleryImage $image) => $image->preview())
-                ->values()
-                ->all();
-        }
-
-        return $out;
-    }
-
     /**
      * ჯგუფის რამდენიმე ესკიზი — ბადეზე „რა დევს შიგნით" ერთი შეხედვით.
      *
@@ -1072,7 +955,7 @@ class GalleryController extends Controller
            ადგილას, ე.ი. აქაური `withoutGlobalScope` ვერაფერს გაატანს.
 
            ⚠️ **ესკიზები scope-ს ისევ ემორჩილება** (`previews()`,
-           `sourcePreviews()`, ალბომის ბარათი): ერთი ესკიზიც `path`-ს
+           ალბომის ბარათი): ერთი ესკიზიც `path`-ს
            გამოიტანდა და blur-ის მოხსნა devtools-ში ერთი კლიკი იქნებოდა.
 
            ⚠️ **ცალკე აღებული ალბომი ამას არ ეხება** — `owner=album:N` და
@@ -1215,13 +1098,7 @@ class GalleryController extends Controller
                 $names[$type.':'.$record->getKey()] = [
                     'kind' => $type === GalleryParent::ACTOR ? 'actor' : $type,
                     'id' => $record->getKey(),
-                    'title' => $type === GalleryParent::ACTOR
-                        ? $record->name
-                        : ($record->title_en ?? $record->title ?? null),
-                    'title_ka' => $type === GalleryParent::ACTOR
-                        ? $record->name_ka
-                        : ($record->title_ka ?? null),
-                ];
+                ] + RecordTitle::of($record);
             }
         }
 

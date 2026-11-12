@@ -27,7 +27,6 @@ import { VideosCut } from '@/components/gallery/VideosCut'
 import { AlbumsCut } from '@/components/gallery/AlbumsCut'
 import { GroupPhotos } from '@/components/gallery/GroupPhotos'
 import { CountBadge } from '@/components/ui/badge'
-import { CutTabs } from '@/components/ui/cut-tabs'
 
 /* ============================================================
    გალერეა — `/gallery` და მისი ქვე-გვერდები.
@@ -64,7 +63,6 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
 
   const [open, setOpen] = useState(false)
   const [pin, setPin] = useState<GalleryDownloadPin | undefined>()
-  const [sourceBy, setSourceBy] = useState<'provider' | 'source'>('provider')
 
   const summaryQ = useQuery({ queryKey: ['gallery-summary'], queryFn: fetchGallerySummary })
   const settings = readGalleryDefaults(all.find((m) => m.key === 'gallery')?.user_settings)
@@ -176,27 +174,6 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
       )}
 
       {cut === 'videos' && <VideosCut />}
-
-      {cut === 'sources' && (
-        <div>
-          {/* ⚠️ **ორი სხვადასხვა კითხვა და ორივეს პასუხი სჭირდება**: „რომელმა
-              წყარომ მოიტანა" და „რომელი დომენიდან მოვიდა". ახლა
-              ისინი ბარათებია და არა ჩიპები — იგივე ვიზუალი, რაც აუდიტ-ლოგს. */}
-          <div className="mb-4">
-            <CutTabs
-              label={t('gallery.sourceScope')}
-              options={(['provider', 'source'] as const).map((key) => ({
-                key,
-                label: t(`gallery.sourceBy.${key}`),
-                hint: t(`gallery.sourceByHint.${key}`),
-              }))}
-              value={sourceBy}
-              onChange={(key) => setSourceBy(key as 'provider' | 'source')}
-            />
-          </div>
-          <GroupsCut by={sourceBy} />
-        </div>
-      )}
 
       {cut === 'modules' && <ModulesCut />}
 

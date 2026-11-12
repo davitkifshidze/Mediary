@@ -266,7 +266,6 @@ describe('PublicGalleryTab', () => {
     }
     expect(buttonStarting(i18n.t('gallery.cut.records'))!.textContent).toContain('1')
     expect(buttonStarting(i18n.t('gallery.cut.modules'))).toBeUndefined()
-    expect(buttonStarting(i18n.t('gallery.cut.sources'))).toBeUndefined()
 
     // ბრტყელ ბადეზე — ვისია ფოტო (მხოლოდ საჯარო მშობელი მოდის სერვერიდან)
     expect(document.body.textContent).toContain('Open Film')

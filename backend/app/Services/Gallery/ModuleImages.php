@@ -26,6 +26,7 @@ use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoFile;
 use App\Support\CustomModules;
+use App\Support\RecordTitle;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -144,7 +145,13 @@ class ModuleImages
                 'id' => 0,
                 'photos' => count($rows),
                 'bytes' => array_sum(array_column($rows, 'size')),
-                'previews' => array_slice(array_column($rows, 'url'), 0, $previews),
+                /* ⚠️ პირადი დისკის ფაილი `/storage/*`-ით არ იხსნება — ესკიზი თავის
+                   მარშრუტს და `private` ნიშანს ატარებს, დასტა კი მას საკუთრების
+                   შემოწმებით კითხულობს (blob). უმარშრუტო პირადი ფაილი ესკიზად არ გადის. */
+                'previews' => array_values(array_map(
+                    fn (array $row) => $row['private'] ? ['url' => $row['url'], 'private' => true] : $row['url'],
+                    array_slice(array_filter($rows, fn (array $row) => ! $row['private'] || $row['served']), 0, $previews),
+                )),
                 /* ⚠️ **„ყველა პრივატულია" და არა „პირველი პრივატულია".** ეს
                    დროშა ბადეს `privateDisk`-ად გადაეცემა, ე.ი. მთელ ჯგუფზე
                    მოქმედებს; პირველი რიგის კითხვა რიგის თანმიმდევრობაზე
@@ -171,7 +178,11 @@ class ModuleImages
         $total = count($rows);
 
         return [
-            'items' => array_slice($rows, max(0, ($page - 1) * $perPage), $perPage),
+            // ⚠️ დისკის გზა და შიდა ნიშანი გარეთ არ გადის — პირადი ფაილი მხოლოდ თავისი მარშრუტით ჩანს
+            'items' => array_map(
+                fn (array $row) => array_diff_key($row, ['path' => true, 'served' => true]),
+                array_slice($rows, max(0, ($page - 1) * $perPage), $perPage),
+            ),
             'total' => $total,
             'truncated' => $total >= self::MAX_ROWS,
         ];
@@ -203,11 +214,17 @@ class ModuleImages
                 ->get();
 
             foreach ($records as $record) {
+                /* გალერეიდან არჩეული მთავარი ფოტო გალერეის ფოტოა და იქ ითვლება —
+                   აქ მეორედ რომ დაგვეთვალა, ერთი ფაილი ორ ჭრილში ორჯერ გამოჩნდებოდა */
+                if (str_starts_with((string) $record->{$column}, 'gallery/')) {
+                    continue;
+                }
+
                 $rows[] = $this->row(
                     module: $module,
                     ownerType: $module,
                     ownerId: (int) $record->getKey(),
-                    title: $this->titleOf($record),
+                    title: RecordTitle::label($record),
                     path: (string) $record->{$column},
                     kind: 'cover',
                     size: null,
@@ -246,7 +263,7 @@ class ModuleImages
                     module: $module,
                     ownerType: $module,
                     ownerId: (int) $file->{$foreignKey},
-                    title: $parent ? $this->titleOf($parent) : null,
+                    title: RecordTitle::label($parent),
                     path: (string) $file->path,
                     kind: 'file',
                     size: (int) $file->size,
@@ -262,6 +279,12 @@ class ModuleImages
         // ⚠️ სორტირება მეხსიერებაში — ორი სხვადასხვა ცხრილია და ერთი SQL
         // მათ ვერ დაალაგებდა; სია ისედაც ჭერითაა შემოსაზღვრული
         usort($rows, fn ($a, $b) => strcmp((string) $b['created_at'], (string) $a['created_at']));
+
+        /* ⚠️ ერთი ფაილი ერთხელ: მთავარ ფოტოდ არჩეული ატვირთული სურათი ჩანაწერის
+           სვეტშიც წერია და ფაილების ცხრილშიც — რიცხვი და ბადე მას ორჯერ ითვლიდა.
+           ატვირთული რიგი რჩება (ზომა და სახელი მას აქვს), „ყდის" ასლი — არა. */
+        $uploaded = array_flip(array_column(array_filter($rows, fn (array $row) => $row['kind'] === 'file'), 'path'));
+        $rows = array_values(array_filter($rows, fn (array $row) => $row['kind'] !== 'cover' || ! isset($uploaded[$row['path']])));
 
         return array_slice($rows, 0, self::MAX_ROWS);
     }
@@ -289,25 +312,14 @@ class ModuleImages
             'module' => $module,
             'owner' => ['kind' => $ownerType, 'id' => $ownerId, 'title' => $title],
             'url' => $private && $privateUrl ? $privateUrl : $path,
+            // დისკზე ფაილის გზა (დუბლის ამოსაცნობად) და „აქვს თუ არა პირად ფაილს მარშრუტი"
+            'path' => $path,
+            'served' => $privateUrl !== null,
             'private' => $private,
             'kind' => $kind,
             'size' => $size,
             'original_name' => $name,
             'created_at' => $createdAt,
         ];
-    }
-
-    /** სათაური ნებისმიერი მოდელიდან — ორენოვანიც და ერთენოვანიც */
-    private function titleOf(Model $record): ?string
-    {
-        foreach (['title_ka', 'title_en', 'title', 'name'] as $attribute) {
-            $value = $record->{$attribute} ?? null;
-
-            if (is_string($value) && trim($value) !== '') {
-                return $value;
-            }
-        }
-
-        return null;
     }
 }

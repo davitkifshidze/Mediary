@@ -89,9 +89,9 @@ export function ModulesCut() {
               title={nameOf(group.module)}
               label={`${t('gallery.photos', { count: group.photos })} · ${formatBytes(group.bytes)}`}
               count={group.photos}
-              // ⚠️ პრივატულ მოდულზე ესკიზი API-ს გავლით იკითხება, ე.ი. `<img>`
-              // პირდაპირ ვერ ნახავს — დასტა მაშინ ხატულით იხატება
-              images={group.private ? [] : (group.previews ?? [])}
+              // ⚠️ პირადი დისკის ესკიზი თავის მარშრუტს და `private` ნიშანს ატარებს —
+              // დასტა მას API-ით კითხულობს (საკუთრების შემოწმებით), `<img src>`-ით ვერ ნახავდა
+              images={group.previews ?? []}
               badge={group.private ? <Lock className="size-3" /> : undefined}
               aspect="wide"
               onClick={() => setOpen(group)}

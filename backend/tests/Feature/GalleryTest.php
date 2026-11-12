@@ -226,14 +226,13 @@ class GalleryTest extends TestCase
     }
 
     /**
-     * **„საიდან მოვიდა" ჭრილი**: ერთ ჯგუფში ჩანაწერის საკუთარი
-     * ფოტოებიც ითვლება და მისი მსახიობების პორტრეტებიც.
+     * **დომენის ფილტრი (`from`)**: ჩანაწერის საკუთარი ფოტოებიც ითვლება და მისი
+     * მსახიობების პორტრეტებიც — მსახიობების ჩანართი ამით ჭრის.
      *
-     * ⚠️ მსახიობის ფოტოს მშობელი **მსახიობია** და არა ჩანაწერი, ე.ი.
-     * „ფილმიდან მოვიდა თუ სერიალიდან" მხოლოდ იმით ითვლება, სად თამაშობს ის —
-     * და ჯგუფის რიცხვი შიგთავსს უნდა ემთხვეოდეს.
+     * ⚠️ „წყაროების" ჭრილი (`by=source` · `by=provider`) ამოღებულია — ჯგუფებად ის
+     * აღარ იკითხება; ფილტრი `from` და `provider` ფოტოების სიაზე რჩება.
      */
-    public function test_source_groups_count_record_and_cast_photos(): void
+    public function test_the_domain_filter_counts_record_and_cast_photos(): void
     {
         $movie = $this->makeMovie('Fight Club');
         [$female] = $this->attachCast($movie);
@@ -242,18 +241,9 @@ class GalleryTest extends TestCase
         $this->image($female, 'actor');
         $this->image($female, 'actor');
 
-        $body = $this->actingAs($this->user)
-            ->getJson('/api/gallery/groups?by=source')
-            ->assertOk()
-            ->json();
+        $this->actingAs($this->user)->getJson('/api/gallery/groups?by=source')->assertStatus(422);
+        $this->actingAs($this->user)->getJson('/api/gallery/groups?by=provider')->assertStatus(422);
 
-        $this->assertSame('source', $body['by']);
-        $this->assertCount(1, $body['groups']);
-        $this->assertSame('movie', $body['groups'][0]['kind']);
-        $this->assertSame('movie', $body['groups'][0]['from']);
-        $this->assertSame(3, $body['groups'][0]['photos']);
-
-        // შიგნით შესვლა იმავე რიცხვს უნდა აჩვენებდეს
         $photos = $this->actingAs($this->user)
             ->getJson('/api/gallery/photos?from=movie&per_page=50')
             ->assertOk()
@@ -1495,13 +1485,8 @@ class GalleryTest extends TestCase
         $this->assertSame('Helena', $list['data'][0]['owner']['title']);
     }
 
-    /**
-     * **წყაროს ჭრილი** — „TMDB-დან თუ ვებიდან".
-     *
-     * ⚠️ ეს `by=source`-ის დუბლი არ არის: იქ „ფილმიდან თუ სერიალიდან"
-     * იკითხება, აქ კი „რომელმა წყარომ მოიტანა".
-     */
-    public function test_provider_groups_split_tmdb_from_web(): void
+    /** ფოტოების სია მომწოდებლით იჭრება („TMDB-დან თუ ვებიდან") — ფილტრი რჩება, ჭრილი აღარ არის */
+    public function test_the_photo_list_filters_by_provider(): void
     {
         $movie = $this->makeMovie('Fight Club');
 
@@ -1509,17 +1494,6 @@ class GalleryTest extends TestCase
         $web = $this->image($movie, 'backdrop');
         $web->forceFill(['source' => 'serpapi:google_images_light'])->save();
 
-        $groups = $this->actingAs($this->user)
-            ->getJson('/api/gallery/groups?by=provider')
-            ->assertOk()
-            ->json('groups');
-
-        $this->assertEqualsCanonicalizing(
-            ['tmdb', 'serpapi:google_images_light'],
-            array_column($groups, 'provider'),
-        );
-
-        // შიგნით შესვლა — იმავე რიცხვზე უნდა დგებოდეს
         $this->actingAs($this->user)
             ->getJson('/api/gallery/photos?provider=serpapi:google_images_light')
             ->assertOk()

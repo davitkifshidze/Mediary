@@ -55,7 +55,8 @@ describe('VideoSource', () => {
     expect(node?.tagName).toBe('A')
     expect(node?.textContent).toContain('Tokyo House')
     expect(node?.textContent).toMatch(/ბუკმარკები|Bookmarks/)
-    expect(node?.getAttribute('href')).toBe(`/bookmarks?q=${encodeURIComponent('Tokyo House')}`)
+    // ბუკმარკი id-ით იხსნება — ერთნაირი სათაურის ორი ჩანაწერი არ აირევა
+    expect(node?.getAttribute('href')).toBe('/bookmarks?open=32')
   })
 
   it('sends an actor to the actor page', async () => {

@@ -185,27 +185,32 @@ describe('GroupsCut', () => {
   })
 })
 
-/* ბიბლიოთეკის ჭრილი: „ყველა" ნაგულისხმევად, ტაბებს თავიანთი რიცხვი აქვს და
-   ჟანრის/სტატუსის/წლის ფილტრის ღილაკი აღარ არის */
+/* ბიბლიოთეკის ჭრილი: „ფოტოიანი" ნაგულისხმევად, ტაბებს თავიანთი რიცხვი აქვს და
+   ჟანრის/სტატუსის/წლის ფილტრის ღილაკი აღარ არის; უფოტო ჩანაწერის დასტას მთავარი
+   ფოტო ავსებს და ბარათიდან ჩანაწერი თავის მოდულში იხსნება */
 describe('GroupsCut — records', () => {
-  it('starts on "all", counts each have-tab and has no filter panel', async () => {
+  it('starts on "with photos", counts each have-tab and has no filter panel', async () => {
     const api = await import('@/api/gallery')
     const fetchGroups = vi.mocked(api.fetchGalleryGroups)
     fetchGroups.mockResolvedValue({
       by: 'record',
-      groups: [{ ...group, kind: 'movie', id: 9, title: 'Dune', photos: 0 }],
+      groups: [{ ...group, kind: 'movie', id: 9, title: 'Dune', photos: 0, poster_path: 'movies/posters/dune.jpg' }],
       facets: { types: { movie: 238, all: 238 }, have: { with: 12, without: 226, all: 238 } },
       previews: {},
     } as never)
 
     const node = await mountGroupsCut('/gallery/records', { by: 'record', type: 'movie' })
 
-    expect(fetchGroups).toHaveBeenLastCalledWith('record', expect.objectContaining({ have: 'all' }))
+    expect(fetchGroups).toHaveBeenLastCalledWith('record', expect.objectContaining({ have: 'with' }))
     expect(fetchGroups.mock.calls.at(-1)?.[1]).not.toHaveProperty('genre')
     const tab = (label: string) => [...node.querySelectorAll('button')].find((b) => b.textContent?.includes(label))
     expect(tab(i18n.t('gallery.have.with'))?.textContent).toContain('12')
     expect(tab(i18n.t('gallery.have.without'))?.textContent).toContain('226')
-    expect(tab(i18n.t('gallery.have.all'))?.getAttribute('aria-pressed') ?? tab(i18n.t('gallery.have.all'))?.getAttribute('aria-selected')).toBe('true')
+    expect(tab(i18n.t('gallery.have.with'))?.getAttribute('aria-pressed') ?? tab(i18n.t('gallery.have.with'))?.getAttribute('aria-selected')).toBe('true')
+    // გალერეა ცარიელია — დასტის პირველი სურათი ჩანაწერის მთავარი ფოტოა
+    expect(node.querySelector('img')?.getAttribute('src')).toContain('movies/posters/dune.jpg')
+    // „წყაროების" ჭრილი აღარ არსებობს — ჯგუფი ყოველთვის ჩანაწერი ან მსახიობია
+    expect(node.textContent).toContain('Dune')
     // ჟანრის/სტატუსის/წლის ფილტრის ღილაკი („ფილტრი") აღარ არის
     expect(tab(i18n.t('filter.more'))).toBeUndefined()
   })

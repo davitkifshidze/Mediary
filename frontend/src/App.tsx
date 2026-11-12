@@ -299,7 +299,8 @@ function AppShell() {
           )}
           {has('gallery') && <Route path="gallery/unattached" element={<GalleryPage cut="unattached" />} />}
           {has('gallery') && <Route path="gallery/videos" element={<GalleryPage cut="videos" />} />}
-          {has('gallery') && <Route path="gallery/sources" element={<GalleryPage cut="sources" />} />}
+          {/* „წყაროების" ჭრილი ამოღებულია — შენახული ბმული „ყველა ფოტოზე" გადადის */}
+          {has('gallery') && <Route path="gallery/sources" element={<Navigate to="/gallery" replace />} />}
           {has('gallery') && <Route path="gallery/modules" element={<GalleryPage cut="modules" />} />}
 
           {/* ---------- პირადი გალერეა ----------

@@ -1,4 +1,4 @@
-import { Boxes, Folders, Images, LibraryBig, Radio, Unlink, Users, Video } from 'lucide-react'
+import { Boxes, Folders, Images, LibraryBig, Unlink, Users, Video } from 'lucide-react'
 
 /* ============================================================
    გალერეის ჭრილები — **ერთი რუკა** გვერდისთვისაც და საიდბარისთვისაც.
@@ -20,7 +20,6 @@ export type GalleryCut =
   | 'albums'
   | 'unattached'
   | 'videos'
-  | 'sources'
   | 'modules'
 
 /** ჭრილი → მისამართი და ხატულა */
@@ -40,7 +39,6 @@ export const GALLERY_CUTS = [
      მოხსნილი ფოტო აქ რჩება, სანამ არ გადაიტან ან წაშლი — სხვა ჭრილი მას ვერ აჩვენებს. */
   { key: 'unattached', path: '/gallery/unattached', icon: Unlink, color: 'var(--status-undecided)' },
   { key: 'videos', path: '/gallery/videos', icon: Video, color: 'var(--tool-translations)' },
-  { key: 'sources', path: '/gallery/sources', icon: Radio, color: 'var(--tool-sync)' },
   { key: 'modules', path: '/gallery/modules', icon: Boxes, color: 'var(--tool-modules)' },
   // ⚠️ `color` სავალდებულოა (`satisfies`): მენიუს ქვეპუნქტის აიქონი ყოველთვის ფერადია
 ] as const satisfies readonly { key: GalleryCut; path: string; icon: unknown; color: string }[]

@@ -2030,13 +2030,11 @@
     "castSum": "{{actors}} actor(s) × {{each}} each = up to {{total}} photos",
     "recordSum": "{{records}} record(s) × {{each}} each = up to {{total}} photos",
     "pickPerActor": "Pick how many photos to download",
-    "bySourceHint": "Whether a photo came from a film or a series. A cast photo hangs off the actor (so it is never duplicated across films), which is why an actor who plays in both shows up in both groups.",
     "cut": {
       "all": "All photos",
       "records": "Library",
       "actors": "Actors",
       "videos": "Videos",
-      "sources": "Sources",
       "modules": "Modules",
       "albums": "Albums",
       "unattached": "Unattached"
@@ -2058,16 +2056,12 @@
       "mixed": "Mixed",
       "label": "View"
     },
-    "sourceBy": {
-      "provider": "Which source brought it",
-      "source": "Which domain"
-    },
-    "byProviderHint": "A group is a source — TMDB, Wikimedia or a web-search engine.",
+    "sourceBy": {},
     "byModuleHint": "Each module's own images: main photos and attached photos. Read-only here — deleting belongs to the record.",
     "groupCount": "{{count}} groups",
     "emptyHint": "Download from TMDB or search the web — photos will show up here.",
     "emptyFiltered": "The search found nothing. Try another word.",
-    "openRecord": "Record's gallery",
+    "openRecord": "Open the gallery",
     "openTheRecord": "Open the record",
     "recordPhotos": "Record's photos",
     "moduleTruncated": "list truncated",
@@ -2138,11 +2132,7 @@
     "deleteGroupHint": "“{{name}}” — {{count}} photos move to the trash; they can be restored from there. The record itself stays.",
     "groupDeleted": "{{count}} photos deleted",
     "categoryScope": "Kind of photo",
-    "sourceScope": "Which cut",
-    "sourceByHint": {
-      "provider": "TMDB · Wikimedia · web search",
-      "source": "Movie · series · anime"
-    },
+    "sourceByHint": {},
     "domainScope": "Which module",
     "collapseAll": "Collapse all",
     "expandAll": "Expand all",
@@ -2244,7 +2234,8 @@
         "move": "The album is in the trash, the photos were moved",
         "release": "The album is in the trash, the photos are unlocked"
       }
-    }
+    },
+    "showInModule": "Show in the module"
   },
   "boardGames": {
     "title": "Board games",

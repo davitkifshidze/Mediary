@@ -6,7 +6,8 @@ import { ArrowLeft, ExternalLink, Globe, Images, Video } from 'lucide-react'
 import { fetchGalleryDetail, type GalleryParentKind } from '@/api/gallery'
 import { storageUrl } from '@/lib/api'
 import { mediaOf, type MediaType } from '@/lib/media'
-import { isMediaKey } from '@/lib/modules'
+import { isMediaKey, useModules } from '@/lib/modules'
+import { recordOpenPath } from '@/lib/recordLinks'
 import { useContentLang } from '@/lib/settings'
 import { formatBytes } from '@/lib/utils'
 import { GroupPhotos } from '@/components/gallery/GroupPhotos'
@@ -45,6 +46,7 @@ export function GalleryRecordPage() {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const qc = useQueryClient()
+  const { all } = useModules()
   const [webOpen, setWebOpen] = useState(false)
   const [videoOpen, setVideoOpen] = useState(false)
 
@@ -78,9 +80,14 @@ export function GalleryRecordPage() {
     </Button>
   )
 
-  /* ---------- არა-მედია მშობელი: ბრტყელი ბადე ---------- */
+  /* ---------- არა-მედია ჩანაწერი: ბრტყელი ბადე ---------- */
   if (!media) {
     const kind = String(type) as GalleryParentKind
+    // სათაური ბარათიდან მოდის — მის გარეშე სიის მისამართი (`?q=`) ვერ აიგება
+    const recordPath = recordOpenPath(
+      { kind, id: recordId, title: passedTitle || null },
+      all.find((m) => m.key === kind)?.route_base,
+    )
 
     return (
       <PageContainer>
@@ -92,6 +99,13 @@ export function GalleryRecordPage() {
           categories
           actions={
             <>
+              {/* ჩანაწერი თავის მოდულში — არა-მედია ტიპზეც */}
+              {recordPath && (
+                <Link to={recordPath} className={buttonVariants({ variant: 'outline', size: 'sm' })} data-testid="open-record">
+                  <ExternalLink className="size-4" />
+                  {t('gallery.openTheRecord')}
+                </Link>
+              )}
               <Button variant="outline" size="sm" onClick={() => setWebOpen(true)}>
                 <Globe className="size-4" />
                 {t('web.searchPhotos')}

@@ -361,22 +361,12 @@ export interface GalleryVideoPage {
 
 /* ---------- ჯგუფები და ჭრილები ---------- */
 
-/**
- * როგორ ჯგუფდება გალერეა.
- *
- * ⚠️ **`source` და `provider` ორი სხვადასხვა კითხვაა**: პირველი „ფილმიდან
- * მოვიდა თუ სერიალიდან", მეორე კი „TMDB-დან თუ Google-დან". ვებძებნის
- * შემდეგ ორივეს პასუხი სჭირდება.
- */
-export type GalleryGroupBy = 'record' | 'actor' | 'source' | 'provider' | 'module' | 'album'
+/** როგორ ჯგუფდება გალერეა: ჩანაწერით · მსახიობით · მოდულით · ალბომით */
+export type GalleryGroupBy = 'record' | 'actor' | 'module' | 'album'
 
 export interface GalleryGroup {
-  kind: GalleryOwnerKind | 'provider' | 'module'
+  kind: GalleryOwnerKind | 'module'
   id: number
-  /** მხოლოდ „წყაროს" ჭრილში: ჯგუფი **დომენია და არა ერთეული** */
-  from?: MediaType
-  /** მხოლოდ „მომწოდებლის" ჭრილში */
-  provider?: string
   /** მხოლოდ „მოდულების" ჭრილში */
   module?: string
   title: string | null

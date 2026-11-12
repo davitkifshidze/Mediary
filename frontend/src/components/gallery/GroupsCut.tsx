@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, ChevronsDownUp, ChevronsUpDown, DownloadCloud, Globe, Images, Maximize2, Search, Star, Trash2, User, Video } from 'lucide-react'
+import { ChevronDown, ChevronsDownUp, ChevronsUpDown, DownloadCloud, ExternalLink, Globe, Images, ListFilter, Maximize2, Search, Star, Trash2, User, Video } from 'lucide-react'
 import {
   fetchActorGalleryImages,
   fetchGalleryGroups,
@@ -12,11 +12,12 @@ import {
 } from '@/api/gallery'
 import { errorMessage } from '@/lib/errors'
 import { useDeleteGroupPhotos } from '@/lib/galleryDelete'
-import { MEDIA_NAV_KEY, type MediaType } from '@/lib/media'
+import type { MediaType } from '@/lib/media'
+import { recordListPath, recordOpenPath } from '@/lib/recordLinks'
 import type { PhotoAction } from '@/lib/photoActions'
 import { sectionGalleryGroups, sortGalleryGroups } from '@/lib/galleryGroups'
 import { useContentLang } from '@/lib/settings'
-import { useModules } from '@/lib/modules'
+import { moduleName, useModules } from '@/lib/modules'
 import { tintStyle } from '@/lib/gameMeta'
 import { cn, formatBytes } from '@/lib/utils'
 import { Chip } from '@/components/ui/chip'
@@ -36,6 +37,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { QueryErrorState } from '@/components/ui/query-error-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { PhotoStack } from '@/components/ui/photo-stack'
+import { ModuleIcon } from '@/components/ModuleIcon'
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
@@ -114,7 +116,7 @@ export function GroupsCut({
   onDownloadRecord,
   onDownloadActor,
 }: {
-  by: Extract<GalleryGroupBy, 'record' | 'actor' | 'source' | 'provider'>
+  by: Extract<GalleryGroupBy, 'record' | 'actor'>
   /** ჩანაწერების ჭრილის დომენის ტაბი */
   type?: GalleryParentKind
   /** მსახიობების ჭრილის დომენის ტაბი — ვინც ამ დომენში თამაშობს */
@@ -132,10 +134,9 @@ export function GroupsCut({
   const { toast } = useToast()
 
   /* ---------- ზოლის კონტროლები ----------
-     ⚠️ **„ფოტოიანი / უფოტო / ყველა" URL-შია** (`?have=`, მხოლოდ with/without —
-     „ყველა" ნაგულისხმევია): „თავიდან ფოტოიანი იყო მონიშნული და მოდულზე ნაკლები
-     ეწერა". ტაბებს თავიანთი რიცხვი აქვს (`facets.have`), მოდულის ბარათს —
-     მთლიანი. ძებნა, რჩეული, ხედი, დალაგება და დაჯგუფება უმალ მოქმედებენ;
+     ⚠️ **„ფოტოიანი / უფოტო / ყველა" URL-შია** (`?have=`, მხოლოდ without/all —
+     „ფოტოიანი" ნაგულისხმევია: გალერეა ჯერ იმას აჩვენებს, რასაც ფოტო აქვს).
+     ტაბებს თავიანთი რიცხვი აქვს (`facets.have`), მოდულის ბარათს — მთლიანი. ძებნა, რჩეული, ხედი, დალაგება და დაჯგუფება უმალ მოქმედებენ;
      ჟანრის/სტატუსის/წლის ფილტრის პანელი წაიშალა („საშინელებაა, სრულად წაშალე"). */
   const { all: modules } = useModules()
   const [q, setQ] = useState('')
@@ -160,12 +161,12 @@ export function GroupsCut({
   const [params, setParams] = useSearchParams()
   const location = useLocation()
   const haveParam = params.get('have')
-  const have: 'with' | 'without' | 'all' = haveParam === 'with' || haveParam === 'without' ? haveParam : 'all'
+  const have: 'with' | 'without' | 'all' = haveParam === 'all' || haveParam === 'without' ? haveParam : 'with'
   const setHave = (next: 'with' | 'without' | 'all') =>
     setParams(
       (prev) => {
         const n = new URLSearchParams(prev)
-        if (next === 'all') n.delete('have')
+        if (next === 'with') n.delete('have')
         else n.set('have', next)
         n.delete('open')
         return n
@@ -222,11 +223,8 @@ export function GroupsCut({
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  const titleOf = (group: GalleryGroup) => {
-    if (group.from) return t(MEDIA_NAV_KEY[group.from])
-    if (group.provider) return t(`photos.source.${group.provider}`, group.provider)
-    return (lang === 'ka' ? group.title_ka || group.title : group.title || group.title_ka) || `#${group.id}`
-  }
+  const titleOf = (group: GalleryGroup) =>
+    (lang === 'ka' ? group.title_ka || group.title : group.title || group.title_ka) || `#${group.id}`
 
   /**
    * ჯგუფის შიგნით შესვლა — ორი მისამართი, ერთი ფორმა.
@@ -237,14 +235,11 @@ export function GroupsCut({
    * ფოტოებსაც შლიდა** — ისინი სხვა ფილმებშიც ჩანან და თავისი დასტა აქვთ.
    */
   const filtersFor = (group: GalleryGroup) => {
-    if (group.from) return { from: group.from }
-    if (group.provider) return { provider: group.provider }
     if (group.kind === 'actor') return { owner: `actor:${group.id}` }
     return { owner: `${group.kind}:${group.id}`, with_cast: false as const }
   }
 
-  const keyFor = (group: GalleryGroup) =>
-    group.from ? `from:${group.from}` : group.provider ? `provider:${group.provider}` : `${group.kind}:${group.id}`
+  const keyFor = (group: GalleryGroup) => `${group.kind}:${group.id}`
 
   /* გახსნილი ჯგუფი — URL-ის `open`-ით. ⚠️ სანამ სია იტვირთება, ჯგუფი
      ჯერ ვერ მოიძებნება — `openPending` ჩონჩხს აჩვენებს, თორემ ერთი წამით სია
@@ -269,22 +264,41 @@ export function GroupsCut({
    * ზუსტად იგივე დასჭირდა, ე.ი. აქ დატოვებული მეორე ასლი ერთ დღეს
    * გაშორდებოდა — ერთგან ქეშის გაუქმება დაემატებოდა, მეორეგან არა.
    *
-   * ⚠️ **დადასტურება დათვლილია** (`group.photos`) — „წყაროს"/„მომწოდებლის"
-   * ჭრილში ჯგუფი მთელი დომენია და რიცხვის დანახვის გარეშე ეს მოქმედება
-   * ბრმა იქნებოდა.
+   * ⚠️ **დადასტურება დათვლილია** (`group.photos`) — რიცხვის დანახვის გარეშე ეს
+   * მოქმედება ბრმა იქნებოდა.
    */
   const removeGroup = useDeleteGroupPhotos()
 
   /**
    * ბარათის მოქმედებები — **ერთი სია ღილაკებისთვისაც და მენიუსთვისაც**.
    *
-   * ⚠️ **პუნქტი, რომელიც ვერ იმუშავებს, საერთოდ არ იხატება**: „წყაროს" და
-   * „მომწოდებლის" ჯგუფი დომენია და არა ერთეული, ე.ი. არც მისი გვერდი
-   * არსებობს და არც ფოტოს მიბმის მისამართი (ვებძებნა).
+   * ⚠️ **პუნქტი, რომელიც ვერ იმუშავებს, საერთოდ არ იხატება** — მაგალითად
+   * „მოდულში ჩვენება" იქ, სადაც ის „ჩანაწერის გახსნას" იმეორებს.
+   *
+   * ჩანაწერის ბარათზე სამი გზაა: **ჩანაწერის გახსნა** (თავის მოდულში) · **გალერეის
+   * გახსნა** (ჩანაწერის გალერეის გვერდი) · **მოდულში ჩვენება** (მოდულის სია, ამ
+   * ჩანაწერზე დავიწროებული).
    */
+  /** ჩანაწერის მოდული — ბარათის ნიშანი (ხატულა + სახელი) და მისამართები */
+  const moduleOf = (group: GalleryGroup) => modules.find((m) => m.key === group.kind)
+
+  /**
+   * ჩანაწერის ორი მისამართი მის მოდულში: თვითონ ჩანაწერი და მოდულის სია მასზე
+   * დავიწროებული. ⚠️ `list` მხოლოდ მაშინ, როცა `open`-ს არ იმეორებს.
+   */
+  const recordLinks = (group: GalleryGroup) => {
+    const record = { kind: group.kind, id: group.id, title: titleOf(group) }
+    const base = moduleOf(group)?.route_base
+    const open = recordOpenPath(record, base)
+    const list = recordListPath(record, base)
+
+    return { open, list: list && list !== open ? list : null }
+  }
+
   const groupActions = (group: GalleryGroup): PhotoAction[] => {
     const isActor = group.kind === 'actor'
-    const isRecord = !group.from && !group.provider && !isActor
+    const isRecord = !isActor
+    const links = recordLinks(group)
 
     const list: PhotoAction[] = [
       { key: 'open', label: t('gallery.openGroup'), icon: Maximize2, run: () => setOpen(group) },
@@ -315,15 +329,21 @@ export function GroupsCut({
     }
 
     if (isRecord) {
+      if (links.open) {
+        list.push({ key: 'record', label: t('gallery.openTheRecord'), icon: ExternalLink, run: () => navigate(links.open!) })
+      }
       list.push({
-        key: 'record',
+        key: 'recordGallery',
         label: t('gallery.openRecord'),
         icon: Images,
-        /* ⚠️ სათაური **state-ით** მიჰყვება — არა-მედია მშობელს დეტალის
+        /* ⚠️ სათაური **state-ით** მიჰყვება — არა-მედია ჩანაწერს დეტალის
            endpoint არ აქვს (იხ. ჯგუფის შიგნითა ზოლი ქვემოთ) */
         run: () =>
           navigate(`/gallery/records/${group.kind}/${group.id}`, { state: { title: titleOf(group), from: here } }),
       })
+      if (links.list) {
+        list.push({ key: 'inModule', label: t('gallery.showInModule'), icon: ListFilter, run: () => navigate(links.list!) })
+      }
     }
 
     if (isActor || isRecord) {
@@ -371,7 +391,7 @@ export function GroupsCut({
 
   // ბარათის აქცენტი მოდულის ფერია; მსახიობი გალერეის მოდულისაა
   const accentOf = (group: GalleryGroup): string | null => {
-    const key = group.kind === 'actor' ? 'gallery' : group.from ? group.from : group.kind
+    const key = group.kind === 'actor' ? 'gallery' : group.kind
     return modules.find((m) => m.key === key)?.color ?? null
   }
 
@@ -432,7 +452,8 @@ export function GroupsCut({
 
   if (open) {
     const isActor = open.kind === 'actor'
-    const isRecord = !open.from && !open.provider && !isActor
+    const isRecord = !isActor
+    const openLinks = isRecord ? recordLinks(open) : null
 
     const inner = (
       <GroupPhotos
@@ -443,7 +464,6 @@ export function GroupsCut({
         onBack={() => setOpen(null)}
         /* კადრი/პოსტერი/ლოგო/მსახიობი ჩანართები ბიბლიოთეკაშიც */
         categories={isRecord}
-        showOwner={!!open.from || !!open.provider}
         actions={
           <div className="flex flex-wrap items-center gap-1.5">
             {isActor && (
@@ -456,6 +476,13 @@ export function GroupsCut({
                 წიგნი · თამაში) დეტალის endpoint არ აქვს, ე.ი. ის გვერდი მის
                 სახელს სხვაგვარად ვერ გაიგებდა და ვებძებნა ცარიელი ველით
                 გაიხსნებოდა. */}
+            {/* ჩანაწერი თავის მოდულში — ყველა ტიპზე */}
+            {openLinks?.open && (
+              <Button variant="outline" size="sm" onClick={() => navigate(openLinks.open!)}>
+                <ExternalLink className="size-4" />
+                {t('gallery.openTheRecord')}
+              </Button>
+            )}
             {isRecord && (
               <Button
                 variant="outline"
@@ -513,6 +540,8 @@ export function GroupsCut({
       (removeGroup.isPending && removeGroup.variables === group)
     const accent = accentOf(group)
     const isRecord = by === 'record'
+    const module = isRecord ? moduleOf(group) : undefined
+    const previews = groupsQ.data?.previews[keyFor(group)] ?? []
 
     /* ქვედა ზოლი ერთი სიმაღლის (h-9) ორი ღილაკით — „გახსნა", „ჩამოტვირთვა" —
        და `⋯` მენიუთი (იგივე სია, რაც მარჯვენა კლიკს აქვს) */
@@ -523,15 +552,26 @@ export function GroupsCut({
           subtitle={by === 'record' && lang === 'ka' && group.title && group.title_ka ? group.title : undefined}
           label={`${t('gallery.photos', { count: group.photos })} · ${formatBytes(group.bytes)}`}
           count={group.photos}
-          images={groupsQ.data?.previews[keyFor(group)] ?? []}
+          /* გალერეა ცარიელია — დასტის პირველი სურათი ჩანაწერის მთავარი ფოტოა,
+             თორემ ფოტოიანი ადგილი ან წიგნი ცარიელ ბარათად ჩანდა */
+          images={previews.length ? previews : group.poster_path ? [group.poster_path] : []}
           aspect={by === 'actor' ? 'portrait' : 'wide'}
-          // შერეული ფორმატი (წყარო/მომწოდებელი) — არ იჭრება, მუქ ფონზე ჯდება
-          fit={by === 'source' || by === 'provider' ? 'contain' : 'cover'}
           accent={accent}
           chips={
-            isRecord && group.genres?.length ? (
+            isRecord && (module || group.genres?.length) ? (
               <>
-                {group.genres.slice(0, 3).map((genre) => (
+                {/* რომელი მოდულის ჩანაწერია — ხატულა + სახელი (ფერი მარტო ვერ ამბობს) */}
+                {module && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium"
+                    style={tintStyle(accent) ?? undefined}
+                    data-testid="group-module"
+                  >
+                    <ModuleIcon name={module.icon} className="size-3" />
+                    {moduleName(module, i18n.language)}
+                  </span>
+                )}
+                {(group.genres ?? []).slice(0, 3).map((genre) => (
                   <span
                     key={genre.slug}
                     className="inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px]"
@@ -626,9 +666,7 @@ export function GroupsCut({
           </div>
         )}
 
-        {/* ⚠️ „წყაროს"/„მომწოდებლის" ჭრილში ჯგუფი **დომენია** — იქ არც ძებნას
-            აქვს აზრი და არც ჟანრს, ამიტომ ფილტრის ზოლი მხოლოდ ორ ჭრილშია.
-            ზოლი ერთი სიმაღლისაა (h-10 ძებნა, h-9 კონტროლები). */}
+        {/* ზოლი ერთი სიმაღლისაა (h-10 ძებნა, h-9 კონტროლები) */}
         {by === 'record' && (
           <div className="mb-3">
             <CutTabs
@@ -646,57 +684,53 @@ export function GroupsCut({
           </div>
         )}
 
-        {(by === 'record' || by === 'actor') && (
-          <div className="mb-4 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative min-w-0 flex-1 sm:max-w-xs">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('gallery.searchPlaceholder')} className="h-10 pl-8" />
-              </div>
-              {by === 'record' && (
-                /* რჩეული ზოლის ჩიპია ყველა დომენზე (წიგნზეც), h-9 */
-                <Chip active={favorite} className="h-9" icon={<Star className="size-3.5" />} onClick={() => setFavorite((v) => !v)}>
-                  {t('filter.favorite')}
-                </Chip>
-              )}
-              <div className="ml-auto flex flex-wrap items-center gap-2">
-                <LayoutToggle value={layout} onChange={setLayout} />
-                <Pick
-                  label={t('gallery.groupSort.label')}
-                  value={sort}
-                  options={(by === 'actor' ? ACTOR_SORTS : GALLERY_GROUP_SORTS).map((key) => ({ value: key, label: t(`gallery.groupSort.${key}`) }))}
-                  onChange={(next) => setSort(next as GalleryGroupSort)}
-                />
-                {by === 'record' && (
-                  <Pick
-                    label={t('gallery.groupSection.label')}
-                    value={section}
-                    options={GALLERY_GROUP_SECTIONS.map((key) => ({ value: key, label: t(`gallery.groupSection.${key}`) }))}
-                    onChange={(next) => setSection(next as GalleryGroupSection)}
-                  />
-                )}
-                {sections.length > 0 && (
-                  <Button variant="outline" size="sm" onClick={() => toggleAll(sections.map((x) => x.key))}>
-                    {closed.size >= sections.length ? <ChevronsUpDown className="size-4" /> : <ChevronsDownUp className="size-4" />}
-                    {t(closed.size >= sections.length ? 'gallery.expandAll' : 'gallery.collapseAll')}
-                  </Button>
-                )}
-              </div>
+        <div className="mb-4 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 flex-1 sm:max-w-xs">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('gallery.searchPlaceholder')} className="h-10 pl-8" />
             </div>
-
+            {by === 'record' && (
+              /* რჩეული ზოლის ჩიპია ყველა დომენზე (წიგნზეც), h-9 */
+              <Chip active={favorite} className="h-9" icon={<Star className="size-3.5" />} onClick={() => setFavorite((v) => !v)}>
+                {t('filter.favorite')}
+              </Chip>
+            )}
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <LayoutToggle value={layout} onChange={setLayout} />
+              <Pick
+                label={t('gallery.groupSort.label')}
+                value={sort}
+                options={(by === 'actor' ? ACTOR_SORTS : GALLERY_GROUP_SORTS).map((key) => ({ value: key, label: t(`gallery.groupSort.${key}`) }))}
+                onChange={(next) => setSort(next as GalleryGroupSort)}
+              />
+              {by === 'record' && (
+                <Pick
+                  label={t('gallery.groupSection.label')}
+                  value={section}
+                  options={GALLERY_GROUP_SECTIONS.map((key) => ({ value: key, label: t(`gallery.groupSection.${key}`) }))}
+                  onChange={(next) => setSection(next as GalleryGroupSection)}
+                />
+              )}
+              {sections.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => toggleAll(sections.map((x) => x.key))}>
+                  {closed.size >= sections.length ? <ChevronsUpDown className="size-4" /> : <ChevronsDownUp className="size-4" />}
+                  {t(closed.size >= sections.length ? 'gallery.expandAll' : 'gallery.collapseAll')}
+                </Button>
+              )}
+            </div>
           </div>
-        )}
+
+        </div>
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          {by === 'source' && <InfoHint info={t('gallery.bySourceHint')} />}
-          {by === 'provider' && <InfoHint info={t('gallery.byProviderHint')} />}
           <span className="ml-auto text-xs text-muted-foreground">
             {t('gallery.groupCount', { count: groups.length })}
           </span>
         </div>
 
         {/* „არეული": იმავე სკოუპის ფოტოები ბრტყელ ბადეზე */}
-        {layout === 'mixed' && (by === 'record' || by === 'actor') ? (
+        {layout === 'mixed' ? (
           <GroupPhotos
             title={t('gallery.allPhotos')}
             hint={<InfoHint info={t('gallery.mixedHint')} />}
