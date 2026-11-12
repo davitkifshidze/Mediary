@@ -69,6 +69,7 @@ use App\Http\Controllers\Api\LinkResolverController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MediaLockController;
+use App\Http\Controllers\Api\MediaRatingController;
 use App\Http\Controllers\Api\MediaSyncController;
 use App\Http\Controllers\Api\MediaWatchController;
 use App\Http\Controllers\Api\ModuleController;
@@ -546,6 +547,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::patch('/movies/{movie}/status', [MovieStatusController::class, 'update']);
         Route::patch('/movies/{movie}/favorite', [MovieFavoriteController::class, 'update']);
+        // ჩემი ქულა პირდაპირ სიიდან — ერთი კონტროლერი სამივე მედია-მოდულზე
+        Route::patch('/movies/{movie}/rating', [MediaRatingController::class, 'movie']);
         Route::post('/movies/{movie}/resync', [MovieSyncController::class, 'resync']);
         Route::get('/movies/{movie}/collection', [MovieCollectionController::class, 'show']);
     });
@@ -562,6 +565,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::patch('/series/{series}/status', [SeriesStatusController::class, 'update']);
         Route::patch('/series/{series}/favorite', [SeriesFavoriteController::class, 'update']);
+        Route::patch('/series/{series}/rating', [MediaRatingController::class, 'series']);
         Route::post('/series/{series}/resync', [SeriesSyncController::class, 'resync']);
     });
 
@@ -583,6 +587,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::patch('/anime/{anime}/status', [AnimeStatusController::class, 'update']);
         Route::patch('/anime/{anime}/favorite', [AnimeFavoriteController::class, 'update']);
+        Route::patch('/anime/{anime}/rating', [MediaRatingController::class, 'anime']);
         Route::post('/anime/{anime}/resync', [AnimeSyncController::class, 'resync']);
     });
 

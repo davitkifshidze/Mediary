@@ -569,7 +569,10 @@
   "rating": {
     "tmdbAverage": "TMDB average",
     "manual": "Type a score — e.g. 7.5",
-    "manualApply": "Apply"
+    "manualApply": "Apply",
+    "rate": "Rate",
+    "rateHint": "Give it my rating",
+    "change": "My rating: {{score}} — press to change"
   },
   "sortable": {
     "instructions": "Press Space or Enter to pick up, the arrow keys to move, Space again to drop; Escape cancels.",

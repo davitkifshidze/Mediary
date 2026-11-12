@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { Check, ChevronDown, Star } from 'lucide-react'
@@ -66,12 +66,18 @@ export function RatingSelect({
   value,
   onChange,
   invalid = false,
+  trigger,
 }: {
   id?: string
   value: number | null
   onChange: (value: number | null) => void
   /** შეცდომის ჩარჩო (სერვერის 422) */
   invalid?: boolean
+  /**
+   * ფორმის ველის ნაცვლად — საკუთარი ამხსნელი (სიის ქულის ნიშანი, ჩანაწერის გვერდის
+   * ვარსკვლავები). ⚠️ ერთი ელემენტი, რომელიც `ref`-სა და props-ს ატარებს (`asChild`).
+   */
+  trigger?: ReactElement
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -104,6 +110,7 @@ export function RatingSelect({
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={openChange}>
       <PopoverPrimitive.Trigger asChild>
+        {trigger ?? (
         <button
           type="button"
           id={id}
@@ -121,6 +128,7 @@ export function RatingSelect({
           </span>
           <ChevronDown className="size-4 shrink-0 opacity-60" />
         </button>
+        )}
       </PopoverPrimitive.Trigger>
 
       <PopoverPrimitive.Portal>

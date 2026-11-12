@@ -8,7 +8,7 @@ import { RecordActionBar } from '@/components/RecordActionBar'
 import { RecordView } from '@/components/RecordView'
 import { DictionaryStatusMenu } from '@/components/StatusMenu'
 import { InfoHint } from '@/components/ui/info-hint'
-import { RatingBadge } from '@/components/ui/star-rating'
+import { MyRating } from '@/components/MyRating'
 import { FranchiseFavoriteDialog } from '@/components/FranchiseFavoriteDialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -24,10 +24,10 @@ import { mediaApi } from '@/api/media'
 import { relockRecord } from '@/api/locks'
 import { lockMenuActions, mediaLockBase } from '@/lib/locks'
 import { plainText } from '@/lib/richText'
+import { errorMessage } from '@/lib/errors'
 import { RecordLockDialog } from '@/components/locks/RecordLock'
 import { mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { genreName, movieTitle } from '@/lib/display'
-import { formatRating } from '@/lib/rating'
 import type { MovieListItem } from '@/api/types'
 import { useContentLang } from '@/lib/settings'
 import { useStatuses } from '@/lib/statuses'
@@ -63,6 +63,13 @@ function useMovieRecord(movie: MovieListItem, type: MediaType) {
   }
   const statusMut = useMutation({ mutationFn: (s: string) => api.setStatus(movie.id, s), onSuccess: inval })
   const favMut = useMutation({ mutationFn: () => api.toggleFavorite(movie.id), onSuccess: inval })
+  const ratingMut = useMutation({
+    mutationFn: (value: number | null) => api.setRating(movie.id, value),
+    onSuccess: inval,
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+  /** ჩემი ქულა პირდაპირ სიიდან — დაპირება ბრუნდება, რომ ჩავარდნაზე ნიშანი ძველს დაუბრუნდეს */
+  const rate = (value: number | null) => ratingMut.mutateAsync(value)
   /* ფილმზე, რომელსაც ფრანჩაიზი აქვს, რჩეულში **დამატება** პოპაპს ხსნის
      („მხოლოდ ეს ფილმი" / „მთელი ფრანჩაიზი"); მოხსნა და უფრანჩაიზო ფილმი — პირდაპირ. */
   const [franchiseOpen, setFranchiseOpen] = useState(false)
@@ -142,16 +149,19 @@ function useMovieRecord(movie: MovieListItem, type: MediaType) {
     </>
   )
 
-  return { lang, statuses, actions, missing, desc, detailBase, loc, open, edit, statusMut, favMut, toggleFavorite, askDelete, dialogs }
+  return { lang, statuses, actions, missing, desc, detailBase, loc, open, edit, statusMut, favMut, rate, toggleFavorite, askDelete, dialogs }
 }
 
 export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; type?: MediaType }) {
   const { t } = useTranslation()
-  const { lang, actions, missing, desc, detailBase, loc, dialogs } = useMovieRecord(movie, type)
+  const { lang, actions, missing, desc, detailBase, loc, rate, dialogs } = useMovieRecord(movie, type)
+  const to = `${detailBase}/${movie.id}`
+  // საიდან შემოვედით — წაშლის/დაბრუნების შემდეგ ამ გვერდზე ვბრუნდებით
+  const from = { from: loc.pathname + loc.search }
 
   return (
     <ContextMenu>
-      <div className="group relative">
+      <div className="group relative @container">
         {/* ❗ გაფრთხილება — ცალკე აიქონი საკუთარი hover-ინფოთი */}
         {missing.length > 0 && (
           <Tooltip delayDuration={150}>
@@ -177,12 +187,7 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
         <Tooltip delayDuration={700}>
           <ContextMenuTrigger asChild>
             <TooltipTrigger asChild>
-              <Link
-                to={`${detailBase}/${movie.id}`}
-                // საიდან შემოვედით — წაშლის/დაბრუნების შემდეგ ამ გვერდზე ვბრუნდებით
-                state={{ from: loc.pathname + loc.search }}
-                className="block"
-              >
+              <Link to={to} state={from} className="block">
                 <div className="relative overflow-hidden rounded-lg bg-muted shadow-sm ring-1 ring-border transition duration-300 group-hover:shadow-lg group-hover:ring-foreground/30">
                   <div className="aspect-[2/3]">
                     <PosterImage
@@ -210,27 +215,6 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
                   <h3 className="font-display text-[15px] font-medium leading-snug transition-colors group-hover:text-gold">
                     {movieTitle(movie, lang)}
                   </h3>
-                  <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    {/* ჩაკეტილი, ამ სესიაში გახსნილი */}
-                    {movie.locked && <LockOpen className="size-3" aria-label={t('lock.badgeOpen')} />}
-                    <span>{movie.year ?? '—'}</span>
-                    {/* ჩემი ქულა ოქროსფერი ვარსკვლავით; TMDB-ის საშუალო „TMDB"-ით და მინიშნებით */}
-                    {movie.my_rating != null && (
-                      <>
-                        <span className="opacity-40">·</span>
-                        <span className="inline-flex items-center gap-0.5 font-medium text-gold">
-                          <Star className="transition-transform size-3 fill-current" aria-hidden="true" />
-                          {formatRating(movie.my_rating)}
-                        </span>
-                      </>
-                    )}
-                    {movie.rating && (
-                      <>
-                        <span className="opacity-40">·</span>
-                        <span title={t('rating.tmdbAverage')}>TMDB {movie.rating}</span>
-                      </>
-                    )}
-                  </div>
                 </div>
               </Link>
             </TooltipTrigger>
@@ -252,6 +236,28 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
             </p>
           </TooltipContent>
         </Tooltip>
+
+        {/* ⚠️ მეტა-ხაზი ბარათის ბმულის **გარეთაა**: ჩემი ქულა დასაჭერი ღილაკია, ბმულში კი
+            ღილაკი არ ჯდება. წელი და TMDB საკუთარი ბმულებია იმავე მისამართზე — ბარათზე
+            დაჭერა ყველგან ხსნის (Tab-ით ერთხელ, მთავარი ბმულით). */}
+        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+          {/* ჩაკეტილი, ამ სესიაში გახსნილი */}
+          {movie.locked && <LockOpen className="size-3 shrink-0" aria-label={t('lock.badgeOpen')} />}
+          <Link to={to} state={from} tabIndex={-1}>
+            {movie.year ?? '—'}
+          </Link>
+          <span className="opacity-40">·</span>
+          {/* ჩემი ქულა ოქროსფერი ვარსკვლავით — დაჭერით იცვლება; უქულოზე „შეფასება" */}
+          <MyRating variant="inline" value={movie.my_rating} onChange={rate} />
+          {movie.rating && (
+            <>
+              <span className="opacity-40">·</span>
+              <Link to={to} state={from} tabIndex={-1} title={t('rating.tmdbAverage')} className="truncate">
+                TMDB {movie.rating}
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
       <ContextMenuContent>{contextMenuItems(actions)}</ContextMenuContent>
@@ -262,11 +268,11 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
 
 /**
  * **სტრიქონი**: პოსტერი, სათაური, წელი · ჟანრები · TMDB, და მოქმედებების ზოლი —
- * ჩემი ქულა · სტატუსი · რჩეული · რედაქტირება · წაშლა. მენიუ და დიალოგები ბარათისაა.
+ * ჩემი ქულა (დასაჭერი) · სტატუსი · რჩეული · რედაქტირება · წაშლა. მენიუ და დიალოგები ბარათისაა.
  */
 export function MovieRow({ movie, type = 'movie' }: { movie: MovieListItem; type?: MediaType }) {
   const { t } = useTranslation()
-  const { lang, statuses, actions, missing, open, edit, statusMut, favMut, toggleFavorite, askDelete, dialogs } =
+  const { lang, statuses, actions, missing, open, edit, statusMut, favMut, rate, toggleFavorite, askDelete, dialogs } =
     useMovieRecord(movie, type)
 
   return (
@@ -305,7 +311,8 @@ export function MovieRow({ movie, type = 'movie' }: { movie: MovieListItem; type
         onEdit={edit}
         bar={
           <RecordActionBar
-            before={<RatingBadge value={movie.my_rating} size="row" className="mr-1" />}
+            // ქულის ადგილი ყოველთვის დაკავებულია — უქულოზე „შეფასება" წერია და რიგი არ ხტება
+            before={<MyRating variant="row" value={movie.my_rating} onChange={rate} className="mr-1" />}
             status={
               <DictionaryStatusMenu
                 status={movie.status}

@@ -86,6 +86,11 @@ export function createMediaApi(base: string) {
       const { data } = await api.patch(`${base}/${id}/favorite`, { is_favorite: value, parts })
       return data.data
     },
+    /** ჩემი ქულა პირდაპირ სიიდან; `null` — ქულის წაშლა */
+    setRating: async (id: number, value: number | null): Promise<Movie> => {
+      const { data } = await api.patch(`${base}/${id}/rating`, { my_rating: value })
+      return data.data
+    },
     toggleFavorite: async (id: number): Promise<Movie> => {
       const { data } = await api.patch(`${base}/${id}/favorite`)
       return data.data

@@ -34,7 +34,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { RatingStars } from '@/components/ui/star-rating'
+import { MyRating } from '@/components/MyRating'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { useQueue } from '@/components/ui/queue'
 import { cn } from '@/lib/utils'
@@ -92,6 +92,11 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   }
   const statusMut = useMutation({ mutationFn: (s: string) => api.setStatus(Number(id), s), onSuccess: onMutated })
   const favMut = useMutation({ mutationFn: () => api.toggleFavorite(Number(id)), onSuccess: onMutated })
+  const ratingMut = useMutation({
+    mutationFn: (value: number | null) => api.setRating(Number(id), value),
+    onSuccess: onMutated,
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
   /* `onError` აქ არ იყო, ე.ი. გასაღების გარეშე (409
      `credential_missing`) „სინქრონიზაცია" ჩუმად არაფერს აკეთებდა. ტექსტი
      წყაროს სახელს ამბობს („TMDB-ის გასაღები არ გაქვს — ჩაწერე „მონაცემებში""). */
@@ -271,8 +276,9 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                     {m.episodes ? ` · ${t('detail.episodes', { count: m.episodes })}` : ''}
                   </span>
                 ) : null}
-                {/* ჩემი ქულა ვარსკვლავებით და „4.6 / 10"; TMDB-ის საშუალო ცალკე, `i`-ით */}
-                <RatingStars value={m.my_rating} />
+                {/* ჩემი ქულა ვარსკვლავებით და „4.6 / 10" — დაჭერით იცვლება, უქულოზე „შეფასება";
+                    TMDB-ის საშუალო ცალკე, `i`-ით */}
+                <MyRating variant="stars" value={m.my_rating} onChange={(value) => ratingMut.mutateAsync(value)} />
                 {m.rating && (
                   <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-muted-foreground">
                     TMDB {m.rating}

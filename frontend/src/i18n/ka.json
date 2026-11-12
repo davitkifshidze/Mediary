@@ -569,7 +569,10 @@
   "rating": {
     "tmdbAverage": "TMDB-ის საშუალო",
     "manual": "ხელით ჩაწერილი ქულა — მაგ. 7.5",
-    "manualApply": "ჩასმა"
+    "manualApply": "ჩასმა",
+    "rate": "შეფასება",
+    "rateHint": "ჩემი ქულის მინიჭება",
+    "change": "ჩემი ქულა: {{score}} — დაჭერით იცვლება"
   },
   "sortable": {
     "instructions": "ასაღებად დააჭირე Space-ს ან Enter-ს, გადასაადგილებლად ისრებს, ჩასაგდებად ისევ Space-ს; Esc აუქმებს.",
