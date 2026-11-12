@@ -11,7 +11,8 @@ import { galleryDownloadUrl } from '@/api/gallery'
    ============================================================ */
 
 const GRIDS = import.meta.glob<string>(
-  ['../components/gallery/GalleryPhotoGrid.tsx', '../components/GalleryPanel.tsx', '../components/CastPhotoStacks.tsx'],
+  // ⚠️ ჩანაწერის პანელი და მსახიობის დასტის ფანჯარა უჯრას ერთი ფუნქციით აწყობს — `gallery/photoItem.ts`
+  ['../components/gallery/GalleryPhotoGrid.tsx', '../components/gallery/photoItem.ts', '../components/CastPhotoStacks.tsx'],
   { query: '?raw', import: 'default', eager: true },
 )
 

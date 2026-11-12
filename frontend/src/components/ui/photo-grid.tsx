@@ -27,6 +27,7 @@ import { photoActions, type PhotoAction } from '@/lib/photoActions'
 import { formatDuration } from '@/lib/videoDuration'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageSizePick } from '@/components/ui/page-size-pick'
+import type { PhotoView } from '@/components/ui/photo-view'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
 import {
   ContextMenu,
@@ -189,6 +190,13 @@ const PRELOAD_AROUND = 2
 /** ჩამოტვირთვისთვის ხელით შექმნილი object URL-ის სიცოცხლე */
 const REVOKE_AFTER_MS = 10_000
 
+/** ბადის სვეტები ხედის მიხედვით; სტრიქონებში თითო ფოტო მთელი სიგანეა */
+const VIEW_GRID = {
+  large: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4',
+  small: 'grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8',
+  rows: 'grid-cols-1',
+} as const satisfies Record<PhotoView, string>
+
 export function PhotoGrid({
   items,
   lightboxItems,
@@ -210,6 +218,8 @@ export function PhotoGrid({
   pageSize,
   onPageSizeChange,
   extraTools,
+  view = 'large',
+  onView,
 }: {
   items: PhotoItem[]
   /**
@@ -288,6 +298,10 @@ export function PhotoGrid({
   onPageSizeChange?: (size: number) => void
   /** ხელსაწყოების ზოლში დამატებული კონტროლი (მაგ. თემის მინიჭება მონიშნულებზე) */
   extraTools?: ReactNode
+  /** ბადის ხედი — დიდი (ნაგულისხმევი) · პატარა ბადე · სტრიქონები (`PhotoViewToggle`) */
+  view?: PhotoView
+  /** ფოტო ბადიდან გაიხსნა (ლაითბოქსი) — გახსნების მთვლელისთვის */
+  onView?: (item: PhotoItem) => void
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState<number | null>(null)
@@ -604,7 +618,7 @@ export function PhotoGrid({
           actions={emptyActions}
         />
       ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <ul className={cn('grid gap-3', VIEW_GRID[view])} data-view={view} data-testid="photo-grid">
           {shown.map((item, index) =>
             item.locked ? (
               <LockedPhotoCell
@@ -630,7 +644,11 @@ export function PhotoGrid({
                  ⚠️ „გახსნა" ყოველთვის ლაითბოქსია: მონიშვნის რეჟიმის შემთხვევა
                  სურათის ღილაკშია, თორემ მენიუს „გახსნა" ზოგჯერ მონიშვნას
                  ნიშნავდა და პუნქტი თავის სახელს ატყუებდა. */
-              onOpen={() => setOpen(viewable.findIndex((x) => x.id === item.id))}
+              onOpen={() => {
+                setOpen(viewable.findIndex((x) => x.id === item.id))
+                onView?.(item)
+              }}
+              rows={view === 'rows'}
               /* ⚠️ კითხვის რეჟიმში მონიშვნა და ჩამოტვირთვა არ არსებობს — უჯრა
                  მათ პუნქტებს ვეღარ დახატავს (`photoActions()`-ის წესი) */
               onToggle={readOnly ? undefined : () => toggle(item.id)}
@@ -740,6 +758,7 @@ function LockedPhotoCell({ item, onOpen }: { item: PhotoItem; onOpen: () => void
 function PhotoCell({
   item,
   index,
+  rows,
   privateDisk,
   readOnly,
   preload,
@@ -759,6 +778,8 @@ function PhotoCell({
 }: {
   item: PhotoItem
   index: number
+  /** სტრიქონის ხედი: ფოტო მარცხნივ, წარწერა და ღილაკები მის გვერდით */
+  rows?: boolean
   privateDisk?: boolean
   /** კითხვის რეჟიმი — „ორიგინალიც" ქრება (იხ. `PhotoGrid`-ის `readOnly`) */
   readOnly?: boolean
@@ -847,13 +868,14 @@ function PhotoCell({
              ბადე უჯრას რიგის სიმაღლემდე ჭიმავს — ფოტო ახლა შუაშია (`flex-1`
              ჩარჩო), წარწერა და ღილაკები კი რიგის ყველა უჯრაში ერთ ქვედა ხაზზე */
           className={cn(
-            'group relative flex h-full flex-col overflow-hidden rounded-xl border bg-card transition-colors',
+            'group relative flex h-full overflow-hidden rounded-xl border bg-card transition-colors',
+            rows ? 'flex-row items-stretch' : 'flex-col',
             checked ? 'border-primary' : 'border-border',
             // მონიშვნის რეჟიმში ფილაზე დაჭერა ნიშანს ხსნის — ჰოვერზე ნიშანი წითელ ✕-ად იქცევა
             picking && 'fb-mark-host',
           )}
         >
-          <div className="flex flex-1 flex-col justify-center bg-muted/40">
+          <div className={cn('flex flex-col justify-center bg-muted/40', rows ? 'w-32 shrink-0 sm:w-44' : 'flex-1')}>
           <button
             type="button"
             // მონიშვნის რეჟიმში სურათზე დაჭერა ნიშნავს „მონიშნე", და არა „გახსენი"
@@ -950,7 +972,7 @@ function PhotoCell({
           )}
 
           {footer && (
-            <div className="mt-auto space-y-2 px-2.5 py-2">
+            <div className={cn('space-y-2 px-2.5 py-2', rows ? 'min-w-0 flex-1 self-center' : 'mt-auto')}>
               {(caption || item.size != null || isPrimary) && (
                 <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
                   {/* ⚠️ „ეს მთავარია" **ნიშანია და არა ღილაკი** — მოქმედება, რომელიც ვერ იმუშავებს, სიაშიც აღარაა */}

@@ -95,11 +95,14 @@ class GalleryFetcher
     /**
      * **მსახიობის ფოტოს წყარო.**
      *
-     * `profiles` — სტუდიური პორტრეტები; `tagged` — კადრები ფილმებიდან;
+     * `profiles` — სტუდიური პორტრეტები; `tagged` — კადრები ყველა ფილმიდან და სერიალიდან;
      * `both` — ჯერ პორტრეტები, მერე კადრები (პორტრეტი ჯობია პირველი,
-     * რადგან ის „მსახიობის ფოტოა", კადრი კი ფილმის).
+     * რადგან ის „მსახიობის ფოტოა", კადრი კი ფილმის);
+     * `title` — **მხოლოდ იმ სათაურის კადრები, რომლის გვერდიდანაც ჩამოტვირთვა გაეშვა**
+     * (იგივე `tagged_images`, ჩანაწერის `tmdb_id`-ზე გაფილტრული). ⚠️ სათაურის გარეშე
+     * (მსახიობის გვერდი) `title` `tagged`-ად იკითხება — გასაფილტრი არაფერია.
      */
-    public const CAST_SOURCES = ['profiles', 'tagged', 'both'];
+    public const CAST_SOURCES = ['profiles', 'tagged', 'both', 'title'];
 
     public const DEFAULT_CAST_SOURCE = 'profiles';
 
@@ -347,9 +350,15 @@ class GalleryFetcher
         // 2. მსახიობების ფოტოები — მშობელი თვითონ მსახიობია
         //    (`per_actor = 0` — „არცერთი")
         if ($opts['cast'] !== 'none' && $opts['per_actor'] > 0) {
+            // „კადრები ამ სათაურიდან" — TMDB-ის სათაური, რომელზეც კადრები იფილტრება
+            $title = [
+                'type' => MediaDomain::isTv(MediaDomain::typeOf($record)) ? 'tv' : 'movie',
+                'tmdb_id' => (int) $record->tmdb_id,
+            ];
+
             foreach ($this->castFor($record, $opts) as $member) {
                 try {
-                    $candidates = $this->actorCandidates($member, $opts);
+                    $candidates = $this->actorCandidates($member, $opts, $title);
                 } catch (Throwable) {
                     // ერთი მსახიობის ჩავარდნა მთელ ჩანაწერს არ აგდებს
                     $result['skipped']++;
@@ -474,6 +483,10 @@ class GalleryFetcher
             $this->meter->orRelease($user, $path, fn () => $parent->galleryImages()->create([
                 'user_id' => $user->getKey(),
                 'source' => 'tmdb',
+                // რომელი სათაურის კადრია (მხოლოდ მსახიობის მონიშნულ კადრებზე) — დაჯგუფებისთვის
+                'origin_type' => $candidate['origin']['type'] ?? null,
+                'origin_tmdb_id' => $candidate['origin']['tmdb_id'] ?? null,
+                'origin_title' => $candidate['origin']['title'] ?? null,
                 'category' => $candidate['category'],
                 'path' => $path,
                 'remote_path' => $candidate['remote_path'],
@@ -559,7 +572,7 @@ class GalleryFetcher
      *
      * @return list<array{remote_path: string, category: string, name: string, width: ?int, height: ?int, size: string}>
      */
-    private function actorCandidates(CastMember $member, array $opts): array
+    private function actorCandidates(CastMember $member, array $opts, ?array $title = null): array
     {
         if (! $member->tmdb_person_id) {
             return [];
@@ -574,6 +587,11 @@ class GalleryFetcher
         $size = $opts['cast_size'];
         $source = $opts['cast_source'] ?? self::DEFAULT_CAST_SOURCE;
         $out = [];
+
+        if ($source === 'title') {
+            // მხოლოდ ამ სათაურის კადრები; სათაურის გარეშე — ყველა მონიშნული კადრი
+            return array_slice($this->taggedCandidates($member, $perActor, $size, $title), 0, $perActor);
+        }
 
         if ($source === 'profiles' || $source === 'both') {
             $out = $this->profileCandidates($member, $perActor, $size);
@@ -639,7 +657,7 @@ class GalleryFetcher
      *
      * @return list<array{remote_path: string, category: string, name: string, width: ?int, height: ?int, size: string}>
      */
-    private function taggedCandidates(CastMember $member, int $limit, string $size): array
+    private function taggedCandidates(CastMember $member, int $limit, string $size, ?array $only = null): array
     {
         $out = [];
         $page = 1;
@@ -660,12 +678,25 @@ class GalleryFetcher
                     continue;
                 }
 
+                $mediaType = (string) ($row['media_type'] ?? '');
+                $mediaId = (int) ($row['media']['id'] ?? 0);
+
+                /* ⚠️ `$only` — „კადრები ამ სათაურიდან": სხვა ფილმის კადრი გამოიტოვება, გვერდები კი
+                   ბოლომდე იკითხება (ამ სათაურის კადრი ნებისმიერ გვერდზე შეიძლება იდოს). */
+                if ($only !== null && ($mediaType !== $only['type'] || $mediaId !== $only['tmdb_id'])) {
+                    continue;
+                }
+
                 $title = $row['media']['title'] ?? ($row['media']['name'] ?? $member->name);
 
                 $out[] = [
                     'remote_path' => $row['file_path'],
                     'category' => $this->taggedCategory($row['image_type'] ?? null),
                     'name' => $title,
+                    // რომელი სათაურის კადრია — ფოტოზე ინახება (მსახიობის ფოტოების დაჯგუფება)
+                    'origin' => $mediaId > 0 && in_array($mediaType, ['movie', 'tv'], true)
+                        ? ['type' => $mediaType, 'tmdb_id' => $mediaId, 'title' => mb_substr((string) $title, 0, 255)]
+                        : null,
                     'width' => isset($row['width']) ? (int) $row['width'] : null,
                     'height' => isset($row['height']) ? (int) $row['height'] : null,
                     'size' => $size,

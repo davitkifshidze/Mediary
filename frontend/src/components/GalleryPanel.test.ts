@@ -242,9 +242,13 @@ describe('CastPhotoStacks — იგივე გადატანა ფილ
       }),
     )
 
-    // დასტის გახსნა → მსახიობის ბადე → ხელსაწყოთა ზოლის გადატანა
+    // დასტის გახსნა → **დიდი ფანჯარა** მსახიობის ბადით → ხელსაწყოთა ზოლის გადატანა
     await click(button(node, 'Anna Lee'))
-    await click(button(node, i18n.t('gallery.moveAll').replace(' ({{count}})', '')))
+    const dialog = document.querySelector<HTMLElement>('[data-testid="cast-stack-dialog"]')
+    expect(dialog, 'დასტა დიდ ფანჯარაში იხსნება').toBeTruthy()
+    // ფანჯარაშიც იგივე ხედის გადამრთველია, რაც „არეულად"-ს აქვს
+    expect(dialog!.querySelector('[data-testid="photo-view-toggle"]')).toBeTruthy()
+    await click(button(dialog!, i18n.t('gallery.moveAll').replace(' ({{count}})', '')))
 
     await moveIntoAlbum(i18n)
 

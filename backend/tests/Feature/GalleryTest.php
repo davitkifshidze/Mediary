@@ -1166,6 +1166,132 @@ class GalleryTest extends TestCase
         $this->assertEqualsCanonicalizing(['Ghost', 'Lucy'], $images->pluck('original_name')->all());
     }
 
+    /**
+     * **„კადრები ამ ფილმიდან"** — სათაურის გვერდიდან გაშვებული ჩამოტვირთვა მხოლოდ იმ კადრებს
+     * იღებს, რომლებიც **ამ** სათაურზეა მონიშნული, და ფოტოზე წერს, რომელი სათაურის კადრია.
+     *
+     * ⚠️ ფილტრი `media_type` + `media.id`-ია და არა სათაური: ერთსახელიანი ფილმი და სერიალი
+     * (ან რიმეიქი) სახელით ერთმანეთში აირეოდა.
+     */
+    public function test_the_title_source_takes_only_stills_of_this_title_and_remembers_it(): void
+    {
+        Storage::fake('public');
+        $this->fakeTmdb(1024);
+        Http::fake([
+            'api.themoviedb.org/3/person/*/tagged_images*' => Http::response([
+                'page' => 1,
+                'total_pages' => 1,
+                'results' => [
+                    ['file_path' => '/other.jpg', 'image_type' => 'backdrop', 'media_type' => 'movie', 'media' => ['id' => 999, 'title' => 'Ghost']],
+                    ['file_path' => '/mine1.jpg', 'image_type' => 'backdrop', 'media_type' => 'movie', 'media' => ['id' => 550, 'title' => 'Fight Club']],
+                    // იგივე id, მაგრამ სერიალი — სხვა სათაურია
+                    ['file_path' => '/tv.jpg', 'image_type' => 'backdrop', 'media_type' => 'tv', 'media' => ['id' => 550, 'name' => 'Fight Club: The Series']],
+                    ['file_path' => '/mine2.jpg', 'image_type' => 'poster', 'media_type' => 'movie', 'media' => ['id' => 550, 'title' => 'Fight Club']],
+                ],
+            ]),
+        ]);
+
+        $movie = $this->makeMovie('Fight Club');
+        [$female] = $this->attachCast($movie);
+
+        $this->actingAs($this->user)
+            ->postJson("/api/gallery/movie/{$movie->id}", [
+                'subjects' => [],
+                'cast' => 'selected',
+                'cast_ids' => [$female->id],
+                'cast_source' => 'title',
+                'per_actor' => 10,
+            ])
+            ->assertOk()
+            ->assertJsonPath('added', 2);
+
+        $images = $female->galleryImages()->orderBy('id')->get();
+        $this->assertSame(['/mine1.jpg', '/mine2.jpg'], $images->pluck('remote_path')->all());
+        $this->assertSame(['movie', 'movie'], $images->pluck('origin_type')->all());
+        $this->assertSame([550, 550], $images->pluck('origin_tmdb_id')->map(fn ($id) => (int) $id)->all());
+        $this->assertSame(['Fight Club', 'Fight Club'], $images->pluck('origin_title')->all());
+
+        // მსახიობის გვერდი სათაურს ფოტოსთან ერთად აბრუნებს — დაჯგუფება ამაზე დგას
+        $this->getJson("/api/gallery/cast/{$female->id}")
+            ->assertOk()
+            ->assertJsonPath('images.0.origin', ['type' => 'movie', 'tmdb_id' => 550, 'title' => 'Fight Club']);
+    }
+
+    /** „კადრები ყველა ფილმიდან" სათაურს მაინც იმახსოვრებს; პორტრეტს სათაური არ აქვს */
+    public function test_tagged_stills_remember_their_title_and_portraits_have_none(): void
+    {
+        Storage::fake('public');
+        $this->fakeTmdb(1024);
+        Http::fake([
+            'api.themoviedb.org/3/person/11/tagged_images*' => Http::response([
+                'page' => 1,
+                'total_pages' => 1,
+                'results' => [['file_path' => '/tag1.jpg', 'image_type' => 'backdrop', 'media_type' => 'tv', 'media' => ['id' => 77, 'name' => 'Lucy']]],
+            ]),
+        ]);
+
+        $movie = $this->makeMovie('Fight Club');
+        [$female] = $this->attachCast($movie);
+
+        // მსახიობის გვერდზე სათაური არ არის — `title` ყველა მონიშნულ კადრს იღებს
+        $this->actingAs($this->user)
+            ->postJson("/api/gallery/cast/{$female->id}", ['cast_source' => 'title', 'per_actor' => 5])
+            ->assertOk()
+            ->assertJsonPath('added', 1);
+        $this->postJson("/api/gallery/cast/{$female->id}", ['cast_source' => 'profiles', 'per_actor' => 1])->assertOk();
+
+        $still = $female->galleryImages()->where('category', 'backdrop')->firstOrFail();
+        $this->assertSame(['tv', 77, 'Lucy'], [$still->origin_type, (int) $still->origin_tmdb_id, $still->origin_title]);
+        $this->assertNull($female->galleryImages()->where('category', 'actor')->firstOrFail()->origin_tmdb_id);
+    }
+
+    /** ხელით დალაგება ინახება; სხვისი ფოტო რიგში ვერ ჩაერევა */
+    public function test_photos_are_reordered_by_hand_and_only_mine(): void
+    {
+        $movie = $this->makeMovie('Fight Club');
+        [$female] = $this->attachCast($movie);
+        $a = $this->image($female, 'actor');
+        $b = $this->image($female, 'actor');
+        $c = $this->image($female, 'backdrop');
+
+        $this->actingAs($this->user)
+            ->postJson('/api/gallery/images/reorder', ['ids' => [$c->id, $a->id, $b->id]])
+            ->assertOk()
+            ->assertJsonPath('reordered', 3);
+
+        $this->assertSame(
+            [$c->id, $a->id, $b->id],
+            GalleryImage::withoutGlobalScopes()->orderBy('sort_order')->pluck('id')->all(),
+        );
+        // მსახიობის გვერდი ფოტოებს ამ რიგით აბრუნებს
+        $this->getJson("/api/gallery/cast/{$female->id}")
+            ->assertJsonPath('images.0.id', $c->id)
+            ->assertJsonPath('images.1.sort_order', 2);
+
+        $stranger = User::create(['name' => 'eve', 'username' => 'eve', 'email' => 'eve@example.com', 'password' => 'password']);
+        $theirs = GalleryImage::withoutGlobalScopes()->create([
+            'user_id' => $stranger->id, 'imageable_type' => 'cast_member', 'imageable_id' => $female->id,
+            'source' => 'web', 'category' => 'actor', 'path' => 'gallery/images/theirs.jpg', 'size' => 1,
+        ]);
+
+        $this->postJson('/api/gallery/images/reorder', ['ids' => [$theirs->id, $a->id]])->assertNotFound();
+        $this->assertSame(2, (int) GalleryImage::withoutGlobalScopes()->find($a->id)->sort_order);
+    }
+
+    /** ფოტოს გახსნა ითვლება წუთში ერთხელ */
+    public function test_a_photo_open_counts_once_a_minute(): void
+    {
+        $movie = $this->makeMovie('Fight Club');
+        [$female] = $this->attachCast($movie);
+        $photo = $this->image($female, 'actor');
+
+        $this->actingAs($this->user)->putJson("/api/gallery/images/{$photo->id}/open")->assertOk()->assertJsonPath('counted', true);
+        $this->putJson("/api/gallery/images/{$photo->id}/open")->assertOk()->assertJsonPath('counted', false);
+
+        $this->assertSame(1, (int) GalleryImage::withoutGlobalScopes()->find($photo->id)->opens);
+        $this->getJson("/api/gallery/cast/{$female->id}")->assertJsonPath('images.0.opens', 1);
+    }
+
     /** `both` — ჯერ პორტრეტები, დანარჩენი კადრებით ივსება */
     public function test_both_sources_prefer_portraits_first(): void
     {

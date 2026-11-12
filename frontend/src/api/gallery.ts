@@ -64,7 +64,10 @@ export type GalleryCastMode = (typeof GALLERY_CAST_MODES)[number]
  * აქვს": `profiles` მართლა მწირია, `tagged` კი იმ ფილმების კადრებია, სადაც
  * ის მონიშნულია — ათეულობით ცალი.
  */
-export const GALLERY_CAST_SOURCES = ['profiles', 'tagged', 'both'] as const
+/* ⚠️ `title` — „კადრები ამ ფილმიდან / სერიალიდან / ანიმედან": მხოლოდ იმ სათაურის კადრები, რომლის
+   გვერდიდანაც ჩამოტვირთვა გაეშვა. სათაურის გარეშე (მსახიობის გვერდი) არ შემოგვთავაზება —
+   სერვერი მას იქ `tagged`-ად კითხულობს. */
+export const GALLERY_CAST_SOURCES = ['profiles', 'tagged', 'both', 'title'] as const
 export type GalleryCastSource = (typeof GALLERY_CAST_SOURCES)[number]
 
 /**
@@ -274,6 +277,15 @@ export interface GalleryImage {
    * `PrivateImage`-ით უნდა დაიხატოს.
    */
   private?: boolean
+  /** ხელით დალაგების რიგი (გადათრევით ინახება) */
+  sort_order?: number
+  /** რამდენჯერ გაიხსნა — მხოლოდ დალაგებისთვის */
+  opens?: number
+  /**
+   * რომელი სათაურის კადრია (TMDB-ის მონიშნული კადრი) — `null` პორტრეტზე, ხელით ატვირთულზე და
+   * ძველ ფოტოებზე. ⚠️ TMDB-ის სათაურია და არა ჩემი ჩანაწერი.
+   */
+  origin?: { type: 'movie' | 'tv' | string; tmdb_id: number; title: string | null } | null
   /** დისკრიმინანტი — `GalleryLockedImage`-სგან გასარჩევად (2026-09-20) */
   locked?: false
 }
@@ -855,6 +867,16 @@ export async function fetchActorGalleryImages(
 ): Promise<GalleryFetchResult> {
   const { data } = await api.post(`/gallery/cast/${castId}`, opts, { signal })
   return data
+}
+
+/** ფოტოების ხელით დალაგება — მთელი რიგი ერთად (გადათრევის შემდეგ) */
+export async function reorderGalleryImages(ids: number[]): Promise<void> {
+  await api.post('/gallery/images/reorder', { ids })
+}
+
+/** ფოტოს გახსნის დათვლა — მხოლოდ დალაგებისთვის; სერვერი წუთში ერთხელ ითვლის */
+export async function countGalleryImageOpen(id: number): Promise<void> {
+  await api.put(`/gallery/images/${id}/open`)
 }
 
 export async function fetchGalleryPlan(filters: GalleryPlanFilters): Promise<GalleryPlan> {

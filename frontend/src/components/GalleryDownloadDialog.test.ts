@@ -292,6 +292,26 @@ describe('GalleryDownloadDialog', () => {
     expect(body().textContent).not.toContain('არჩეული ჩანაწერების მსახიობების')
   })
 
+  it('სათაურის გვერდიდან გახსნილზე „კადრები ამ ფილმიდან“ პირველია და თავიდანვე მონიშნული', async () => {
+    mocks.fetchGalleryPlan.mockResolvedValue(plan([], []))
+    await mount({ record: { type: 'movie', id: 5, title: 'Fight Club' } })
+
+    const cards = [...body().querySelectorAll<HTMLButtonElement>('[data-testid="cast-sources"] button')]
+    expect(cards.map((card) => card.getAttribute('data-source'))).toEqual(['title', 'tagged', 'profiles', 'both'])
+    expect(cards[0].textContent).toContain('კადრები ამ ფილმიდან')
+    expect(cards[0].getAttribute('aria-pressed')).toBe('true')
+    // მეორე არჩევანი — ის, რაც აქამდე „კადრები ფილმებიდან“ იყო
+    expect(cards[1].textContent).toContain('კადრები ყველა ფილმიდან და სერიალიდან')
+  })
+
+  it('მსახიობის გვერდიდან გახსნილზე სათაურის წყარო არ არსებობს', async () => {
+    mocks.fetchGalleryPlan.mockResolvedValue(plan([], [{ type: 'actor', id: 9, title: 'Keanu Reeves', year: null }]))
+    await mount({ actor: { id: 9, name: 'Keanu Reeves' } })
+
+    const cards = [...body().querySelectorAll<HTMLButtonElement>('[data-testid="cast-sources"] button')]
+    expect(cards.map((card) => card.getAttribute('data-source'))).toEqual(['profiles', 'tagged', 'both'])
+  })
+
   it('გაშვებისას ტოსტი მსახიობებს ითვლის და არა ჩანაწერებს', async () => {
     const items: GalleryPlanItem[] = [
       { type: 'actor', id: 1, title: 'Keanu Reeves', year: null },

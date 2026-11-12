@@ -2079,13 +2079,15 @@
     "castSourceTitle": "Where the actor's photos come from",
     "castSource": {
       "profiles": "Portraits",
-      "tagged": "Stills from films",
-      "both": "Both"
+      "tagged": "Stills from every film and series",
+      "both": "Both",
+      "title": "Stills from this title"
     },
     "castSourceHint": {
       "profiles": "TMDB's studio portraits — good quality, but often only 3–5 of them.",
-      "tagged": "Stills and posters from the films this actor is tagged in — many more.",
-      "both": "Portraits first, the rest filled up with stills."
+      "tagged": "Stills and posters from the actor's whole career — every film and series they are tagged in.",
+      "both": "Portraits first, the rest filled up with stills.",
+      "title": "Only the stills where the actor is tagged in this very title. Each photo remembers which title it came from."
     },
     "pickAllFemale": "All women",
     "pickAllMale": "All men",
@@ -2195,6 +2197,11 @@
     "videoGroup": {
       "record": "By record",
       "module": "By module"
+    },
+    "castSourceOf": {
+      "movie": "Stills from this film",
+      "series": "Stills from this series",
+      "anime": "Stills from this anime"
     }
   },
   "boardGames": {
@@ -2903,7 +2910,12 @@
     "download": "Save to computer",
     "openOriginal": "Original in a new tab",
     "select": "Select",
-    "deselect": "Deselect"
+    "deselect": "Deselect",
+    "view": {
+      "large": "Large grid",
+      "small": "Small grid",
+      "rows": "Rows"
+    }
   },
   "numberPick": {
     "none": "None",
@@ -5341,5 +5353,23 @@
     "noCast": "No cast",
     "gallery": "Gallery",
     "noPhotos": "No photos"
+  },
+  "actorPhotos": {
+    "sort": {
+      "added": "By date added",
+      "manual": "My own order",
+      "size": "By size",
+      "opens": "Most opened"
+    },
+    "orderOpen": "Change the order",
+    "orderTitle": "Photo order",
+    "orderHint": "Drag a photo where you want it — the order is saved at once and shows in the “my own order” view. Photos in a locked album are not shown here and keep their place.",
+    "group": {
+      "portraits": "Portraits",
+      "other": "Other"
+    },
+    "untitled": "Untitled",
+    "fromMovie": "Film",
+    "fromSeries": "Series"
   }
 }

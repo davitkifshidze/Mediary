@@ -30,6 +30,7 @@ use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -1306,6 +1307,48 @@ class GalleryController extends Controller
             'videos' => GalleryVideoResource::collection($castMember->galleryVideos()->get()),
             'bytes' => (int) $images->sum('size'),
         ]);
+    }
+
+    /**
+     * **ფოტოების ხელით დალაგება** — მთელი რიგი ერთად, გადათრევის შემდეგ.
+     *
+     * ⚠️ `ids` ჩემი ფოტოები უნდა იყოს (`owner` scope) — სხვისი ან უცნობი id 404-ია და არაფერი
+     * იწერება. `sort_order` პოზიციაა, ე.ი. თანმიმდევრული რჩება. ჩაკეტილი ალბომის ფოტოც ლაგდება
+     * (რიგი ფაილს არ ამხელს).
+     */
+    public function reorderImages(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:1000'],
+            'ids.*' => ['integer', 'distinct'],
+        ]);
+
+        $ids = array_map('intval', $data['ids']);
+        $mine = GalleryImage::withoutGlobalScope('album_lock')->whereIn('id', $ids)->pluck('id')->all();
+
+        abort_unless(count($mine) === count($ids), 404);
+
+        foreach ($ids as $position => $id) {
+            // ⚠️ query builder-ით: თითო ფოტოზე „განახლდა" ჟურნალს დამარხავდა
+            DB::table('gallery_images')->where('id', $id)->update(['sort_order' => $position + 1]);
+        }
+
+        return response()->json(['reordered' => count($ids)]);
+    }
+
+    /**
+     * **ფოტოს გახსნის დათვლა** — მხოლოდ დალაგებისთვის („ხშირად გახსნილი").
+     * ⚠️ ერთი ფოტო წუთში ერთხელ ითვლება; query builder-ით, რომ ჟურნალში „განახლდა" არ ჩაიწეროს.
+     */
+    public function openImage(GalleryImage $galleryImage)
+    {
+        $counted = Cache::add('photo-open:'.$galleryImage->id, 1, now()->addMinute());
+
+        if ($counted) {
+            DB::table('gallery_images')->where('id', $galleryImage->id)->increment('opens');
+        }
+
+        return response()->json(['counted' => $counted]);
     }
 
     /** ერთი მსახიობის ფოტოების ჩამოტვირთვა */

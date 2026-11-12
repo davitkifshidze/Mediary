@@ -1,18 +1,20 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Trash2, User } from 'lucide-react'
+import { Trash2, User, X } from 'lucide-react'
 import { galleryDownloadUrl, type GalleryCastImage, type GalleryCastMember, type GalleryImage } from '@/api/gallery'
 import { AlbumUnlockById } from '@/components/gallery/AlbumUnlockById'
 import { GalleryMoveDialog } from '@/components/gallery/GalleryMoveDialog'
 import { castName } from '@/lib/display'
 import { galleryPhotoInfo, isPortraitCategory } from '@/lib/galleryPhoto'
 import { useContentLang } from '@/lib/settings'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
 import { PhotoStack } from '@/components/ui/photo-stack'
 import { contextMenuItems, MENU_ICONS } from '@/components/ui/record-menu'
 import { LayoutToggle, type GalleryLayout } from '@/components/gallery/LayoutToggle'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { PhotoViewToggle, usePhotoView } from '@/components/ui/photo-view'
 
 /* ============================================================
    მსახიობების ფოტოები ჩანაწერზე — **ქვე-სექცია**.
@@ -25,6 +27,11 @@ import { LayoutToggle, type GalleryLayout } from '@/components/gallery/LayoutTog
    პირობა: „შეგეძლოს ყველა იყოს არეულად ან დაჯგუფებულად, შეგეძლოს მიუთითო
    ერთი მსახიობის [ფოტოები] ერთად, ან არეულად". დაჯგუფებულში ერთი უჯრა
    **მსახიობია**, არეულში — ერთი **ფოტო**.
+
+   ⚠️ **დასტაზე დაჭერა დიდ ფანჯარას ხსნის** (ადრე ფოტოები იქვე, გვერდზე იშლებოდა): ფოტოები
+   გვერდებად, „გვერდზე რამდენი" (4-ის ჯერადები), ფოტოზე დაჭერით სლაიდერი — საერთო `PhotoGrid`.
+   „არეულად" ხედს და ფანჯარას ერთი ხედის გადამრთველი აქვს (დიდი · პატარა · სტრიქონები),
+   რომელიც ბრაუზერს ახსოვს.
 
    ⚠️ **თვითონ კარტი `ui/photo-stack.tsx`-შია**: იგივე დასტა
    გალერეის გვერდზეც ჩანს, ე.ი. ორი ასლი ორნაირად გაიშლებოდა.
@@ -58,6 +65,7 @@ export function CastPhotoStacks({
   const lang = useContentLang(i18n.language)
   const [openActor, setOpenActor] = useState<number | null>(null)
   const [layout, setLayout] = useState<Layout>('grouped')
+  const [view, setView] = usePhotoView()
   /** რომელი ალბომის პაროლს ვკითხულობთ (ჩაკეტილ ფილაზე დაჭერა, 2026-09-20) */
   const [unlocking, setUnlocking] = useState<number | null>(null)
   /** რომელი ფოტოები გადაგვაქვს (`null` — დიალოგი დახურულია) */
@@ -162,8 +170,10 @@ export function CastPhotoStacks({
 
         {/* ⚠️ **გადამრთველი გაზიარებულია** — ერთი მსახიობის ფოტოები
             ერთად თუ ყველაფერი არეულად */}
+        {/* ხედი მხოლოდ იქ, სადაც ბადეა — „არეულად" */}
+        {layout === 'mixed' && <PhotoViewToggle className="ml-auto" value={view} onChange={setView} />}
         <LayoutToggle
-          className="ml-auto"
+          className={layout === 'mixed' ? undefined : 'ml-auto'}
           value={layout}
           onChange={(next) => {
             setLayout(next)
@@ -179,6 +189,7 @@ export function CastPhotoStacks({
             toItem(image, image.actor ? castName(image.actor, lang) : null),
           )}
           emptyText={t('gallery.emptyActor')}
+          view={view}
           onDelete={onDelete && ((ids) => onDelete(pick(ids, images)))}
           onMove={(ids) => move(ids, images)}
           onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
@@ -195,8 +206,7 @@ export function CastPhotoStacks({
                    გამოიტანდა; რიცხვი კი (`count`) ისევ სრულია, თორემ
                    ბარათი იტყუებოდა („0 ფოტო" სავსე დასტაზე). */
                 images={photos.filter((image) => !image.locked).map((image) => image.url)}
-                open={openActor === member.id}
-                onClick={() => setOpenActor((cur) => (cur === member.id ? null : member.id))}
+                onClick={() => setOpenActor(member.id)}
                 /* მარჯვენა ღილაკი: გახსნა · მსახიობის გვერდი · — · დასტის წაშლა */
                 menu={contextMenuItems([
                   { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpenActor(member.id) },
@@ -241,7 +251,9 @@ export function CastPhotoStacks({
         </ul>
       )}
 
-      {/* გახსნილი მსახიობი — თავისი ბადე, გვერდები და lightbox (საერთო `PhotoGrid`) */}
+      {/* გახსნილი მსახიობი — დიდი ფანჯარა: თავისი ბადე, გვერდები, „გვერდზე რამდენი" და სლაიდერი
+          (საერთო `PhotoGrid`). ⚠️ ჯგუფი ყოველ ჯერზე სიიდან იკითხება — ბოლო ფოტოს წაშლის შემდეგ
+          ფანჯარა თავისით იხურება. */}
       {layout === 'grouped' &&
         openActor != null &&
         (() => {
@@ -249,26 +261,32 @@ export function CastPhotoStacks({
           if (!group) return null
 
           return (
-            <div className="mt-4 rounded-xl border border-border bg-secondary/30 p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h4 className="font-medium">{nameOf(group.member)}</h4>
-                <Link
-                  to={`/actors/${group.member.id}`}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  <User className="size-3.5" />
-                  {t('gallery.actorPage')}
-                </Link>
+            <ModalShell size="full" title={nameOf(group.member)} onClose={() => setOpenActor(null)}>
+              <div data-testid="cast-stack-dialog">
+                <div className="mb-3 flex justify-end">
+                  <PhotoViewToggle value={view} onChange={setView} />
+                </div>
+                <PhotoGrid
+                  items={group.photos.map((image) => toItem(image, nameOf(group.member)))}
+                  emptyText={t('gallery.emptyActor')}
+                  view={view}
+                  onDelete={onDelete && ((ids) => onDelete(pick(ids, group.photos)))}
+                  onMove={(ids) => move(ids, group.photos)}
+                  onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
+                />
               </div>
 
-              <PhotoGrid
-                items={group.photos.map((image) => toItem(image, nameOf(group.member)))}
-                emptyText={t('gallery.emptyActor')}
-                onDelete={onDelete && ((ids) => onDelete(pick(ids, group.photos)))}
-                onMove={(ids) => move(ids, group.photos)}
-                onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
-              />
-            </div>
+              <ModalFooter>
+                <Link to={`/actors/${group.member.id}`} className={buttonVariants({ variant: 'outline' })}>
+                  <User className="size-4" />
+                  {t('gallery.actorPage')}
+                </Link>
+                <Button type="button" onClick={() => setOpenActor(null)}>
+                  <X className="size-4" />
+                  {t('actions.close')}
+                </Button>
+              </ModalFooter>
+            </ModalShell>
           )
         })()}
 

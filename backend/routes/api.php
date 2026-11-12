@@ -1208,6 +1208,10 @@ Route::middleware('auth:sanctum')->group(function () {
            ამოწმებს (404, არასდროს 403). */
         Route::get('/gallery/images/{galleryImage}/file', [GalleryController::class, 'imageFile']);
         Route::delete('/gallery/images/{galleryImage}', [GalleryController::class, 'destroyImage']);
+        /* ხელით დალაგება (გადათრევა) და ფოტოს გახსნის მთვლელი — მსახიობის გვერდის რიგი.
+           ⚠️ ორივე `update`-ია: `reorder` `UPDATE_ENDPOINTS`-შია, მთვლელი კი `PUT`-ია (POST `create` იქნებოდა). */
+        Route::post('/gallery/images/reorder', [GalleryController::class, 'reorderImages']);
+        Route::put('/gallery/images/{galleryImage}/open', [GalleryController::class, 'openImage']);
         Route::post('/gallery/images/{galleryImage}/primary', [GalleryController::class, 'setPrimary']);
         // მსახიობის გალერეა — მშობელი მსახიობია, ე.ი. ფოტო მის გვერდზეც ჩანს
         Route::get('/gallery/cast/{castMember}', [GalleryController::class, 'castShow']);

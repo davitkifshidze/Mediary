@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { DownloadCloud, Globe, Trash2, Video } from 'lucide-react'
+import { ArrowUpDown, DownloadCloud, Globe, Trash2, Video } from 'lucide-react'
 import { updateModuleSettings } from '@/api/account'
 import {
+  countGalleryImageOpen,
   deleteGalleryImage,
   fetchActorGallery,
   fetchGalleryDetail,
@@ -13,18 +14,28 @@ import {
   type GalleryImage,
   type GalleryParentKind,
 } from '@/api/gallery'
+import { ACTOR_PHOTO_SORTS, isActorPhotoSort, sortActorPhotos, type ActorPhotoSort } from '@/lib/actorPhotos'
 import { errorMessage } from '@/lib/errors'
+import { safeGet, safeSet } from '@/lib/storage'
 import type { MediaType } from '@/lib/media'
 import { isMediaKey, useModules } from '@/lib/modules'
+import { ActorPhotoGroups } from '@/components/actors/ActorPhotoGroups'
+import { ActorPhotoOrderDialog } from '@/components/actors/ActorPhotoOrderDialog'
 import { CastPhotoStacks } from '@/components/CastPhotoStacks'
 import { GalleryDownloadDialog } from '@/components/GalleryDownloadDialog'
 import { GalleryPanel } from '@/components/GalleryPanel'
 import { GalleryVideoList } from '@/components/gallery/GalleryVideoList'
+import { LayoutToggle, type GalleryLayout } from '@/components/gallery/LayoutToggle'
 import { ParentGallery } from '@/components/gallery/ParentGallery'
 import { WebImageDialog } from '@/components/WebImageDialog'
 import { WebVideoDialog } from '@/components/WebVideoDialog'
 import { Button } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { PhotoViewToggle, usePhotoView } from '@/components/ui/photo-view'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
+/** მსახიობის ფოტოების არჩეული რიგი — ბრაუზერში */
+const ACTOR_PHOTO_SORT_KEY = 'actor-photos.sort'
 
 /* ============================================================
    გალერეის სექცია ჩანაწერზე და მსახიობზე.
@@ -315,6 +326,15 @@ export function ActorGallery({
   const { askDelete } = useGalleryActions(['actor'])
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [videoOpen, setVideoOpen] = useState(false)
+  /* ფოტოების ხედი, რიგი და დაჯგუფება. ⚠️ ხედი და რიგი ბრაუზერს ახსოვს; დაჯგუფება —
+     სათაურის მიხედვით (დასტა თითო ფილმზე / სერიალზე, „პორტრეტები", „სხვა"). */
+  const [view, setView] = usePhotoView()
+  const [sort, setSort] = useState<ActorPhotoSort>(() => {
+    const stored = safeGet(ACTOR_PHOTO_SORT_KEY)
+    return isActorPhotoSort(stored) ? stored : 'added'
+  })
+  const [layout, setLayout] = useState<GalleryLayout>('mixed')
+  const [ordering, setOrdering] = useState(false)
 
   const galleryQ = useQuery({
     queryKey: ['gallery', 'cast', castId],
@@ -337,6 +357,14 @@ export function ActorGallery({
 
   const detail = galleryQ.data
   const name = actorName ?? detail?.actor.name_ka ?? detail?.actor.name ?? ''
+  const photos = sortActorPhotos(detail?.images ?? [], sort)
+
+  const changeSort = (next: ActorPhotoSort) => {
+    setSort(next)
+    safeSet(ACTOR_PHOTO_SORT_KEY, next)
+  }
+  /* გახსნის დათვლა — მხოლოდ „ხშირად გახსნილი" რიგისთვის; ჩავარდნილი მოთხოვნა ჩუმად რჩება */
+  const countOpen = (id: number) => void countGalleryImageOpen(id).catch(() => {})
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['gallery', 'cast', castId] })
@@ -346,10 +374,42 @@ export function ActorGallery({
   const body = (
     <>
       <GalleryPanel
-        images={detail?.images ?? []}
+        images={photos}
         bytes={detail?.bytes}
         onDelete={askDelete}
         emptyText={t('gallery.emptyActor')}
+        view={view}
+        onView={countOpen}
+        grouped={
+          layout === 'grouped'
+            ? (shown) => <ActorPhotoGroups images={shown} view={view} onDelete={askDelete} onView={countOpen} />
+            : undefined
+        }
+        tools={
+          <>
+            <LayoutToggle value={layout} onChange={setLayout} />
+            <PhotoViewToggle value={view} onChange={setView} />
+            <Select value={sort} onValueChange={(value) => changeSort(value as ActorPhotoSort)}>
+              <SelectTrigger className="h-9 w-56" aria-label={t('sort.label')} data-testid="actor-photo-sort">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ACTOR_PHOTO_SORTS.map((key) => (
+                  <SelectItem key={key} value={key}>
+                    {t(`actorPhotos.sort.${key}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* ხელით რიგი გადათრევით ილაგება — ცალკე ფანჯარაში, რომ ბადის მონიშვნასა და მენიუს არ ერეოდეს */}
+            {sort === 'manual' && (
+              <Button type="button" variant="outline" size="sm" onClick={() => setOrdering(true)} data-testid="actor-photo-order-open">
+                <ArrowUpDown className="size-4" />
+                {t('actorPhotos.orderOpen')}
+              </Button>
+            )}
+          </>
+        }
         actions={
           <>
             <Button
@@ -375,6 +435,14 @@ export function ActorGallery({
       )}
 
       <GalleryVideoList videos={detail?.videos ?? []} onChanged={invalidate} />
+
+      {ordering && (
+        <ActorPhotoOrderDialog
+          castId={castId}
+          images={sortActorPhotos(detail?.images ?? [], 'manual').filter((image): image is GalleryImage => !image.locked)}
+          onClose={() => setOrdering(false)}
+        />
+      )}
 
       <GalleryDownloadDialog
         open={downloadOpen}

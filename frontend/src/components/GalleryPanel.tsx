@@ -1,12 +1,13 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { galleryDownloadUrl, type GalleryAnyImage, type GalleryCastImage, type GalleryImage } from '@/api/gallery'
+import type { GalleryAnyImage, GalleryCastImage, GalleryImage } from '@/api/gallery'
 import { formatBytes } from '@/lib/utils'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { AlbumUnlockById } from '@/components/gallery/AlbumUnlockById'
 import { GalleryMoveDialog } from '@/components/gallery/GalleryMoveDialog'
-import { galleryPhotoInfo, isPortraitCategory } from '@/lib/galleryPhoto'
+import { galleryPhotoItem } from '@/components/gallery/photoItem'
+import type { PhotoView } from '@/components/ui/photo-view'
 
 /* ============================================================
    გალერეის ფილტრები + ბადე.
@@ -47,6 +48,10 @@ export function GalleryPanel({
   actions,
   emptyText,
   categories = true,
+  view,
+  tools,
+  onView,
+  grouped,
 }: {
   /**
    * ჩანაწერის ფოტოები + (სურვილისამებრ) მსახიობების ფოტოები ერთ ბადეში.
@@ -66,6 +71,14 @@ export function GalleryPanel({
   actions?: ReactNode
   emptyText?: string
   categories?: boolean
+  /** ბადის ხედი — დიდი · პატარა · სტრიქონები */
+  view?: PhotoView
+  /** ბადის ზემოთ მდგარი კონტროლები (ხედი, დალაგება, დაჯგუფება) — მსახიობის გვერდი */
+  tools?: ReactNode
+  /** ფოტო გაიხსნა — გახსნების მთვლელი */
+  onView?: (id: number) => void
+  /** ბადის ნაცვლად — დაჯგუფებული ხედი (დასტები); კატეგორიის ჭრილით გაფილტრულ ფოტოებს იღებს */
+  grouped?: (shown: (GalleryAnyImage | GalleryCastImage)[]) => ReactNode
 }) {
   const { t } = useTranslation()
   const [cut, setCut] = useState<CategoryCut>('all')
@@ -147,49 +160,22 @@ export function GalleryPanel({
         </div>
       )}
 
-      {/* ბადე, lightbox და მონიშვნები — საერთო `PhotoGrid`.
+      {tools && images.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2" data-testid="gallery-tools">
+          {tools}
+        </div>
+      )}
+
+      {grouped && images.length > 0 ? (
+        grouped(shown)
+      ) : (
+      /* ბადე, lightbox და მონიშვნები — საერთო `PhotoGrid`.
           ⚠️ ჩიპები აქ რჩება: ისინი გალერეის საქმეა და არა ბადის, ე.ი.
-          `PhotoGrid`-ს მოდულის ცოდნა არ სჭირდება. */}
+          `PhotoGrid`-ს მოდულის ცოდნა არ სჭირდება. უჯრის ფორმა — `galleryPhotoItem()`. */
       <PhotoGrid
-        items={shown.map((image) =>
-          /* ⚠️ **ჩაკეტილი უჯრა ცალკე შტოა და არა „ცარიელი ველებით"**
-             (2026-09-20): ბილიკი, სახელი, ზომა და კატეგორია პასუხში
-             საერთოდ არ მოსულა — `src: ''`-ის გაგზავნა ბადეს გატეხილ
-             `<img>`-ს დაახატვინებდა. `albumId` კი ის ერთადერთია, რაც
-             დაჭერისას სჭირდება: რომელი ალბომის პაროლი ვკითხოთ. */
-          image.locked
-            ? {
-                id: image.id,
-                src: '',
-                locked: true,
-                albumId: image.album_id,
-                width: image.width,
-                height: image.height,
-              }
-            : {
-                id: image.id,
-                src: image.url,
-                title: image.original_name,
-                subtitle:
-                  actorOf(image) ??
-                  (image.category
-                    ? t(`gallery.category.${image.category}`)
-                    : t('gallery.category.other')),
-                portrait: isPortraitCategory(image.category),
-                /* ⚠️ **პასუხს backend იძლევა**: მშობელს მთავარი
-                   სურათის სვეტი ან საერთოდ არ აქვს (მსახიობი — `photo_path`
-                   გლობალურია), ან სხვა ჰქვია. `category !== 'actor'` მხოლოდ პირველ
-                   შემთხვევას ხურავდა და სიმღერაზე/წიგნზე/თამაშზე ღილაკს ხატავდა,
-                   სადაც დაჭერა 500-ს აბრუნებდა. `?? true` — ძველი პასუხისთვის. */
-                canPrimary: image.supports_primary ?? image.category !== 'actor',
-                size: image.size,
-                width: image.width,
-                height: image.height,
-                // „რა ვიცით ამ ფოტოზე": ერთი ფუნქცია ყველგან
-                info: galleryPhotoInfo(image, t, { owner: actorOf(image) }),
-                downloadUrl: galleryDownloadUrl(image.id),
-              },
-        )}
+        items={shown.map((image) => galleryPhotoItem(image, t, actorOf(image)))}
+        view={view}
+        onView={onView && ((item) => onView(item.id))}
         emptyText={emptyText ?? t('gallery.emptyRecord')}
         primaryId={primaryId}
         onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
@@ -222,6 +208,7 @@ export function GalleryPanel({
           if (open.length) setMoving(open)
         }}
       />
+      )}
 
       {/* ⚠️ მდგომარეობაც და პორტალის JSX-იც ერთ კომპონენტშია — `GroupsCut`-ის
           ცოცხალი ხარვეზის წესი (ღილაკი ერთ შტოში, დიალოგი მეორეში). */}

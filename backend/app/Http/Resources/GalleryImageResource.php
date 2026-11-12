@@ -81,6 +81,14 @@ class GalleryImageResource extends JsonResource
             'width' => $this->width,
             'height' => $this->height,
             'created_at' => $this->created_at?->toIso8601String(),
+            // ხელით დალაგების რიგი და გახსნების მთვლელი — მსახიობის გვერდის დალაგება
+            'sort_order' => (int) $this->sort_order,
+            'opens' => (int) $this->opens,
+            /* რომელი სათაურის კადრია (TMDB-ის მონიშნული კადრი) — `null` პორტრეტზე, ხელით ატვირთულზე
+               და ძველ ფოტოებზე. ⚠️ TMDB-ის სათაურია და არა ჩემი ჩანაწერი. */
+            'origin' => $this->origin_tmdb_id
+                ? ['type' => $this->origin_type, 'tmdb_id' => (int) $this->origin_tmdb_id, 'title' => $this->origin_title]
+                : null,
         ];
     }
 }

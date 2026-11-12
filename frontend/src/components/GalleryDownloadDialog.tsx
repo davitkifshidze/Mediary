@@ -3,11 +3,10 @@ import { useContentLang } from '@/lib/settings'
 import { statusName, useMergedStatuses } from '@/lib/statuses'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Check, Clapperboard, Layers, Loader2, Play, Search, Square, UserRound, Users, X } from 'lucide-react'
+import { Check, Clapperboard, Film, Layers, Loader2, Play, Search, Square, UserRound, Users, X } from 'lucide-react'
 import {
   fetchGalleryPlan,
   GALLERY_CAST_SIZES,
-  GALLERY_CAST_SOURCES,
   GALLERY_MAX_ACTORS,
   GALLERY_MAX_LIMIT,
   GALLERY_MAX_PER_ACTOR,
@@ -93,8 +92,9 @@ const LIMIT_OPTIONS = [5, 10, 20, 50, 100, 250, 500, GALLERY_MAX_LIMIT]
 const PER_ACTOR_OPTIONS = [1, 2, 3, 5, 10, 20, 50, GALLERY_MAX_PER_ACTOR]
 const ACTORS_OPTIONS = [3, 6, 12, 20, 50, 100, GALLERY_MAX_ACTORS]
 
-/** მსახიობის ფოტოს წყაროს ხატულა — პორტრეტი · კადრი · ორივე */
+/** მსახიობის ფოტოს წყაროს ხატულა — ამ სათაურის კადრი · პორტრეტი · ყველა კადრი · ორივე */
 const CAST_SOURCE_ICON: Record<GalleryCastSource, typeof UserRound> = {
+  title: Film,
   profiles: UserRound,
   tagged: Clapperboard,
   both: Layers,
@@ -158,7 +158,16 @@ export function GalleryDownloadDialog({
     pin?.actor ? 'selected' : defaults.cast === 'none' ? 'all' : defaults.cast,
   )
   const [castIds, setCastIds] = useState<number[]>(pin?.actor ? [pin.actor.id] : [])
-  const [castSource, setCastSource] = useState<GalleryCastSource>(defaults.cast_source)
+  /* ⚠️ **სათაურის გვერდიდან გახსნილზე „კადრები ამ ფილმიდან" თავიდანვე მონიშნულია** — იქ სწორედ ამ
+     სათაურის კადრებს ეძებ. სათაურის გარეშე (მსახიობის გვერდი, გალერეა) ეს წყარო არ არსებობს:
+     შენახული `title` იქ „ყველა ფილმიდან"-ად იკითხება. */
+  const castSources = useMemo<GalleryCastSource[]>(
+    () => (pin?.record ? ['title', 'tagged', 'profiles', 'both'] : ['profiles', 'tagged', 'both']),
+    [pin?.record],
+  )
+  const [castSource, setCastSource] = useState<GalleryCastSource>(
+    pin?.record ? 'title' : defaults.cast_source === 'title' ? 'tagged' : defaults.cast_source,
+  )
   const [castSize, setCastSize] = useState<GalleryCastSize>(defaults.cast_size)
   const [perActor, setPerActor] = useState(defaults.per_actor)
   const [actors, setActors] = useState(defaults.actors)
@@ -618,8 +627,8 @@ export function GalleryDownloadDialog({
                 ახლა სამივე თავის განმარტებას თვითონ ამბობს. */}
             <div>
               <Label className="mb-2.5 block">{t('gallery.castSourceTitle')}</Label>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {GALLERY_CAST_SOURCES.map((source) => {
+              <div className={cn('grid gap-3', castSources.length > 3 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3')} data-testid="cast-sources">
+                {castSources.map((source) => {
                   const on = castSource === source
                   const Icon = CAST_SOURCE_ICON[source]
 
@@ -629,6 +638,7 @@ export function GalleryDownloadDialog({
                       key={source}
                       type="button"
                       aria-pressed={on}
+                      data-source={source}
                       onClick={() => setCastSource(source)}
                       className={cn(
                         'flex cursor-pointer flex-col gap-1.5 rounded-md border p-3.5 text-left transition-colors',
@@ -640,7 +650,10 @@ export function GalleryDownloadDialog({
                       <span className="flex items-center gap-2">
                         <Icon className={cn('size-4 shrink-0', on ? 'text-primary' : 'text-muted-foreground')} />
                         <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                          {t(`gallery.castSource.${source}`)}
+                          {/* „კადრები ამ ფილმიდან / სერიალიდან / ანიმედან" — სათაურის ტიპით */}
+                          {source === 'title' && pin?.record
+                            ? t(`gallery.castSourceOf.${pin.record.type}`)
+                            : t(`gallery.castSource.${source}`)}
                         </span>
                         {on && <Check className="size-4 shrink-0 text-primary" />}
                       </span>
