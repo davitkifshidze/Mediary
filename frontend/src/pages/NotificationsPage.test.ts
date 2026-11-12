@@ -183,6 +183,34 @@ describe('NotificationBell', () => {
 
     expect(box.querySelector('button')).toBeNull()
   })
+
+  it('adds a missing franchise part straight from the panel and marks the row read', async () => {
+    const box = await bell({ unseen: 1, unread: 2, total: 2 }, [
+      note('p', {
+        type: 'franchise_part',
+        data: { tmdb_id: 604, title_en: 'Reloaded', title_ka: null, collection_id: 2344, collection_name: 'Saga' },
+        route: '/movies/franchises?open=2344',
+      }),
+      // ჯამურ შეტყობინებას და სხვა სახეებს „დამატება" არ აქვს
+      note('g', { type: 'franchise_gaps', data: { collection_id: 2344, collection_name: 'Saga', count: 3 }, route: '/movies/franchises?open=2344' }),
+    ])
+
+    await act(async () => box.querySelector<HTMLButtonElement>('button')!.click())
+    await flush()
+    await flush()
+
+    const add = document.querySelectorAll<HTMLButtonElement>('[data-testid="bell-add-part"]')
+    expect(add).toHaveLength(1)
+    // რიგი ბმულია „ფრანჩაიზების" გვერდზე; ღილაკი მის გარეთაა
+    expect(add[0].closest('a')).toBeNull()
+    expect([...document.querySelectorAll('a')].some((a) => a.getAttribute('href') === '/movies/franchises?open=2344')).toBe(true)
+
+    await act(async () => add[0].click())
+    await flush()
+
+    expect(extra.enqueue).toHaveBeenCalledWith([{ tmdbId: 604, title: 'Reloaded' }], 'movie')
+    expect(mocks.markNotificationsRead).toHaveBeenCalledWith('p')
+  })
 })
 
 describe('NotificationsPage', () => {
@@ -321,6 +349,14 @@ describe('notification text', () => {
     expect(
       notificationDetail({ type: 'franchise_part', data: { title_ka: null, title_en: 'Part 3', collection_name: 'Saga' } }, i18n.t, 'ka'),
     ).toBe('Part 3 · Saga')
+    // გამოსვლის დღეს მოსული ნაწილი ამას ამბობს; ჯამური — ფრანჩაიზს და რიცხვს
+    expect(
+      notificationDetail({ type: 'franchise_part', data: { title_en: 'Part 4', collection_name: 'Saga', out_today: true } }, i18n.t, 'en'),
+    ).toBe(`Part 4 · Saga · ${i18n.t('franchise.outToday')}`)
+    expect(notificationTitle(i18n.t, 'franchise_gaps')).toBe(i18n.t('notifications.kind.franchise_gaps'))
+    expect(notificationDetail({ type: 'franchise_gaps', data: { collection_name: 'Saga', count: 3 } }, i18n.t, 'ka')).toBe(
+      i18n.t('notifications.detail.franchiseGaps', { name: 'Saga', count: 3 }),
+    )
     expect(notificationDetail({ type: 'new_season', data: { title_en: 'Show', season: 5 } }, i18n.t, 'en')).toBe(
       `Show · ${i18n.t('soon.kind.season', { season: 5 })}`,
     )

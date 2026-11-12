@@ -500,6 +500,76 @@ export async function fetchMovieCollection(id: number | string): Promise<MovieCo
   return data
 }
 
+/* ---------- „ფრანჩაიზების" გვერდი ---------- */
+
+/** ფრანჩაიზის ერთი ნაწილი გვერდზე — ჩემი (ჩანაწერზე ბმულით) ან ნაკლული */
+export interface FranchisePartRow {
+  tmdb_id: number
+  title: string
+  year: number | null
+  date: string | null
+  /** `false` — ჯერ არ გამოსულა (ან მხოლოდ გამოცხადდა, თარიღის გარეშე) */
+  released: boolean
+  rating: number | null
+  poster: string | null
+  owned: boolean
+  movie_id: number | null
+  /** ამ ნაწილზე ვთქვი „აღარ შემახსენო" */
+  muted: boolean
+}
+
+/** `open` — ნაწილი აკლია · `muted` — აკლია, მაგრამ გაჩუმებულია · `complete` — ყველა მაქვს */
+export type FranchiseState = 'open' | 'complete' | 'muted'
+
+export interface FranchiseRow {
+  collection_id: number
+  name: string | null
+  /** მთელ ფრანჩაიზზე ვთქვი „აღარ შემახსენო" */
+  muted: boolean
+  state: FranchiseState
+  owned: number
+  total: number
+  /** რამდენი აკლია გაჩუმებულების გარეშე */
+  missing: number
+  parts: FranchisePartRow[]
+}
+
+export interface FranchiseCounts {
+  open: number
+  complete: number
+  muted: number
+}
+
+export interface FranchisePage extends Page<FranchiseRow> {
+  /** სამივე მდგომარეობის რიცხვი ფილტრის მიუხედავად — გადამრთველები ამას წერენ */
+  counts: FranchiseCounts
+}
+
+/**
+ * ჩემი ფრანჩაიზები: ნაგულისხმევად მხოლოდ დაუსრულებელი; `complete` სრულებსაც ამატებს,
+ * `muted` — გაჩუმებულებსაც; `open` — შეტყობინებიდან გახსნილი ფრანჩაიზი (პირველია).
+ */
+export async function fetchFranchises(params: {
+  complete?: boolean
+  muted?: boolean
+  open?: number | null
+  page?: number
+  per_page?: number
+}): Promise<FranchisePage> {
+  const { data } = await api.get('/movies/franchises', {
+    params: {
+      // ⚠️ `1` და არა `true`: სერვერის `boolean` წესი სტრიქონ „true"-ს არ იღებს
+      complete: params.complete ? 1 : undefined,
+      muted: params.muted ? 1 : undefined,
+      open: params.open ?? undefined,
+      page: params.page,
+      per_page: params.per_page,
+    },
+  })
+
+  return { ...readPage<FranchiseRow>(data), counts: data.meta?.counts ?? { open: 0, complete: 0, muted: 0 } }
+}
+
 /**
  * „აღარ შემახსენო" / „ისევ შემახსენე" — მთელ ფრანჩაიზზე, ან `tmdbId`-ით მის ერთ ნაწილზე.
  * გამორთვა ამ ფრანჩაიზის / ნაწილის უკვე მოსულ შეტყობინებებსაც აშორებს.

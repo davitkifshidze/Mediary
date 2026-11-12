@@ -42,6 +42,7 @@ const ICONS: Record<string, LucideIcon> = {
   // დღეს გამოდის — პრემიერა, ახალი სეზონი ან სერია
   release_today: CalendarClock,
   franchise_part: Layers,
+  franchise_gaps: Layers,
   new_season: Sparkles,
 }
 
@@ -103,9 +104,15 @@ export function notificationDetail(n: Pick<AppNotification, 'type' | 'data'>, t:
 
     return [recordTitle(d, lang), what].filter(Boolean).join(' · ')
   }
-  /* ფრანჩაიზს ნაწილი აკლია: რომელი ნაწილი და რომელ ფრანჩაიზში */
+  /* ფრანჩაიზს ნაწილი აკლია: რომელი ნაწილი და რომელ ფრანჩაიზში; გამოსვლის დღეს — „დღეს გამოვიდა" */
   if (n.type === 'franchise_part') {
-    return [recordTitle(d, lang), d.collection_name].filter(Boolean).join(' · ')
+    return [recordTitle(d, lang), d.collection_name, n.data.out_today === true ? t('franchise.outToday') : null]
+      .filter(Boolean)
+      .join(' · ')
+  }
+  /* ფრანჩაიზის პირველი შემოწმება: ერთი შეტყობინება ყველა ნაკლულზე */
+  if (n.type === 'franchise_gaps') {
+    return t('notifications.detail.franchiseGaps', { name: d.collection_name ?? '—', count: Number(d.count) || 0 })
   }
   if (n.type === 'new_season') {
     return [recordTitle(d, lang), typeof d.season === 'number' ? t('soon.kind.season', { season: d.season }) : null]

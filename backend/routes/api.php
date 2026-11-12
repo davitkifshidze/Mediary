@@ -572,6 +572,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/movies/bulk-status', [MovieStatusController::class, 'bulkUpdate']);
         // ⚠️ `{movie}`-ზე **ზემოთ**, თორემ „soon" id-ად წაიკითხება
         Route::get('/movies/soon', [MediaSoonController::class, 'index'])->defaults('domain', 'movie');
+        // „ფრანჩაიზები": ჩემი დაუსრულებელი ფრანჩაიზები ნაწილებით — ისიც `{movie}`-ზე ზემოთ
+        Route::get('/movies/franchises', [MovieCollectionController::class, 'index']);
         Route::get('/movies/{movie}', [MovieController::class, 'show']);
         Route::match(['put', 'patch'], '/movies/{movie}', [MovieController::class, 'update']);
         Route::delete('/movies/{movie}', [MovieController::class, 'destroy']);

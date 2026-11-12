@@ -53,6 +53,9 @@ final class NotificationType
     /** ფრანჩაიზს ნაწილი აკლია — ბიბლიოთეკაში მისი სხვა ნაწილი მაქვს, ეს კი არა */
     public const FRANCHISE_PART = 'franchise_part';
 
+    /** ფრანჩაიზს რამდენიმე ნაწილი აკლია — ფრანჩაიზის პირველ შემოწმებაზე ერთი შეტყობინება ყველა ნაკლულზე */
+    public const FRANCHISE_GAPS = 'franchise_gaps';
+
     /** სერიალს ან ანიმეს ახალი სეზონი გამოუცხადეს */
     public const NEW_SEASON = 'new_season';
 
@@ -69,6 +72,7 @@ final class NotificationType
         self::SHARE_IMPORTED,
         self::RELEASE_TODAY,
         self::FRANCHISE_PART,
+        self::FRANCHISE_GAPS,
         self::NEW_SEASON,
     ];
 
@@ -109,7 +113,7 @@ final class NotificationType
             self::SHARE_IMPORTED => '/transfer?tab=share',
             /* ჩანაწერზე გადასვლა: მისამართი შეტყობინებასთან ერთად იწერება (`path`) —
                მოდულის `route_base` ბაზაშია და აქედან არ გამოითვლება */
-            self::RELEASE_TODAY, self::FRANCHISE_PART, self::NEW_SEASON => isset($data['path']) && is_string($data['path']) ? $data['path'] : null,
+            self::RELEASE_TODAY, self::FRANCHISE_PART, self::FRANCHISE_GAPS, self::NEW_SEASON => isset($data['path']) && is_string($data['path']) ? $data['path'] : null,
             default => null,
         };
     }

@@ -28,7 +28,7 @@ import type { Status } from '@/api/types'
    ამიტომ განლაგება `modules.user_settings`-იდან პირდაპირ იკითხება.
    ============================================================ */
 
-export type PseudoSectionId = 'all' | 'favorite' | 'downloaded' | 'locked' | 'soon' | 'sync'
+export type PseudoSectionId = 'all' | 'favorite' | 'downloaded' | 'locked' | 'soon' | 'franchises' | 'sync'
 
 export interface PseudoSection {
   id: PseudoSectionId
@@ -94,6 +94,19 @@ const SOON: PseudoSection = {
 }
 
 /**
+ * „ფრანჩაიზები" — ბმული ფილმების საკუთარ გვერდზე: ფრანჩაიზები, რომელთა ნაწილი მაქვს და
+ * ყველა — არა. ⚠️ მხოლოდ ფილმებს აქვს: ფრანჩაიზი TMDB-ის ფილმების კოლექციაა.
+ */
+const FRANCHISES: PseudoSection = {
+  id: 'franchises',
+  labelKey: 'franchise.section',
+  icon: 'Layers',
+  color: 'var(--tool-modules)',
+  defaultAt: 'end',
+  path: '/franchises',
+}
+
+/**
  * „სინქრონიზაცია" — ბმული მოდულის საკუთარ სინქრონიზაციის გვერდზე: სერიალსა და ანიმეში
  * „სეზონები და სერიები — ყველა სერიალზე" და „მონაცემები TMDB-დან", ფილმებში — მხოლოდ მეორე.
  * ⚠️ სამივე მოდულს ერთი და იგივე პუნქტი აქვს — ქვემენიუ ერთნაირია.
@@ -110,7 +123,7 @@ const SYNC: PseudoSection = {
 
 /** ⚠️ სარკე: `App\Support\StatusDomain::RESERVED_KEYS` (სტატუსი ამ გასაღებებს არ იღებს) */
 export const PSEUDO_SECTIONS: Record<StatusDomain, PseudoSection[]> = {
-  movie: [ALL, FAVORITE, SOON, LOCKED, SYNC],
+  movie: [ALL, FAVORITE, SOON, FRANCHISES, LOCKED, SYNC],
   series: [ALL, FAVORITE, SOON, LOCKED, SYNC],
   anime: [ALL, FAVORITE, SOON, LOCKED, SYNC],
   video: [ALL, DOWNLOADED, FAVORITE],

@@ -28,6 +28,66 @@ class MovieCollectionController extends Controller
 
     private const EMPTY = ['collection_id' => null, 'name' => null, 'muted' => false, 'parts' => []];
 
+    /** „ფრანჩაიზების" გვერდის ზომა: ნაგულისხმევი და ჭერი (ერთეული ფრანჩაიზია თავისი ნაწილებით) */
+    private const PER_PAGE = 10;
+
+    private const PER_PAGE_MAX = 100;
+
+    /**
+     * **„ფრანჩაიზები"** — ჩემი ფრანჩაიზები, რომელთაც ნაწილი აკლია (`GET /movies/franchises`).
+     *
+     * ნაგულისხმევად მხოლოდ დაუსრულებელი და გაუჩუმებელი ჩანს — გვერდი პასუხობს კითხვას
+     * „რა გამომრჩა"; `complete=1` სრულებსაც ამატებს, `muted=1` — გაჩუმებულებსაც.
+     * `open` — შეტყობინებიდან გახსნილი ფრანჩაიზი: ფილტრის მიუხედავად ჩანს და პირველია.
+     *
+     * ⚠️ სია ცხრილებიდან იკითხება (`FranchiseTracker::library()`), TMDB-ს აქ არავინ
+     * ეკითხება — ნაწილებს დამატება, სინქრონიზაცია და ღამის შემოწმება აახლებს.
+     * ⚠️ `meta.counts` სამივე მდგომარეობის რიცხვია ფილტრის მიუხედავად — გადამრთველები
+     * მათ წერენ.
+     */
+    public function index(Request $request, FranchiseTracker $tracker)
+    {
+        $data = $request->validate([
+            'complete' => ['sometimes', 'boolean'],
+            'muted' => ['sometimes', 'boolean'],
+            'open' => ['sometimes', 'integer', 'min:1'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:'.self::PER_PAGE_MAX],
+        ]);
+
+        $all = $tracker->library($request->user());
+        $focus = (int) ($data['open'] ?? 0);
+        $states = array_keys(array_filter([
+            'open' => true,
+            'complete' => (bool) ($data['complete'] ?? false),
+            'muted' => (bool) ($data['muted'] ?? false),
+        ]));
+
+        $shown = $all
+            ->filter(fn (array $franchise) => in_array($franchise['state'], $states, true) || $franchise['collection_id'] === $focus)
+            ->sortBy(fn (array $franchise) => $franchise['collection_id'] === $focus ? 0 : 1)
+            ->values();
+
+        $perPage = (int) ($data['per_page'] ?? self::PER_PAGE);
+        $lastPage = max(1, (int) ceil($shown->count() / $perPage));
+        $page = min((int) ($data['page'] ?? 1), $lastPage);
+
+        return response()->json([
+            'data' => $shown->forPage($page, $perPage)->values(),
+            'meta' => [
+                'current_page' => $page,
+                'last_page' => $lastPage,
+                'per_page' => $perPage,
+                'total' => $shown->count(),
+                'counts' => [
+                    'open' => $all->where('state', 'open')->count(),
+                    'complete' => $all->where('state', 'complete')->count(),
+                    'muted' => $all->where('state', 'muted')->count(),
+                ],
+            ],
+        ]);
+    }
+
     /** ფილმის ფრანჩაიზის ნაწილები (ყურების თანმიმდევრობით) */
     public function show(Request $request, Movie $movie, TmdbClient $tmdb, FranchiseTracker $tracker)
     {

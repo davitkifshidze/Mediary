@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
-import { ArrowRight, Bell, CheckCheck } from 'lucide-react'
+import { ArrowRight, Bell, CheckCheck, Loader2, Plus } from 'lucide-react'
 import {
   fetchNotificationCounts,
   fetchNotifications,
@@ -17,6 +17,7 @@ import { notificationDetail, notificationIcon, notificationTitle } from '@/lib/n
 import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useQueue } from '@/components/ui/queue'
 
 /**
  * **შეტყობინებების ცენტრი — ჰედერის ზარი.**
@@ -45,6 +46,7 @@ export function NotificationBell() {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const fmt = useDateFormat()
+  const { enqueue, isQueued } = useQueue()
   const [open, setOpen] = useState(false)
 
   const { data: counts } = useQuery({
@@ -115,9 +117,8 @@ export function NotificationBell() {
     /* ⚠️ **გახსნა წაკითხვასაც ნიშნავს** — ცალკე „წავიკითხე" ღილაკი თითო
        რიგზე იმას ნიშნავდა, რომ წერტილი მას შემდეგაც ანთია, რაც ადამიანმა
        საქმე უკვე გააკეთა. */
-    return n.route ? (
+    const main = n.route ? (
       <Link
-        key={n.id}
         to={n.route}
         className={shared}
         onClick={() => {
@@ -128,15 +129,38 @@ export function NotificationBell() {
         {body}
       </Link>
     ) : (
-      <button
-        key={n.id}
-        data-kind="row"
-        type="button"
-        className={shared}
-        onClick={() => !n.read_at && read.mutate(n.id)}
-      >
+      <button data-kind="row" type="button" className={shared} onClick={() => !n.read_at && read.mutate(n.id)}>
         {body}
       </button>
+    )
+
+    /* „ფრანჩაიზს ნაწილი აკლია" — ნაწილი აქედანვე ემატება („აღმოჩენის" რიგით), გვერდზე
+       გადასვლის გარეშე. ⚠️ ღილაკი რიგის **ქვემოთაა** და არა შიგნით: რიგი ბმულია, ღილაკი
+       ბმულში კი არასწორი HTML-ია. დამატება წაკითხვასაც ნიშნავს. */
+    const tmdbId = n.type === 'franchise_part' ? Number(n.data.tmdb_id) || 0 : 0
+    const adding = tmdbId > 0 && isQueued(tmdbId, 'movie')
+
+    return (
+      <div key={n.id}>
+        {main}
+        {tmdbId > 0 && (
+          <div className="flex justify-end px-2 pb-1.5">
+            <Button
+              type="button"
+              size="xs"
+              disabled={adding}
+              data-testid="bell-add-part"
+              onClick={() => {
+                enqueue([{ tmdbId, title: String(n.data.title_en ?? n.data.title_ka ?? '') }], 'movie')
+                if (!n.read_at) read.mutate(n.id)
+              }}
+            >
+              {adding ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+              {adding ? t('queue.queued') : t('actor.add')}
+            </Button>
+          </div>
+        )}
+      </div>
     )
   }
 

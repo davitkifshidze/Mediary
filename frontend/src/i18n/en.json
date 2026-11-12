@@ -652,7 +652,19 @@
     "mutePart": "About this part",
     "muteAll": "About the whole franchise",
     "muted": "Reminders are off",
-    "unmuted": "Reminders are back on"
+    "unmuted": "Reminders are back on",
+    "section": "Franchises",
+    "pageHint": "Franchises you own a part of, but not all of. A missing part can be added right here — one, or all at once — or muted (“Don't remind me” for a part or the whole franchise). Complete and muted franchises appear with the chips. Movies in the trash and locked movies are not shown or counted here.",
+    "withComplete": "Complete too",
+    "withMuted": "Muted too",
+    "none": "You have no unfinished franchises",
+    "noneHint": "Every franchise you own a part of is complete or muted.",
+    "have": "Have {{owned}} of {{total}}",
+    "addAll": "Add all missing",
+    "muteFranchise": "Mute this franchise",
+    "unnamed": "Unnamed franchise",
+    "announced": "Announced",
+    "outToday": "Out today"
   },
   "queue": {
     "adding": "Adding…",
@@ -4258,7 +4270,8 @@
       "share_imported": "Someone is adding records from your link",
       "release_today": "Out today",
       "franchise_part": "A franchise part is missing",
-      "new_season": "A new season was announced"
+      "new_season": "A new season was announced",
+      "franchise_gaps": "A franchise is missing parts"
     },
     "detail": {
       "module": "Module: {{name}}",
@@ -4268,7 +4281,8 @@
       "batch": "{{total}} items, {{failed}} failed.",
       "upload": "{{kind}}: {{what}}",
       "customModule": "{{name}} · {{owner}}",
-      "share": "{{name}} · {{link}}"
+      "share": "{{name}} · {{link}}",
+      "franchiseGaps": "{{name}} — {{count}} parts missing"
     },
     "seeAll": "See all",
     "unread": "Unread",
