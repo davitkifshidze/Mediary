@@ -60,6 +60,42 @@ afterEach(() => {
   axios.defaults.adapter = realAxiosAdapter
 })
 
+describe('მისამართის ჩამრთველები', () => {
+  /* ⚠️ `GET /actors?favorite=true` 422 იყო: Laravel-ის `boolean` წესი „true" სიტყვას არ იღებს.
+     რჩეული მსახიობები, „გალერეის" ხედი და ჩაკეტილების ფილტრი ამით ვერ იტვირთებოდა. */
+  it('sends an on/off filter as 1 or 0, never as the word true', async () => {
+    let sent: InternalAxiosRequestConfig | null = null
+    install((config) => {
+      sent = config
+      return ok(config)
+    })
+
+    await api.get('/actors', { params: { favorite: true, thumbs: false, gender: 'female', q: undefined, page: 2 } })
+
+    expect(sent!.params).toEqual({ favorite: 1, thumbs: 0, gender: 'female', q: undefined, page: 2 })
+    expect(api.getUri(sent!)).toContain('favorite=1')
+    expect(api.getUri(sent!)).not.toContain('true')
+  })
+
+  it('leaves a request body and ready-made params alone', async () => {
+    const seen: InternalAxiosRequestConfig[] = []
+    install((config) => {
+      seen.push(config)
+      return ok(config)
+    })
+
+    await api.put('/actors/5/favorite', { favorite: true })
+    const ready = new URLSearchParams({ a: '1' })
+    await api.get('/movies', { params: ready })
+    await api.get('/movies')
+
+    // ტანში `true` ნამდვილი ლოგიკური მნიშვნელობაა
+    expect(JSON.parse(String(seen[0].data))).toEqual({ favorite: true })
+    expect(seen[1].params).toBe(ready)
+    expect(seen[2].params).toBeUndefined()
+  })
+})
+
 describe('419 — CSRF-ის ვადა', () => {
   it('ერთხელ ანახლებს ქუქის და მოთხოვნას იმეორებს', async () => {
     let attempt = 0

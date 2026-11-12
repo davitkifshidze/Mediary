@@ -79,9 +79,31 @@ function isAuthForm(url: string): boolean {
  */
 api.interceptors.request.use((config) => {
   config.headers.set('Accept-Language', i18n.language || 'ka')
+  config.params = flagParams(config.params)
 
   return config
 })
+
+/**
+ * **მისამართის ჩამრთველი `1`/`0`-ად მიდის და არა `true`/`false`-ად.**
+ *
+ * axios `true`-ს სიტყვად („true") წერს მისამართში, Laravel-ის `boolean` წესი კი მხოლოდ
+ * `1`/`0`-ს იღებს — `GET /actors?favorite=true` 422-ით ბრუნდებოდა და რჩეული მსახიობების
+ * სია, „გალერეის" ხედი და ჩაკეტილების ფილტრი „ვერ ჩაიტვირთა"-ს აჩვენებდა. სხვა სიები
+ * `1`-ს ხელით წერს (`favorite: 1`); აქ წესი ერთ კარზეა, რომ ახალ მოთხოვნას ამის
+ * გახსენება აღარ დასჭირდეს.
+ *
+ * ⚠️ მხოლოდ ზედა დონის ჩამრთველები და მხოლოდ მისამართის პარამეტრები — ტანი (JSON)
+ * ხელუხლებელია: იქ `true` ნამდვილი ლოგიკური მნიშვნელობაა.
+ */
+function flagParams(params: unknown): unknown {
+  if (!params || typeof params !== 'object' || params instanceof URLSearchParams || Array.isArray(params)) return params
+
+  const entries = Object.entries(params as Record<string, unknown>)
+  if (!entries.some(([, value]) => typeof value === 'boolean')) return params
+
+  return Object.fromEntries(entries.map(([key, value]) => [key, typeof value === 'boolean' ? (value ? 1 : 0) : value]))
+}
 
 api.interceptors.response.use(
   (r) => {
