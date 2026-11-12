@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowUpDown, Folders, Globe, Image, LayoutGrid, SquarePen, Trash2, UserRound, Video } from 'lucide-react'
+import { ArrowLeft, ArrowUpDown, Folders, Globe, Image, LayoutGrid, SquarePen, Trash2, UserRound, UserRoundPlus, Video } from 'lucide-react'
 import { fetchPersonalAlbum, isHidden, PERSONAL_KEY, updatePersonalAlbum } from '@/api/personal'
 import { errorMessage } from '@/lib/errors'
 import { countLabel, invalidatePersonal } from '@/lib/personal'
@@ -15,6 +15,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { PersonalAlbumDialog } from '@/components/personal/PersonalAlbumDialog'
+import { PersonalAttachDialog } from '@/components/personal/PersonalAttachDialog'
 import { PersonalDeleteDialog } from '@/components/personal/PersonalDeleteDialog'
 import { PersonalLockActions, PersonalLockedScreen } from '@/components/personal/PersonalLock'
 import { PersonalMediaGrid } from '@/components/personal/PersonalMediaGrid'
@@ -52,6 +53,7 @@ export function PersonalAlbumPage() {
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [reordering, setReordering] = useState(false)
+  const [attaching, setAttaching] = useState(false)
 
   const albumQ = useQuery({
     queryKey: [PERSONAL_KEY, 'album', albumId],
@@ -123,7 +125,15 @@ export function PersonalAlbumPage() {
               <Trash2 className="size-4" />
               {t('confirm.delete')}
             </Button>
-            <PersonalUploadButton onClick={() => uploader.current?.open()} />
+            {/* გარე ალბომი მთლიანად ებმება პიროვნებას — ალბომი მის ალბომებში ჩნდება */}
+            {!album.person && (
+              <Button variant="outline" onClick={() => setAttaching(true)}>
+                <UserRoundPlus className="size-4" />
+                {t('personal.attach.open')}
+              </Button>
+            )}
+            {/* ჩანართის საკუთარი ღილაკი: „ატვირთვა" · „ფოტოს ატვირთვა" · „ვიდეოს ატვირთვა" */}
+            <PersonalUploadButton only={kind} onClick={() => uploader.current?.open()} />
           </>
         }
       />
@@ -150,7 +160,7 @@ export function PersonalAlbumPage() {
       )}
 
       {/* გაყოფა და ბადე — მთლიანად გადათრევის სამიზნე (ფაილი ამ ალბომში ჩავარდება) */}
-      <PersonalUploader ref={uploader} albumId={album.id} personId={album.person_id}>
+      <PersonalUploader ref={uploader} albumId={album.id} personId={album.person_id} only={kind}>
       <div className="mb-4" data-testid="album-kinds">
         <CutTabs
           layout="inline"
@@ -187,6 +197,7 @@ export function PersonalAlbumPage() {
 
       {reordering && <PersonalReorderDialog filters={{ album_id: album.id }} onClose={() => setReordering(false)} />}
 
+      {attaching && <PersonalAttachDialog album={album} onClose={() => setAttaching(false)} />}
       {editing && <PersonalAlbumDialog album={album} onClose={() => setEditing(false)} />}
       {deleting && (
         <PersonalDeleteDialog target={{ kind: 'album', album }} onClose={() => setDeleting(false)} onDeleted={() => navigate(backTo)} />

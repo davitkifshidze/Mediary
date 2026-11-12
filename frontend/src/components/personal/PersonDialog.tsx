@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createPerson, updatePerson, type Person } from '@/api/personal'
+import { createPerson, updatePerson, uploadPersonalMedia, type Person } from '@/api/personal'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { errorMessage } from '@/lib/errors'
 import { useModuleFields } from '@/lib/fields'
 import { invalidatePersonal } from '@/lib/personal'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
+import { EMPTY_COVER, PersonalCoverField, PersonalCoverLabel, type CoverDraft } from '@/components/personal/PersonalCoverField'
 import { DatePicker } from '@/components/ui/date-picker'
 import { useToast } from '@/components/ui/feedback'
 import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
@@ -24,8 +25,9 @@ import { Textarea } from '@/components/ui/textarea'
    ⚠️ **დამატებითი ველები ახალ ადამიანზეც** (მონახაზით): ჯერ ადამიანი
    იქმნება, მერე ველები მიება (`useRecordExtras`).
 
-   ⚠️ **ფოტო აქ არ ტვირთება** — მთავარი ფოტო მისი ერთ-ერთი ფოტოა („მთავარად
-   დაყენება" ბადეში); ცალკე ატვირთვის ველი ორ სხვადასხვა „პორტრეტს" გააჩენდა.
+   ⚠️ **მთავარი ფოტო აქვე იტვირთება, იცვლება და იხსნება** (`PersonalCoverField`).
+   ატვირთული ფაილი პიროვნების ჩვეულებრივი ფოტოა და მთავრად ინიშნება — ცალკე
+   „პორტრეტის" საცავი არ არსებობს, ე.ი. ბადის „მთავარად დაყენება" იმავეს ცვლის.
    ============================================================ */
 
 const FORM_ID = 'person-form'
@@ -49,6 +51,7 @@ export function PersonDialog({
   const [name, setName] = useState(person?.name ?? '')
   const [birthday, setBirthday] = useState<string | null>(person?.birthday ?? null)
   const [note, setNote] = useState(person?.note ?? '')
+  const [cover, setCover] = useState<CoverDraft>(EMPTY_COVER)
 
   const save = useMutation({
     mutationFn: async () => {
@@ -58,7 +61,17 @@ export function PersonDialog({
         note: fields.shows('note') ? note.trim() || null : undefined,
       }
       const target = extras.current
-      const saved = target ? await updatePerson(target.id, input) : await createPerson(input)
+      let saved = target ? await updatePerson(target.id, input) : await createPerson(input)
+
+      /* მთავარი ფოტო: ახალი ფაილი ჯერ პიროვნების ფოტოებში აიტვირთება და მერე მთავრად
+         ინიშნება; „წაშლა" მხოლოდ მთავრობას ხსნის — ფოტო რჩება */
+      if (cover.file) {
+        const media = await uploadPersonalMedia(cover.file, { person_id: saved.id })
+        saved = await updatePerson(saved.id, { cover_media_id: media.id })
+      } else if (cover.cleared && saved.cover_media_id) {
+        saved = await updatePerson(saved.id, { cover_media_id: null })
+      }
+
       const extra = await extras.afterSave(saved)
 
       return { saved, extra }
@@ -89,7 +102,11 @@ export function PersonDialog({
           if (!missing) save.mutate()
         }}
       >
-        <FormSection>
+        <FormSection
+          mediaVariant="poster"
+          mediaLabel={<PersonalCoverLabel />}
+          media={<PersonalCoverField current={person?.cover} draft={cover} onChange={setCover} variant="poster" />}
+        >
           <FormField {...fields.field('name')} htmlFor="person-name" required>
             <Input
               id="person-name"

@@ -63,16 +63,22 @@ function kindOf(file: File): 'personal_video' | 'personal_photo' {
   return file.type.startsWith('video/') ? 'personal_video' : 'personal_photo'
 }
 
+/** ჩანართის ატვირთვა ერთ სახეობაზე: `photo` — მხოლოდ ფოტო, `video` — მხოლოდ ვიდეო */
+export type UploadOnly = 'photo' | 'video'
+
 export function PersonalUploader({
   ref,
   personId,
   albumId,
+  only,
   className,
   children,
 }: {
   ref?: Ref<PersonalUploaderHandle>
   personId?: number | null
   albumId?: number | null
+  /** ფოტოების / ვიდეოების ჩანართი მხოლოდ თავის სახეობას იღებს (ამრჩევიც მას აჩვენებს) */
+  only?: UploadOnly
   className?: string
   /** გადათრევის სამიზნე — ბადე/ჩანართები; რიგის პანელი მის თავზე დგება */
   children?: ReactNode
@@ -97,7 +103,9 @@ export function PersonalUploader({
     (files: File[]) => {
       const fresh = files.map((file): QueueItem => {
         const kind = kindOf(file)
-        const problem = uploadProblem(file, kind, kind === 'personal_video' ? videoLimit : photoLimit)
+        // ფოტოების ჩანართზე ჩაგდებული ვიდეო (ან პირიქით) — არასწორი სახეობაა, არა ჩუმი ატვირთვა
+        const stray = only !== undefined && kind !== (only === 'video' ? 'personal_video' : 'personal_photo')
+        const problem = stray ? 'wrong_type' : uploadProblem(file, kind, kind === 'personal_video' ? videoLimit : photoLimit)
         const limit = kind === 'personal_video' ? videoLimit : photoLimit
 
         return {
@@ -116,7 +124,7 @@ export function PersonalUploader({
 
       setQueue((cur) => [...cur, ...fresh])
     },
-    [photoLimit, videoLimit, t],
+    [photoLimit, videoLimit, only, t],
   )
 
   /* ⚠️ **ერთდროულად ერთი** — შემდეგი მხოლოდ წინას დასრულების შემდეგ; რიგი
@@ -160,7 +168,7 @@ export function PersonalUploader({
      ამრჩევს; ამრჩევს მხოლოდ ღილაკი ხსნის (`open`) */
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
-    accept: { 'image/*': [], 'video/*': [] },
+    accept: only === 'photo' ? { 'image/*': [] } : only === 'video' ? { 'video/*': [] } : { 'image/*': [], 'video/*': [] },
     multiple: true,
     noClick: true,
     noKeyboard: true,
@@ -280,7 +288,7 @@ export function PersonalUploader({
  * ფანჯარა), ფორმატები და ზღვრები მის `i`-შია. რას აკეთებს დაჭერა,
  * გამომძახებელი წყვეტს: გვერდზე ფაილის ამრჩევს ხსნის, `/personal`-ზე — ფანჯარას.
  */
-export function PersonalUploadButton({ onClick, size }: { onClick: () => void; size?: 'sm' }) {
+export function PersonalUploadButton({ onClick, size, only }: { onClick: () => void; size?: 'sm'; only?: UploadOnly }) {
   const { t } = useTranslation()
   const limitsQ = useUploadLimits()
   const photoLimit = limitFor(limitsQ.data, 'personal_photo')
@@ -290,15 +298,16 @@ export function PersonalUploadButton({ onClick, size }: { onClick: () => void; s
   return (
     <span className="inline-flex items-center gap-1.5">
       <Button type="button" size={size} onClick={onClick}>
-        <Upload className="size-4" />
-        {t('actions.upload')}
+        {only === 'photo' ? <ImageIcon className="size-4" /> : only === 'video' ? <Film className="size-4" /> : <Upload className="size-4" />}
+        {/* ჩანართის საკუთარი ღილაკი: „ფოტოს ატვირთვა" · „ვიდეოს ატვირთვა" · „ატვირთვა" */}
+        {t(only === 'photo' ? 'personal.upload.photo' : only === 'video' ? 'personal.upload.video' : 'actions.upload')}
       </Button>
       <InfoHint
         tone={videoLimit?.capped_by_server ? 'warn' : undefined}
         info={
           <>
-            <span className="block">{t('personal.upload.photoLimit', { limit: limitHint(photoLimit, more) })}</span>
-            <span className="block">{t('personal.upload.videoLimit', { limit: limitHint(videoLimit, more) })}</span>
+            {only !== 'video' && <span className="block">{t('personal.upload.photoLimit', { limit: limitHint(photoLimit, more) })}</span>}
+            {only !== 'photo' && <span className="block">{t('personal.upload.videoLimit', { limit: limitHint(videoLimit, more) })}</span>}
             {videoLimit?.capped_by_server && <span className="mt-1 block">{t('personal.upload.cappedHint')}</span>}
           </>
         }

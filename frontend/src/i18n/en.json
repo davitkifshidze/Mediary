@@ -4579,7 +4579,9 @@
       "remove": "Remove",
       "photoLimit": "Photos: {{limit}}",
       "videoLimit": "Videos: {{limit}}",
-      "dragHint": "or drag files here"
+      "dragHint": "or drag files here",
+      "photo": "Upload photos",
+      "video": "Upload videos"
     },
     "reorder": {
       "open": "Change order",
@@ -4591,7 +4593,19 @@
       "hintAlbum": "A locked album's photos and videos no longer leave the server — the grid shows only the name and count, with a padlock. A locked album can't be public. Unlocking lasts for this session — signing out locks it again.",
       "notPublic": "A locked album can't be public — remove the lock first."
     },
-    "cutsLabel": "Personal gallery sections"
+    "cutsLabel": "Personal gallery sections",
+    "cover": {
+      "label": "Main photo",
+      "hint": "The uploaded photo also joins the photos; with no choice the newest photo is the main one"
+    },
+    "attach": {
+      "open": "Attach to a person",
+      "title": "Attach “{{name}}” to a person",
+      "hint": "The whole album is attached to the person: it shows among their albums and its photos and videos become theirs. To attach single photos, tick them in the grid and choose “Move”.",
+      "pick": "Choose a person",
+      "confirm": "Attach",
+      "done": "Album attached to {{name}}"
+    }
   },
   "courseCategories": {
     "title": "Course categories",

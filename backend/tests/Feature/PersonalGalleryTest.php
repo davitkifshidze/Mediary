@@ -320,6 +320,69 @@ class PersonalGalleryTest extends TestCase
         $this->assertSame($dad->id, $photo->fresh()->person_id);
     }
 
+    /**
+     * **გარე ალბომის მიბმა პიროვნებაზე — მთლიანად**: ალბომი პიროვნების ალბომებში
+     * ჩნდება და მისი ფოტოცა და ვიდეოც ამ პიროვნების ხდება (ალბომში მყოფი შიგთავსი
+     * პიროვნებას მიჰყვება); ალბომის გარეთ დარჩენილს მიბმა არ ეხება.
+     */
+    public function test_attaching_an_outside_album_to_a_person_takes_its_photos_and_videos(): void
+    {
+        $person = $this->person('დედა');
+        $album = $this->album('მოგზაურობა');
+        $photo = $this->media(['album_id' => $album->id]);
+        $video = $this->media(['album_id' => $album->id, 'kind' => 'video', 'thumb_path' => null, 'thumb_size' => 0]);
+        $loose = $this->media();
+
+        $this->getJson('/api/personal/albums?outside=1')->assertOk()->assertJsonCount(1, 'data');
+
+        $this->patchJson("/api/personal/albums/{$album->id}", ['person_id' => $person->id])
+            ->assertOk()
+            ->assertJsonPath('data.person.name', 'დედა');
+
+        $this->assertSame([$person->id, $person->id, null], [$photo->fresh()->person_id, $video->fresh()->person_id, $loose->fresh()->person_id]);
+        $this->getJson('/api/personal/albums?outside=1')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson("/api/personal/albums?person_id={$person->id}")->assertOk()
+            ->assertJsonPath('data.0.name', 'მოგზაურობა')
+            ->assertJsonPath('data.0.photos', 1)
+            ->assertJsonPath('data.0.videos', 1);
+
+        $row = collect($this->getJson('/api/personal/people')->assertOk()->json('data'))->firstWhere('id', $person->id);
+        $this->assertSame([1, 1, 1], [$row['photos'], $row['videos'], $row['albums']]);
+    }
+
+    /**
+     * **მთავარი ფოტოს ცალკე ატვირთვა**: ატვირთული ფაილი პიროვნების ჩვეულებრივი ფოტოა
+     * და მთავრად ინიშნება; „წაშლა" მხოლოდ არჩევანს ხსნის — ფოტო რჩება და მთავარი
+     * ისევ უახლესია.
+     */
+    public function test_a_main_photo_is_an_ordinary_photo_that_can_be_unset(): void
+    {
+        $person = $this->person();
+        $newest = $this->media(['person_id' => $person->id, 'taken_at' => now()]);
+
+        $uploaded = PersonalMedia::findOrFail($this->upload(['person_id' => $person->id, 'taken_at' => now()->subYears(3)->toIso8601String()])->assertCreated()->json('data.id'));
+        $this->assertSame($person->id, $uploaded->person_id);
+
+        $this->patchJson("/api/personal/people/{$person->id}", ['cover_media_id' => $uploaded->id])
+            ->assertOk()
+            ->assertJsonPath('data.cover', $uploaded->thumbUrl())
+            ->assertJsonPath('data.photos', 2);
+
+        $this->patchJson("/api/personal/people/{$person->id}", ['cover_media_id' => null])
+            ->assertOk()
+            ->assertJsonPath('data.cover_media_id', null)
+            ->assertJsonPath('data.cover', $newest->thumbUrl())
+            ->assertJsonPath('data.photos', 2);
+        $this->assertNotNull(PersonalMedia::find($uploaded->id));
+
+        // ალბომზეც იგივე
+        $album = $this->album('ზღვა', $person->id);
+        $inAlbum = PersonalMedia::findOrFail($this->upload(['album_id' => $album->id])->assertCreated()->json('data.id'));
+        $this->patchJson("/api/personal/albums/{$album->id}", ['cover_media_id' => $inAlbum->id])
+            ->assertOk()
+            ->assertJsonPath('data.cover', $inAlbum->thumbUrl());
+    }
+
     /* ---------- სიები, მთვლელები, მთავარი ფოტო ---------- */
 
     public function test_people_and_albums_carry_counts_and_a_main_photo(): void

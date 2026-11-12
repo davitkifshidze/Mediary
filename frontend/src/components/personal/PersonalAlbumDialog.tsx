@@ -8,11 +8,13 @@ import {
   isHidden,
   PERSONAL_KEY,
   updatePersonalAlbum,
+  uploadPersonalMedia,
   type PersonalAlbum,
 } from '@/api/personal'
 import { errorMessage } from '@/lib/errors'
 import { invalidatePersonal } from '@/lib/personal'
 import { useToast } from '@/components/ui/feedback'
+import { EMPTY_COVER, PersonalCoverField, PersonalCoverLabel, type CoverDraft } from '@/components/personal/PersonalCoverField'
 import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
@@ -61,9 +63,10 @@ export function PersonalAlbumDialog({
   const [description, setDescription] = useState(album?.description ?? '')
   const [owner, setOwner] = useState<string>(String(album ? (album.person_id ?? NO_PERSON) : (personId ?? NO_PERSON)))
   const [isPublic, setIsPublic] = useState(album?.visibility === 'public')
+  const [cover, setCover] = useState<CoverDraft>(EMPTY_COVER)
 
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const input = {
         name: name.trim(),
         description: description.trim() || null,
@@ -71,7 +74,18 @@ export function PersonalAlbumDialog({
         visibility: isPublic ? ('public' as const) : ('private' as const),
       }
 
-      return album ? updatePersonalAlbum(album.id, input) : createPersonalAlbum(input)
+      let saved = album ? await updatePersonalAlbum(album.id, input) : await createPersonalAlbum(input)
+
+      /* მთავარი ფოტო: ახალი ფაილი ალბომში აიტვირთება და მთავრად ინიშნება;
+         „წაშლა" მხოლოდ მთავრობას ხსნის — ფოტო ალბომში რჩება */
+      if (cover.file) {
+        const media = await uploadPersonalMedia(cover.file, { album_id: saved.id, person_id: saved.person_id })
+        saved = await updatePersonalAlbum(saved.id, { cover_media_id: media.id })
+      } else if (cover.cleared && saved.cover_media_id) {
+        saved = await updatePersonalAlbum(saved.id, { cover_media_id: null })
+      }
+
+      return saved
     },
     onSuccess: (saved) => {
       invalidatePersonal(qc)
@@ -91,7 +105,11 @@ export function PersonalAlbumDialog({
           if (name.trim()) save.mutate()
         }}
       >
-        <FormSection>
+        <FormSection
+          mediaVariant="wide"
+          mediaLabel={<PersonalCoverLabel />}
+          media={<PersonalCoverField current={album?.cover} draft={cover} onChange={setCover} variant="wide" />}
+        >
           <FormField label={t('personal.album.name')} htmlFor="personal-album-name" required>
             <Input
               id="personal-album-name"

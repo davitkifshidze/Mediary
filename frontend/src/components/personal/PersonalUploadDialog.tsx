@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { FormField, FormSection } from '@/components/ui/form-layout'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { SelectItem } from '@/components/ui/select'
-import { PersonalUploadButton, PersonalUploader, type PersonalUploaderHandle } from '@/components/personal/PersonalUploader'
+import { PersonalUploadButton, PersonalUploader, type PersonalUploaderHandle, type UploadOnly } from '@/components/personal/PersonalUploader'
 import { X } from 'lucide-react'
 
 /* ============================================================
@@ -27,10 +27,13 @@ export function PersonalUploadDialog({
   onClose,
   personId,
   albumId,
+  only,
 }: {
   onClose: () => void
   personId?: number | null
   albumId?: number | null
+  /** ფოტოების / ვიდეოების ჩანართიდან — მხოლოდ ეს სახეობა */
+  only?: UploadOnly
 }) {
   const { t } = useTranslation()
   const uploader = useRef<PersonalUploaderHandle>(null)
@@ -41,7 +44,12 @@ export function PersonalUploadDialog({
   const [album, setAlbum] = useState(albumId ? String(albumId) : NONE)
 
   return (
-    <ModalShell title={t('personal.upload.title')} onClose={onClose} size="wide" hint={t('personal.upload.hint')}>
+    <ModalShell
+      title={t(only === 'photo' ? 'personal.upload.photo' : only === 'video' ? 'personal.upload.video' : 'personal.upload.title')}
+      onClose={onClose}
+      size="wide"
+      hint={t('personal.upload.hint')}
+    >
       <FormSection>
         <FormField label={t('personal.move.person')} size="half">
           <SelectWithAdd
@@ -81,9 +89,10 @@ export function PersonalUploadDialog({
         className="mt-4"
         personId={person === NONE ? null : Number(person)}
         albumId={album === NONE ? null : Number(album)}
+        only={only}
       >
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card/40 p-4">
-          <PersonalUploadButton onClick={() => uploader.current?.open()} />
+          <PersonalUploadButton onClick={() => uploader.current?.open()} only={only} />
           <span className="text-sm text-muted-foreground">{t('personal.upload.dragHint')}</span>
         </div>
       </PersonalUploader>

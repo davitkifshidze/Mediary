@@ -482,6 +482,27 @@ describe('PersonalPersonPage', () => {
     expect(container!.querySelector('[data-testid="personal-drop-target"]')).not.toBeNull()
   })
 
+  it('gives every tab its own button: upload, photo upload, video upload, new album', async () => {
+    const action = () => container!.querySelector('[data-testid="person-tab-action"]')!.textContent
+    const tab = (key: string) => pressed('[data-testid="person-tabs"]').find((b) => b.textContent?.startsWith(i18n.t(`personal.tabs.${key}`)))!
+
+    await mount()
+    expect(action()).toContain(i18n.t('actions.upload'))
+
+    await act(async () => tab('photos').click())
+    expect(action()).toContain(i18n.t('personal.upload.photo'))
+    // ფოტოების ჩანართი მხოლოდ ფოტოს იღებს — ამრჩევიც მხოლოდ სურათებს აჩვენებს
+    expect(container!.querySelector<HTMLInputElement>('[data-testid="personal-upload-input"]')?.accept).toBe('image/*')
+
+    await act(async () => tab('videos').click())
+    expect(action()).toContain(i18n.t('personal.upload.video'))
+    expect(container!.querySelector<HTMLInputElement>('[data-testid="personal-upload-input"]')?.accept).toBe('video/*')
+
+    await act(async () => tab('albums').click())
+    expect(action()).toContain(i18n.t('personal.album.add'))
+    expect(action()).not.toContain(i18n.t('actions.upload'))
+  })
+
   it('groups the person by album through the server, with the kind of the tab', async () => {
     await mount('/personal/people/1?tab=photos&group=album', () =>
       mocks.fetchPersonalGroups.mockResolvedValue([
