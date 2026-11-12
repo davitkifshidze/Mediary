@@ -12,6 +12,7 @@ import {
   Languages,
   Library,
   ListChecks,
+  Lock,
   MessageSquare,
   Puzzle,
   Share2,
@@ -69,6 +70,7 @@ export type ToolSectionKey =
   | 'stats'
   | 'goals'
   | 'trash'
+  | 'locks'
   | 'purge'
   | 'notifications'
 
@@ -105,6 +107,8 @@ export const TOOL_SECTIONS: Record<ToolSectionKey, ToolSection> = {
      ზუსტად ის შეცდომაა, რომელიც CLAUDE.md-ს იკონების წესში წერია.
      `ArchiveRestore` იმასაც ამბობს, რასაც გვერდი აკეთებს — დაბრუნებას. */
   trash: { color: 'var(--tool-trash)', icon: ArchiveRestore },
+  /* „ჩაკეტილები": ყველა ჩანაწერი, რომელზეც ჩემი პაროლი დევს — მოდულებად */
+  locks: { color: 'var(--tool-locks)', icon: Lock },
   purge: { color: 'var(--tool-purge)', icon: Trash2 },
   /* შეტყობინებების სრული სია — ზარის „ყველას ნახვა"; საიდბარში რიგი არ აქვს */
   notifications: { color: 'var(--tool-notifications)', icon: Bell },

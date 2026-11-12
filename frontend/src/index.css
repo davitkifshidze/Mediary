@@ -148,6 +148,7 @@
      კალათა კი ზუსტად საპირისპიროა — დროებითია და უკან დაბრუნებადი; ერთი
      ფერი ორივეზე სწორედ იმ განსხვავებას წაშლიდა, რომლისთვისაც ის არსებობს. */
   --tool-trash: #6b6f76;
+  --tool-locks: #8a5a9e;
   --tool-purge: #a52714;
   /* შეტყობინებების გვერდი — ზარის თბილი ფერი */
   --tool-notifications: #b9770e;
@@ -287,6 +288,7 @@
   --tool-stats: #b6c46a;
   --tool-goals: #e6a15c;
   --tool-trash: #a2a8b2;
+  --tool-locks: #c79bd8;
   --tool-purge: #e5674f;
   --tool-notifications: #e8b04b;
 

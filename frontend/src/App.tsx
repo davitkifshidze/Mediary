@@ -47,6 +47,7 @@ const FranchisesPage = lazy(() => import('@/pages/FranchisesPage').then((m) => (
 const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default: m.StatsPage })))
 const GoalsPage = lazy(() => import('@/pages/GoalsPage').then((m) => ({ default: m.GoalsPage })))
 const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })))
+const LocksPage = lazy(() => import('@/pages/LocksPage').then((m) => ({ default: m.LocksPage })))
 const SyncPage = lazy(() => import('@/pages/SyncPage').then((m) => ({ default: m.SyncPage })))
 const SyncResultsPage = lazy(() => import('@/pages/SyncResultsPage').then((m) => ({ default: m.SyncResultsPage })))
 const TranslationsPage = lazy(() => import('@/pages/TranslationsPage').then((m) => ({ default: m.TranslationsPage })))
@@ -357,6 +358,8 @@ function AppShell() {
           <Route path="stats" element={<StatsPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="trash" element={<TrashPage />} />
+          {/* ყველა ჩაკეტილი ჩანაწერი ერთ სიაში — ლოკები ყველა მოდულისაა, ამიტომ პირობის გარეშე */}
+          <Route path="locks" element={<LocksPage />} />
           <Route path="search" element={<SearchPage />} />
           {/* შეტყობინებების სრული სია — ზარის „ყველას ნახვა" */}
           <Route path="notifications" element={<NotificationsPage />} />

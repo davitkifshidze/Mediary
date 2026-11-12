@@ -5635,5 +5635,36 @@
       "sync_paused": "sync is paused on this record",
       "record_not_found": "the record was deleted before the run"
     }
+  },
+  "locks": {
+    "title": "Locked",
+    "hint": "Every record that carries your password — by module. You see the name, the hint, whether it is open in this session and when it was locked. “Remove password” works on everything selected at once and always asks for your account password — even for records opened in this session. “Lock everything again” does not touch the passwords: it only closes what this session has opened. Records in the trash are not shown here.",
+    "none": "You have no locked records",
+    "noneHint": "A password is set from a record's page or from its card menu.",
+    "pickAll": "Select all",
+    "pickModule": "All of this module",
+    "relockAll": "Lock everything again",
+    "relocked": "Everything opened in this session is locked again",
+    "remove": "Remove password",
+    "removeTitle": "Remove password",
+    "removeHint": "Once the password is removed the record shows everywhere again — in lists, search and statistics. A gallery album's photos move from protected storage back to the regular one.",
+    "removeConfirm": "The password will be removed from {{count}} records. Enter your account password to confirm.",
+    "accountPassword": "Account password",
+    "removed": "Password removed — {{count}} records",
+    "open": "Open in this session",
+    "closed": "Closed",
+    "hintLine": "Hint: {{hint}}",
+    "lockedAt": "Locked {{date}}",
+    "unnamed": "Unnamed",
+    "cast": "Actors",
+    "type": {
+      "movie": "Movie",
+      "series": "Series",
+      "anime": "Anime",
+      "cast_member": "Actor",
+      "gallery_album": "Album",
+      "personal": "Person",
+      "personal_album": "Album"
+    }
   }
 }

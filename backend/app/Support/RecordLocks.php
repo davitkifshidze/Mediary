@@ -357,6 +357,12 @@ final class RecordLocks
         $session->put(self::SESSION_KEY, $all);
     }
 
+    /** **ყველა** ტიპის გახსნილი ისევ იკეტება („ჩაკეტილების" გვერდის „ყველას ისევ ჩაკეტვა"); პაროლები ადგილზეა */
+    public static function lockEverything(): void
+    {
+        self::session()?->forget(self::SESSION_KEY);
+    }
+
     private static function remember(Model $record, bool $open): void
     {
         $session = self::session();

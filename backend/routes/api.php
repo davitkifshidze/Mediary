@@ -69,6 +69,7 @@ use App\Http\Controllers\Api\GenreItemController;
 use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\ImportController;
 use App\Http\Controllers\Api\LinkResolverController;
+use App\Http\Controllers\Api\LockController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MediaLockController;
@@ -365,6 +366,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/sync/runs/{run}', [SyncRunController::class, 'show']);
     Route::get('/sync/runs/{run}/items', [SyncRunController::class, 'items']);
     Route::post('/sync/runs/{run}/pause', [SyncRunController::class, 'pause']);
+
+    /* ---------- ჩაკეტილები ----------
+       ყველა ჩემი ლოკი ერთ სიაში (ფილმი · სერიალი · ანიმე · მსახიობი · ალბომები ·
+       პიროვნება), პაროლის ერთად მოხსნა და „ისევ ჩაკეტვა" ყველაზე. ⚠️ მოდულის ჯგუფის
+       გარეთ — ლოკები ყველა მოდულისაა; უფლებას კონტროლერი თითო მოდულზე ამოწმებს.
+       ⚠️ მოხსნა ანგარიშის პაროლს ამოწმებს, ამიტომ წუთში 10 ცდაზე მეტი არ გადის. */
+    Route::get('/locks', [LockController::class, 'index']);
+    Route::post('/locks/remove', [LockController::class, 'remove'])->middleware('throttle:10,1');
+    Route::post('/locks/relock', [LockController::class, 'relock']);
 
     /* ---------- ჯვარედინი ძებნა ----------
        ⚠️ **მოდულის ჯგუფის გარეთ**: კითხვა ყველა ჩართულ მოდულს ეხება და არა

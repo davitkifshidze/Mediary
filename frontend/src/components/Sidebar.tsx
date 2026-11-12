@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   Library,
   ListChecks,
+  Lock,
   MessageSquare,
   ListMusic,
   Plus,
@@ -954,6 +955,11 @@ export function Sidebar({
         <Link to="/trash" onClick={() => setDrawerOpen(false)} style={toolAccent('trash')} className={toolLink('/trash')}>
           <ArchiveRestore className="size-4 shrink-0" />
           {t('trash.title')}
+        </Link>
+        {/* „ჩაკეტილები" — ყველა მოდულის ლოკი ერთ სიაში; კალათის წესით პირობის გარეშე ჩანს */}
+        <Link to="/locks" onClick={() => setDrawerOpen(false)} style={toolAccent('locks')} className={toolLink('/locks')}>
+          <Lock className="size-4 shrink-0" />
+          {t('locks.title')}
         </Link>
         {/* „მონაცემები": ჩემი გასაღებები და ლიმიტები.
             ⚠️ **პირობის გარეშე ჩანს**: TMDB-ს მედია-მოდულები იყენებენ,
