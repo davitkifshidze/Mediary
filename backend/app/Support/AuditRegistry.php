@@ -83,6 +83,8 @@ use App\Models\ShareLink;
 use App\Models\Song;
 use App\Models\SongGenre;
 use App\Models\Status;
+use App\Models\SyncRun;
+use App\Models\SyncRunItem;
 use App\Models\TranslationUsage;
 use App\Models\TrashedFile;
 use App\Models\TrashedMessage;
@@ -285,6 +287,8 @@ class AuditRegistry
         SerpSearch::class => 'გარე ძებნის მრიცხველი — თითო რიგი თითო გამოძახებაა',
         BatchItem::class => 'პარტიის მიწოდების ჟურნალი — worker წერს, და 300-ერთეულიანი გაშვება ლოგს დამარხავდა',
         TranslationUsage::class => 'Gemini-ს ხარჯის მრიცხველი — იგივე მიზეზი',
+        SyncRun::class => 'სინქრონიზაციის ისტორია — გაშვების რიგს მანქანა წერს, ადამიანი მხოლოდ კითხულობს',
+        SyncRunItem::class => 'სინქრონიზაციის ისტორიის ერთეული — იგივე მიზეზი; 300-ერთეულიანი გაშვება ლოგს დამარხავდა',
 
         // ერთი დაწკაპუნება — ლოგს დამარხავდნენ
         MessageReaction::class => 'ერთი დაწკაპუნება ბუშტზე',

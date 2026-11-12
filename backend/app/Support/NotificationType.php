@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\ApprovalRequest;
+use App\Services\Sync\SyncHistory;
 
 /**
  * **შეტყობინების სახეები — ერთი რეესტრი.**
@@ -99,6 +100,15 @@ final class NotificationType
                 ApprovalRequest::TYPE_GENRE_DELETE => '/genres',
                 default => '/modules',
             };
+        }
+
+        /* ფონური პარტია: სინქრონიზაციის სახეობებს (მონაცემები · სეზონები · მსახიობები ·
+           თარგმანი) ისტორია აქვს — შეტყობინება ამ გაშვების შედეგებს ხსნის. გალერეის
+           პარტიას ისტორია არ აქვს და არც მისამართი. */
+        if ($type === self::BATCH_DONE) {
+            return isset($data['run']) && is_string($data['run']) && in_array($data['kind'] ?? null, SyncHistory::KINDS, true)
+                ? '/sync/results/'.$data['run']
+                : null;
         }
 
         return match ($type) {

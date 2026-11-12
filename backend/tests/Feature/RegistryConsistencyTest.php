@@ -786,6 +786,7 @@ class RegistryConsistencyTest extends TestCase
         'serp_searches' => 'ძებნის მრიცხველი',
         'translation_usages' => 'თარგმანის მრიცხველი',
         'batch_items' => 'რიგის ტექნიკური ჩანაწერი',
+        'sync_runs' => 'სინქრონიზაციის ისტორია — მანქანის ჟურნალი, 90 დღეში თვითონ იშლება',
         // თემები წაიშალა; ცხრილი მხოლოდ MySQL-ზე ჩამოიშალა, sqlite-ზე მკვდარი რჩება
         'gallery_themes' => 'მკვდარი ცხრილი (sqlite) — ფუნქცია წაიშალა',
     ];

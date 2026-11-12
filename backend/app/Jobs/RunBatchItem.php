@@ -15,6 +15,7 @@ use App\Services\Credentials\CredentialStore;
 use App\Services\Episodes\EpisodeSync;
 use App\Services\Gallery\GalleryFetcher;
 use App\Services\Sync\ItemSyncer;
+use App\Services\Sync\SyncHistory;
 use App\Services\Translation\ItemTranslator;
 use App\Support\MediaDomain;
 use App\Support\Redact;
@@ -82,6 +83,14 @@ class RunBatchItem implements ShouldQueue
 
     /** ერთ ერთეულს წუთებიც შეიძლება დასჭირდეს (გალერეა ათეულ ფოტოს წერს) */
     public int $timeout = 600;
+
+    /**
+     * ერთეულის შედეგი სინქრონიზაციის ისტორიისთვის: შედეგი, შეცვლილი ველები, მიზეზი
+     * (`SyncHistory`). `run()` / `runCast()` ყოველ გასასვლელზე ავსებს.
+     *
+     * @var array{0: string, 1: list<string>, 2: ?string}
+     */
+    private array $outcome = [SyncHistory::UPDATED, [], null];
 
     public function __construct(
         public readonly int $userId,
@@ -152,8 +161,12 @@ class RunBatchItem implements ShouldQueue
                 $item?->update(['status' => BatchItem::OK]);
             }
 
+            $this->remember($item);
             $this->pause();
         } catch (Throwable $e) {
+            $this->outcome = [SyncHistory::FAILED, [], mb_substr(Redact::secrets($e->getMessage()), 0, 500)];
+            $this->remember($item);
+
             /* ⚠️ **`saveQuietly`-ს აქ აზრი არ აქვს, `update` სჭირდება**: ეს
                რიგი `AuditRegistry`-ში არაა (ის მიწოდების ჟურნალია და არა
                მომხმარებლის ქმედება — `NOT_LOGGED`-ის იგივე წესი). */
@@ -185,6 +198,37 @@ class RunBatchItem implements ShouldQueue
                ხელახლა გაშვება მომხმარებლის გადაწყვეტილებაა. */
             throw $e;
         }
+    }
+
+    /**
+     * ერთეულის შედეგი სინქრონიზაციის ისტორიაში — გაშვების გასაღები პარტიის id-ია.
+     *
+     * ⚠️ გალერეის პარტია ისტორიაში არ იწერება (სინქრონიზაციის სახეობა არ არის), პარტიის
+     * გარეშე გაშვებულ job-ს კი გასაღები არ აქვს.
+     */
+    private function remember(?BatchItem $item): void
+    {
+        $batch = $this->batch();
+
+        if (! $batch || ! in_array($this->kind, SyncHistory::KINDS, true)) {
+            return;
+        }
+
+        [$result, $changes, $reason] = $this->outcome;
+
+        app(SyncHistory::class)->record(
+            $this->userId,
+            $batch->id,
+            $this->kind,
+            SyncHistory::SOURCE_BATCH,
+            $batch->totalJobs,
+            $this->type,
+            $this->recordId,
+            $item?->title,
+            $result,
+            $changes,
+            $reason,
+        );
     }
 
     /**
@@ -236,6 +280,7 @@ class RunBatchItem implements ShouldQueue
                მომხმარებელს ხელახლა გაშვებას ურჩევდა იქ, სადაც გასაშვები
                აღარაფერია. */
             $item?->update(['status' => BatchItem::SKIPPED, 'error' => 'record_not_found']);
+            $this->outcome = [SyncHistory::SKIPPED, [], 'record_not_found'];
             /* ⚠️ ესეც კანონიერი გამოტოვებაა (ჩანაწერი გეგმასა და გაშვებას
                შორის წაიშალა, ან სხვისია და `owner` scope-მა დამალა) — და
                ესეც ლოგშია, იმავე მიზეზით. `skipped`/`failed`-ის ცალკე
@@ -252,6 +297,7 @@ class RunBatchItem implements ShouldQueue
            id-ებით გაშვებულ პარტიაში შეიძლება მოხვდეს — გამოტოვებაა მიზეზით, არა ჩავარდნა */
         if ((bool) ($record->sync_paused ?? false)) {
             $item?->update(['title' => $this->titleOf($record), 'status' => BatchItem::SKIPPED, 'error' => 'sync_paused']);
+            $this->outcome = [SyncHistory::SKIPPED, [], 'sync_paused'];
 
             return false;
         }
@@ -287,6 +333,11 @@ class RunBatchItem implements ShouldQueue
            წერს, ლოგავს და პარტიის მრიცხველს ზრდის); `skipped` → `skipped` მიზეზით
            („ვერაფერი შეივსო", `no_tmdb_id`), თორემ ის „განახლებულად" ჩაითვლებოდა. */
         if (is_array($result)) {
+            // ისტორიისთვის: სეზონებს თავისი პასუხის ფორმა აქვს, დანარჩენს — საერთო
+            $this->outcome = $this->kind === self::KIND_EPISODES
+                ? SyncHistory::episodesOutcome($result)
+                : SyncHistory::outcome($result);
+
             if (($result['ok'] ?? true) === false) {
                 throw new RuntimeException((string) ($result['error'] ?? 'failed'));
             }
@@ -325,6 +376,7 @@ class RunBatchItem implements ShouldQueue
 
         if (! $member) {
             $item?->update(['status' => BatchItem::SKIPPED, 'error' => 'record_not_found']);
+            $this->outcome = [SyncHistory::SKIPPED, [], 'record_not_found'];
             SourceLog::failed('batch:'.$this->kind, 'record_not_found', ['id' => $this->recordId]);
 
             return false;
@@ -334,6 +386,7 @@ class RunBatchItem implements ShouldQueue
         // ჩემი „აღარ განაახლო" ამ მსახიობზე — გამოტოვებაა მიზეზით
         if (CastMemberSyncPref::withoutGlobalScope('owner')->where('user_id', $this->userId)->where('cast_member_id', $member->getKey())->exists()) {
             $item?->update(['status' => BatchItem::SKIPPED, 'error' => 'sync_paused']);
+            $this->outcome = [SyncHistory::SKIPPED, [], 'sync_paused'];
 
             return false;
         }
@@ -343,6 +396,8 @@ class RunBatchItem implements ShouldQueue
             $this->options['fields'] ?? CastEnricher::FIELDS,
             (bool) ($this->options['overwrite_photo'] ?? false),
         ));
+
+        $this->outcome = SyncHistory::castOutcome($result, $enricher);
 
         if ($result === CastEnricher::FAILED) {
             throw new RuntimeException($enricher->lastError() ?? 'tmdb_unavailable');

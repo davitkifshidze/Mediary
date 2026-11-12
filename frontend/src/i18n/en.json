@@ -5592,5 +5592,48 @@
     "untitled": "Untitled",
     "fromMovie": "Film",
     "fromSeries": "Series"
+  },
+  "syncResults": {
+    "title": "Sync results",
+    "open": "View results",
+    "allRuns": "All runs",
+    "hint": "The history of every run: when, what kind, on which modules and with what outcome. Inside a run you see each item — what came back, why, and what changed (a list of fields; the actual values are on the record's page). “Don't run again” switches on the same toggle as “Don't update” on the record's page. History is kept for 90 days; locked records are not shown here.",
+    "none": "Nothing has been run yet",
+    "noneHint": "When you run data, seasons, cast or translation, the outcome shows up here.",
+    "noItems": "This run has no such item",
+    "kind": {
+      "sync": "Data",
+      "episodes": "Seasons and episodes",
+      "cast": "Cast",
+      "translate": "Translation"
+    },
+    "source": {
+      "batch": "In the background",
+      "queue": "From the browser queue"
+    },
+    "units": "{{count}} items",
+    "partial": "{{done}} / {{total}} — incomplete",
+    "result": {
+      "updated": "Updated",
+      "unchanged": "Unchanged",
+      "skipped": "Skipped",
+      "failed": "Failed"
+    },
+    "changed": "Changed: {{fields}}",
+    "gone": "the record no longer exists",
+    "paused": "No longer runs",
+    "search": "Search by title…",
+    "pickPage": "Everything on this page",
+    "pausePicked": "Don't run the selected again",
+    "resumePicked": "Run the selected again",
+    "pauseFailed": "Don't run any failed one again",
+    "pausedDone": "Sync paused — {{count}} records",
+    "resumedDone": "Sync switched back on — {{count}} records",
+    "reason": {
+      "empty": "the source returned nothing",
+      "tmdb_empty": "TMDB has no data on this person",
+      "sync_paused": "sync is paused on this record",
+      "record_not_found": "the record was deleted before the run"
+    }
   }
 }

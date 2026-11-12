@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { CircleAlert, CircleCheck, DownloadCloud, Loader2, Play, SkipForward, Square } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { CircleAlert, CircleCheck, DownloadCloud, History, Loader2, Play, SkipForward, Square } from 'lucide-react'
 import { cancelBatch, fetchBatch, startBatch, type BatchItemResult, type BatchStatus } from '@/api/batches'
 import { fetchEpisodePlan, type TvType } from '@/api/episodes'
 import { errorMessage, translateCode } from '@/lib/errors'
@@ -10,7 +11,7 @@ import { useSettings } from '@/lib/settings'
 import { safeGet, safeRemove, safeSet } from '@/lib/storage'
 import { cn } from '@/lib/utils'
 import { SyncDialog } from '@/components/SyncDialog'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/components/ui/feedback'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -54,7 +55,17 @@ export function MediaSyncPage({ type }: { type: MediaType }) {
 
   return (
     <PageContainer>
-      <PageHeader module={type} title={t('mediaSync.section')} hint={<InfoHint info={t(mediaKey('mediaSync.hint', type))} />} />
+      <PageHeader
+        module={type}
+        title={t('mediaSync.section')}
+        hint={<InfoHint info={t(mediaKey('mediaSync.hint', type))} />}
+        actions={
+          <Link to="/sync/results" className={buttonVariants({ variant: 'outline', size: 'sm' })} data-testid="sync-results-link">
+            <History className="size-3.5" />
+            {t('syncResults.open')}
+          </Link>
+        }
+      />
 
       <div className="space-y-4">
         {type !== 'movie' && <EpisodesBlock type={type} />}

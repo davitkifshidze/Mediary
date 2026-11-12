@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\Sync\ItemSyncer;
+use App\Services\Sync\SyncHistory;
 use App\Support\CredentialProviders;
 use App\Support\MediaDomain;
 use App\Support\MissingCredential;
@@ -122,7 +123,7 @@ class MediaSyncController extends Controller
      * per-item შეცდომა 200-ით ბრუნდება (`ok:false` + `error`), რომ ფრონტის ციკლი
      * არ გაწყდეს — მიზეზი ლოგშიც იწერება.
      */
-    public function item(Request $request, string $type, int $id, ItemSyncer $syncer)
+    public function item(Request $request, string $type, int $id, ItemSyncer $syncer, SyncHistory $history)
     {
         if (! MediaDomain::has($type)) {
             return response()->json(['message' => 'invalid_type'], 422);
@@ -156,6 +157,11 @@ class MediaSyncController extends Controller
             Log::warning('sync failed', ['type' => $type, 'id' => $id, 'error' => $result['error']]);
         }
 
+        $title = $item->title_ka ?: ($item->title_en ?: '#'.$item->id);
+
+        // რიგის გაშვება (`run`) ისტორიაში იწერება; ერთეულოვანი ღილაკი გასაღებს არ აგზავნის
+        $history->fromRequest($request, SyncHistory::KIND_SYNC, $type, $id, $title, SyncHistory::outcome($result));
+
         return response()->json([
             'ok' => $result['ok'],
             'skipped' => $result['skipped'],
@@ -163,7 +169,7 @@ class MediaSyncController extends Controller
             // ოთხი შედეგი ცალკე (`SyncOutcome`)
             'result' => $result['result'],
             'error' => $result['error'],
-            'title' => $item->title_ka ?: ($item->title_en ?: '#'.$item->id),
+            'title' => $title,
         ]);
     }
 

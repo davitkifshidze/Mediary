@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Services\Audit\AuditLogger;
+use App\Services\Sync\SyncHistory;
 use App\Services\Tmdb\TmdbClient;
 use App\Services\Translation\ItemTranslator;
 use App\Services\Translation\TranslationScanner;
@@ -98,7 +99,7 @@ class TranslationController extends Controller
      * per-item შეცდომა 200-ით ბრუნდება (`ok:false` + `error`), რომ ფრონტის ციკლი
      * არ გაწყდეს — მიზეზი ლოგშიც იწერება (იგივე წესი, რაც სინქრონზე).
      */
-    public function item(Request $request, string $type, int $id, ItemTranslator $translator, AuditLogger $audit)
+    public function item(Request $request, string $type, int $id, ItemTranslator $translator, AuditLogger $audit, SyncHistory $history)
     {
         if (! in_array($type, TranslationScanner::TYPES, true)) {
             return response()->json(['message' => 'invalid_type'], 422);
@@ -140,6 +141,11 @@ class TranslationController extends Controller
             ]);
         }
 
+        $title = $item->title_ka ?: ($item->title_en ?: '#'.$item->id);
+
+        // რიგის გაშვება (`run`) სინქრონიზაციის ისტორიაში იწერება — რომელი ველი ითარგმნა
+        $history->fromRequest($request, SyncHistory::KIND_TRANSLATE, $type, $id, $title, SyncHistory::outcome($result));
+
         return response()->json([
             'ok' => $result['ok'],
             'skipped' => $result['skipped'],
@@ -148,7 +154,7 @@ class TranslationController extends Controller
             // `updated` · `empty` · `failed` (`SyncOutcome`); გამოტოვებაზე `null`
             'result' => $result['result'] ?? null,
             'error' => $result['error'],
-            'title' => $item->title_ka ?: ($item->title_en ?: '#'.$item->id),
+            'title' => $title,
         ]);
     }
 

@@ -113,6 +113,7 @@ use App\Http\Controllers\Api\SongGenreController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\StatusController;
 use App\Http\Controllers\Api\StorageController;
+use App\Http\Controllers\Api\SyncRunController;
 use App\Http\Controllers\Api\TranslationController;
 use App\Http\Controllers\Api\TrashController;
 use App\Http\Controllers\Api\TwoFactorController;
@@ -355,6 +356,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/batches', [BatchController::class, 'store']);
     Route::get('/batches/{batch}', [BatchController::class, 'show']);
     Route::delete('/batches/{batch}', [BatchController::class, 'destroy']);
+
+    /* ---------- სინქრონიზაციის ისტორია ----------
+       გაშვებები (ფონური პარტია ან ბრაუზერის რიგი) და მათი ერთეულები. ⚠️ ისიც მოდულის
+       ჯგუფის გარეთაა, პარტიის იმავე მიზეზით; `{run}` გაშვების გასაღებია (UUID) და
+       ყოველთვის ჩემია. „აღარ გაეშვას" უფლებას კონტროლერი თითო ტიპზე ამოწმებს. */
+    Route::get('/sync/runs', [SyncRunController::class, 'index']);
+    Route::get('/sync/runs/{run}', [SyncRunController::class, 'show']);
+    Route::get('/sync/runs/{run}/items', [SyncRunController::class, 'items']);
+    Route::post('/sync/runs/{run}/pause', [SyncRunController::class, 'pause']);
 
     /* ---------- ჯვარედინი ძებნა ----------
        ⚠️ **მოდულის ჯგუფის გარეთ**: კითხვა ყველა ჩართულ მოდულს ეხება და არა

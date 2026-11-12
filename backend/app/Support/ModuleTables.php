@@ -84,7 +84,7 @@ final class ModuleTables
         'audit_logs', 'audit_rules', 'approval_requests', 'notifications', 'serp_searches', 'translation_usages',
         'trash_entries', 'trashed_files', 'trashed_messages', 'share_links', 'share_link_imports',
         'conversations', 'conversation_user', 'conversation_nicknames', 'messages', 'message_hides', 'message_reactions',
-        'batch_items', 'database_backups', 'goals',
+        'batch_items', 'sync_runs', 'sync_run_items', 'database_backups', 'goals',
         'migrations', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'sessions',
         'password_reset_tokens',
     ];

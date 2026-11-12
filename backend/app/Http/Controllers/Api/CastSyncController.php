@@ -9,6 +9,7 @@ use App\Models\CastMemberSyncPref;
 use App\Services\Audit\AuditLogger;
 use App\Services\Cast\CastEnricher;
 use App\Services\Cast\CastPool;
+use App\Services\Sync\SyncHistory;
 use App\Support\AppTime;
 use App\Support\CredentialProviders;
 use App\Support\MediaDomain;
@@ -165,7 +166,7 @@ class CastSyncController extends Controller
      * ⚠️ **ჟურნალი აქ ჩახშობილია** (იხ. `AuditLog::ACTION_CAST_SYNC`) —
      * გაშვების რიგი `plan`-მა უკვე დაწერა.
      */
-    public function item(Request $request, CastMember $castMember, CastEnricher $enricher, AuditLogger $audit): JsonResponse
+    public function item(Request $request, CastMember $castMember, CastEnricher $enricher, AuditLogger $audit, SyncHistory $history): JsonResponse
     {
         $data = $request->validate([
             'fields' => ['sometimes', 'array', 'min:1'],
@@ -183,13 +184,25 @@ class CastSyncController extends Controller
             $request->boolean('overwrite_photo'),
         ));
 
+        $title = $castMember->refresh()->name_ka ?: $castMember->name;
+
+        // რიგის გაშვება (`run`) ისტორიაში იწერება — მსახიობის ერთეული `actor`-ია
+        $history->fromRequest(
+            $request,
+            SyncHistory::KIND_CAST,
+            SyncHistory::ACTOR,
+            (int) $castMember->getKey(),
+            $title,
+            SyncHistory::castOutcome($result, $enricher),
+        );
+
         return response()->json([
             'ok' => $result !== CastEnricher::FAILED,
             // ⚠️ „უცვლელი" და „TMDB-ზე არაფერია" ჩავარდნა არაა — ხელახლა ცდა არაფერს შეცვლის
             'skipped' => in_array($result, [CastEnricher::UNCHANGED, CastEnricher::EMPTY, CastEnricher::NO_ID], true),
             'result' => $result,
             'error' => $result === CastEnricher::FAILED ? ($enricher->lastError() ?? 'tmdb_unavailable') : null,
-            'title' => $castMember->refresh()->name_ka ?: $castMember->name,
+            'title' => $title,
         ]);
     }
 

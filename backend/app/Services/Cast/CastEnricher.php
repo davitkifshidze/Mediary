@@ -132,6 +132,9 @@ class CastEnricher
     /** ბოლო ჩავარდნის მანქანური კოდი — `run()` მხოლოდ `FAILED`-ს ამბობს */
     private ?string $lastError = null;
 
+    /** @var list<string> ბოლო გაშვებაზე მართლა შეცვლილი ჯგუფები (`FIELDS`) — სინქრონიზაციის ისტორიისთვის */
+    private array $lastChanged = [];
+
     public function __construct(
         private TmdbClient $tmdb,
         private MediaDownloader $media,
@@ -145,6 +148,16 @@ class CastEnricher
     public function lastError(): ?string
     {
         return $this->lastError;
+    }
+
+    /**
+     * ბოლო `run()`-ზე რომელი ჯგუფი შეიცვალა (`details` · `biography` · `links` · `photo`).
+     *
+     * @return list<string>
+     */
+    public function lastChanged(): array
+    {
+        return $this->lastChanged;
     }
 
     /**
@@ -166,6 +179,7 @@ class CastEnricher
     public function run(CastMember $member, array $fields = self::DEFAULT_FIELDS, bool $overwritePhoto = false): string
     {
         $this->lastError = null;
+        $this->lastChanged = [];
         $fields = array_values(array_intersect(self::FIELDS, $fields));
 
         if (! $member->tmdb_person_id) {
@@ -236,6 +250,17 @@ class CastEnricher
         }
 
         $name = in_array(self::FIELD_DETAILS, $fields, true) && $this->syncGeorgianName($member);
+
+        // რომელი ჯგუფი შეიცვალა: სვეტი → მისი ჯგუფი; ქართული სახელი პირადი მონაცემია
+        foreach ($fields as $field) {
+            $touched = array_intersect(self::COLUMNS[$field] ?? [], $changed) !== []
+                || ($field === self::FIELD_PHOTO && $photo)
+                || ($field === self::FIELD_DETAILS && $name);
+
+            if ($touched) {
+                $this->lastChanged[] = $field;
+            }
+        }
 
         return $changed || $photo || $name ? self::UPDATED : self::UNCHANGED;
     }

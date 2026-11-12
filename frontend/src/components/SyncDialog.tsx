@@ -3,7 +3,8 @@ import { useContentLang } from '@/lib/settings'
 import { statusName, useMergedStatuses } from '@/lib/statuses'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Loader2, Play, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { History, Loader2, Play, X } from 'lucide-react'
 import {
   fetchGenres,
   fetchSyncPlan,
@@ -14,7 +15,7 @@ import {
 import { emptyMediaIds, type MediaType } from '@/lib/media'
 import { useModules } from '@/lib/modules'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Switch } from '@/components/ui/switch'
@@ -355,7 +356,12 @@ function RecordsFlow({
             </>
           ) : null}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          {/* წინა გაშვებების შედეგები — რაზე გაეშვა, რა დაბრუნდა და რა შეიცვალა */}
+          <Link to="/sync/results" onClick={onClose} className={buttonVariants({ variant: 'outline' })} data-testid="sync-results-link">
+            <History className="size-4" />
+            {t('syncResults.open')}
+          </Link>
           <Button variant="outline" onClick={onClose}>
             <X className="size-4" />
             {t('confirm.cancel')}

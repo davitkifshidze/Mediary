@@ -91,7 +91,13 @@ describe('queue: the cast kind', () => {
     await runOneActor()
 
     expect(mocks.syncActor).toHaveBeenCalledTimes(1)
-    expect(mocks.syncActor).toHaveBeenCalledWith(7, { fields: ['biography'] }, expect.any(AbortSignal))
+    /* ერთეულს გაშვების გასაღები და დაგეგმილი რიცხვი თან მიჰყვება — სერვერი შედეგს ამით
+       წერს სინქრონიზაციის ისტორიაში */
+    expect(mocks.syncActor).toHaveBeenCalledWith(
+      7,
+      { fields: ['biography'], run: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-/), run_total: 1 },
+      expect.any(AbortSignal),
+    )
     expect(mocks.syncItem).not.toHaveBeenCalled()
   })
 

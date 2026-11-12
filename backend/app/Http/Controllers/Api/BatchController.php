@@ -161,6 +161,8 @@ class BatchController extends Controller
                     'kind' => $data['kind'],
                     'total' => $done->totalJobs,
                     'failed' => $done->failedJobs,
+                    // გაშვების გასაღები — შეტყობინება „სინქრონიზაციის შედეგებში" ამ გაშვებას ხსნის
+                    'run' => $done->id,
                 ]);
             })
             ->dispatch();

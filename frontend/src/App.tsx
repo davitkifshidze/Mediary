@@ -48,6 +48,7 @@ const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default:
 const GoalsPage = lazy(() => import('@/pages/GoalsPage').then((m) => ({ default: m.GoalsPage })))
 const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })))
 const SyncPage = lazy(() => import('@/pages/SyncPage').then((m) => ({ default: m.SyncPage })))
+const SyncResultsPage = lazy(() => import('@/pages/SyncResultsPage').then((m) => ({ default: m.SyncResultsPage })))
 const TranslationsPage = lazy(() => import('@/pages/TranslationsPage').then((m) => ({ default: m.TranslationsPage })))
 const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const RegisterPage = lazy(() => import('@/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })))
@@ -335,6 +336,9 @@ function AppShell() {
           {bulkAvailable && <Route path="status" element={<StatusBulkPage />} />}
           {/* სინქრონი ქმედებაა და ცალკე გვერდზეა; TMDB მხოლოდ მედია-დომენებს ეხება */}
           {mediaModules.length > 0 && <Route path="sync" element={<SyncPage />} />}
+          {/* სინქრონიზაციის ისტორია: გაშვებები და ერთი გაშვების ერთეულები */}
+          {mediaModules.length > 0 && <Route path="sync/results" element={<SyncResultsPage />} />}
+          {mediaModules.length > 0 && <Route path="sync/results/:key" element={<SyncResultsPage />} />}
           {/* თარგმანები; ორენოვანი სქემა მედია-დომენებზეა */}
           {mediaModules.length > 0 && <Route path="translations" element={<TranslationsPage />} />}
           {/* ძებნის შედეგები — ⚠️ **მოდულზე დამოცებული არაა**:

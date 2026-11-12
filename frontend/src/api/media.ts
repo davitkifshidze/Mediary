@@ -232,6 +232,9 @@ export interface SyncOptions {
   /** false (default) — მხოლოდ ცარიელი ველები; true — TMDB-ს მონაცემი ჩაანაცვლებს */
   overwrite?: boolean
   fields?: SyncField[]
+  /** რიგის გაშვების გასაღები და დაგეგმილი რიცხვი — ერთეული ისტორიაში იწერება (`api/syncRuns.ts`) */
+  run?: string
+  run_total?: number
 }
 
 export interface SyncItemResult {
@@ -705,6 +708,9 @@ export interface CastSyncOptions {
   fields: CastSyncField[]
   /** ფოტო ხელახლა ჩამოვიდეს მაშინაც, თუ უკვე აქვს */
   overwrite_photo?: boolean
+  /** რიგის გაშვების გასაღები და დაგეგმილი რიცხვი — ერთეული ისტორიაში იწერება (`api/syncRuns.ts`) */
+  run?: string
+  run_total?: number
 }
 
 export interface CastSyncFilters extends Partial<CastSyncOptions> {

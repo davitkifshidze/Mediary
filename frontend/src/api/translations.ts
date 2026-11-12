@@ -152,8 +152,10 @@ export async function translateItem(
   sources?: TranslationSource[],
   review?: boolean,
   signal?: AbortSignal,
+  /** რიგის გაშვების გასაღები და დაგეგმილი რიცხვი — ერთეული სინქრონიზაციის ისტორიაში იწერება */
+  run?: { run?: string; run_total?: number },
 ): Promise<TranslateResult> {
-  const { data } = await api.post(`/translations/${type}/${id}`, sourceBody(sources, review), { signal })
+  const { data } = await api.post(`/translations/${type}/${id}`, { ...sourceBody(sources, review), ...run }, { signal })
   return data
 }
 

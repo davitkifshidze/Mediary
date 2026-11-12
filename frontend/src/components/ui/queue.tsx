@@ -16,6 +16,7 @@ import {
 import { importItem, type ImportPlanItem } from '@/api/import'
 import { addShareItem, type ShareDomainKey, type ShareStatusMode } from '@/api/shareLinks'
 import { addProfileItem } from '@/api/publicProfile'
+import { newRunKey } from '@/api/syncRuns'
 import { restoreFromTrash } from '@/api/trash'
 import {
   mediaApi,
@@ -193,6 +194,18 @@ interface QItem {
   changed?: string[]
   /** „აღარ განაახლო" უკვე დაჭერილია ამ რიგზე */
   paused?: boolean
+  /**
+   * sync/translate/cast — გაშვების გასაღები და დაგეგმილი ერთეულების რიცხვი: სერვერი
+   * ერთეულის შედეგს ამ გასაღებით წერს სინქრონიზაციის ისტორიაში (`/sync/results`).
+   * ერთი `enqueue…` გამოძახება ერთი გაშვებაა.
+   */
+  run?: string
+  runTotal?: number
+}
+
+/** ერთეულის მოთხოვნას გაშვების გასაღები თან მიჰყვება */
+function runParams(item: Pick<QItem, 'run' | 'runTotal'>): { run?: string; run_total?: number } {
+  return item.run ? { run: item.run, run_total: item.runTotal } : {}
 }
 
 /** რიგში დასამატებელი TMDB ჩანაწერი; `status`/`favorite` — არჩევითი */
@@ -375,6 +388,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   const enqueueSync = React.useCallback((toSync: SyncPlanItem[], opts: SyncOptions) => {
     setExpanded(true) // სინქრონი გრძელია — პროგრესი მაშინვე ჩანს
+    // ⚠️ გასაღები updater-ის გარეთ იქმნება — StrictMode updater-ს ორჯერ იძახებს
+    const run = newRunKey()
     setItems((cur) => {
       const base = freshBase(cur)
       const busy = new Set(
@@ -392,6 +407,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           mediaType: s.type,
           status: 'pending' as QStatus,
           opts,
+          run,
+          runTotal: toSync.length,
         }))
       return fresh.length ? [...base, ...fresh] : base
     })
@@ -436,6 +453,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     review = false,
   ) => {
     setExpanded(true) // თარგმანი გრძელია — პროგრესი მაშინვე ჩანს
+    const run = newRunKey()
     setItems((cur) => {
       const base = freshBase(cur)
       const busy = new Set(
@@ -454,6 +472,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           status: 'pending' as QStatus,
           sources,
           review,
+          run,
+          runTotal: toRun.length,
         }))
       // ჟანრები ბოლოს — ერთი რექვესთი მთელ ლექსიკონზე
       if (genres && !busy.has('genres')) {
@@ -547,6 +567,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
    */
   const enqueueCast = React.useCallback((toSync: CastSyncPlanItem[], opts: CastSyncOptions) => {
     setExpanded(true) // გრძელია — პროგრესი მაშინვე ჩანს
+    const run = newRunKey()
     setItems((cur) => {
       const base = freshBase(cur)
       const busy = new Set(
@@ -565,6 +586,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           mediaType: 'movie' as MediaType,
           status: 'pending' as QStatus,
           castOpts: opts,
+          run,
+          runTotal: toSync.length,
         }))
       return fresh.length ? [...base, ...fresh] : base
     })
@@ -681,7 +704,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           : next.kind === 'translate'
             ? (next.genresDict
                 ? translateGenres(next.sources, ctrl.signal)
-                : translateItem(next.mediaType, next.itemId!, next.sources, next.review, ctrl.signal)
+                : translateItem(next.mediaType, next.itemId!, next.sources, next.review, ctrl.signal, runParams(next))
               ).then((r) => ({ ok: r.ok, error: r.error ?? undefined, skipped: r.skipped, result: r.result ?? null, changed: r.changed }))
             : next.kind === 'import'
               ? importItem(next.importToken!, next.importSource!, next.importIndex!, ctrl.signal).then((r) => ({
@@ -716,13 +739,13 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             /* ⚠️ **ეს შტო `syncItem`-ის ზოგად შტომდე დგას** — თორემ
                მსახიობის id ჩუმად ფილმის სინქრონად წავიდოდა */
             : next.kind === 'cast'
-              ? syncActor(next.itemId!, next.castOpts ?? { fields: [] }, ctrl.signal).then((r) => ({
+              ? syncActor(next.itemId!, { ...(next.castOpts ?? { fields: [] }), ...runParams(next) }, ctrl.signal).then((r) => ({
                   ok: r.ok,
                   error: r.error ?? undefined,
                   skipped: r.skipped,
                   castResult: r.result,
                 }))
-              : syncItem(next.mediaType, next.itemId!, next.opts ?? {}, ctrl.signal).then((r) => ({
+              : syncItem(next.mediaType, next.itemId!, { ...(next.opts ?? {}), ...runParams(next) }, ctrl.signal).then((r) => ({
                   ok: r.ok,
                   error: r.error ?? undefined,
                   skipped: r.skipped,

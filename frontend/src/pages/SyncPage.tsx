@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, DownloadCloud } from 'lucide-react'
+import { ArrowLeft, DownloadCloud, History } from 'lucide-react'
 import { SYNC_DELAY_OPTIONS, useSettings } from '@/lib/settings'
 import { SyncDialog } from '@/components/SyncDialog'
 import { NumberSelect, SettingRow } from '@/components/SettingRow'
 import { SettingsSaveBar } from '@/components/SettingsSaveBar'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -44,10 +44,17 @@ export function SyncPage() {
       <section className="rounded-xl border border-border bg-card p-5">
         <p className="text-sm text-muted-foreground">{t('settings.syncDesc')}</p>
 
-        <Button className="mt-4" onClick={() => setOpen(true)}>
-          <DownloadCloud className="size-4" />
-          {t('sync.open')}
-        </Button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button onClick={() => setOpen(true)}>
+            <DownloadCloud className="size-4" />
+            {t('sync.open')}
+          </Button>
+          {/* გაშვებების ისტორია: რაზე გაეშვა, რა დაბრუნდა და რა შეიცვალა */}
+          <Link to="/sync/results" className={buttonVariants({ variant: 'outline' })} data-testid="sync-results-link">
+            <History className="size-4" />
+            {t('syncResults.open')}
+          </Link>
+        </div>
 
         <p className="mt-4 text-xs text-muted-foreground">{t('sync.runsInQueue')}</p>
       </section>
