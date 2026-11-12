@@ -631,7 +631,16 @@
     "queued": "{{count}} parts are being added from TMDB",
     "alreadyFavorite": "Already a favourite",
     "alreadyFavoriteHint": "Remove it from favourites on its page or its card.",
-    "alreadyCount": "{{count}} parts are already favourites"
+    "alreadyCount": "{{count}} parts are already favourites",
+    "missing": "Missing",
+    "ghostHint": "A part of this franchise that is not in your library — press to add it",
+    "remindOff": "Stop reminding me",
+    "remindOn": "Remind me again",
+    "remindHint": "When the franchise gets a new part, or one is missing from your library, you get a notification. “Stop reminding me” ends the reminders for this franchise and takes its faded cards off the list.",
+    "mutePart": "About this part",
+    "muteAll": "About the whole franchise",
+    "muted": "Reminders are off",
+    "unmuted": "Reminders are back on"
   },
   "queue": {
     "adding": "Adding…",

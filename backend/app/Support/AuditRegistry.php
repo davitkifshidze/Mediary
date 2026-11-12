@@ -39,6 +39,8 @@ use App\Models\DutyShift;
 use App\Models\DutyShiftType;
 use App\Models\DutyWorkplace;
 use App\Models\EpisodeWatch;
+use App\Models\FranchisePart;
+use App\Models\FranchiseReminder;
 use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
@@ -284,6 +286,8 @@ class AuditRegistry
         MediaWatch::class => 'ნახვის ჩაწერა — სტატუსის ცვლილება ჟურნალში უკვე წერია',
         // TMDB-ის ფაქტი და არა ადამიანის ქმედება — გლობალური ლექსიკონი (`Genre`-ის რიგში)
         TvEpisode::class => 'TMDB-ის ეპიზოდი — გლობალური ფაქტი, რომელსაც მომხმარებელი არ ქმნის',
+        FranchisePart::class => 'TMDB-ის ფრანჩაიზის ნაწილი — გლობალური ფაქტი, რომელსაც მომხმარებელი არ ქმნის',
+        FranchiseReminder::class => '„უკვე მეცნობა / აღარ შემახსენო" — შეხსენების პარამეტრი, არა შიგთავსი',
         MessageHide::class => 'ჩემთვის დამალვა; წაშლა კი ცხადად იწერება',
         ConversationNickname::class => 'საუბრის მეტსახელი — ჩემი ხედის პარამეტრი',
 

@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Models\FranchisePart;
+use App\Support\AppTime;
 use App\Support\RecordLocks;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -11,6 +13,11 @@ class MovieListResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // ფრანჩაიზის დაუმატებელი ნაწილი — სიის ჯგუფში მკრთალი ბარათი და არა ჩანაწერი
+        if ($this->resource instanceof FranchisePart) {
+            return $this->ghost($this->resource);
+        }
+
         // დამალული ჩანაწერი ბოქლომიანი ბარათია: სათაური და ლოკი, შიგთავსი არა
         if (RecordLocks::hiddenRecord($this->resource)) {
             return $this->resource->lockedCard();
@@ -39,6 +46,44 @@ class MovieListResource extends JsonResource
             'missing' => $this->missingFields(),
             // ლოკის ფაქტები — მხოლოდ მფლობელს (`RecordLocks::ownerState()`)
             ...RecordLocks::ownerState($this->resource),
+        ];
+    }
+
+    /**
+     * **ფრანჩაიზის დაუმატებელი ნაწილი** — იმავე ფორმის, რაც ბარათს სჭირდება, ოღონდ
+     * `ghost`-ით: ჩანაწერი არ არის, ბარათი მკრთალია და „დამატებას" სთავაზობს.
+     *
+     * ⚠️ `id` უარყოფითია (TMDB-ის id მინუსით): ჩანაწერის id-ს ვერასდროს დაემთხვევა და
+     * სიის გასაღებად გამოდგება.
+     *
+     * @return array<string, mixed>
+     */
+    private function ghost(FranchisePart $part): array
+    {
+        $date = $part->release_date?->format('Y-m-d');
+
+        return [
+            'id' => -$part->tmdb_id,
+            'ghost' => true,
+            'tmdb_id' => $part->tmdb_id,
+            'title_ka' => null,
+            'title_en' => $part->title,
+            'year' => $part->year(),
+            'release_date' => $date,
+            // ჯერ არ გამოსულა (ან თარიღი არ აქვს — მხოლოდ გამოცხადდა)
+            'released' => $date !== null && $date <= AppTime::now()->format('Y-m-d'),
+            'rating' => $part->rating !== null ? (string) $part->rating : null,
+            'my_rating' => null,
+            'poster' => $part->posterUrl(),
+            'status' => null,
+            'is_favorite' => false,
+            'description_ka' => null,
+            'description_en' => $part->overview,
+            'collection_id' => $part->tmdb_collection_id,
+            'collection_name' => $part->collection_name,
+            'franchise_next' => false,
+            'genres' => [],
+            'missing' => [],
         ];
     }
 }

@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft,
+  Bell,
+  BellOff,
   ExternalLink,
   Loader2,
   Share2,
@@ -13,7 +15,7 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react'
-import { fetchMovieCollection, mediaApi, setSyncPaused } from '@/api/media'
+import { fetchMovieCollection, mediaApi, setFranchiseReminder, setSyncPaused } from '@/api/media'
 import { useRecordOpen } from '@/lib/audit'
 import { isDetailPath, mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { NotFound } from '@/pages/NotFoundPage'
@@ -95,6 +97,19 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   const ratingMut = useMutation({
     mutationFn: (value: number | null) => api.setRating(Number(id), value),
     onSuccess: onMutated,
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+  /* „აღარ შემახსენო" მთელ ფრანჩაიზზე: ახალ ნაწილზე შეტყობინება აღარ მოდის და სიის
+     ჯგუფიდანაც ქრება მკრთალი ბარათები; ხელახლა ჩართვა — იმავე ღილაკით */
+  const remindMut = useMutation({
+    mutationFn: (muted: boolean) => setFranchiseReminder(collectionQ.data?.collection_id ?? 0, muted),
+    onSuccess: (_, muted) => {
+      qc.invalidateQueries({ queryKey: ['collection', id] })
+      qc.invalidateQueries({ queryKey: [type, 'list'] })
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+      qc.invalidateQueries({ queryKey: ['notifications-counts'] })
+      toast({ title: t(muted ? 'franchise.muted' : 'franchise.unmuted'), variant: 'success' })
+    },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
   /* `onError` აქ არ იყო, ე.ი. გასაღების გარეშე (409
@@ -224,6 +239,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
         ? m.description_en_source
         : m.description_ka_source
   const parts = collectionQ.data?.parts ?? []
+  const franchise = collectionQ.data
   const missingParts = parts
     .filter((p) => !p.owned)
     .map((p) => ({ tmdbId: p.tmdb_id, title: p.title }))
@@ -458,19 +474,43 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                 {t('parts.title')}
                 <InfoHint info={t('parts.watchOrderNote')} />
               </h2>
-              {missingParts.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => enqueue(missingParts)}>
-                  <Plus className="size-4" />
-                  {t('parts.addAll')} ({missingParts.length})
-                </Button>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* შეხსენება ახალ ნაწილზე — ჩართული / გამორთული მთელ ფრანჩაიზზე */}
+                {franchise?.collection_id != null && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => remindMut.mutate(!franchise.muted)}
+                    disabled={remindMut.isPending}
+                    title={t('franchise.remindHint')}
+                    data-testid="franchise-remind"
+                  >
+                    {franchise.muted ? <Bell className="size-4" /> : <BellOff className="size-4" />}
+                    {franchise.muted ? t('franchise.remindOn') : t('franchise.remindOff')}
+                  </Button>
+                )}
+                {missingParts.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => enqueue(missingParts)}>
+                    <Plus className="size-4" />
+                    {t('parts.addAll')} ({missingParts.length})
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {parts.map((p, i) => {
                 const adding = isQueued(p.tmdb_id)
                 const inner = (
                   <>
-                    <div className="relative overflow-hidden rounded-lg bg-muted ring-1 ring-border">
+                    {/* დაუმატებელი ნაწილი მკრთალია — ჩემი ნაწილებისგან ერთი შეხედვით გაირჩევა */}
+                    <div
+                      className={cn(
+                        'relative overflow-hidden rounded-lg bg-muted transition-opacity',
+                        p.owned ? 'ring-1 ring-border' : 'border border-dashed border-border',
+                        !p.owned && !adding && 'opacity-50 group-hover:opacity-100',
+                      )}
+                      data-owned={p.owned}
+                    >
                       <div className="aspect-[2/3]">
                         <PosterImage src={p.poster} alt={p.title} className="h-full w-full" />
                       </div>
@@ -499,7 +539,12 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                       )}
                     </div>
                     <div className="mt-1.5 truncate text-xs font-medium">{p.title}</div>
-                    <div className="text-[11px] text-muted-foreground">{p.year ?? '—'}</div>
+                    {/* წელი და, თუ ჯერ არ გამოსულა ან არ მაქვს — რა მდგომარეობაშია */}
+                    <div className="text-[11px] text-muted-foreground">
+                      {[p.year ?? '—', !p.released ? t('soon.section') : !p.owned ? t('franchise.missing') : null]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </div>
                   </>
                 )
                 return p.owned && p.movie_id ? (

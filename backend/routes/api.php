@@ -558,6 +558,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/movies/{movie}/rating', [MediaRatingController::class, 'movie']);
         Route::post('/movies/{movie}/resync', [MovieSyncController::class, 'resync']);
         Route::get('/movies/{movie}/collection', [MovieCollectionController::class, 'show']);
+        // „აღარ შემახსენო" / „ისევ შემახსენე" — ფრანჩაიზზე ან მის ერთ ნაწილზე (TMDB-ის id-ებით)
+        Route::patch('/franchises/{collection}/reminders', [MovieCollectionController::class, 'remind'])
+            ->whereNumber('collection');
     });
 
     /* ---------- სერიალები (module: series) ---------- */

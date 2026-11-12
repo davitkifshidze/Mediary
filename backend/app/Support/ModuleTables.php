@@ -27,7 +27,8 @@ final class ModuleTables
 {
     /** მოდული → მისი ცხრილები (პირველი — მთავარი) */
     public const MODULES = [
-        'movie' => ['movies', 'movie_translations', 'movie_field_values'],
+        // ფრანჩაიზები მხოლოდ ფილმებს აქვთ: ნაწილების ლექსიკონი (TMDB) და ჩემი შეხსენებები
+        'movie' => ['movies', 'movie_translations', 'movie_field_values', 'franchise_parts', 'franchise_reminders'],
         'series' => ['series', 'series_translations', 'series_field_values'],
         'anime' => ['animes', 'anime_translations', 'anime_field_values'],
         'video' => ['videos', 'video_types', 'video_field_values', 'video_files', 'video_notes'],

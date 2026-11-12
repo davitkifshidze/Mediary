@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Bell, BellDot, CheckCheck, Mail, MailOpen, Trash2, X } from 'lucide-react'
+import { Bell, BellDot, BellOff, CheckCheck, ChevronDown, Film, Layers, Loader2, Mail, MailOpen, Plus, Trash2, X } from 'lucide-react'
 import {
   bulkNotifications,
   clearNotifications,
@@ -14,11 +14,13 @@ import {
   type NotificationBulkAction,
   type NotificationPage,
 } from '@/api/notifications'
+import { setFranchiseReminder } from '@/api/media'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { notificationDetail, notificationIcon, notificationTitle } from '@/lib/notifications'
 import { usePagedList } from '@/lib/paged'
 import { cn } from '@/lib/utils'
+import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -28,6 +30,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Pagination } from '@/components/ui/pagination'
 import { QueryErrorState } from '@/components/ui/query-error-state'
+import { useQueue } from '@/components/ui/queue'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SelectMark } from '@/components/ui/select-mark'
 
@@ -44,6 +47,65 @@ import { SelectMark } from '@/components/ui/select-mark'
    ⚠️ **დაჭერა წაკითხვაა და გადასვლაც** (თუ შეტყობინებას მისამართი აქვს);
    „წაუკითხავად" მას უკან აბრუნებს — „მოგვიანებით მივხედავ".
    ============================================================ */
+
+/**
+ * **„ფრანჩაიზს ნაწილი აკლია"** — შეტყობინებიდანვე: „დამატება" („აღმოჩენის" რიგით) და
+ * „აღარ შემახსენო" ამ ნაწილზე ან მთელ ფრანჩაიზზე. გაჩუმება სერვერზე ამ ნაწილის /
+ * ფრანჩაიზის შეტყობინებებსაც აშორებს, ამიტომ სია თავიდან იკითხება.
+ */
+function FranchisePartActions({ notification, onChanged }: { notification: AppNotification; onChanged: () => void }) {
+  const { t } = useTranslation()
+  const { toast } = useToast()
+  const { enqueue, isQueued } = useQueue()
+
+  const tmdbId = Number(notification.data.tmdb_id) || 0
+  const collectionId = Number(notification.data.collection_id) || 0
+  const title = String(notification.data.title_en ?? notification.data.title_ka ?? '')
+  const adding = isQueued(tmdbId, 'movie')
+
+  const mute = useMutation({
+    mutationFn: (whole: boolean) => setFranchiseReminder(collectionId, true, whole ? undefined : tmdbId),
+    onSuccess: () => {
+      toast({ title: t('franchise.muted'), variant: 'success' })
+      onChanged()
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  if (!tmdbId || !collectionId) return null
+
+  return (
+    <>
+      <Button size="sm" disabled={adding} onClick={() => enqueue([{ tmdbId, title }], 'movie')}>
+        {adding ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+        {adding ? t('queue.queued') : t('actor.add')}
+      </Button>
+      <ActionMenu
+        label={t('franchise.remindOff')}
+        trigger={
+          <Button variant="outline" size="sm" disabled={mute.isPending}>
+            <BellOff className="size-4" />
+            {t('franchise.remindOff')}
+            <ChevronDown className="size-3.5" />
+          </Button>
+        }
+      >
+        <ActionMenuClose asChild>
+          <button className={actionItemClass()} onClick={() => mute.mutate(false)}>
+            <Film className="size-4 shrink-0" />
+            {t('franchise.mutePart')}
+          </button>
+        </ActionMenuClose>
+        <ActionMenuClose asChild>
+          <button className={actionItemClass()} onClick={() => mute.mutate(true)}>
+            <Layers className="size-4 shrink-0" />
+            {t('franchise.muteAll')}
+          </button>
+        </ActionMenuClose>
+      </ActionMenu>
+    </>
+  )
+}
 
 /** Radix-ის `Select` ცარიელ მნიშვნელობას არ იღებს */
 const ALL_TYPES = 'all'
@@ -296,6 +358,8 @@ export function NotificationsPage() {
                   </button>
 
                   <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                    {/* ფრანჩაიზს ნაწილი აკლია: ერთი დაჭერით დამატება, ან „აღარ შემახსენო" */}
+                    {n.type === 'franchise_part' && <FranchisePartActions notification={n} onChanged={refresh} />}
                     <Button
                       variant="outline"
                       size="sm"

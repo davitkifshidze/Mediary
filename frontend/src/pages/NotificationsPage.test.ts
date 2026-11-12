@@ -19,6 +19,19 @@ import { notificationDetail, notificationTitle } from '@/lib/notifications'
    (დღეს გამოდის · ფრანჩაიზს ნაწილი აკლია · ახალი სეზონი) თავის ტექსტს ხატავს.
    ============================================================ */
 
+const extra = vi.hoisted(() => ({ setFranchiseReminder: vi.fn(), enqueue: vi.fn() }))
+
+vi.mock('@/api/media', async (original) => ({
+  ...(await original<typeof import('@/api/media')>()),
+  setFranchiseReminder: extra.setFranchiseReminder,
+}))
+
+const queue = { enqueue: extra.enqueue, isQueued: () => false }
+vi.mock('@/components/ui/queue', async (original) => ({
+  ...(await original<typeof import('@/components/ui/queue')>()),
+  useQueue: () => queue,
+}))
+
 const mocks = vi.hoisted(() => ({
   fetchNotifications: vi.fn(),
   fetchNotificationCounts: vi.fn(),
@@ -95,6 +108,7 @@ beforeEach(() => {
   }
   mocks.bulkNotifications.mockResolvedValue(2)
   mocks.deleteNotification.mockResolvedValue(undefined)
+  extra.setFranchiseReminder.mockResolvedValue(undefined)
 })
 
 async function render(node: ReturnType<typeof h>, path = '/') {
@@ -249,6 +263,50 @@ describe('NotificationsPage', () => {
     await act(async () => bar.querySelector<HTMLButtonElement>('[role="checkbox"]')!.click())
     await act(async () => button(i18n.t('notifications.markUnread'), bar)!.click())
     expect(mocks.bulkNotifications).toHaveBeenLastCalledWith('unread', ['a', 'b', 'c'])
+  })
+})
+
+describe('franchise part notification', () => {
+  const part = note('f', {
+    type: 'franchise_part',
+    data: { tmdb_id: 604, title_en: 'Reloaded', collection_id: 2344, collection_name: 'The Matrix Collection' },
+    route: '/movies/7',
+  })
+
+  async function mount() {
+    mocks.fetchNotifications.mockResolvedValue(page([part, note('g')], { total: 2, unread: 2 }))
+    const { NotificationsPage } = await import('@/pages/NotificationsPage')
+
+    return render(h(Routes, null, h(Route, { path: '/notifications', element: h(NotificationsPage) })), '/notifications')
+  }
+
+  const rows = () => [...document.querySelectorAll<HTMLElement>('[data-testid="notification-row"]')]
+
+  it('adds the missing part with one press — only on its own kind of row', async () => {
+    await mount()
+
+    expect(rows()[0].textContent).toContain('Reloaded · The Matrix Collection')
+    expect(button(i18n.t('actor.add'), rows()[1])).toBeUndefined()
+
+    await act(async () => button(i18n.t('actor.add'), rows()[0])!.click())
+    expect(extra.enqueue).toHaveBeenCalledWith([{ tmdbId: 604, title: 'Reloaded' }], 'movie')
+  })
+
+  it('stops the reminders for the part or for the whole franchise', async () => {
+    await mount()
+    const menu = () => button(i18n.t('franchise.remindOff'), rows()[0])!
+
+    await act(async () => menu().click())
+    await act(async () => button(i18n.t('franchise.mutePart'))!.click())
+    await flush()
+    expect(extra.setFranchiseReminder).toHaveBeenCalledWith(2344, true, 604)
+
+    await act(async () => menu().click())
+    await act(async () => button(i18n.t('franchise.muteAll'))!.click())
+    await flush()
+    expect(extra.setFranchiseReminder).toHaveBeenLastCalledWith(2344, true, undefined)
+    // სერვერი შეტყობინებებსაც აშორებს — სია თავიდან იკითხება
+    expect(mocks.fetchNotifications.mock.calls.length).toBeGreaterThan(1)
   })
 })
 

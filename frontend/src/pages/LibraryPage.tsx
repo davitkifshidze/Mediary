@@ -202,6 +202,9 @@ function LibraryList({ type }: { type: MediaType }) {
     my_rating_min: num(ranges.myRatingMin),
     my_rating_max: num(ranges.myRatingMax),
     group: type === 'movie' ? grouped : undefined,
+    // ფრანჩაიზის ჯგუფში დაუმატებელი ნაწილებიც — მკრთალ ბარათებად; სერვერი მათ მხოლოდ
+    // დაუფილტრავ სიას აძლევს (სტატუსის სექციაში, ძებნასა და ფილტრში ისინი უცხო სხეულია)
+    franchise_gaps: type === 'movie' && grouped && view === 'all' ? true : undefined,
     // სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
     ...drill,
   }

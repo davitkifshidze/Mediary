@@ -28,6 +28,8 @@ export interface MediaFilters extends ListParams {
   my_rating_max?: number
   /** ფილტრი „ჩაკეტილები" (დამალული — ბოქლომიანი ბარათით) */
   locked?: boolean
+  /** ფრანჩაიზის ჯგუფში დაუმატებელი ნაწილებიც მოვიდეს მკრთალ ბარათებად (მხოლოდ დაუფილტრავ სიაში) */
+  franchise_gaps?: boolean
   /**
    * ფრანჩაიზის დაჯგუფება (მხოლოდ ფილმებს ეხება).
    * `false` → სუფთა დალაგება, ჯგუფი დაიშლება. undefined → backend-ის default (ჩართული).
@@ -476,16 +478,34 @@ export interface CollectionPart {
   movie_id: number | null
   /** ბიბლიოთეკაშია და უკვე რჩეულია (ფანჯარაში ჩაკეტილი) */
   is_favorite: boolean
+  /** გამოსვლის თარიღი (`YYYY-MM-DD`); `null` — მხოლოდ გამოცხადდა */
+  date: string | null
+  /** უკვე გამოვიდა (თარიღი დღეს ან უკან არის) */
+  released: boolean
+  /** ამ ნაწილზე ვთქვი „აღარ შემახსენო" */
+  muted: boolean
 }
 
 export interface MovieCollection {
+  /** TMDB-ის ფრანჩაიზის id — შეხსენების გადამრთველი მასზეა */
+  collection_id: number | null
   name: string | null
+  /** მთელ ფრანჩაიზზე ვთქვი „აღარ შემახსენო" */
+  muted: boolean
   parts: CollectionPart[]
 }
 
 export async function fetchMovieCollection(id: number | string): Promise<MovieCollection> {
   const { data } = await api.get(`/movies/${id}/collection`)
   return data
+}
+
+/**
+ * „აღარ შემახსენო" / „ისევ შემახსენე" — მთელ ფრანჩაიზზე, ან `tmdbId`-ით მის ერთ ნაწილზე.
+ * გამორთვა ამ ფრანჩაიზის / ნაწილის უკვე მოსულ შეტყობინებებსაც აშორებს.
+ */
+export async function setFranchiseReminder(collectionId: number, muted: boolean, tmdbId?: number): Promise<void> {
+  await api.patch(`/franchises/${collectionId}/reminders`, { muted, ...(tmdbId ? { tmdb_id: tmdbId } : {}) })
 }
 
 /* ---------- მსახიობი (ფილმები + სერიალები) ---------- */

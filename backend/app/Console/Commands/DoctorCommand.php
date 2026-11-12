@@ -45,6 +45,9 @@ class DoctorCommand extends Command
     /** რამდენ ხანს ჩაითვლება scheduler-ი „ცოცხლად" */
     private const HEARTBEAT_MINUTES = 10;
 
+    /** ფრანჩაიზები ღამით ერთხელ მოწმდება — ორ დღეზე ძველი შემოწმება ნიშნავს, რომ გრაფიკი არ ეშვება */
+    private const FRANCHISE_HOURS = 48;
+
     /** რამდენი დღის შემდეგ ითვლება ასლი მოშვლად */
     private const BACKUP_STALE_DAYS = 2;
 
@@ -196,6 +199,7 @@ class DoctorCommand extends Command
                კარგავს — ბრაუზერის polling იმავე დისპეტჩერს იძახებს;
                ის მხოლოდ დახურულ აპზე ტელეგრამის გაგზავნას აჩერებს. */
             $this->check('notes:remind', false, 'არასდროს გაშვებულა — `php artisan schedule:work`', warnOnly: true);
+            $this->franchises();
 
             return;
         }
@@ -208,6 +212,39 @@ class DoctorCommand extends Command
             $ago <= self::HEARTBEAT_MINUTES
                 ? "ბოლო გაშვება {$ago} წუთის წინ"
                 : "ბოლო გაშვება {$ago} წუთის წინ — scheduler, სავარაუდოდ, გაჩერდა",
+            warnOnly: true,
+        );
+
+        $this->franchises();
+    }
+
+    /**
+     * **ფრანჩაიზების ღამის შემოწმება** — მის გარეშე ახალი ნაწილი მხოლოდ ფილმის დამატებისა
+     * და სინქრონიზაციის დროს ჩნდება; „გამოცხადდა მესამე ნაწილი" თავისით აღარ მოვა.
+     */
+    private function franchises(): void
+    {
+        $last = Cache::get(CheckFranchisesCommand::HEARTBEAT);
+
+        if (! $last) {
+            $this->check(
+                'franchises:check',
+                false,
+                'არასდროს გაშვებულა — ფრანჩაიზები მხოლოდ დამატებისა და სინქრონიზაციის დროს მოწმდება (`php artisan schedule:work`)',
+                warnOnly: true,
+            );
+
+            return;
+        }
+
+        $hours = (int) Carbon::parse($last)->diffInHours(now());
+
+        $this->check(
+            'franchises:check',
+            $hours <= self::FRANCHISE_HOURS,
+            $hours <= self::FRANCHISE_HOURS
+                ? "ბოლო შემოწმება {$hours} საათის წინ"
+                : "ბოლო შემოწმება {$hours} საათის წინ — ღამის გრაფიკი, სავარაუდოდ, არ ეშვება",
             warnOnly: true,
         );
     }

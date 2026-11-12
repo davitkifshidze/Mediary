@@ -103,7 +103,7 @@ class TmdbEndpointsTest extends TestCase
                 'parts' => [
                     ['id' => 604, 'title' => 'Reloaded', 'release_date' => '2003-05-15', 'poster_path' => '/b.jpg'],
                     ['id' => 603, 'title' => 'The Matrix', 'release_date' => '1999-03-30', 'poster_path' => '/a.jpg'],
-                    // ⚠️ პოსტერის გარეშე ნაწილი განზრახ ეცემა — ბარათი მას ვერ დახატავდა
+                    // პოსტერის გარეშე (ჯერ გამოუსვლელი) ნაწილიც რჩება — ბარათი მას უპოსტეროდ ხატავს
                     ['id' => 605, 'title' => 'Revolutions', 'release_date' => '2003-11-05'],
                 ],
             ]),
@@ -118,7 +118,13 @@ class TmdbEndpointsTest extends TestCase
         $res->assertJsonPath('name', 'The Matrix Collection');
         // ⚠️ თანმიმდევრობა ყურებისაა (გამოსვლის თარიღი), და არა TMDB-ის
         $res->assertJsonPath('parts.0.title', 'The Matrix');
-        $res->assertJsonCount(2, 'parts');
+        $res->assertJsonCount(3, 'parts');
+        $res->assertJsonPath('parts.2.title', 'Revolutions');
+        $res->assertJsonPath('parts.2.poster', null);
+        $res->assertJsonPath('parts.2.owned', false);
+        $res->assertJsonPath('collection_id', 2344);
+        // ფრანჩაიზი ჩანაწერს ახსოვს — შემდეგ გახსნაზე TMDB-ს აღარ ვეკითხებით, რომელია
+        $this->assertSame(2344, $movie->refresh()->tmdb_collection_id);
         $res->assertJsonPath('parts.1.owned', true);
         $res->assertJsonPath('parts.1.movie_id', $owned->id);
         $res->assertJsonPath('parts.1.is_favorite', true);

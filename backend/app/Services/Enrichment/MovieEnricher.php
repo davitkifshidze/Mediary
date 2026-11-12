@@ -5,6 +5,7 @@ namespace App\Services\Enrichment;
 use App\Models\CastMember;
 use App\Models\Genre;
 use App\Models\Movie;
+use App\Services\Media\FranchiseTracker;
 use App\Services\Media\MediaDownloader;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\CastSync;
@@ -290,6 +291,9 @@ class MovieEnricher
             // ⚠️ ხელით დამატებული მსახიობი `sync()`-ს ჩუმად წაეშლებოდა — იხ. `CastSync`
             CastSync::fromSource($movie, $sync);
         }
+
+        // ფრანჩაიზი მაშინვე მოწმდება: რა ნაწილები აქვს და რომელი მაკლია (ჩავარდნა ჩუმია)
+        app(FranchiseTracker::class)->track($movie);
 
         return true;
     }

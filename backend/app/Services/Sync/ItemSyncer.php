@@ -4,12 +4,17 @@ namespace App\Services\Sync;
 
 use App\Models\CastMember;
 use App\Models\Genre;
+use App\Models\Module;
 use App\Models\Series;
+use App\Models\User;
+use App\Services\Media\FranchiseTracker;
 use App\Services\Media\MediaDownloader;
+use App\Services\Notify\Notifier;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\CastSync;
 use App\Support\Lang;
 use App\Support\MediaDomain;
+use App\Support\NotificationType;
 use App\Support\Redact;
 use App\Support\StorageFolder;
 use App\Support\SyncOutcome;
@@ -144,6 +149,11 @@ class ItemSyncer
             $item->sync_status = 'synced';
             $item->save();
 
+            // ფილმის ფრანჩაიზი მაშინვე მოწმდება — ახალი ნაწილი სინქრონიზაციისასაც ჩნდება (ჩავარდნა ჩუმია)
+            if (! $isSeries) {
+                app(FranchiseTracker::class)->track($item);
+            }
+
             // კვალი ჩანაწერზე: განახლდა თუ უბრალოდ შევამოწმეთ და ყველაფერი ისე იყო
             $outcome = $changed ? SyncOutcome::UPDATED : SyncOutcome::UNCHANGED;
             SyncOutcome::stamp($item, 'sync', $outcome);
@@ -249,6 +259,7 @@ class ItemSyncer
            პირდაპირ ცრუობდა — `Carbon` და `'2026-10-01'` არასდროს ტოლდება.
            ამიტომ ნორმალიზებული სახე ედრება ნორმალიზებულს. */
         $before = $item->next_air_at?->format('Y-m-d');
+        $knownSeason = max((int) $item->next_season, (int) $item->seasons);
 
         $item->next_air_at = $date;
         $item->next_season = $season;
@@ -257,6 +268,29 @@ class ItemSyncer
         if ($before !== $date) {
             $changed[] = 'next_air';
         }
+
+        /* **გამოცხადდა ახალი სეზონი**: შემდეგი სერია იმ სეზონშია, რომელიც აქამდე არც
+           შემდეგ სერიად გვინახავს და არც სეზონების რიცხვში ითვლებოდა. ⚠️ პირველ
+           სინქრონიზაციაზე არ მოდის — იქ ყველაფერი „ახალია" და შეტყობინება ხმაური იქნებოდა. */
+        if ($season !== null && $season > $knownSeason && $item->last_synced_at !== null) {
+            $this->announceSeason($item, $season, $date);
+        }
+    }
+
+    /** „გამოცხადდა ახალი სეზონი" — ჩანაწერის მფლობელს, ჩანაწერზე გადასასვლელი ბმულით */
+    private function announceSeason(Model $item, int $season, ?string $date): void
+    {
+        $domain = MediaDomain::typeOf($item);
+
+        app(Notifier::class)->send(User::find($item->user_id), NotificationType::NEW_SEASON, [
+            'module' => $domain,
+            'record_id' => $item->getKey(),
+            'title_ka' => $item->title_ka,
+            'title_en' => $item->title_en,
+            'season' => $season,
+            'date' => $date,
+            'path' => rtrim((string) Module::where('key', $domain)->value('route_base'), '/').'/'.$item->getKey(),
+        ]);
     }
 
     /**

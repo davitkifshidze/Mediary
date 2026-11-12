@@ -94,6 +94,13 @@ export interface MovieListItem {
   lock_hint?: string | null
   failed_unlocks?: number
   unlock_blocked_until?: string | null
+  /* ფრანჩაიზის დაუმატებელი ნაწილი სიის ჯგუფში — ჩანაწერი **არ არის**: `id` უარყოფითია,
+     მკრთალ ბარათად იხატება და დაჭერით TMDB-დან ემატება (`FranchiseGhost`). */
+  ghost?: boolean
+  tmdb_id?: number | null
+  /** გამოსვლის თარიღი და „უკვე გამოვიდა?" — მხოლოდ მკრთალ ბარათზე მოდის */
+  release_date?: string | null
+  released?: boolean
 }
 
 export interface Movie extends MovieListItem {

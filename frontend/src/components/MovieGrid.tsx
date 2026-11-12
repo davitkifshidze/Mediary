@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MovieCard, MovieRow } from './MovieCard'
 import { MediaLockedCard, MediaLockedRow } from './MediaLockedCard'
+import { FranchiseGhostCard, FranchiseGhostRow } from './FranchiseGhost'
 import { RecordList } from './RecordView'
 import { statusName } from '@/lib/statuses'
 import { genreName } from '@/lib/display'
@@ -60,13 +61,26 @@ export function MovieGrid({
     layout === 'rows' ? (
       <RecordList layout="rows">
         {list.map((m) =>
-          m.hidden ? <MediaLockedRow key={m.id} movie={m} type={type} /> : <MovieRow key={m.id} movie={m} type={type} />,
+          // ფრანჩაიზის დაუმატებელი ნაწილი ჩანაწერი არ არის — მკრთალი რიგი „დამატებით"
+          m.ghost ? (
+            <FranchiseGhostRow key={m.id} part={m} />
+          ) : m.hidden ? (
+            <MediaLockedRow key={m.id} movie={m} type={type} />
+          ) : (
+            <MovieRow key={m.id} movie={m} type={type} />
+          ),
         )}
       </RecordList>
     ) : (
       <div className={`grid gap-x-4 gap-y-6 ${columns}`}>
         {list.map((m) =>
-          m.hidden ? <MediaLockedCard key={m.id} movie={m} type={type} /> : <MovieCard key={m.id} movie={m} type={type} />,
+          m.ghost ? (
+            <FranchiseGhostCard key={m.id} part={m} />
+          ) : m.hidden ? (
+            <MediaLockedCard key={m.id} movie={m} type={type} />
+          ) : (
+            <MovieCard key={m.id} movie={m} type={type} />
+          ),
         )}
       </div>
     )

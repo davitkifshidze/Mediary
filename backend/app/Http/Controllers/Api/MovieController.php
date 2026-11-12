@@ -9,9 +9,11 @@ use App\Http\Requests\StoreMovieRequest;
 use App\Http\Requests\UpdateMovieRequest;
 use App\Http\Resources\MovieListResource;
 use App\Http\Resources\MovieResource;
+use App\Models\FranchisePart;
 use App\Models\Genre;
 use App\Models\Movie;
 use App\Services\Enrichment\MovieEnricher;
+use App\Services\Media\FranchiseTracker;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CredentialProviders;
@@ -101,9 +103,83 @@ class MovieController extends Controller
 
         Movie::annotateFranchise($movies);
 
+        if ($this->wantsFranchiseGaps($request)) {
+            $movies = $this->withFranchiseGaps($request, $movies, $sort);
+        }
+
         return MovieListResource::collection(
             $page instanceof LengthAwarePaginator ? $page->setCollection($movies) : $movies,
         )->additional(['meta' => ['records' => $rows->count()]]);
+    }
+
+    /**
+     * **დაუმატებელი ნაწილები ჯგუფში** — მხოლოდ მაშინ, როცა გვერდი ითხოვს (`franchise_gaps=1`)
+     * და სია არაფრით არის დავიწროებული.
+     *
+     * ⚠️ გაფილტრულ სიაში (სტატუსი, ჟანრი, ძებნა…) მკრთალი ბარათი იმას არ პასუხობს, რაც
+     * იკითხეს: „ნანახების" სიაში ჯერ დაუმატებელი ნაწილი უცხო სხეულია. სრულ სიაში კი
+     * ფრანჩაიზი სრულად ჩანს — რაც მაქვს და რაც მაკლია.
+     */
+    private function wantsFranchiseGaps(Request $request): bool
+    {
+        return $request->boolean('franchise_gaps')
+            && ! $this->filtersContent($request)
+            && ! $request->filled('q');
+    }
+
+    /**
+     * გვერდის ფრანჩაიზებს ემატება მათი დაუმატებელი ნაწილები (`FranchisePart`), ჯგუფის
+     * შიგნით გამოსვლის წლით — იმავე მიმართულებით, რითაც ჯგუფია დალაგებული.
+     *
+     * ⚠️ გვერდის ზომასა და ჯამს ეს არ ცვლის: ერთეული ისევ ფრანჩაიზია, მკრთალი ბარათი კი
+     * მისი ნაწილია და არა ჩანაწერი.
+     *
+     * @param  Collection<int, Movie>  $movies
+     * @return Collection<int, Movie|FranchisePart>
+     */
+    private function withFranchiseGaps(Request $request, Collection $movies, string $sort): Collection
+    {
+        $collections = $movies->pluck('tmdb_collection_id')->filter()->unique()->map(fn ($id) => (int) $id)->values()->all();
+        $gaps = app(FranchiseTracker::class)->gaps($request->user(), $collections);
+
+        if ($gaps->isEmpty()) {
+            return $movies;
+        }
+
+        $desc = ! str_ends_with($sort, '_asc');
+        $year = fn (Movie|FranchisePart $item): ?int => $item instanceof FranchisePart ? $item->year() : $item->year;
+        $out = collect();
+        $done = [];
+
+        foreach ($movies as $movie) {
+            $collection = (int) $movie->tmdb_collection_id;
+
+            if (! $collection || ! $gaps->has($collection)) {
+                $out->push($movie);
+
+                continue;
+            }
+
+            if (isset($done[$collection])) {
+                continue;
+            }
+
+            $done[$collection] = true;
+
+            // ჯგუფის ჩემი ნაწილები გვერდზე უკვე ერთად და დალაგებულია — დაუმატებელი მათ შორის ჩადგება
+            $unit = $movies->where('tmdb_collection_id', $movie->tmdb_collection_id)->values()
+                ->concat($gaps[$collection])
+                ->sort(function ($a, $b) use ($year, $desc) {
+                    // უწლო (მხოლოდ გამოცხადებული) ნაწილი ყოველთვის ახალია: კლებადში წინ, ზრდადში ბოლოს
+                    [$ya, $yb] = [$year($a) ?? PHP_INT_MAX, $year($b) ?? PHP_INT_MAX];
+
+                    return $desc ? $yb <=> $ya : $ya <=> $yb;
+                });
+
+            $out = $out->concat($unit);
+        }
+
+        return $out->values();
     }
 
     /**
