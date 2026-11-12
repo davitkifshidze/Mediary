@@ -3,169 +3,90 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
+import { ArrowRight, Bell, CheckCheck } from 'lucide-react'
 import {
-  Ban,
-  Bell,
-  Blocks,
-  CalendarClock,
-  CheckCheck,
-  CircleAlert,
-  DatabaseBackup,
-  HardDrive,
-  ListChecks,
-  Trash2,
-} from 'lucide-react'
-import {
-  clearNotifications,
+  fetchNotificationCounts,
   fetchNotifications,
-  fetchUnreadNotifications,
   markNotificationsRead,
+  markNotificationsSeen,
   type AppNotification,
 } from '@/api/notifications'
 import { useDateFormat } from '@/lib/dates'
-import { soonWhat } from '@/lib/soon'
-import type { SoonKind } from '@/api/soon'
 import { LAYER_POPUP } from '@/lib/layers'
-import { cn, formatBytes } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { useConfirm } from '@/components/ui/feedback'
+import { notificationDetail, notificationIcon, notificationTitle } from '@/lib/notifications'
+import { cn } from '@/lib/utils'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 
 /**
  * **შეტყობინებების ცენტრი — ჰედერის ზარი.**
  *
- * ⚠️ **ორი query და არა ერთი.** ბეჯი ყოველ 30 წამში მხოლოდ **რიცხვს**
- * ეკითხება (ჩატის წაუკითხავის ზუსტი ფორმა), სრული სია კი მხოლოდ მაშინ
- * იტვირთება, როცა პანელი იხსნება — თორემ ყოველი პოლინგი ორმოცდაათ რიგს
- * ეზიდებოდა.
+ * ⚠️ **ორი query და არა ერთი.** ზარი ყოველ 30 წამში მხოლოდ **რიცხვებს**
+ * ეკითხება, სია კი მხოლოდ მაშინ იტვირთება, როცა პანელი იხსნება — თორემ ყოველი
+ * პოლინგი ოც რიგს ეზიდებოდა.
  *
- * ⚠️ **ტექსტი `type`-იდან იგება და სერვერიდან არ მოდის**: ენა ბრაუზერში
- * ირჩევა. უცნობი სახე — **ნედლი კოდის ნაცვლად ზოგადი სათაური**: ახალი
- * ტიპი ძველ SPA-ზე „რაღაც მოხდა"-დ იკითხება და არა `batch_done`-ად.
+ * ⚠️ **რიცხვი უნახავია, წერტილი — წაუკითხავი.** ზარის გახსნა ყველაფერს
+ * *ნახულად* ნიშნავს (რიცხვი ქრება), მაგრამ არაფერს კითხულობს: წაუკითხავს
+ * წერტილი რჩება, სანამ არ დააჭერ. ადრე რიცხვი მანამ ენთო, სანამ ყველაფერს
+ * სათითაოდ არ გახსნიდი.
  *
- * ⚠️ **ზარი მხოლოდ მაშინ ჩანს, როცა რაღაც არის** — არც წაუკითხავი და
- * არც სია, ე.ი. ცარიელი ღილაკი ჰედერს ტყუილად არ იკავებს (თარგმანის
- * ღილაკის იგივე წესი).
+ * ⚠️ **ტექსტი `type`-იდან იგება და სერვერიდან არ მოდის** (`lib/notifications.ts`):
+ * ენა ბრაუზერში ირჩევა.
+ *
+ * ⚠️ **ზარი მხოლოდ მაშინ ჩანს, როცა რაღაც არის** — ცარიელი ღილაკი ჰედერს
+ * ტყუილად არ იკავებს (თარგმანის ღილაკის იგივე წესი). სრული სია — გვერდებით,
+ * ფილტრით და მასობრივი მოქმედებებით — `/notifications`-ზეა („ყველას ნახვა").
  */
 
-const ICONS: Record<string, typeof Bell> = {
-  request_approved: CheckCheck,
-  request_rejected: CircleAlert,
-  storage_warning: HardDrive,
-  backup_failed: DatabaseBackup,
-  batch_done: ListChecks,
-  // ინტერფეისიდან შექმნილი მოდული
-  module_created: Blocks,
-  module_deleted: Trash2,
-  module_disabled: Ban,
-  // დღეს გამოდის — პრემიერა, ახალი სეზონი ან სერია
-  release_today: CalendarClock,
-}
+/** პანელში რამდენი ჩანს — დანარჩენი გვერდზეა */
+const PANEL_SIZE = 20
 
 export function NotificationBell() {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const fmt = useDateFormat()
-  const confirm = useConfirm()
   const [open, setOpen] = useState(false)
 
-  const { data: unread = 0 } = useQuery({
-    queryKey: ['notifications-unread'],
-    queryFn: fetchUnreadNotifications,
+  const { data: counts } = useQuery({
+    queryKey: ['notifications-counts'],
+    queryFn: fetchNotificationCounts,
     refetchInterval: 30_000,
   })
 
   const { data } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: fetchNotifications,
-    // სია მხოლოდ გახსნისას — პოლინგი რიცხვს ეკითხება
+    queryKey: ['notifications', 'panel'],
+    queryFn: () => fetchNotifications({ per_page: PANEL_SIZE }),
+    // სია მხოლოდ გახსნისას — პოლინგი რიცხვებს ეკითხება
     enabled: open,
   })
 
   const items = data?.items ?? []
+  const unseen = counts?.unseen ?? 0
+  const unread = counts?.unread ?? 0
+  const total = counts?.total ?? 0
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['notifications'] })
-    qc.invalidateQueries({ queryKey: ['notifications-unread'] })
+    qc.invalidateQueries({ queryKey: ['notifications-counts'] })
   }
 
-  const read = useMutation({ mutationFn: markNotificationsRead, onSuccess: refresh })
-  const clear = useMutation({ mutationFn: clearNotifications, onSuccess: refresh })
+  const read = useMutation({ mutationFn: (id?: string) => markNotificationsRead(id), onSuccess: refresh })
+  const seen = useMutation({
+    mutationFn: () => markNotificationsSeen(),
+    onSuccess: (next) => qc.setQueryData(['notifications-counts'], next),
+  })
 
-  /** მეორე ხაზი — მოვლენის დეტალი; `null`, თუ სათაურს დასამატებელი არაფერი აქვს */
-  const detail = (n: AppNotification): string | null => {
-    const d = n.data as Record<string, string | number | undefined>
+  if (total === 0 && unseen === 0) return null
 
-    if (n.type === 'storage_warning') {
-      return t('notifications.detail.storage', { percent: d.percent, threshold: d.threshold })
-    }
-    /* დღეს გამოდის: სათაური ინტერფეისის ენაზე + რა გამოდის (პრემიერა · ახალი სეზონი · სერია).
-       ⚠️ სათაური ორივე ენაზე მოდის — ტექსტი ბაზაში არ ინახება, მხოლოდ ფაქტები */
-    if (n.type === 'release_today') {
-      const title = (i18n.language === 'en' ? d.title_en : d.title_ka) || d.title_en || d.title_ka || ''
-      const what = soonWhat(
-        {
-          kind: (d.kind as SoonKind | undefined) ?? 'premiere',
-          season: typeof d.season === 'number' ? d.season : null,
-          episode: typeof d.episode === 'number' ? d.episode : null,
-          tmdb_status: null,
-        },
-        t,
-      )
-
-      return [title, what].filter(Boolean).join(' · ')
-    }
-    if (n.type === 'backup_failed' && d.name) {
-      return t('notifications.detail.backup', { name: d.name })
-    }
-    if (n.type === 'batch_done') {
-      return t('notifications.detail.batch', { total: d.total ?? 0, failed: d.failed ?? 0 })
-    }
-    /* ვინ და რომელი ბმულიდან (შეტყობინება ერთი მიმღებზე დღეშია,
-       ამიტომ რიცხვი აქ არ წერია — ის პირველ ჩანაწერზე იბადება და მოატყუებდა) */
-    if (n.type === 'share_imported') {
-      return t('notifications.detail.share', {
-        name: d.display_name ?? d.username ?? '—',
-        link: d.link_name || t('share.unnamed'),
-      })
-    }
-    /* ატვირთვის მოთხოვნა: რა ჩაირთო და **ვისზე** (შეტყობინებამ
-       უნდა თქვას, მხოლოდ მისთვის გავრცელდა თუ ყველასთვის) */
-    if (d.request_type === 'upload_limit' && d.upload_kind) {
-      const formats = Array.isArray(n.data.upload_formats) ? (n.data.upload_formats as string[]) : []
-      const what = [
-        formats.length ? formats.map((f) => f.toUpperCase()).join(', ') : null,
-        d.upload_max_kb ? `≤ ${formatBytes(Number(d.upload_max_kb) * 1024)}` : null,
-      ]
-        .filter(Boolean)
-        .join(' · ')
-      const line = t('notifications.detail.upload', { kind: t(`uploads.kind.${d.upload_kind}`), what })
-
-      return d.upload_scope ? `${line} · ${t(`uploads.scope.${d.upload_scope}`)}` : line
-    }
-    /* პირადი მოდული: სახელი ორივე ენაზე და (სუპერადმინისთვის) მფლობელი.
-       ⚠️ ტექსტი ბაზაში არ ინახება — მხოლოდ ფაქტები და აქ იწყობა. */
-    if (n.type === 'module_created' || n.type === 'module_deleted' || n.type === 'module_disabled') {
-      const moduleName = (i18n.language === 'en' ? d.module_name_en : d.module_name_ka) ?? d.module_key
-      return d.owner_name && n.type !== 'module_disabled'
-        ? t('notifications.detail.customModule', { name: moduleName, owner: d.owner_name })
-        : t('notifications.detail.module', { name: moduleName })
-    }
-
-    // ⚠️ მოდულის სახელი **ორივე ენაზე მოდის** — ინტერფეისის ენა წყვეტს, რომელი
-    const name = i18n.language === 'en' ? d.module_en : d.module_ka
-    if (name) return t('notifications.detail.module', { name })
-    if (d.note) return t('notifications.detail.note', { note: d.note })
-
-    return null
+  const change = (next: boolean) => {
+    setOpen(next)
+    // გახსნა = „დავინახე": რიცხვი ქრება, წერტილები რჩება
+    if (next && unseen > 0) seen.mutate()
   }
-
-  if (unread === 0 && items.length === 0) return null
 
   const row = (n: AppNotification) => {
-    const Icon = ICONS[n.type] ?? Bell
-    const line = detail(n)
-    const title = NOTIFICATION_LABEL(t, n.type)
+    const Icon = notificationIcon(n.type)
+    const line = notificationDetail(n, t, i18n.language)
 
     const body = (
       <>
@@ -179,20 +100,20 @@ export function NotificationBell() {
         </span>
         <span className="min-w-0 flex-1">
           <span className={cn('block text-sm', n.read_at ? 'text-muted-foreground' : 'font-medium')}>
-            {title}
+            {notificationTitle(t, n.type)}
           </span>
           {line && <span className="mt-0.5 block text-xs text-muted-foreground">{line}</span>}
-          <span className="mt-0.5 block text-[11px] text-muted-foreground">
-            {fmt.relative(n.created_at)}
-          </span>
+          <span className="mt-0.5 block text-[11px] text-muted-foreground">{fmt.relative(n.created_at)}</span>
         </span>
+        {/* წაუკითხავის წერტილი — დაჭერამდე რჩება */}
+        {!n.read_at && <span className="mt-2 size-2 shrink-0 rounded-full bg-primary" data-testid="unread-dot" />}
       </>
     )
 
-    const shared = 'flex w-full gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted'
+    const shared = 'flex w-full cursor-pointer gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted'
 
     /* ⚠️ **გახსნა წაკითხვასაც ნიშნავს** — ცალკე „წავიკითხე" ღილაკი თითო
-       რიგზე იმას ნიშნავდა, რომ ბეჯი მას შემდეგაც ანთია, რაც ადამიანმა
+       რიგზე იმას ნიშნავდა, რომ წერტილი მას შემდეგაც ანთია, რაც ადამიანმა
        საქმე უკვე გააკეთა. */
     return n.route ? (
       <Link
@@ -209,6 +130,7 @@ export function NotificationBell() {
     ) : (
       <button
         key={n.id}
+        data-kind="row"
         type="button"
         className={shared}
         onClick={() => !n.read_at && read.mutate(n.id)}
@@ -219,17 +141,23 @@ export function NotificationBell() {
   }
 
   return (
-    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+    <PopoverPrimitive.Root open={open} onOpenChange={change}>
       <PopoverPrimitive.Trigger
         title={t('notifications.title')}
         aria-label={t('notifications.title')}
         className="relative grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
       >
         <Bell className="size-5" />
-        {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-md bg-primary px-1 text-[10px] font-semibold leading-[18px] text-primary-foreground">
-            {unread > 99 ? '99+' : unread}
+        {unseen > 0 ? (
+          <span
+            data-testid="bell-count"
+            className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-md bg-primary px-1 text-[10px] font-semibold leading-[18px] text-primary-foreground"
+          >
+            {unseen > 99 ? '99+' : unseen}
           </span>
+        ) : (
+          // ნახული, მაგრამ ჯერ წაუკითხავი — რიცხვის ნაცვლად წერტილი
+          unread > 0 && <span data-testid="bell-dot" className="absolute right-1 top-1 size-2 rounded-full bg-primary" />
         )}
       </PopoverPrimitive.Trigger>
 
@@ -266,44 +194,19 @@ export function NotificationBell() {
             )}
           </div>
 
-          {items.length > 0 && (
-            <div className="mt-1.5 border-t border-border pt-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full justify-start"
-                onClick={async () => {
-                  if (
-                    await confirm({
-                      title: t('notifications.clear'),
-                      description: t('notifications.clearConfirm'),
-                      variant: 'destructive',
-                    })
-                  ) {
-                    clear.mutate()
-                  }
-                }}
-              >
-                <Trash2 className="size-4" />
-                {t('notifications.clear')}
-              </Button>
-            </div>
-          )}
+          {/* სრული სია — გვერდებით, ფილტრით და მასობრივი მოქმედებებით */}
+          <div className="mt-1.5 border-t border-border pt-1.5">
+            <Link
+              to="/notifications"
+              onClick={() => setOpen(false)}
+              className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-full justify-between')}
+            >
+              {t('notifications.seeAll')}
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
   )
-}
-
-/**
- * ⚠️ **უცნობი სახე ზოგად სათაურს იღებს და არა ნედლ კოდს.** სერვერს
- * მოგვიანებით შეიძლება ახალი ტიპი დაემატოს, ხოლო ბრაუზერში გახსნილი
- * ძველი SPA მას `snake_case`-ად დახატავდა.
- */
-function NOTIFICATION_LABEL(t: (key: string) => string, type: string): string {
-  const key = `notifications.kind.${type}`
-  const text = t(key)
-
-  return text === key ? t('notifications.title') : text
 }

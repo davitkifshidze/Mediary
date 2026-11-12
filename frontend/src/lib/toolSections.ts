@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   ArrowLeftRight,
+  Bell,
   ChartColumn,
   ContactRound,
   DatabaseBackup,
@@ -67,6 +68,7 @@ export type ToolSectionKey =
   | 'stats'
   | 'trash'
   | 'purge'
+  | 'notifications'
 
 type ToolSection = { color: string; icon: LucideIcon }
 
@@ -100,6 +102,8 @@ export const TOOL_SECTIONS: Record<ToolSectionKey, ToolSection> = {
      `ArchiveRestore` იმასაც ამბობს, რასაც გვერდი აკეთებს — დაბრუნებას. */
   trash: { color: 'var(--tool-trash)', icon: ArchiveRestore },
   purge: { color: 'var(--tool-purge)', icon: Trash2 },
+  /* შეტყობინებების სრული სია — ზარის „ყველას ნახვა"; საიდბარში რიგი არ აქვს */
+  notifications: { color: 'var(--tool-notifications)', icon: Bell },
 }
 
 /**

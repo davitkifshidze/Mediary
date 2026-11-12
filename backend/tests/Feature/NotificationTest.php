@@ -94,22 +94,111 @@ class NotificationTest extends TestCase
         app(Notifier::class)->send($this->user, NotificationType::BATCH_DONE, ['kind' => 'gallery']);
 
         $this->actingAs($this->user)
-            ->getJson('/api/notifications/unread')
+            ->getJson('/api/notifications/counts')
             ->assertOk()
-            ->assertJsonPath('count', 2);
+            ->assertExactJson(['unseen' => 2, 'unread' => 2, 'total' => 2]);
 
         $id = $this->actingAs($this->user)->getJson('/api/notifications')->json('data.0.id');
 
         $this->actingAs($this->user)
             ->patchJson("/api/notifications/{$id}/read")
             ->assertOk()
-            ->assertJsonPath('count', 1);
+            ->assertJsonPath('unread', 1);
 
         $this->actingAs($this->user)->patchJson('/api/notifications/read')
             ->assertOk()
-            ->assertJsonPath('count', 0);
+            ->assertJsonPath('unread', 0);
 
         $this->assertSame(2, $this->user->notifications()->whereNotNull('read_at')->count());
+    }
+
+    /**
+     * **ზარის რიცხვი უნახავს ითვლის, წერტილი — წაუკითხავს.** ზარის გახსნა ყველაფერს
+     * ნახულად ნიშნავს და არაფერს კითხულობს; წაკითხვა ნახვასაც ნიშნავს; წაუკითხავად
+     * დაბრუნებული ნახული რჩება — ზარზე აღარ ბრუნდება.
+     */
+    public function test_opening_the_bell_marks_seen_but_not_read(): void
+    {
+        app(Notifier::class)->send($this->user, NotificationType::BATCH_DONE, ['kind' => 'sync']);
+        app(Notifier::class)->send($this->user, NotificationType::STORAGE_WARNING, ['percent' => 81]);
+
+        $this->actingAs($this->user)->patchJson('/api/notifications/seen')
+            ->assertOk()
+            ->assertExactJson(['unseen' => 0, 'unread' => 2, 'total' => 2]);
+
+        $rows = $this->actingAs($this->user)->getJson('/api/notifications')->json('data');
+        $this->assertNotNull($rows[0]['seen_at']);
+        $this->assertNull($rows[0]['read_at']);
+
+        // ახალი შეტყობინება ისევ უნახავია; წაკითხვა მას ნახულადაც ნიშნავს
+        app(Notifier::class)->send($this->user, NotificationType::BACKUP_FAILED, ['name' => 'x']);
+        $fresh = $this->user->notifications()->whereNull('seen_at')->firstOrFail();
+
+        $this->actingAs($this->user)->patchJson("/api/notifications/{$fresh->id}/read")
+            ->assertExactJson(['unseen' => 0, 'unread' => 2, 'total' => 3]);
+
+        // წაუკითხავად დაბრუნება: წერტილი ბრუნდება, ზარის რიცხვი — არა
+        $this->actingAs($this->user)->patchJson("/api/notifications/{$fresh->id}/unread")
+            ->assertExactJson(['unseen' => 0, 'unread' => 3, 'total' => 3]);
+        $this->assertNull($fresh->refresh()->read_at);
+        $this->assertNotNull($fresh->seen_at);
+    }
+
+    /** გვერდი: გვერდებად, ფილტრი წაუკითხავით და ტიპით, ტიპების რიცხვები */
+    public function test_the_page_is_paginated_and_filters_by_unread_and_type(): void
+    {
+        foreach (range(1, 12) as $i) {
+            app(Notifier::class)->send($this->user, NotificationType::BATCH_DONE, ['kind' => 'sync', 'n' => $i]);
+        }
+        app(Notifier::class)->send($this->user, NotificationType::STORAGE_WARNING, ['percent' => 81]);
+        $this->user->notifications()->where('type', NotificationType::BATCH_DONE)->limit(5)->get()->each->markAsRead();
+
+        $first = $this->actingAs($this->user)->getJson('/api/notifications')->assertOk();
+        $this->assertCount(10, $first->json('data'));
+        $this->assertSame(['total' => 13, 'last_page' => 2], $first->json('meta'));
+        $this->assertSame([NotificationType::BATCH_DONE => 12, NotificationType::STORAGE_WARNING => 1], $first->json('types'));
+        $this->assertSame(8, $first->json('unread'));
+
+        $this->assertCount(3, $this->actingAs($this->user)->getJson('/api/notifications?page=2')->json('data'));
+        $this->assertSame(8, $this->actingAs($this->user)->getJson('/api/notifications?unread=1')->json('meta.total'));
+
+        $typed = $this->actingAs($this->user)->getJson('/api/notifications?type='.NotificationType::STORAGE_WARNING)->json('data');
+        $this->assertSame([NotificationType::STORAGE_WARNING], array_column($typed, 'type'));
+
+        $this->actingAs($this->user)->getJson('/api/notifications?type=made_up')->assertStatus(422);
+    }
+
+    /** მონიშნულებზე ერთად — და სხვისი id არაფერს ემთხვევა */
+    public function test_bulk_actions_touch_only_my_selected_rows(): void
+    {
+        foreach (range(1, 4) as $i) {
+            app(Notifier::class)->send($this->user, NotificationType::BATCH_DONE, ['n' => $i]);
+        }
+        app(Notifier::class)->send($this->admin, NotificationType::BATCH_DONE, []);
+
+        $mine = $this->user->notifications()->pluck('id')->all();
+        $theirs = $this->admin->notifications()->firstOrFail()->id;
+
+        $this->actingAs($this->user)
+            ->postJson('/api/notifications/bulk', ['action' => 'read', 'ids' => [$mine[0], $mine[1], $theirs]])
+            ->assertOk()
+            ->assertJsonPath('affected', 2)
+            ->assertJsonPath('unread', 2);
+        $this->assertNull($this->admin->notifications()->firstOrFail()->read_at);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/notifications/bulk', ['action' => 'unread', 'ids' => [$mine[0]]])
+            ->assertJsonPath('affected', 1)
+            ->assertJsonPath('unread', 3);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/notifications/bulk', ['action' => 'delete', 'ids' => [$mine[2], $mine[3], $theirs]])
+            ->assertJsonPath('affected', 2)
+            ->assertJsonPath('total', 2);
+        $this->assertSame(1, $this->admin->notifications()->count());
+
+        $this->actingAs($this->user)->postJson('/api/notifications/bulk', ['action' => 'archive', 'ids' => $mine])->assertStatus(422);
+        $this->actingAs($this->user)->postJson('/api/notifications/bulk', ['action' => 'read', 'ids' => []])->assertStatus(422);
     }
 
     /**
@@ -123,6 +212,7 @@ class NotificationTest extends TestCase
         $id = $this->admin->notifications()->firstOrFail()->id;
 
         $this->actingAs($this->user)->patchJson("/api/notifications/{$id}/read")->assertStatus(404);
+        $this->actingAs($this->user)->patchJson("/api/notifications/{$id}/unread")->assertStatus(404);
         $this->actingAs($this->user)->deleteJson("/api/notifications/{$id}")->assertStatus(404);
 
         $this->assertNull($this->admin->notifications()->firstOrFail()->read_at);

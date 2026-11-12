@@ -282,10 +282,14 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ **`/read` და `/unread` `{notification}`-ზე ზემოთ დგას**, თორემ
        ისინი UUID-ად წაიკითხება — `/gallery/{type}/{id}`-ის იგივე წესი. */
     Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::get('/notifications/unread', [NotificationController::class, 'unread']);
+    // რიცხვები ზარისთვის: უნახავი (რიცხვი) · წაუკითხავი (წერტილი) · სულ
+    Route::get('/notifications/counts', [NotificationController::class, 'summary']);
+    Route::patch('/notifications/seen', [NotificationController::class, 'seen']);
     Route::patch('/notifications/read', [NotificationController::class, 'read']);
+    Route::post('/notifications/bulk', [NotificationController::class, 'bulk']);
     Route::delete('/notifications', [NotificationController::class, 'destroy']);
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read']);
+    Route::patch('/notifications/{notification}/unread', [NotificationController::class, 'unread']);
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
 
     /* ---------- საცავი — მოდულებად დაშლა და გადათვლა ----------

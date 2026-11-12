@@ -4095,7 +4095,9 @@
       "module_deleted": "A module was deleted",
       "module_disabled": "An admin disabled your module",
       "share_imported": "Someone is adding records from your link",
-      "release_today": "Out today"
+      "release_today": "Out today",
+      "franchise_part": "A franchise part is missing",
+      "new_season": "A new season was announced"
     },
     "detail": {
       "module": "Module: {{name}}",
@@ -4106,7 +4108,20 @@
       "upload": "{{kind}}: {{what}}",
       "customModule": "{{name}} · {{owner}}",
       "share": "{{name}} · {{link}}"
-    }
+    },
+    "seeAll": "See all",
+    "unread": "Unread",
+    "allTypes": "Every type",
+    "typeFilter": "Notification type",
+    "markRead": "Mark read",
+    "markUnread": "Mark unread",
+    "selected": "{{count}} selected",
+    "selectPage": "Select this page",
+    "select": "Select",
+    "summary": "{{total}} in all · {{unread}} unread",
+    "emptyFiltered": "Nothing matches this filter",
+    "bulkDeleteConfirm": "The {{count}} selected notifications will be removed. The audit log is untouched.",
+    "pageHint": "The number on the bell counts notifications you have not seen and clears as soon as the bell is opened. A dot means unread: it goes away when you press the notification or mark it read, and “mark unread” brings it back."
   },
   "pick": {
     "title": "What should I watch today?",

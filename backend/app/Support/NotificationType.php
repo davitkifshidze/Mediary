@@ -50,6 +50,12 @@ final class NotificationType
     /** დღეს გამოდის: ფილმის პრემიერა, სერიალის / ანიმეს პირველი ეთერი ან შემდეგი სერია */
     public const RELEASE_TODAY = 'release_today';
 
+    /** ფრანჩაიზს ნაწილი აკლია — ბიბლიოთეკაში მისი სხვა ნაწილი მაქვს, ეს კი არა */
+    public const FRANCHISE_PART = 'franchise_part';
+
+    /** სერიალს ან ანიმეს ახალი სეზონი გამოუცხადეს */
+    public const NEW_SEASON = 'new_season';
+
     /** @var list<string> */
     public const ALL = [
         self::REQUEST_APPROVED,
@@ -62,6 +68,8 @@ final class NotificationType
         self::MODULE_DISABLED,
         self::SHARE_IMPORTED,
         self::RELEASE_TODAY,
+        self::FRANCHISE_PART,
+        self::NEW_SEASON,
     ];
 
     /**
@@ -101,7 +109,7 @@ final class NotificationType
             self::SHARE_IMPORTED => '/transfer?tab=share',
             /* ჩანაწერზე გადასვლა: მისამართი შეტყობინებასთან ერთად იწერება (`path`) —
                მოდულის `route_base` ბაზაშია და აქედან არ გამოითვლება */
-            self::RELEASE_TODAY => isset($data['path']) && is_string($data['path']) ? $data['path'] : null,
+            self::RELEASE_TODAY, self::FRANCHISE_PART, self::NEW_SEASON => isset($data['path']) && is_string($data['path']) ? $data['path'] : null,
             default => null,
         };
     }

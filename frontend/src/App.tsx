@@ -39,6 +39,7 @@ const StatusBulkPage = lazy(() => import('@/pages/StatusBulkPage').then((m) => (
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 const TransferPage = lazy(() => import('@/pages/TransferPage').then((m) => ({ default: m.TransferPage })))
 const ShareLinksPage = lazy(() => import('@/pages/ShareLinksPage').then((m) => ({ default: m.ShareLinksPage })))
+const NotificationsPage = lazy(() => import('@/pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })))
 const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default: m.StatsPage })))
 const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })))
 const SyncPage = lazy(() => import('@/pages/SyncPage').then((m) => ({ default: m.SyncPage })))
@@ -338,6 +339,8 @@ function AppShell() {
           <Route path="stats" element={<StatsPage />} />
           <Route path="trash" element={<TrashPage />} />
           <Route path="search" element={<SearchPage />} />
+          {/* შეტყობინებების სრული სია — ზარის „ყველას ნახვა" */}
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="profile" element={<ProfilePage />} />
           {/* „ვისთან ჰგავს ჩემი გემოვნება": საჯარო პროფილების
