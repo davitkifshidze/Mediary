@@ -65,7 +65,6 @@ class Series extends Model
         'rating' => 'decimal:1',
         // „ჩემი ქულა" ცალკე სვეტშია; `rating` TMDB-ის საშუალოა
         'my_rating' => RatingCast::class,
-        'runtime' => 'integer',
         'seasons' => 'integer',
         'episodes' => 'integer',
         'is_favorite' => 'boolean',

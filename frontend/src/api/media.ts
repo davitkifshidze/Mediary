@@ -361,7 +361,6 @@ export interface LookupDraft {
   title_ka: string | null
   year: number | null
   rating: number | null
-  runtime?: number | null
   seasons?: number | null
   episodes?: number | null
   description_en: string | null

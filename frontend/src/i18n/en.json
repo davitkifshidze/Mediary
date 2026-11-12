@@ -807,7 +807,6 @@
       "year": "year",
       "rating": "rating",
       "imdb": "IMDb",
-      "runtime": "runtime",
       "seasons": "seasons",
       "episodes": "episodes",
       "next_air": "next episode",
@@ -826,7 +825,7 @@
       "rating": "Rating",
       "genres": "Genres",
       "cast": "Cast",
-      "details": "Runtime, IMDb, seasons",
+      "details": "IMDb, seasons",
       "trailer": "Trailer"
     },
     "mode": "Mode",
@@ -1356,7 +1355,6 @@
         "rating": "My rating",
         "ge_url": "Watch link",
         "trailer_url": "Trailer URL",
-        "runtime": "Runtime",
         "title": "Title",
         "year": "Year",
         "genres": "Genres",
@@ -1369,7 +1367,6 @@
         "rating": "My rating",
         "ge_url": "Watch link",
         "trailer_url": "Trailer URL",
-        "runtime": "Runtime",
         "title": "Title",
         "year": "Year",
         "genres": "Genres",
@@ -1523,7 +1520,6 @@
         "rating": "From 1 to 10. TMDB's own score is stored separately and isn't touched.",
         "ge_url": "Where you watched it, or where it can be watched.",
         "trailer_url": "Left empty, sync fetches it from TMDB by itself.",
-        "runtime": "Normally comes from TMDB — fill it in by hand only if it is wrong or missing.",
         "is_favorite": "Shows up in the favourites section.",
         "poster": "A poster you upload counts against the quota; one downloaded from TMDB doesn't."
       },
@@ -1531,7 +1527,6 @@
         "rating": "From 1 to 10. TMDB's own score is stored separately and isn't touched.",
         "ge_url": "Where you watched it, or where it can be watched.",
         "trailer_url": "Left empty, sync fetches it from TMDB by itself.",
-        "runtime": "Normally comes from TMDB — fill it in by hand only if it is wrong or missing.",
         "is_favorite": "Shows up in the favourites section.",
         "poster": "A poster you upload counts against the quota; one downloaded from TMDB doesn't."
       },

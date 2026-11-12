@@ -159,7 +159,7 @@ class SeriesController extends Controller
     {
         // translation ველები (title_*, description_*) ცალკე მუშავდება — იხ. applyTranslations()
         // `my_rating` „ჩემი ქულაა", `rating` TMDB-ის საშუალო: ორი სვეტი, ორი აზრი
-        foreach (['year', 'ge_url', 'trailer_url', 'rating', 'my_rating', 'runtime', 'seasons', 'episodes'] as $field) {
+        foreach (['year', 'ge_url', 'trailer_url', 'rating', 'my_rating', 'seasons', 'episodes'] as $field) {
             if ($request->has($field)) {
                 $series->{$field} = $request->input($field) ?: null;
             }

@@ -44,15 +44,6 @@ final class FieldCatalog
         ['key' => 'status', 'type' => 'select', 'sort_order' => 60],
         ['key' => 'is_favorite', 'type' => 'bool', 'sort_order' => 70],
         ['key' => 'rating', 'type' => 'number', 'sort_order' => 80],
-        [
-            // ხანგრძლივობა ხელით (`DurationInput`, ერთეული **წუთი**).
-            // ⚠️ სვეტი TMDB-იდანაც ივსება, ე.ი. ველი მხოლოდ შესწორებისთვისაა —
-            // ამიტომ default-ად გამორთულია, ვიდეოს `duration`-ის მსგავსად.
-            'key' => 'runtime',
-            'type' => 'number',
-            'enabled' => false,
-            'sort_order' => 90,
-        ],
         ['key' => 'ge_url', 'type' => 'link', 'sort_order' => 100],
         ['key' => 'trailer_url', 'type' => 'link', 'sort_order' => 110],
     ];

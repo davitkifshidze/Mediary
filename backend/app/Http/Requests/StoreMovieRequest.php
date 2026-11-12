@@ -44,7 +44,6 @@ class StoreMovieRequest extends FormRequest
             'rating' => ['nullable', 'numeric', 'min:0', 'max:10'],
             // „ჩემი ქულა" (ვარსკვლავები, 4.6 / 10); TMDB-ის `rating`-ისგან ცალკე
             'my_rating' => Rating::rules(),
-            'runtime' => ['nullable', 'integer', 'min:1', 'max:1000'],
             /* სტატუსი per-user ლექსიკონია, ე.ი. სია კოდში აღარ წერია.
                ⚠️ გასაღები **ამ ანგარიშის** ლექსიკონში უნდა არსებობდეს, თორემ
                უცნობი მნიშვნელობა ჩუმად „სტატუსის გარეშედ“ იქცეოდა. */

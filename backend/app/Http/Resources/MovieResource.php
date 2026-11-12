@@ -35,7 +35,6 @@ class MovieResource extends JsonResource
             'description_en_source' => $this->description_en_source,
             'rating' => $this->rating,
             'my_rating' => $this->my_rating,
-            'runtime' => $this->runtime,
             'poster' => $this->poster_path ? asset('storage/'.$this->poster_path) : null,
             'poster_source' => $this->poster_source,
             /* სტატუსი per-user ლექსიკონის რიგია, ე.ი. **ობიექტი** და არა

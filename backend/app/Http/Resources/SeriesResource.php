@@ -35,7 +35,6 @@ class SeriesResource extends JsonResource
             'description_en_source' => $this->description_en_source,
             'rating' => $this->rating,
             'my_rating' => $this->my_rating,
-            'runtime' => $this->runtime,
             'seasons' => $this->seasons,
             'episodes' => $this->episodes,
             'poster' => $this->poster_path ? asset('storage/'.$this->poster_path) : null,

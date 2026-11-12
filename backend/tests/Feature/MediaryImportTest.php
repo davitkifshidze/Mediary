@@ -119,6 +119,30 @@ class MediaryImportTest extends TestCase
         $this->assertTrue(AuditLog::where('action', AuditLog::ACTION_IMPORT)->where('user_id', $this->bob->id)->exists());
     }
 
+    /**
+     * **ძველი ფაილი ისევ შემოდის.** `runtime` სვეტი ფილმიდან, სერიალიდან და ანიმედან
+     * წაიშალა; ადრე გაკეთებულ ექსპორტში ეს ველი ჯერ კიდევ წერია და უბრალოდ გამოიტოვება.
+     */
+    public function test_a_field_that_no_longer_exists_in_an_old_file_is_skipped(): void
+    {
+        $this->aliceMovie();
+
+        $json = $this->actingAs($this->alice)->get('/api/export/movie?format=json')->assertOk()->streamedContent();
+        $decoded = json_decode($json, true);
+        $this->assertArrayNotHasKey('runtime', $decoded['records'][0]);
+
+        $decoded['records'][0]['runtime'] = 136;
+        $plan = $this->plan($this->bob, json_encode($decoded), 'mediary-movie-2026-10-05.json');
+        $this->assertSame(['new' => 1, 'duplicate' => 0, 'invalid' => 0], $plan['modules'][0]['counts']);
+
+        $result = $this->item($this->bob, $plan, 'movie', 0);
+        $this->assertTrue($result['ok']);
+
+        $copy = Movie::withoutGlobalScopes()->findOrFail($result['id']);
+        $this->assertSame('The Matrix', $copy->title_en);
+        $this->assertSame(1999, $copy->year);
+    }
+
     public function test_what_i_already_have_is_skipped_and_counted(): void
     {
         $movie = $this->aliceMovie();

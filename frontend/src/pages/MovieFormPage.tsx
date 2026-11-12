@@ -21,7 +21,6 @@ import { RichText } from '@/components/ui/rich-text'
 import { useToast } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
 import { RatingSelect } from '@/components/ui/rating-select'
-import { DurationInput } from '@/components/ui/duration-input'
 import { Label } from '@/components/ui/label'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FormField, MediaRow } from '@/components/ui/form-layout'
@@ -71,8 +70,6 @@ const EMPTY = {
   description_en: '',
   /** „ჩემი ქულა" (`my_rating`); TMDB-ის `rating`-ს ფორმა აღარ ეხება */
   my_rating: null as number | null,
-  // ხანგრძლივობა **წუთებში** (`movies.runtime`), `DurationInput`-ით
-  runtime: '',
   genres: [] as string[],
   /** ლექსიკონის **გასაღები**; ცარიელი = „როგორც არის" (ახალზე ნაგულისხმევი) */
   status: '',
@@ -138,7 +135,6 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       description_ka: m.description_ka ?? '',
       description_en: m.description_en ?? '',
       my_rating: m.my_rating ?? null,
-      runtime: m.runtime ? String(m.runtime) : '',
       genres: m.genres.map((g) => g.slug),
       status: m.status?.key ?? '',
       is_favorite: m.is_favorite,
@@ -164,7 +160,6 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
     fd.append('description_en', form.description_en)
     // ჩემი ქულა ყოველთვის იგზავნება: ცარიელი სტრიქონი = წაშლა (`Rating::normalize()`)
     fd.append('my_rating', form.my_rating == null ? '' : String(form.my_rating))
-    if (form.runtime) fd.append('runtime', form.runtime)
     // ცარიელი გასაღები საერთოდ არ იგზავნება — backend ნაგულისხმევს დაუყენებს
     if (form.status) fd.append('status', form.status)
     fd.append('is_favorite', form.is_favorite ? '1' : '0')
@@ -576,16 +571,6 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
                   </div>
                 )}
               </div>
-
-              {/* ხანგრძლივობა ხელით; ჩვეულებრივ TMDB-იდან მოდის */}
-              <FormField {...fields.field('runtime')} htmlFor="m-runtime" error={errors.runtime?.[0]}>
-                <DurationInput
-                  id="m-runtime"
-                  unit="minutes"
-                  value={form.runtime ? Number(form.runtime) : null}
-                  onChange={(v) => set('runtime', v == null ? '' : String(v))}
-                />
-              </FormField>
             </div>
           </MediaRow>
 

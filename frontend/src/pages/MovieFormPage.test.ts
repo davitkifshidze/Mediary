@@ -210,7 +210,6 @@ describe('MovieFormPage — sync on the edit form', () => {
       description_en: null,
       rating: null,
       my_rating: null,
-      runtime: null,
       genres: [],
       status: null,
       is_favorite: false,

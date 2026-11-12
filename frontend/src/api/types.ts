@@ -111,7 +111,6 @@ export interface Movie extends MovieListItem {
   description_en: string | null
   description_ka_source: string | null
   description_en_source: string | null
-  runtime: number | null
   seasons?: number | null
   episodes?: number | null
   cast: CastMember[]

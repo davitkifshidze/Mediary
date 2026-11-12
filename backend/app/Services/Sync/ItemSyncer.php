@@ -162,7 +162,7 @@ class ItemSyncer
 
     /* ---------- ველების გამოყენება ---------- */
 
-    /** არა-translation ველები: year, rating, details (runtime/imdb/კოლექცია/სეზონები) */
+    /** არა-translation ველები: year, rating, details (imdb/კოლექცია/სეზონები) */
     private function applyScalars(Model $item, array $d, array $fields, bool $overwrite, bool $isSeries): array
     {
         $changed = [];
@@ -195,12 +195,10 @@ class ItemSyncer
                 $item->imdb_url = "https://www.imdb.com/title/{$item->imdb_id}/";
             }
             if ($isSeries) {
-                $set('runtime', $d['episode_run_time'][0] ?? null, 'runtime');
                 $set('seasons', $d['number_of_seasons'] ?? null, 'seasons');
                 $set('episodes', $d['number_of_episodes'] ?? null, 'episodes');
                 $this->applyNextAir($item, $d, $changed);
             } else {
-                $set('runtime', $d['runtime'] ?? null, 'runtime');
                 if (! empty($d['belongs_to_collection'])) {
                     $set('tmdb_collection_id', $d['belongs_to_collection']['id'] ?? null, 'collection');
                     $set('collection_name', $d['belongs_to_collection']['name'] ?? null, 'collection');

@@ -83,7 +83,7 @@ final class ExportDomain
             'with' => ['translations', 'status', 'genres.translations', 'castLinks', 'galleryImages', 'galleryVideos', 'watches'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'year', 'genres', 'status', 'status_name',
-                'rating', 'my_rating', 'runtime', 'is_favorite', 'watched_at', 'imdb_id', 'tmdb_id',
+                'rating', 'my_rating', 'is_favorite', 'watched_at', 'imdb_id', 'tmdb_id',
                 'imdb_url', 'ge_url', 'collection_name', 'trailer_url',
                 'description_ka', 'description_en', 'poster_path', 'poster_source', 'visibility', 'created_at',
                 'custom_fields', 'cast', 'gallery', 'watches',
@@ -94,7 +94,7 @@ final class ExportDomain
             'with' => ['translations', 'status', 'genres.translations', 'castLinks', 'galleryImages', 'galleryVideos', 'watches'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'year', 'genres', 'status', 'status_name',
-                'rating', 'my_rating', 'runtime', 'seasons', 'episodes', 'is_favorite', 'watched_at',
+                'rating', 'my_rating', 'seasons', 'episodes', 'is_favorite', 'watched_at',
                 'imdb_id', 'tmdb_id', 'imdb_url', 'ge_url', 'trailer_url',
                 'description_ka', 'description_en', 'poster_path', 'poster_source', 'visibility', 'created_at',
                 'custom_fields', 'cast', 'gallery', 'watches', 'episode_watches',
@@ -105,7 +105,7 @@ final class ExportDomain
             'with' => ['translations', 'status', 'genres.translations', 'castLinks', 'galleryImages', 'galleryVideos', 'watches'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'year', 'genres', 'status', 'status_name',
-                'rating', 'my_rating', 'runtime', 'seasons', 'episodes', 'is_favorite', 'watched_at',
+                'rating', 'my_rating', 'seasons', 'episodes', 'is_favorite', 'watched_at',
                 'imdb_id', 'tmdb_id', 'imdb_url', 'ge_url', 'trailer_url',
                 'description_ka', 'description_en', 'poster_path', 'poster_source', 'visibility', 'created_at',
                 'custom_fields', 'cast', 'gallery', 'watches', 'episode_watches',

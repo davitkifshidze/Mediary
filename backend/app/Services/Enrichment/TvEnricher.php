@@ -148,7 +148,6 @@ abstract class TvEnricher
             'title_ka' => Lang::georgian($dka['name'] ?? null),
             'year' => $this->year($d),
             'rating' => isset($d['vote_average']) ? round((float) $d['vote_average'], 1) : null,
-            'runtime' => $this->runtime($d),
             'seasons' => $d['number_of_seasons'] ?? null,
             'episodes' => $d['number_of_episodes'] ?? null,
             'description_en' => $d['overview'] ?? null,
@@ -214,7 +213,6 @@ abstract class TvEnricher
         $series->rating = $series->rating ?: (isset($d['vote_average']) ? round((float) $d['vote_average'], 1) : null);
         // ტრეილერი — მხოლოდ ცარიელზე
         $series->trailer_url = $series->trailer_url ?: $this->trailer($id);
-        $series->runtime = $series->runtime ?: $this->runtime($d);
         $series->seasons = $series->seasons ?: ($d['number_of_seasons'] ?? null);
         $series->episodes = $series->episodes ?: ($d['number_of_episodes'] ?? null);
         /* შემდეგი ეპიზოდის ეთერი.
@@ -345,12 +343,6 @@ abstract class TvEnricher
     private function year(array $details): ?int
     {
         return ! empty($details['first_air_date']) ? (int) substr($details['first_air_date'], 0, 4) : null;
-    }
-
-    /** ეპიზოდის საშ. ხანგრძლივობა (episode_run_time მასივის პირველი) */
-    private function runtime(array $details): ?int
-    {
-        return ! empty($details['episode_run_time'][0]) ? (int) $details['episode_run_time'][0] : null;
     }
 
     /**
