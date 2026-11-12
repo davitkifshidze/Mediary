@@ -861,8 +861,9 @@ class GalleryAlbumTest extends TestCase
         $album = $this->lockedAlbum();
         $image = $this->lockedPhoto($album, 'gallery/locked/secret.jpg');
 
+        // „ფოტოები გაიხსნას და დარჩეს" — ცხადი არჩევანი (ნაგულისხმევი აღარ არის)
         $this->unlocked($album)
-            ->deleteJson('/api/gallery/albums/'.$album->id)
+            ->deleteJson('/api/gallery/albums/'.$album->id, ['photos' => 'release'])
             ->assertOk()
             ->assertJsonPath('moved', 1);
 
@@ -870,6 +871,110 @@ class GalleryAlbumTest extends TestCase
         $this->assertSame('gallery/images/secret.jpg', $image->path);
         Storage::disk('public')->assertExists('gallery/images/secret.jpg');
         Storage::disk('private')->assertMissing('gallery/locked/secret.jpg');
+    }
+
+    /**
+     * **ჩაკეტილი ალბომის წაშლა ფოტოებს ერთი დაჭერით აღარ ხსნის.** ნაგულისხმევად
+     * ფოტოები ალბომს ურნაში თან მიჰყვება: ფაილი პირად დისკზე რჩება, სიებიდან ქრება,
+     * აღდგენა ყველაფერს უცვლელად აბრუნებს; საბოლოო წაშლა ფოტოებსაც შლის.
+     */
+    public function test_a_locked_album_goes_to_the_trash_with_its_photos(): void
+    {
+        Storage::fake('public');
+        Storage::fake('private');
+
+        $album = $this->lockedAlbum();
+        $image = $this->lockedPhoto($album, 'gallery/locked/secret.jpg');
+        $free = $this->photo(null, 'gallery/images/free.jpg');
+
+        $this->unlocked($album)
+            ->deleteJson('/api/gallery/albums/'.$album->id)
+            ->assertOk()
+            ->assertJsonPath('trashed', 1)
+            ->assertJsonPath('moved', 0);
+
+        // ფოტო ალბომში და პირად დისკზე დარჩა — არაფერი გახსნილა
+        $this->assertSame($album->id, $image->refresh()->album_id);
+        $this->assertSame('gallery/locked/secret.jpg', $image->path);
+        Storage::disk('private')->assertExists('gallery/locked/secret.jpg');
+        Storage::disk('public')->assertMissing('gallery/images/secret.jpg');
+
+        // სიებში და მთვლელებში აღარ არის — ალბომთან ერთად ურნაშია
+        $this->actingAs($this->user)->getJson('/api/gallery/photos')->assertOk()->assertJsonPath('data.*.id', [$free->id]);
+        $this->actingAs($this->user)->getJson('/api/gallery')->assertOk()->assertJsonPath('photos', 1);
+
+        // აღდგენა: ალბომი ისევ ჩაკეტილია და ფოტო მასშია
+        $this->actingAs($this->user)->postJson("/api/trash/gallery_album/{$album->id}/restore")->assertOk();
+        AlbumLock::flush();
+        $restored = GalleryAlbum::findOrFail($album->id);
+        $this->assertTrue($restored->isLocked());
+        $this->assertNull($restored->trashed_photo_ids);
+        $this->assertSame($album->id, $image->refresh()->album_id);
+        $this->actingAs($this->user)->getJson('/api/gallery')->assertOk()->assertJsonPath('photos', 2);
+
+        // ისევ ურნაში და საბოლოო წაშლა — ფოტოც მიდის (ფაილიანად), თავისუფალი რჩება
+        $this->unlocked($restored)->deleteJson('/api/gallery/albums/'.$album->id)->assertOk();
+        GalleryAlbum::withoutGlobalScopes()->findOrFail($album->id)->delete();
+        $this->assertNull(GalleryImage::withoutGlobalScopes()->find($image->id));
+        Storage::disk('private')->assertMissing('gallery/locked/secret.jpg');
+        $this->assertNotNull(GalleryImage::find($free->id));
+    }
+
+    /** ცხადი არჩევანი: სხვა ალბომში გადატანა; მიზნის გარეშე — 422 */
+    public function test_a_locked_albums_photos_can_move_to_another_album_on_delete(): void
+    {
+        Storage::fake('public');
+        Storage::fake('private');
+
+        $album = $this->lockedAlbum();
+        $image = $this->lockedPhoto($album, 'gallery/locked/secret.jpg');
+        $other = GalleryAlbum::create(['user_id' => $this->user->id, 'name' => 'სხვა', 'sort_order' => 2]);
+
+        $this->unlocked($album)
+            ->deleteJson('/api/gallery/albums/'.$album->id, ['photos' => 'move'])
+            ->assertStatus(422);
+
+        $this->unlocked($album)
+            ->deleteJson('/api/gallery/albums/'.$album->id, ['photos' => 'move', 'move_to' => $other->id])
+            ->assertOk()
+            ->assertJsonPath('moved', 1);
+
+        $this->assertSame($other->id, $image->refresh()->album_id);
+        Storage::disk('public')->assertExists('gallery/images/secret.jpg');
+    }
+
+    /** „მიუბმელი" — არც ჩანაწერზე, არც ალბომში: თავისი მთვლელი და სია; „ახლა სად არის" */
+    public function test_unattached_photos_are_counted_listed_and_placed(): void
+    {
+        Storage::fake('public');
+
+        $movie = $this->makeMovie();
+        $album = GalleryAlbum::create(['user_id' => $this->user->id, 'name' => 'მოგზაურობა', 'sort_order' => 1]);
+        $loose = $this->photo(null, 'gallery/images/loose.jpg');
+        $inAlbum = $this->photo(null, 'gallery/images/album.jpg');
+        $inAlbum->forceFill(['album_id' => $album->id])->save();
+        $onMovie = $this->photo($movie, 'gallery/images/movie.jpg');
+
+        $this->actingAs($this->user)->getJson('/api/gallery')->assertOk()
+            ->assertJsonPath('unattached', 1)
+            ->assertJsonPath('uncategorized', 2);
+        $this->actingAs($this->user)->getJson('/api/gallery/photos?owner=none&album=none')->assertOk()
+            ->assertJsonPath('data.*.id', [$loose->id]);
+
+        // ერთი ფოტო: ჩანაწერის სახელით; ალბომში არ არის
+        $this->actingAs($this->user)->getJson('/api/gallery/images/placement?ids[]='.$onMovie->id)->assertOk()
+            ->assertJsonPath('attached', 1)
+            ->assertJsonPath('in_album', 0)
+            ->assertJsonPath('record.kind', 'movie')
+            ->assertJsonPath('record.title', 'Alien')
+            ->assertJsonPath('album', null);
+
+        // რამდენიმე: რიცხვები; საერთო ალბომის სახელი მხოლოდ მაშინ, როცა ერთია
+        $this->actingAs($this->user)->getJson("/api/gallery/images/placement?ids[]={$loose->id}&ids[]={$inAlbum->id}&ids[]={$onMovie->id}")->assertOk()
+            ->assertJsonPath('total', 3)
+            ->assertJsonPath('attached', 1)
+            ->assertJsonPath('in_album', 1)
+            ->assertJsonPath('album.name', 'მოგზაურობა');
     }
 
     /**

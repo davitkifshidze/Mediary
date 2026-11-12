@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\GalleryAlbum;
 use App\Services\Gallery\AlbumVault;
 use App\Support\AlbumLock;
+use App\Support\GalleryParent;
 use App\Support\PublicDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -225,7 +226,25 @@ class GalleryAlbumController extends Controller
                 // ⚠️ ურნაში მყოფ ალბომში გადატანა ფოტოს უხილავს გახდიდა
                 Rule::exists('gallery_albums', 'id')->where('user_id', $request->user()->id)->whereNull('trashed_at'),
             ],
+            /* რა ვუყოთ ფოტოებს: `trash` — ალბომს ურნაში თან მიჰყვება (ჩაკეტილი რჩება,
+               აღდგენა აბრუნებს) · `move` — სხვა ალბომში (`move_to`) · `release` — ალბომის
+               გარეშე რჩება, ღიად */
+            'photos' => ['nullable', 'in:trash,move,release'],
         ]);
+
+        /* ⚠️ **ჩაკეტილი ალბომის ნაგულისხმევი `trash`-ია და არა `release`**: პაროლით
+           დაცული ფოტო ერთი დაჭერით აღარ იხსნება — გახსნა ცხადი არჩევანია. ჩვეულებრივ
+           ალბომზე ძველი წესი რჩება: ფოტოები ალბომის გარეშე რჩება. */
+        // `move_to` რეჟიმის გარეშე — გადატანაა (ასე აგზავნის ალბომების ძველი ფანჯარა)
+        $mode = $data['photos'] ?? (! empty($data['move_to']) ? 'move' : ($galleryAlbum->isLocked() ? 'trash' : 'release'));
+        abort_if($mode === 'move' && empty($data['move_to']), 422, 'move_target_required');
+        if ($mode !== 'move') {
+            $data['move_to'] = null;
+        }
+
+        if ($mode === 'trash') {
+            return $this->trashWithPhotos($galleryAlbum);
+        }
 
         abort_if(
             ($data['move_to'] ?? null) === $galleryAlbum->id,
@@ -279,6 +298,30 @@ class GalleryAlbumController extends Controller
         AlbumVault::placeMany($images, $target);
 
         return response()->json(['moved' => $moved]);
+    }
+
+    /**
+     * **ალბომი ურნაში ფოტოებთან ერთად.** ფოტოები ალბომში რჩება (ფაილი ადგილზეა —
+     * ჩაკეტილ ალბომზე `gallery/locked`-ში), სიებიდან კი ალბომთან ერთად ქრება
+     * (`GalleryImage::scopeListed()`); აღდგენა ყველაფერს უცვლელად აბრუნებს, საბოლოო
+     * წაშლა ფოტოებსაც შლის (`GalleryAlbum::booted()`).
+     * ⚠️ ფოტო, რომელიც რომელიმე ჩანაწერის მთავარი ფოტოა, იქიდან იხსნება — თორემ
+     * ურნაში მყოფი ფოტო ჩანაწერის ბარათზე დარჩებოდა.
+     */
+    private function trashWithPhotos(GalleryAlbum $album)
+    {
+        $images = $album->images()->withoutGlobalScopes(['album_lock', 'trash'])->get();
+
+        DB::transaction(function () use ($album, $images) {
+            $album->trashed_photo_ids = ['ids' => $images->modelKeys(), 'from' => null, 'kept' => true];
+            $album->moveToTrash();
+        });
+
+        foreach ($images as $image) {
+            GalleryParent::clearPrimaryEverywhere((int) $album->user_id, $image->path, true);
+        }
+
+        return response()->json(['moved' => 0, 'trashed' => $images->whereNull('trashed_at')->count()]);
     }
 
     /**

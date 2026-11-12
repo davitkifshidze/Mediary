@@ -242,9 +242,10 @@ class TrashPartsTest extends TestCase
     /* ---------- ალბომი ---------- */
 
     /**
-     * ⚠️ **ალბომი ფოტოებს იმახსოვრებს**: წაშლა მათ ალბომის გარეშე ტოვებს
-     * (და საჯარო დისკზე), აღდგენა კი უკან აბრუნებს და ჩაკეტილს თავიდან
-     * კეტავს — ფაილი ისევ პირად დისკზე.
+     * ⚠️ **ალბომი ფოტოებს იმახსოვრებს**: „ფოტოები გაიხსნას და დარჩეს" მათ ალბომის
+     * გარეშე ტოვებს (და საჯარო დისკზე), აღდგენა კი უკან აბრუნებს და ჩაკეტილს თავიდან
+     * კეტავს — ფაილი ისევ პირად დისკზე. (ნაგულისხმევი რეჟიმი — „ფოტოებიც ურნაში" —
+     * `GalleryAlbumTest`-შია.)
      */
     public function test_a_locked_album_comes_back_with_its_photos_and_its_lock(): void
     {
@@ -260,7 +261,7 @@ class TrashPartsTest extends TestCase
         $this->actingAs($this->me)
             ->withHeaders(['Referer' => 'http://localhost:5173'])
             ->withSession([RecordLocks::SESSION_KEY => [AlbumLock::TYPE => [$album->id]]])
-            ->deleteJson("/api/gallery/albums/{$album->id}")
+            ->deleteJson("/api/gallery/albums/{$album->id}", ['photos' => 'release'])
             ->assertOk();
 
         $photo = GalleryImage::withoutGlobalScopes()->find($photo->id);

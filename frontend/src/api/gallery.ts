@@ -534,8 +534,10 @@ export interface GallerySummary {
    * ამიტომ ჩანდა „ლოგო" ცარიელ ბიბლიოთეკაზეც — სია ფრონტში კონსტანტა იყო.
    */
   categories: Partial<Record<string, number>>
-  /** მშობლის გარეშე დარჩენილი ფოტოები */
+  /** ჩანაწერზე მიუბმელი ფოტოები (ალბომში მყოფიც) */
   uncategorized: number
+  /** „მიუბმელი" — არც ჩანაწერზე ჰკიდია, არც ალბომშია */
+  unattached: number
   /** რამდენი ალბომია */
   albums: number
   videos: number
@@ -732,6 +734,24 @@ export async function fetchGalleryPhotos(
 
 /* ---------- ალბომები და გადატანა ---------- */
 
+/** მონიშნული ფოტოების ამჟამინდელი ადგილი — გადატანის ფანჯრის „ახლა სად არის" */
+export interface PhotoPlacement {
+  total: number
+  /** რამდენი ჰკიდია ჩანაწერზე ან მსახიობზე */
+  attached: number
+  /** რამდენია ალბომში */
+  in_album: number
+  /** ჩანაწერი (ან მსახიობი — `kind: 'actor'`), თუ ყველა ერთზე ჰკიდია */
+  record: { kind: string; id: number; title: string | null; title_ka: string | null } | null
+  /** ალბომი, თუ ყველა ერთშია */
+  album: { id: number; name: string } | null
+}
+
+export async function fetchPhotoPlacement(ids: number[]): Promise<PhotoPlacement> {
+  const { data } = await api.get('/gallery/images/placement', { params: { ids } })
+  return data
+}
+
 export interface GalleryAlbum {
   id: number
   name: string
@@ -810,9 +830,21 @@ export async function lockGalleryAlbum(id: number): Promise<GalleryAlbum> {
   return data
 }
 
-/** ⚠️ ფოტოები **არ იშლება** — `move_to`-ს გარეშე ისინი უკატეგორიოში ბრუნდება */
-export async function deleteGalleryAlbum(id: number, moveTo?: number | null): Promise<void> {
-  await api.delete(`/gallery/albums/${id}`, { data: { move_to: moveTo ?? null } })
+/**
+ * რა ვუყოთ წაშლილი ალბომის ფოტოებს: `trash` — ალბომს ურნაში თან მიჰყვება (ჩაკეტილი
+ * რჩება, აღდგენა აბრუნებს) · `move` — სხვა ალბომში · `release` — ალბომის გარეშე რჩება.
+ */
+export type AlbumPhotosFate = 'trash' | 'move' | 'release'
+
+/**
+ * ალბომი ურნაში. ⚠️ რეჟიმის გარეშე სერვერი თვითონ ირჩევს: ჩვეულებრივ ალბომზე ფოტოები
+ * ალბომის გარეშე რჩება, ჩაკეტილზე — ალბომს ურნაში მიჰყვება (არაფერი იხსნება).
+ */
+export async function deleteGalleryAlbum(
+  id: number,
+  options: { photos?: AlbumPhotosFate; moveTo?: number | null } = {},
+): Promise<void> {
+  await api.delete(`/gallery/albums/${id}`, { data: { photos: options.photos, move_to: options.moveTo ?? null } })
 }
 
 export async function reorderGalleryAlbums(ids: number[]): Promise<GalleryAlbum[]> {

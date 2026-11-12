@@ -24,6 +24,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { GroupPhotos } from '@/components/gallery/GroupPhotos'
 import { LayoutToggle, type GalleryLayout } from '@/components/gallery/LayoutToggle'
+import { AlbumDeleteDialog } from '@/components/gallery/AlbumDeleteDialog'
 import { AlbumDialog } from '@/components/gallery/AlbumDialog'
 import { AlbumUnlockDialog } from '@/components/gallery/AlbumUnlockDialog'
 
@@ -105,6 +106,9 @@ export function AlbumsCut() {
     onSettled: () => qc.invalidateQueries({ queryKey: ['gallery-groups'] }),
   })
 
+  /** ჩაკეტილი ალბომის წაშლის ფანჯარა */
+  const [deleting, setDeleting] = useState<{ album: GalleryAlbum; photos: number } | null>(null)
+
   const remove = useMutation({
     mutationFn: (id: number) => deleteGalleryAlbum(id),
     onSuccess: () => {
@@ -156,6 +160,15 @@ export function AlbumsCut() {
           album={unlocking}
           onClose={() => setUnlocking(null)}
           onUnlocked={() => setOpen({ id: unlocking.id, title: unlocking.name })}
+        />
+      )}
+      {deleting && (
+        <AlbumDeleteDialog
+          album={deleting.album}
+          photos={deleting.photos}
+          others={(albumsQ.data ?? []).filter((other) => other.id !== deleting.album.id)}
+          onClose={() => setDeleting(null)}
+          onDeleted={refresh}
         />
       )}
     </>
@@ -245,6 +258,12 @@ export function AlbumsCut() {
             }
             const askDeleteAlbum = async () => {
               if (!album) return
+              /* ⚠️ ჩაკეტილი ალბომი თავის ფანჯარას ხსნის: რა ვუყოთ ფოტოებს — ცხადი არჩევანია
+                 და ნაგულისხმევი არაფერს ხსნის (`AlbumDeleteDialog`) */
+              if (album.locked) {
+                setDeleting({ album, photos: group.photos })
+                return
+              }
               const ok = await confirm({
                 title: t('gallery.albumDeleteTitle'),
                 description: t('gallery.albumDeleteHint', { name: album.name }),

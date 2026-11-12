@@ -65,11 +65,14 @@ export function AlbumPicker({
   value,
   onChange,
   allowKeep = true,
+  allowRemove = true,
 }: {
   /** `''` — არ შეიცვალოს · `'none'` — ალბომიდან ამოღება · `'<id>'` — ალბომი */
   value: string
   onChange: (value: string) => void
   allowKeep?: boolean
+  /** „ალბომიდან ამოღება" — მხოლოდ მაშინ, როცა ფოტო რომელიმე ალბომშია */
+  allowRemove?: boolean
 }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
@@ -160,12 +163,14 @@ export function AlbumPicker({
           />
         )}
 
-        <PickerRow
-          active={value === 'none'}
-          onClick={() => onChange('none')}
-          icon={<Inbox className="size-4" />}
-          label={t('gallery.moveAlbumNone')}
-        />
+        {allowRemove && (
+          <PickerRow
+            active={value === 'none'}
+            onClick={() => onChange('none')}
+            icon={<Inbox className="size-4" />}
+            label={t('gallery.moveAlbumNone')}
+          />
+        )}
 
         {albums.map((album) => (
           <PickerRow

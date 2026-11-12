@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Inbox, MoveRight, X } from 'lucide-react'
+import { MapPin, MoveRight, Unlink, X } from 'lucide-react'
 import {
   fetchGalleryGroups,
+  fetchPhotoPlacement,
   galleryParentsOf,
   moveGalleryImages,
   type GalleryParentKind,
@@ -29,10 +30,17 @@ import { useToast } from '@/components/ui/feedback'
    უკატეგორიოზე, ასევე უკატეგორიოში რაიმე კონკრეტულ ჯგუფში, ან მსახიობზე,
    ან სერიალზე, ან რამე მსგავსები".
 
-   ⚠️ **ორი ღერძია და ორივე არჩევითია**: „სად ეკიდოს" (მშობელი) და „რომელ
-   ჯგუფშია" (ალბომი). ისინი **ცალ-ცალკე იგზავნება** — გამოტოვებული ღერძი
-   ხელუხლებელი რჩება. ერთად რომ წასულიყო, ალბომში ჩაგდება ჩუმად ფილმისგან
-   მოხსნას ნიშნავდა.
+   ⚠️ **ორი ღერძია და ორივე არჩევითია**: „რომელ ჩანაწერზე ჰკიდია" და „რომელ
+   ალბომშია". ისინი **ცალ-ცალკე იგზავნება** — გამოტოვებული ღერძი ხელუხლებელი
+   რჩება. ერთად რომ წასულიყო, ალბომში ჩაგდება ჩუმად ფილმისგან მოხსნას ნიშნავდა.
+
+   ⚠️ **ზემოთ წერია „ახლა სად არის"** (`GET /gallery/images/placement`) და მოქმედება
+   მხოლოდ მაშინ ჩანს, როცა აზრი აქვს: „ჩანაწერიდან მოხსნა" — მხოლოდ ჩანაწერზე
+   მიბმულ ფოტოზე, „ალბომიდან ამოღება" — მხოლოდ ალბომში მყოფზე. მოხსნის ქვეშ წერია,
+   სად იპოვი ფოტოს მერე (ალბომში, ან „მიუბმელ" ჭრილში).
+
+   ⚠️ **ნაგულისხმევი „ჩანაწერი არ შეიცვალოს"-ია**: „მოხსნა" ნაგულისხმევად ერთი
+   დაჭერით „გადატანას" ფოტოს დაკარგვად აქცევდა.
 
    ⚠️ **ჩანაწერების სია `by=record&have=all`-იდან მოდის** და არა თითო
    მოდულის `index()`-იდან: ესაა ერთადერთი endpoint, რომელიც ექვსივე
@@ -44,34 +52,32 @@ import { useToast } from '@/components/ui/feedback'
    არსებობს და ორივე ენაზე ეძებს.
 
    ⚠️ **მსახიობისა და ჩანაწერის გვერდი ფანჯარას `keep`-ით ხსნის**:
-   იქ ფოტოს მშობელი სწორედ ის გვერდია, რომელსაც უყურებ. ნაგულისხმევი
-   „მშობლის გარეშე" ერთი დაჭერით „ალბომში დამატებას" ამ გვერდიდან ფოტოს
-   მოშორებად აქცევდა — ფოტო ალბომში ჩავარდებოდა და მსახიობს ჩუმად
-   მოსცილდებოდა. `keep`-ზე ღილაკი მანამდე გამორთულია, სანამ ალბომს არ
-   აირჩევ (`ready`), ე.ი. ცხადი არჩევანის გარეშე არაფერი იცვლება.
+   იქ ფოტო სწორედ იმ გვერდს ეკუთვნის, რომელსაც უყურებ. `keep`-ზე ღილაკი მანამდე
+   გამორთულია, სანამ ალბომს არ აირჩევ (`ready`), ე.ი. ცხადი არჩევანის გარეშე
+   არაფერი იცვლება.
    ============================================================ */
 
-/** სად ეკიდოს: `keep` — მშობელი ხელუხლებელია · `none` — მშობლის გარეშე */
+/** სად ეკიდოს: `keep` — ჩანაწერი ხელუხლებელია · `none` — ჩანაწერიდან მოხსნა */
 export type MoveTarget = 'keep' | 'none' | 'record' | 'actor'
 
 export function GalleryMoveDialog({
   ids,
   onClose,
   onMoved,
-  initialTarget = 'none',
+  initialTarget = 'keep',
 }: {
   /** რომელი ფოტოები გადადის */
   ids: number[]
   onClose: () => void
   onMoved?: () => void
-  /** რომელი ვარიანტი იყოს თავიდან არჩეული (მშობლის გვერდზე `keep`) */
+  /** რომელი ვარიანტი იყოს თავიდან არჩეული */
   initialTarget?: MoveTarget
 }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const qc = useQueryClient()
   const { toast } = useToast()
-  const { enabled } = useModules()
+  const { enabled, all } = useModules()
 
   const [target, setTarget] = useState<MoveTarget>(initialTarget)
   const [domain, setDomain] = useState<GalleryParentKind>('movie')
@@ -80,6 +86,17 @@ export function GalleryMoveDialog({
   const [actorId, setActorId] = useState<number[]>([])
   /** `''` = ალბომი არ იცვლება · `none` = ალბომიდან ამოღება · რიცხვი = ალბომი */
   const [album, setAlbum] = useState<string>('')
+
+  /* „ახლა სად არის" — რამდენი ფოტო ჰკიდია ჩანაწერზე და რამდენია ალბომში.
+     ⚠️ პასუხამდე ორივე მოქმედება ჩანს: დამალული ღილაკი, რომელიც წამის შემდეგ ჩნდება,
+     ფანჯარას ახტუნებდა. */
+  const placementQ = useQuery({
+    queryKey: ['gallery-placement', ids],
+    queryFn: () => fetchPhotoPlacement(ids),
+  })
+  const placement = placementQ.data
+  const attached = placement ? placement.attached > 0 : true
+  const inAlbum = placement ? placement.in_album > 0 : true
 
   // პირადი მოდულის ჩანაწერზეც შეიძლება გადატანა
   const parents = useMemo(
@@ -126,7 +143,7 @@ export function GalleryMoveDialog({
         ...(album === '' ? {} : { album_id: album === 'none' ? null : Number(album) }),
       }),
     onSuccess: (res) => {
-      ;['gallery', 'gallery-photos', 'gallery-groups', 'gallery-summary', 'gallery-albums'].forEach(
+      ;['gallery', 'gallery-photos', 'gallery-groups', 'gallery-summary', 'gallery-albums', 'gallery-placement'].forEach(
         (key) => qc.invalidateQueries({ queryKey: [key] }),
       )
       toast({ title: t('gallery.moved', { count: res.moved }), variant: 'success' })
@@ -143,21 +160,68 @@ export function GalleryMoveDialog({
     (target === 'record' && recordId.length > 0) ||
     (target === 'actor' && actorId.length > 0)
 
+  /** მოხსნის შემდეგ ფოტო ალბომში იქნება? — ახალი არჩევანით, ან დღევანდელით */
+  const staysInAlbum = album === '' ? inAlbum && !!placement?.in_album : album !== 'none'
+
+  /** „ახლა სად არის" — ჩანაწერის (მსახიობის) ხაზი */
+  const recordLine = () => {
+    if (!placement) return null
+    if (!placement.attached) return t('gallery.moveNow.recordNone')
+    if (!placement.record) return t('gallery.moveNow.records', { count: placement.attached })
+
+    const name = (lang === 'ka' ? placement.record.title_ka : null) ?? placement.record.title ?? placement.record.title_ka ?? `#${placement.record.id}`
+    if (placement.record.kind === 'actor') return t('gallery.moveNow.actor', { name })
+
+    const module = all.find((m) => m.key === placement.record!.kind)
+    return t('gallery.moveNow.record', { module: module ? moduleName(module, i18n.language) : placement.record.kind, name })
+  }
+
+  const albumLine = () => {
+    if (!placement) return null
+    if (!placement.in_album) return t('gallery.moveNow.albumNone')
+    return placement.album ? t('gallery.moveNow.album', { name: placement.album.name }) : t('gallery.moveNow.albums', { count: placement.in_album })
+  }
+
   return (
     <ModalShell
       title={t('gallery.moveTitle', { count: ids.length })}
       onClose={onClose} hint={t('gallery.moveHint')}>
 
-      {/* ---------- 1. სად ეკიდოს ---------- */}
+      {/* ---------- ახლა სად არის ---------- */}
+      <div className="mb-4 rounded-md border border-border bg-muted/40 p-3 text-sm" data-testid="move-now">
+        <p className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <MapPin className="size-3.5" />
+          {t('gallery.moveNow.title')}
+        </p>
+        {placement ? (
+          <>
+            <p>{recordLine()}</p>
+            <p>{albumLine()}</p>
+          </>
+        ) : (
+          <p className="text-muted-foreground">{t('api.loading')}</p>
+        )}
+      </div>
+
+      {/* ---------- 1. ჩანაწერი ან მსახიობი ---------- */}
       <Label className="mb-2 block">{t('gallery.moveTarget')}</Label>
       <RadioGroup value={target} onValueChange={(v) => setTarget(v as MoveTarget)} className="gap-2">
-        <Row value="keep" active={target === 'keep'} label={t('gallery.moveKeepParent')} />
-        <Row
-          value="none"
-          active={target === 'none'}
-          label={t('gallery.moveToUncategorized')}
-          icon={<Inbox className="size-4 text-muted-foreground" />}
-        />
+        <Row value="keep" active={target === 'keep'} label={t('gallery.moveKeepRecord')} />
+        {/* მოხსნა — მხოლოდ იმ ფოტოზე, რომელიც რამეზე ჰკიდია */}
+        {attached && (
+          <Row
+            value="none"
+            active={target === 'none'}
+            label={t('gallery.moveDetach')}
+            icon={<Unlink className="size-4 text-muted-foreground" />}
+          >
+            {target === 'none' && (
+              <p className="mt-2 text-xs text-muted-foreground" data-testid="move-detach-note">
+                {t(staysInAlbum ? 'gallery.moveDetachToAlbum' : 'gallery.moveDetachToLoose')}
+              </p>
+            )}
+          </Row>
+        )}
 
         <Row value="record" active={target === 'record'} label={t('gallery.moveToRecord')}>
           {target === 'record' && (
@@ -222,7 +286,7 @@ export function GalleryMoveDialog({
           პირველ ალბომს შექმნიდი, ეს ღერძი ცარიელი იყო. იხ. `AlbumPicker`. */}
       <div className="mt-4 border-t border-border pt-4">
         <Label className="mb-2 block">{t('gallery.moveAlbum')}</Label>
-        <AlbumPicker value={album} onChange={setAlbum} />
+        <AlbumPicker value={album} onChange={setAlbum} allowRemove={inAlbum} />
       </div>
 
       <ModalFooter>

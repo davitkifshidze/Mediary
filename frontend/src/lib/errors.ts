@@ -211,6 +211,8 @@ export const CODES = [
   'duty_range_too_long',
   'nothing_to_change',
   'cannot_move_into_itself',
+  // ალბომის წაშლა „სხვა ალბომში გადატანით" — მიზანი არ არის არჩეული
+  'move_target_required',
   'primary_not_supported_for_cast',
   /* მშობელს მთავარი სურათის სვეტი საერთოდ არ აქვს. ⚠️ მსახიობის
      კოდისგან ცალკეა: იქ მიზეზი გლობალური ლექსიკონია და ტექსტიც სხვაა. */

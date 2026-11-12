@@ -25,6 +25,8 @@ import { RecordsCut } from '@/components/gallery/RecordsCut'
 import { ModulesCut } from '@/components/gallery/ModulesCut'
 import { VideosCut } from '@/components/gallery/VideosCut'
 import { AlbumsCut } from '@/components/gallery/AlbumsCut'
+import { GroupPhotos } from '@/components/gallery/GroupPhotos'
+import { CountBadge } from '@/components/ui/badge'
 import { CutTabs } from '@/components/ui/cut-tabs'
 
 /* ============================================================
@@ -113,8 +115,8 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
             <Stat label={t('gallery.statPhotos')} value={summary.photos} />
             <Stat label={t('gallery.statRecords')} value={summary.records} />
             <Stat label={t('gallery.statActors')} value={summary.actors} />
-            {/* „უკატეგორიო" მთვლელი აქვე, რომ ჭრილის არსებობა ჩანდეს */}
-            <Stat label={t('gallery.statUncategorized')} value={summary.uncategorized} />
+            {/* „მიუბმელი" მთვლელი აქვე, რომ ჭრილის არსებობა ჩანდეს */}
+            <Stat label={t('gallery.cut.unattached')} value={summary.unattached} />
             <Stat label={t('gallery.statVideos')} value={summary.videos} />
             <Stat label={t('gallery.statSize')} value={formatBytes(summary.bytes)} />
             {/* რას ითვლის „ფოტო" და რას — საცავის ზოლი: ორი რიცხვი სხვადასხვა კითხვას პასუხობს */}
@@ -144,6 +146,8 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
           >
             <Icon className="size-4" />
             {cutLabel(key)}
+            {/* მიუბმელი ფოტოები სხვაგან არ ჩანს — ჩანართი თვითონ ამბობს, რამდენია */}
+            {key === 'unattached' && summary && <CountBadge count={summary.unattached} />}
           </NavLink>
         ))}
       </nav>
@@ -160,6 +164,16 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
       )}
 
       {cut === 'albums' && <AlbumsCut />}
+
+      {cut === 'unattached' && (
+        <GroupPhotos
+          title={t('gallery.cut.unattached')}
+          hint={t('gallery.unattachedHint')}
+          filters={{ owner: 'none', album: 'none' }}
+          cacheKey="unattached"
+          emptyText={t('gallery.unattachedEmpty')}
+        />
+      )}
 
       {cut === 'videos' && <VideosCut />}
 

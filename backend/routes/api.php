@@ -1205,6 +1205,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // `images/...` `{type}/{id}`-ზე ზემოთ უნდა იყოს, თორემ „images" ტიპად წაიკითხება
         Route::post('/gallery/images/move', [GalleryController::class, 'moveImages']);
+        // „ახლა სად არის" — გადატანის ფანჯრის სათაური (ჩანაწერი · ალბომი)
+        Route::get('/gallery/images/placement', [GalleryController::class, 'placement']);
         /* ფოტოს ჩაკეტვა: სისტემურ ჩაკეტილ ალბომში გადატანა (პირველად —
            პაროლით). ⚠️ ბოლო სეგმენტი `lock` `UPDATE_ENDPOINTS`-შია — POST `create` არ არის. */
         Route::post('/gallery/images/lock', [GalleryController::class, 'lockImages']);

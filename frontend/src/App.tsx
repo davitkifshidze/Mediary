@@ -295,8 +295,9 @@ function AppShell() {
               ორი ცალკე რიგია და არა ერთი `&&` ორი `<Route>`-ით: JSX-ის ერთი
               გამოსახულება ერთ ელემენტს აბრუნებს. */}
           {has('gallery') && (
-            <Route path="gallery/uncategorized" element={<Navigate to="/gallery/albums" replace />} />
+            <Route path="gallery/uncategorized" element={<Navigate to="/gallery/unattached" replace />} />
           )}
+          {has('gallery') && <Route path="gallery/unattached" element={<GalleryPage cut="unattached" />} />}
           {has('gallery') && <Route path="gallery/videos" element={<GalleryPage cut="videos" />} />}
           {has('gallery') && <Route path="gallery/sources" element={<GalleryPage cut="sources" />} />}
           {has('gallery') && <Route path="gallery/modules" element={<GalleryPage cut="modules" />} />}

@@ -73,6 +73,15 @@ class GalleryAlbum extends Model
             return;
         }
 
+        /* ფოტოები ალბომს თან გაჰყვა („ფოტოებიც ურნაში") — ისინი არსად წასულა:
+           ალბომში დარჩა, ჩაკეტილ ალბომზე — ჩაკეტილიც. აღსადგენი არაფერია. */
+        if ($this->keepsPhotosInTrash()) {
+            $this->trashed_photo_ids = null;
+            $this->saveQuietly();
+
+            return;
+        }
+
         $ids = array_map('intval', $this->trashed_photo_ids['ids'] ?? []);
         $from = $this->trashed_photo_ids['from'] ?? null;
 
@@ -163,9 +172,27 @@ class GalleryAlbum extends Model
         return $this->hasMany(GalleryImage::class, 'album_id');
     }
 
-    /*
-     * ⚠️ `booted()` განზრახ არ არსებობს: ალბომის წაშლა **ფოტოებს არ შლის**
-     * — `album_id` `nullOnDelete`-ია, ე.ი. ისინი უბრალოდ უკატეგორიოში
-     * ბრუნდება. „საქაღალდის" მოშორება ბიბლიოთეკის წაშლა ვერ იქნება.
+    /** ურნაში ფოტოებთან ერთად გადავიდა? (`GalleryAlbumController::destroy()`, რეჟიმი `trash`) */
+    public function keepsPhotosInTrash(): bool
+    {
+        return (bool) ($this->trashed_photo_ids['kept'] ?? false);
+    }
+
+    /**
+     * ⚠️ ალბომის წაშლა **ფოტოებს არ შლის** — `album_id` `nullOnDelete`-ია, ე.ი. ისინი
+     * უბრალოდ ალბომის გარეშე რჩება: „საქაღალდის" მოშორება ბიბლიოთეკის წაშლა ვერ იქნება.
+     * ერთი გამონაკლისია: ალბომი, რომელიც ურნაში **ფოტოებთან ერთად** გადავიდა
+     * („ფოტოებიც ურნაში") — მისი საბოლოო წაშლა ფოტოებსაც შლის, მოდელით (ფაილი, კვოტა).
+     * თორემ ურნის ვადის გასვლისას ჩაკეტილი ალბომის ფოტოები ღიად დაბრუნდებოდა.
      */
+    protected static function booted(): void
+    {
+        static::deleting(function (GalleryAlbum $album) {
+            if (! $album->keepsPhotosInTrash()) {
+                return;
+            }
+
+            $album->images()->withoutGlobalScopes(['owner', 'album_lock', 'trash'])->get()->each->delete();
+        });
+    }
 }

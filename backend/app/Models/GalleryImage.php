@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Facades\DB;
 
 /**
  * გალერეის ფოტო — საკუთარი ცხრილი `gallery_images`.
@@ -86,7 +87,7 @@ class GalleryImage extends Model
      *
      * „ყველა ფოტოს" ბადე, გალერეის სათაურის მთვლელები და მთავარი გვერდის
      * ბარათი ამ ერთ პირობას კითხულობს: ფოტო ჩემია, ურნაში არ არის (არც თვითონ,
-     * არც მისი ჩანაწერი) და მისი ჩანაწერი დამალული არ არის. ⚠️ ჩაკეტილი ალბომის
+     * არც მისი ჩანაწერი, არც მისი ალბომი) და მისი ჩანაწერი დამალული არ არის. ⚠️ ჩაკეტილი ალბომის
      * ფოტო **ითვლება** — ბადეში ის დაბლარული ფილაა (ფაილს `GalleryImageResource`
      * აშიშვლებს), ე.ი. რიცხვი ფილების რაოდენობას ემთხვევა.
      *
@@ -98,6 +99,13 @@ class GalleryImage extends Model
     {
         $query->withoutGlobalScope('album_lock');
         RecordLocks::excludeMorph($query, 'gallery_images.imageable_type', 'gallery_images.imageable_id');
+
+        /* ურნაში მყოფი ალბომის ფოტო, რომელიც ალბომს თან გაჰყვა („ფოტოებიც ურნაში"),
+           ალბომის ნაწილია და მის აღდგენამდე არსად ჩანს. ⚠️ ცხადი `IS NULL`: ალბომის
+           გარეშე ფოტო ყოველთვის გადის (`NOT IN` ცარიელ მნიშვნელობაზე `NULL`-ია). */
+        $query->where(fn (Builder $w) => $w
+            ->whereNull('gallery_images.album_id')
+            ->orWhereNotIn('gallery_images.album_id', DB::table('gallery_albums')->whereNotNull('trashed_at')->select('id')));
 
         return GalleryParent::excludeTrashed($query);
     }

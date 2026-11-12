@@ -25,6 +25,7 @@ use App\Support\Like;
 use App\Support\LockedPhotos;
 use App\Support\MediaDomain;
 use App\Support\MissingCredential;
+use App\Support\RecordTitle;
 use App\Support\SafeMime;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
@@ -174,6 +175,9 @@ class GalleryController extends Controller
            გამოძახება მთელ სიას ჩამოტვირთავდა მხოლოდ იმისთვის, რომ
            მენიუზე ერთი ციფრი დაეწერა. */
         $loose = $photos()->whereNull('imageable_type')->count();
+        /* „მიუბმელი" — არც ჩანაწერზე ჰკიდია, არც ალბომშია: ეს ფოტოები მხოლოდ თავის
+           ჭრილში ჩანს („ყველა ფოტოს" გარდა), ამიტომ ჭრილს მთვლელი სჭირდება */
+        $unattached = $photos()->whereNull('imageable_type')->whereNull('album_id')->count();
 
         return response()->json([
             'photos' => (int) ($images->photos ?? 0),
@@ -181,6 +185,7 @@ class GalleryController extends Controller
             'records' => (int) $records,
             'actors' => (int) $actors,
             'uncategorized' => (int) $loose,
+            'unattached' => (int) $unattached,
             'albums' => GalleryAlbum::query()->count(),
             'categories' => (object) $categories,
             'videos' => GalleryVideo::query()->count(),
@@ -767,6 +772,50 @@ class GalleryController extends Controller
      * ⚠️ **სკოუპი `owner`-ია**: `GalleryImage`-ს `BelongsToUser` აქვს, ე.ი.
      * სხვისი ფოტოს id უბრალოდ ვერ მოიძებნება — „გამოტოვებული" და არა 403.
      */
+    /**
+     * **„ახლა სად არის"** — მონიშნული ფოტოების ამჟამინდელი ადგილი: რამდენი ჰკიდია
+     * ჩანაწერზე (ან მსახიობზე), რამდენია ალბომში; როცა ყველა ერთ ჩანაწერზე ან ერთ
+     * ალბომშია — მისი სახელიც. გადატანის ფანჯარა ამით წყვეტს, რომელ მოქმედებას აქვს
+     * აზრი („ალბომიდან ამოღება" მხოლოდ ალბომში მყოფ ფოტოზე).
+     */
+    public function placement(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:'.self::MAX_PER_PAGE],
+            'ids.*' => ['integer'],
+        ]);
+
+        // ჩაკეტილი ალბომის ფოტოც ითვლება — ფაილი არ გადის, მხოლოდ „სად არის"
+        $images = GalleryImage::query()
+            ->withoutGlobalScope('album_lock')
+            ->whereIn('id', $data['ids'])
+            ->get(['id', 'imageable_type', 'imageable_id', 'album_id']);
+
+        $attached = $images->whereNotNull('imageable_type');
+        $inAlbum = $images->whereNotNull('album_id');
+
+        $owners = $attached->map(fn (GalleryImage $image) => $image->imageable_type.':'.$image->imageable_id)->unique();
+        $record = null;
+        if ($owners->count() === 1) {
+            $first = $attached->first();
+            $record = [
+                'kind' => $first->imageable_type === GalleryParent::ACTOR ? 'actor' : $first->imageable_type,
+                'id' => (int) $first->imageable_id,
+            ] + RecordTitle::of(GalleryParent::query((string) $first->imageable_type)?->whereKey($first->imageable_id)->first());
+        }
+
+        $albumIds = $inAlbum->pluck('album_id')->unique();
+        $album = $albumIds->count() === 1 ? GalleryAlbum::query()->find($albumIds->first()) : null;
+
+        return response()->json([
+            'total' => $images->count(),
+            'attached' => $attached->count(),
+            'in_album' => $inAlbum->count(),
+            'record' => $record,
+            'album' => $album ? ['id' => $album->id, 'name' => $album->name] : null,
+        ]);
+    }
+
     public function moveImages(Request $request)
     {
         $parents = implode('|', GalleryParent::keys());
