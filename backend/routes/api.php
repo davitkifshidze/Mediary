@@ -1464,6 +1464,12 @@ Route::middleware('auth:sanctum')->group(function () {
        არ დგას (მსახიობს მოდული არ აქვს) — დომენებს და უფლებას კონტროლერი ირჩევს. */
     Route::get('/actors', [ActorController::class, 'index']);
     Route::delete('/actors/{castMember}/records', [ActorController::class, 'detachEverywhere'])->whereNumber('castMember');
+    /* ჩემი ნიშნები მსახიობზე: რჩეული და გახსნების მთვლელი (დალაგებისთვის; წუთში ერთხელ).
+       ⚠️ `/actors/opens` `{castMember}`-იანებზე ზემოთ დგას. */
+    Route::delete('/actors/opens', [ActorController::class, 'resetAllOpens']);
+    Route::put('/actors/{castMember}/favorite', [ActorController::class, 'favorite'])->whereNumber('castMember');
+    Route::post('/actors/{castMember}/open', [ActorController::class, 'open'])->whereNumber('castMember');
+    Route::delete('/actors/{castMember}/opens', [ActorController::class, 'resetOpens'])->whereNumber('castMember');
     /* მსახიობების მასობრივი სინქრონიზაცია: გეგმა + თითო მსახიობი.
        ⚠️ **`module:`/`permission:` middleware განზრახ არ დგას** — მსახიობს
        მოდული არ აქვს; ჩართულ მედია-მოდულს კონტროლერი თვითონ ამოწმებს

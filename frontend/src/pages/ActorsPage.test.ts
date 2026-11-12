@@ -27,6 +27,8 @@ const liam: ActorCard = {
   counts: { movie: 3, series: 1, anime: 0 },
   records: 4,
   photos: 2,
+  videos: 1,
+  favorite: false,
   tags: ['portrait'],
 }
 
@@ -42,6 +44,8 @@ const list = (items: (ActorCard | HiddenActorCard)[]): ActorList => ({
 
 const mocks = vi.hoisted(() => ({
   fetchActors: vi.fn(),
+  setActorFavorite: vi.fn(),
+  resetActorOpens: vi.fn(),
   detachActorEverywhere: vi.fn(),
   trashActor: vi.fn(),
 }))
@@ -49,6 +53,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/api/actors', async (original) => ({
   ...(await original<typeof import('@/api/actors')>()),
   ...mocks,
+}))
+
+// ფოტოების ფანჯარა მსახიობის გვერდის გალერეაა (თავისი ტესტებით) — აქ მხოლოდ ის მოწმდება, ვისზე იხსნება
+vi.mock('@/components/actors/ActorPhotosDialog', () => ({
+  ActorPhotosDialog: ({ actorId, name }: { actorId: number; name: string }) =>
+    h('div', { 'data-testid': 'actor-photos-dialog', 'data-actor': actorId }, name),
 }))
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -116,7 +126,8 @@ describe('ActorsPage', () => {
     expect(button(i18n.t('actors.gender.male')).textContent).toContain('3')
 
     // ნაგულისხმევად ოთხი რიგი ექვს სვეტზე; ზომა „გვერდზე რამდენი“ ამრჩევიდან იცვლება
-    expect(lastFilters()).toMatchObject({ sort: 'name', page: 1, per_page: 24 })
+    // ნაგულისხმევი რიგი — ფოტოებისა და ვიდეოების რაოდენობით (რჩეულები სერვერზე ყოველთვის თავშია)
+    expect(lastFilters()).toMatchObject({ sort: 'media', page: 1, per_page: 24 })
     expect(document.querySelector('[data-testid="page-size-pick"]')).not.toBeNull()
   })
 
@@ -242,5 +253,59 @@ describe('ActorsPage', () => {
     await act(async () => tile.click())
     await flush()
     expect(document.getElementById('record-unlock')).toBeTruthy()
+  })
+
+  it('toggles my favourite from the star on the card', async () => {
+    mocks.setActorFavorite.mockResolvedValue({ favorite: true })
+    await render()
+
+    const star = container!.querySelector<HTMLButtonElement>('[data-testid="actor-favorite"]')!
+    expect(star.getAttribute('aria-pressed')).toBe('false')
+    // ვარსკვლავი ბმულის გვერდით დგას და არა შიგნით — დაჭერა გვერდს არ ხსნის
+    expect(star.closest('a')).toBeNull()
+
+    await act(async () => star.click())
+    await flush()
+
+    expect(mocks.setActorFavorite).toHaveBeenCalledWith(7, true)
+  })
+
+  it('asks the server for favourites only and keeps the view when a cut changes', async () => {
+    await render('/actors?view=favorites', [{ ...liam, favorite: true }])
+
+    expect(lastFilters()).toMatchObject({ favorite: true })
+    expect(lastFilters().media).toBeUndefined()
+    expect(container!.querySelector('[data-testid="actor-favorite"]')!.getAttribute('aria-pressed')).toBe('true')
+
+    await act(async () => button(i18n.t('actors.gender.female')).click())
+    await flush()
+
+    // სქესის ჭრილი ხედს არ კარგავს
+    expect(lastFilters()).toMatchObject({ favorite: true, gender: 'female' })
+  })
+
+  it('draws actors with photos as stacks and opens their photos in a large window', async () => {
+    await render('/actors?view=gallery', [{ ...liam, thumbs: ['gallery/images/a.jpg', 'gallery/images/b.jpg'] }])
+
+    // მხოლოდ ფოტოიანი ან ვიდეოიანი მსახიობები, დასტის ესკიზებით
+    expect(lastFilters()).toMatchObject({ media: true, thumbs: true })
+    const stacks = container!.querySelector('[data-testid="actors-stacks"]')!
+    expect(container!.querySelector('[data-testid="actors-grid"]')).toBeNull()
+    expect(stacks.textContent).toContain('ლიამ ნისონი')
+    expect(stacks.textContent).toContain(i18n.t('gallery.photos', { count: 2 }))
+    expect(stacks.textContent).toContain(i18n.t('actors.videos', { count: 1 }))
+
+    await act(async () => stacks.querySelector<HTMLElement>('button, [role="button"]')!.click())
+    await flush()
+
+    const dialog = document.querySelector('[data-testid="actor-photos-dialog"]')!
+    expect(dialog.getAttribute('data-actor')).toBe('7')
+  })
+
+  it('offers resetting every open counter only next to the "most opened" order', async () => {
+    mocks.resetActorOpens.mockResolvedValue({ reset: 3 })
+    await render()
+
+    expect(container!.querySelector('[data-testid="actors-reset-opens"]')).toBeNull()
   })
 })

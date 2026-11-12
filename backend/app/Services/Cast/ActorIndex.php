@@ -5,6 +5,7 @@ namespace App\Services\Cast;
 use App\Models\CastMember;
 use App\Models\CastMemberTag;
 use App\Models\GalleryImage;
+use App\Models\GalleryVideo;
 use App\Support\GalleryParent;
 use App\Support\Like;
 use App\Support\MediaDomain;
@@ -15,15 +16,21 @@ use Illuminate\Support\Facades\DB;
 /**
  * **`/actors` — ყველა „ჩემი" მსახიობი ერთ სიაში.**
  *
- * ⚠️ **„ჩემი" სამი წყაროდან იკრიბება**: ვინც ჩემს ჩანაწერზეა (ფილმი,
- * სერიალი, ანიმე), ვისაც ჩემი ფოტო აქვს გალერეაში და ვინც მე შევქმენი.
+ * ⚠️ **„ჩემი" რამდენიმე წყაროდან იკრიბება**: ვინც ჩემს ჩანაწერზეა (ფილმი,
+ * სერიალი, ანიმე), ვისაც ჩემი ფოტო ან ვიდეო-ბმული აქვს გალერეაში, ვინც მე შევქმენი
+ * და ვინც რჩეულად მოვნიშნე (რჩეული ბოლო ჩანაწერის მოხსნის შემდეგაც სიაში რჩება).
  * `cast_members` გლობალური ლექსიკონია — უფილტრო სია სხვის მსახიობებსაც
  * აჩვენებდა.
  *
  * ⚠️ **ერთი SQL და არა PHP-ში აწყობილი სია**: ავზი ათასობითაა (ცოცხალ ბაზაში
  * ოთხი ათასი), დახარისხება კი „ჩანაწერების რიცხვით" გვერდებამდე უნდა მოხდეს —
  * ამიტომ თითო მსახიობის რიცხვები ქვე-query-ებია (`r` — ჩანაწერები დომენებით,
- * `p` — ფოტოები), რომლებიც `cast_members`-ს `left join`-ით ებმის.
+ * `p` — ფოტოები, `v` — ვიდეო-ბმულები), რომლებიც `cast_members`-ს `left join`-ით ებმის;
+ * ჩემი ნიშნები (`am` — რჩეული და გახსნების მთვლელი) პირდაპირ ცხრილიდან.
+ *
+ * ⚠️ **რჩეულები ყოველთვის თავშია**, ნებისმიერ დალაგებაზე. ნაგულისხმევი რიგი —
+ * ფოტოებისა და ვიდეო-ბმულების რაოდენობით, ტოლობისას გახსნებით: მხოლოდ გახსნებით
+ * დალაგებული სია ყოველ შესვლაზე იცვლება და მსახიობი ადგილიდან „გარბის".
  *
  * ⚠️ **ჩანაწერების ქვე-query მედია-მოდელის query-ა** (`MediaDomain::query()`),
  * ე.ი. მისი global scope-ები თავისით მოქმედებს: `owner` (ჩემი), `trash`
@@ -36,7 +43,12 @@ use Illuminate\Support\Facades\DB;
  */
 final class ActorIndex
 {
-    public const SORTS = ['name', 'records', 'popularity', 'recent'];
+    public const SORTS = ['media', 'opens', 'records', 'name', 'recent', 'popularity'];
+
+    public const DEFAULT_SORT = 'media';
+
+    /** დასტის ესკიზები თითო მსახიობზე („გალერეის" ხედი) */
+    public const THUMBS = 5;
 
     public const DEFAULT_PER_PAGE = 40;
 
@@ -65,8 +77,16 @@ final class ActorIndex
 
         $query = CastMember::query()
             ->leftJoinSub($this->photoCounts(), 'p', 'p.cast_member_id', '=', 'cast_members.id')
+            ->leftJoinSub($this->videoCounts(), 'v', 'v.cast_member_id', '=', 'cast_members.id')
+            // ჩემი ნიშნები: სხვისი რიგი `user_id`-ით იჭრება, ე.ი. მსახიობი არ ორმაგდება
+            ->leftJoin('actor_marks as am', function ($join) {
+                $join->on('am.cast_member_id', '=', 'cast_members.id')->where('am.user_id', $this->userId);
+            })
             ->select('cast_members.*')
-            ->selectRaw('coalesce(p.photos, 0) as photos_count');
+            ->selectRaw('coalesce(p.photos, 0) as photos_count')
+            ->selectRaw('coalesce(v.videos, 0) as videos_count')
+            ->selectRaw('coalesce(am.is_favorite, 0) as is_favorite')
+            ->selectRaw('coalesce(am.opens, 0) as opens_count');
 
         if ($records) {
             $query->leftJoinSub($records, 'r', 'r.cast_member_id', '=', 'cast_members.id')
@@ -78,9 +98,11 @@ final class ActorIndex
             $query->selectRaw('0 as records_count, 0 as movie_count, 0 as series_count, 0 as anime_count');
         }
 
-        // ⚠️ ავზი: ჩემს ჩანაწერზეა, ჩემი ფოტო აქვს ან მე შევქმენი — `left join`-ები აქ იჭრება
+        // ⚠️ ავზი: ჩემს ჩანაწერზეა, ჩემი ფოტო ან ვიდეო აქვს, მე შევქმენი ან რჩეულია — `left join`-ები აქ იჭრება
         $query->where(function (Builder $w) use ($records) {
             $w->whereNotNull('p.cast_member_id')
+                ->orWhereNotNull('v.cast_member_id')
+                ->orWhere('am.is_favorite', true)
                 ->orWhere('cast_members.created_by', $this->userId);
 
             if ($records) {
@@ -94,14 +116,21 @@ final class ActorIndex
     }
 
     /**
-     * დახარისხება. ⚠️ ქართულ ინტერფეისზე სახელი ქართულით ლაგდება (`cast_member_translations`),
+     * დახარისხება. ⚠️ **რჩეულები ყოველთვის თავშია** — ნებისმიერ დალაგებაზე.
+     * ⚠️ ქართულ ინტერფეისზე სახელი ქართულით ლაგდება (`cast_member_translations`),
      * თორემ ბარათებზე დაწერილი სახელები ლათინური ანბანით არეული ჩანდა.
      *
      * @param  Builder<CastMember>  $query
      */
     public function sort(Builder $query, string $sort, string $locale): void
     {
+        $query->orderByRaw('coalesce(am.is_favorite, 0) desc');
+
         match ($sort) {
+            // ფოტოები + ვიდეო-ბმულები; ტოლობისას — რომელსაც უფრო ხშირად ვხსნი
+            'media' => $query->orderByRaw('coalesce(p.photos, 0) + coalesce(v.videos, 0) desc')
+                ->orderByRaw('coalesce(am.opens, 0) desc'),
+            'opens' => $query->orderByRaw('coalesce(am.opens, 0) desc'),
             'records' => $query->orderByDesc('records_count'),
             // ⚠️ პოპულარობის გარეშე (ხელით შექმნილი) ბოლოშია — ორივე ბაზაზე NULL DESC-ში ბოლოა
             'popularity' => $query->orderByDesc('cast_members.popularity'),
@@ -209,6 +238,16 @@ final class ActorIndex
             $query->whereIn('cast_members.id', $ids ?: [0]);
         }
 
+        // „რჩეულები" — ჩემი მონიშნულები
+        if (! empty($filters['favorite'])) {
+            $query->where('am.is_favorite', true);
+        }
+
+        // „გალერეა" — ვისაც ჩემი ფოტო ან ვიდეო-ბმული აქვს
+        if (! empty($filters['media'])) {
+            $query->where(fn (Builder $w) => $w->whereNotNull('p.cast_member_id')->orWhereNotNull('v.cast_member_id'));
+        }
+
         match ($filters['photos'] ?? null) {
             'with' => $query->whereNotNull('p.cast_member_id'),
             'without' => $query->whereNull('p.cast_member_id'),
@@ -290,6 +329,52 @@ final class ActorIndex
             ->select('imageable_id as cast_member_id')
             ->selectRaw('count(*) as photos')
             ->groupBy('imageable_id');
+    }
+
+    /** ჩემი ვიდეო-ბმულები თითო მსახიობზე — `GalleryVideo`-ის scope-ებით (`owner`) */
+    private function videoCounts(): QueryBuilder
+    {
+        return GalleryVideo::query()
+            ->where('videoable_type', GalleryParent::ACTOR)
+            ->toBase()
+            ->select('videoable_id as cast_member_id')
+            ->selectRaw('count(*) as videos')
+            ->groupBy('videoable_id');
+    }
+
+    /**
+     * დასტის ესკიზები გვერდის მსახიობებზე — ერთი query მთელ გვერდზე.
+     *
+     * ⚠️ `GalleryImage`-ის scope-ები მოქმედებს (ჩაკეტილი ალბომის ფოტო არ გამოდის);
+     * პირად დისკზე მდგარი (სესიაში გახსნილი) ფოტო ობიექტად მოდის — `GalleryImage::preview()`.
+     *
+     * @param  list<int>  $ids
+     * @return array<int, list<string|array{url: string, private: true}>>
+     */
+    public function thumbs(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $out = [];
+
+        $rows = GalleryImage::query()
+            ->where('imageable_type', GalleryParent::ACTOR)
+            ->whereIn('imageable_id', $ids)
+            ->orderBy('sort_order')
+            ->orderByDesc('id')
+            ->get(['id', 'imageable_id', 'album_id', 'path']);
+
+        foreach ($rows as $image) {
+            $key = (int) $image->imageable_id;
+
+            if (count($out[$key] ?? []) < self::THUMBS) {
+                $out[$key][] = $image->preview();
+            }
+        }
+
+        return $out;
     }
 
     /** @return array<int, list<string>> */

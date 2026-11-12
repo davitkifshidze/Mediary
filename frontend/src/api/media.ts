@@ -536,6 +536,9 @@ export interface Actor {
   biography?: string | null
   known_for?: string | null
   popularity?: number | null
+  /** ჩემი რჩეული და რამდენჯერ გავხსენი (`ActorMark`) — რიცხვი მხოლოდ გვერდის `i`-ში ჩანს */
+  favorite?: boolean
+  opens?: number
   /** ჩემ მიერ ხელით შექმნილი (რედაქტირდება) */
   created_by_me?: boolean
   /** ხელით შექმნილი და TMDB-ს დაუკავშირებელი — მხოლოდ შემქმნელს უჩანს */

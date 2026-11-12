@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Cake, ChevronDown, ChevronUp, ExternalLink, Globe, Link2, Loader2, Lock, MapPin, RefreshCw, SquarePen, Star, Trash2 } from 'lucide-react'
+import { Cake, ChevronDown, ChevronUp, ExternalLink, Globe, Link2, Loader2, Lock, MapPin, RefreshCw, RotateCcw, SquarePen, Star, Trash2 } from 'lucide-react'
 import { resyncActor, type Actor } from '@/api/media'
 import { errorMessage } from '@/lib/errors'
 import { useDateFormat } from '@/lib/dates'
@@ -10,7 +10,9 @@ import { cn } from '@/lib/utils'
 import { PosterImage } from '@/components/PosterImage'
 import { Button } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { trashActor } from '@/api/actors'
+import { ACTORS_KEY, resetActorOpens, setActorFavorite, trashActor } from '@/api/actors'
+import { FavoriteButton } from '@/components/ui/favorite-button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { ActorAttachDialog } from '@/components/actors/ActorAttachDialog'
 import { ActorFormDialog } from '@/components/actors/ActorFormDialog'
 import { RecordLockActions } from '@/components/locks/RecordLock'
@@ -30,6 +32,10 @@ import { actorLockBase } from '@/lib/locks'
    მსახიობის გვერდი კი ხშირად იხსნება. ერთადერთი გამონაკლისი — როცა
    მონაცემი **საერთოდ არ არის**: მაშინ ღილაკი თვალშისაცემია და ტექსტიც
    ამბობს, რომ ჯერ არაფერი მოგვიტანია.
+
+   ⚠️ **რჩეული და გახსნების მთვლელი ჩემია** (`ActorMark`) და არა ლექსიკონის: რჩეული
+   მსახიობი სიაში თავშია; გახსნების რიცხვი მხოლოდ აქ, სახელთან მდგარ `i`-ში ჩანს —
+   ის დალაგებას ემსახურება, ამიტომ იქვეა „გახსნების განულებაც".
 
    ⚠️ **ბიოგრაფია ინგლისურია და თარგმანის ცხრილი არ ემატება** — TMDB მას
    ქართულად პრაქტიკულად არ იძლევა, ე.ი. ცარიელი ცხრილი დარჩებოდა
@@ -81,6 +87,25 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
     if (ok) trash.mutate()
   }
 
+  const favorite = useMutation({
+    mutationFn: () => setActorFavorite(actor.id, !actor.favorite),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['actor', String(actor.id)] })
+      qc.invalidateQueries({ queryKey: [ACTORS_KEY] })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  const resetOpens = useMutation({
+    mutationFn: () => resetActorOpens(actor.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['actor', String(actor.id)] })
+      qc.invalidateQueries({ queryKey: [ACTORS_KEY] })
+      toast({ title: t('actor.opensReset'), variant: 'success' })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
   const resync = useMutation({
     mutationFn: () => resyncActor(actor.id),
     onSuccess: (res) => {
@@ -116,6 +141,10 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
             <h1 className="font-display text-3xl font-semibold tracking-tight">{name}</h1>
+            {/* რამდენჯერ გავხსენი — მხოლოდ აქ ჩანს (დალაგებისთვისაა) */}
+            <span className="mt-2" data-testid="actor-opens">
+              <InfoHint info={t('actor.opensInfo', { count: actor.opens ?? 0 })} />
+            </span>
             {actor.known_for && (
               <span className="mt-1.5 rounded-md bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
                 {actor.known_for}
@@ -208,6 +237,7 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
         </div>
 
         <div className="flex shrink-0 flex-col gap-2 sm:items-stretch">
+          <FavoriteButton active={!!actor.favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} className="justify-center" />
           {editable && (
             <Button variant="edit" size="sm" onClick={() => setEditing(true)}>
               <SquarePen className="size-4" />
@@ -224,6 +254,12 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
             <Link2 className="size-4" />
             {t('actors.attach.open')}
           </Button>
+          {(actor.opens ?? 0) > 0 && (
+            <Button variant="outline" size="sm" disabled={resetOpens.isPending} onClick={() => resetOpens.mutate()} data-testid="actor-reset-opens">
+              <RotateCcw className="size-4" />
+              {t('actors.opensResetAction')}
+            </Button>
+          )}
           {/* ჩაკეტვა / ისევ ჩაკეტვა / პაროლი (ლოკი მხოლოდ შენთვისაა) */}
           <RecordLockActions
             base={actorLockBase(actor.id)}

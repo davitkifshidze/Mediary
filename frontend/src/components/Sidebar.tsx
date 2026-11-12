@@ -47,6 +47,7 @@ import { fetchPendingCount, type ModuleInfo } from '@/api/account'
 import { ModuleIcon } from './ModuleIcon'
 // გალერეის ჭრილების ერთადერთი სია (გვერდზეც იგივეა)
 import { GALLERY_CUTS } from '@/lib/galleryCuts'
+import { ACTOR_VIEWS, actorViewOf, actorViewPath } from '@/lib/actorViews'
 import { PERSONAL_CUTS } from '@/lib/personalCuts'
 import { cn } from '@/lib/utils'
 import { statusName, useCustomStatusMap, useStatusMap } from '@/lib/statuses'
@@ -778,20 +779,43 @@ export function Sidebar({
   const builtInModules = enabled.filter((m) => !isCustomModule(m))
   const myModules = enabled.filter((m) => isCustomModule(m))
 
-  /* მსახიობების გვერდი; მსახიობის შიდა გვერდზეც (`/actors/:id`) აქტიურია */
+  /* მსახიობების გვერდი; მსახიობის შიდა გვერდზეც (`/actors/:id`) აქტიურია.
+     ქვემენიუ: ყველა · რჩეულები · გალერეა (`ACTOR_VIEWS` — გვერდის იგივე რუკა). */
   const lastMediaKey = [...enabled].reverse().find((m) => isMediaKey(m.key))?.key
   const ActorsIcon = TOOL_SECTIONS.actors.icon
   const onActors = location.pathname === '/actors' || location.pathname.startsWith('/actors/')
+  const actorsOpen = !!open.actors
+  // ხედი მხოლოდ სიის მისამართზე ითვლება — მსახიობის გვერდზე ქვეპუნქტი არ ინთება
+  const actorsView = location.pathname === '/actors' ? actorViewOf(params.get('view')) : null
   const actorsRow = (
-    <Link
-      to="/actors"
-      onClick={() => setDrawerOpen(false)}
-      style={toolAccent('actors')}
-      className={cn(MODULE_ROW, onActors ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE)}
-    >
-      <ActorsIcon className="size-4 shrink-0 text-[var(--mod)]" />
-      {t('actors.title')}
-    </Link>
+    <div style={toolAccent('actors')}>
+      <button
+        data-kind="accordion"
+        onClick={() => setOpen((o) => ({ ...o, actors: !o.actors }))}
+        aria-expanded={actorsOpen}
+        className={cn(MODULE_ROW, onActors ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE)}
+      >
+        <ActorsIcon className="size-4 shrink-0 text-[var(--mod)]" />
+        <span className="flex-1 text-left">{t('actors.title')}</span>
+        <ChevronDown className={cn('size-4 shrink-0 transition-transform', actorsOpen ? '' : '-rotate-90')} />
+      </button>
+
+      {actorsOpen && (
+        <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
+          {ACTOR_VIEWS.map((view) => (
+            <SubItem
+              key={view.key}
+              active={actorsView === view.key}
+              color={view.color}
+              icon={view.icon}
+              label={t(`actors.view.${view.key}`)}
+              to={actorViewPath(view.key)}
+              onClick={() => setDrawerOpen(false)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   )
 
   const nav = (

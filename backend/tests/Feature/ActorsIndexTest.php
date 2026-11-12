@@ -162,7 +162,8 @@ class ActorsIndexTest extends TestCase
         $this->assertSame(['Ana', 'Nino'], $this->names('?photos=without&locale=en'));
         $this->assertSame(['Nino'], $this->names('?records_min=2'));
         $this->assertSame(['Nino'], $this->names('?synced=yes'));
-        $this->assertSame(['Ana', 'Gio'], $this->names('?synced=no&locale=en'));
+        // ნაგულისხმევი რიგი ფოტოებითაა — სახელით დალაგება ცხადად ითხოვება
+        $this->assertSame(['Ana', 'Gio'], $this->names('?synced=no&locale=en&sort=name'));
         // ძებნა ქართულ სახელშიც
         $this->assertSame(['Nino'], $this->names('?q='.urlencode('ნინ')));
     }

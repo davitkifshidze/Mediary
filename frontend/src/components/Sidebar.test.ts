@@ -301,7 +301,8 @@ describe('Sidebar module order', () => {
     const rows = [...el.querySelectorAll<HTMLButtonElement>('button[aria-expanded]')].map((b) =>
       b.textContent?.trim(),
     )
-    expect(rows).toEqual(['song', 'movie', 'book', 'series'])
+    // „მსახიობები" ბოლო მედია-მოდულის შემდეგ დგას და თავისი ქვემენიუ აქვს
+    expect(rows).toEqual(['song', 'movie', 'book', 'series', i18n.t('actors.title')])
   })
 
   /* ინტერფეისიდან შექმნილი მოდული `PAGE_MODULE_KEYS`-ში არ წერია

@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Camera, Lock, LockOpen } from 'lucide-react'
+import { Camera, Lock, LockOpen, Star } from 'lucide-react'
 import { ACTORS_KEY, type ActorCard, type ActorListItem, type HiddenActorCard } from '@/api/actors'
 import { actorName } from '@/lib/actors'
 import { actorLockBase } from '@/lib/locks'
 import { useContentLang } from '@/lib/settings'
+import { cn } from '@/lib/utils'
 import { PosterImage } from '@/components/PosterImage'
 import { RecordUnlockDialog } from '@/components/locks/RecordLock'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
@@ -17,15 +18,35 @@ import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
    ფოტო, სახელი კონტენტის ენაზე (მეორე ენა ქვემოთ), „N ფილმი · M სერიალი"
    **ჩემს ბიბლიოთეკაში** და ჩემი ტეგები. მარჯვენა ღილაკი — გვერდის მენიუ.
 
+   ⚠️ **ვარსკვლავი ბმულის გვერდით დგას და არა შიგნით** — ბმულში ღილაკი არასწორი
+   HTML-ია და ერთი დაჭერა გვერდსაც გახსნიდა. რჩეული მსახიობი სიაში ყოველთვის თავშია.
+
    ⚠️ **დამალული** (ჩემ მიერ ჩაკეტილი, ამ სესიაში დაუხსნელი) მხოლოდ
    ფილტრში „მხოლოდ ჩაკეტილები" ჩანს: სახელი და ბოქლომი, დაჭერა — გახსნა.
    ============================================================ */
 
-export function ActorTile({ actor, actions }: { actor: ActorListItem; actions: MenuAction[] }) {
-  return actor.hidden ? <HiddenActorTile actor={actor} /> : <OpenActorTile actor={actor} actions={actions} />
+export function ActorTile({
+  actor,
+  actions,
+  onFavorite,
+}: {
+  actor: ActorListItem
+  actions: MenuAction[]
+  /** რჩეულის გადართვა; მის გარეშე ვარსკვლავი არ იხატება */
+  onFavorite?: (actor: ActorCard) => void
+}) {
+  return actor.hidden ? <HiddenActorTile actor={actor} /> : <OpenActorTile actor={actor} actions={actions} onFavorite={onFavorite} />
 }
 
-function OpenActorTile({ actor, actions }: { actor: ActorCard; actions: MenuAction[] }) {
+function OpenActorTile({
+  actor,
+  actions,
+  onFavorite,
+}: {
+  actor: ActorCard
+  actions: MenuAction[]
+  onFavorite?: (actor: ActorCard) => void
+}) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { title, alt } = actorName(actor, lang)
@@ -38,6 +59,24 @@ function OpenActorTile({ actor, actions }: { actor: ActorCard; actions: MenuActi
 
   return (
     <RecordContextMenu actions={actions}>
+     <div className="relative">
+      {onFavorite && (
+        <button
+          type="button"
+          data-kind="toggle"
+          data-testid="actor-favorite"
+          aria-pressed={actor.favorite}
+          aria-label={t(actor.favorite ? 'actions.unfavorite' : 'actions.favorite')}
+          title={t(actor.favorite ? 'actions.unfavorite' : 'actions.favorite')}
+          onClick={() => onFavorite(actor)}
+          className={cn(
+            'absolute left-2 top-2 z-[1] grid size-7 cursor-pointer place-items-center rounded-md bg-black/55 backdrop-blur-sm transition-colors',
+            actor.favorite ? 'text-favorite' : 'text-white/80 hover:text-favorite',
+          )}
+        >
+          <Star className={cn('size-4', actor.favorite && 'fill-current')} />
+        </button>
+      )}
       <Link to={`/actors/${actor.id}`} className="group block" data-testid="actor-tile">
         <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-border bg-muted">
           <PosterImage src={actor.photo} alt={title} className="h-full w-full transition-transform duration-500 group-hover:scale-105" />
@@ -64,6 +103,7 @@ function OpenActorTile({ actor, actions }: { actor: ActorCard; actions: MenuActi
           )}
         </div>
       </Link>
+     </div>
     </RecordContextMenu>
   )
 }

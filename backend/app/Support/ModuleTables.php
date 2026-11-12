@@ -50,7 +50,7 @@ final class ModuleTables
     /** რამდენიმე მოდულის საერთო ცხრილები — ჯგუფად (პოლიმორფული და ლექსიკონები) */
     public const SHARED = [
         'genres' => ['genres', 'genre_translations', 'genreables'],
-        'cast' => ['cast_members', 'cast_member_translations', 'castables', 'cast_member_tags', 'cast_member_sync_prefs'],
+        'cast' => ['cast_members', 'cast_member_translations', 'castables', 'cast_member_tags', 'cast_member_sync_prefs', 'actor_marks'],
         'episodes' => ['tv_episodes', 'episode_watches'],
         'watches' => ['media_watches'],
         'gallery_images' => ['gallery_images'],

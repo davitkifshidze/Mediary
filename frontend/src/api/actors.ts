@@ -1,5 +1,6 @@
 import { api } from '@/lib/api'
 import type { Actor } from '@/api/media'
+import type { StackPreview } from '@/components/ui/photo-stack'
 
 /* ============================================================
    **მსახიობების გვერდი `/actors`.**
@@ -11,8 +12,14 @@ import type { Actor } from '@/api/media'
 
 export const ACTORS_KEY = 'actors'
 
-export const ACTOR_SORTS = ['name', 'records', 'popularity', 'recent'] as const
+/**
+ * დალაგება — სერვერის `ActorIndex::SORTS`. ⚠️ რჩეულები ნებისმიერ დალაგებაზე თავშია;
+ * `media` (ნაგულისხმევი) — ფოტოებისა და ვიდეო-ბმულების რაოდენობით, ტოლობისას გახსნებით.
+ */
+export const ACTOR_SORTS = ['media', 'opens', 'records', 'name', 'recent', 'popularity'] as const
 export type ActorSort = (typeof ACTOR_SORTS)[number]
+
+export const DEFAULT_ACTOR_SORT: ActorSort = 'media'
 
 /** „რამდენ ჩანაწერზეა" — სერვერის `ActorIndex::RECORD_STEPS` */
 export const ACTOR_RECORD_STEPS = [1, 2, 5, 10] as const
@@ -36,6 +43,12 @@ export interface ActorCard {
   records: number
   /** ჩემი ფოტოები გალერეაში */
   photos: number
+  /** ჩემი ვიდეო-ბმულები გალერეაში */
+  videos: number
+  /** ჩემი რჩეული (მსახიობი გლობალურია — ნიშანი მხოლოდ ჩემია) */
+  favorite: boolean
+  /** დასტის ესკიზები — მხოლოდ „გალერეის" ხედზე (`thumbs: true`) */
+  thumbs?: StackPreview[]
   /** ჩემი საძიებო ტეგები */
   tags: string[]
   /* ჩემი ლოკი (მნახველისაა: სხვას მსახიობი ჩვეულებრივ უჩანს) */
@@ -70,6 +83,12 @@ export interface ActorFilters {
   synced?: 'yes' | 'no'
   /** მხოლოდ ჩემ მიერ ჩაკეტილები */
   locked?: boolean
+  /** მხოლოდ რჩეულები */
+  favorite?: boolean
+  /** მხოლოდ ისინი, ვისაც ჩემი ფოტო ან ვიდეო-ბმული აქვს */
+  media?: boolean
+  /** დასტის ესკიზები ბარათებზე */
+  thumbs?: boolean
   sort?: ActorSort
   locale?: 'ka' | 'en'
   page?: number
@@ -139,6 +158,27 @@ export async function updateActor(id: number, input: ActorInput): Promise<SavedA
 
 export async function fetchActors(filters: ActorFilters): Promise<ActorList> {
   const { data } = await api.get('/actors', { params: filters })
+  return data
+}
+
+/** რჩეულის ნიშანი — ჩემი; სხვის სიაში არაფერი იცვლება */
+export async function setActorFavorite(id: number, favorite: boolean): Promise<{ favorite: boolean }> {
+  const { data } = await api.put(`/actors/${id}/favorite`, { favorite })
+  return data
+}
+
+/**
+ * გახსნის დათვლა — მსახიობის გვერდი იძახის. ⚠️ სერვერი ერთ მსახიობს წუთში ერთხელ ითვლის;
+ * რიცხვი მხოლოდ დალაგებას ემსახურება და მხოლოდ მსახიობის გვერდის `i`-ში ჩანს.
+ */
+export async function countActorOpen(id: number): Promise<{ counted: boolean; opens: number }> {
+  const { data } = await api.post(`/actors/${id}/open`)
+  return data
+}
+
+/** გახსნების განულება — ერთ მსახიობზე ან (id-ის გარეშე) ყველაზე ერთად; რჩეულის ნიშანი რჩება */
+export async function resetActorOpens(id?: number): Promise<{ reset: number }> {
+  const { data } = await api.delete(id === undefined ? '/actors/opens' : `/actors/${id}/opens`)
   return data
 }
 

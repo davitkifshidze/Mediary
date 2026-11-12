@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActorMark;
 use App\Models\CastMember;
 use App\Services\Cast\ActorIndex;
 use App\Services\Cast\CastDetacher;
@@ -18,7 +19,10 @@ use Illuminate\Validation\Rule;
  *
  *  · `GET /actors` — ყველა ჩემი მსახიობი (`ActorIndex`): ძებნა, ფილტრები,
  *    დახარისხება, გვერდები, სქესის მთვლელი და ფილტრის არჩევანი;
- *  · `DELETE /actors/{castMember}/records` — „წაშლა ჩემი ჩანაწერებიდან".
+ *  · `DELETE /actors/{castMember}/records` — „წაშლა ჩემი ჩანაწერებიდან";
+ *  · `PUT /actors/{castMember}/favorite` — რჩეულის ნიშანი (ჩემი, `ActorMark`);
+ *  · `POST /actors/{castMember}/open` — გახსნის დათვლა (წუთში ერთხელ);
+ *  · `DELETE /actors/opens`, `DELETE /actors/{castMember}/opens` — გახსნების განულება.
  *
  * ⚠️ **`module:`/`permission:` middleware განზრახ არ დგას** — მსახიობს მოდული
  * არ აქვს (`/cast/sync/plan`-ის წესი); ჩანაწერების დომენებს კონტროლერი
@@ -39,6 +43,11 @@ class ActorController extends Controller
             'records_min' => ['nullable', 'integer', Rule::in(ActorIndex::RECORD_STEPS)],
             'synced' => ['nullable', 'in:yes,no'],
             'locked' => ['nullable', 'boolean'],
+            'favorite' => ['nullable', 'boolean'],
+            // ვისაც ჩემი ფოტო ან ვიდეო-ბმული აქვს („გალერეის" ხედი)
+            'media' => ['nullable', 'boolean'],
+            // დასტის ესკიზები ბარათებზე
+            'thumbs' => ['nullable', 'boolean'],
             'sort' => ['nullable', Rule::in(ActorIndex::SORTS)],
             'locale' => ['nullable', 'in:ka,en'],
             'page' => ['nullable', 'integer', 'min:1'],
@@ -49,12 +58,30 @@ class ActorController extends Controller
         $index = new ActorIndex(CastPool::typesFor($user), (int) $user->id);
 
         $query = $index->query($data);
-        $index->sort($query, $data['sort'] ?? 'name', $data['locale'] ?? 'ka');
+        $index->sort($query, $data['sort'] ?? ActorIndex::DEFAULT_SORT, $data['locale'] ?? 'ka');
 
         $page = $query->paginate((int) ($data['per_page'] ?? ActorIndex::DEFAULT_PER_PAGE), ['*'], 'page', (int) ($data['page'] ?? 1));
 
+        $thumbs = empty($data['thumbs']) ? [] : $index->thumbs(
+            collect($page->items())
+                ->reject(fn (CastMember $member) => RecordLocks::hiddenRecord($member))
+                ->map(fn (CastMember $member) => (int) $member->id)
+                ->values()
+                ->all(),
+        );
+
         return response()->json([
-            'items' => collect($page->items())->map(fn (CastMember $member) => $this->card($member, $index))->all(),
+            'items' => collect($page->items())
+                ->map(function (CastMember $member) use ($index, $data, $thumbs) {
+                    $card = $this->card($member, $index);
+
+                    if (! empty($data['thumbs']) && ! ($card['hidden'] ?? false)) {
+                        $card['thumbs'] = $thumbs[(int) $member->id] ?? [];
+                    }
+
+                    return $card;
+                })
+                ->all(),
             'total' => $page->total(),
             'page' => $page->currentPage(),
             'last_page' => $page->lastPage(),
@@ -103,7 +130,49 @@ class ActorController extends Controller
     }
 
     /**
+     * **რჩეულის ნიშანი** — ჩემი (`ActorMark`); მსახიობი გლობალურია და სხვას არაფერი ეცვლება.
+     * ⚠️ დამალულ (ჩაკეტილ, დაუხსნელ) მსახიობზე `EnsureRecordOwnership` 423-ს აბრუნებს.
+     */
+    public function favorite(Request $request, CastMember $castMember): JsonResponse
+    {
+        $data = $request->validate(['favorite' => ['required', 'boolean']]);
+
+        $mark = ActorMark::forActor((int) $request->user()->id, (int) $castMember->id);
+        $mark->is_favorite = (bool) $data['favorite'];
+        $mark->save();
+
+        return response()->json(['favorite' => $mark->is_favorite]);
+    }
+
+    /**
+     * **გახსნის დათვლა** — მსახიობის გვერდი იძახის; ერთი მსახიობი წუთში ერთხელ ითვლება.
+     * ⚠️ რიცხვი მხოლოდ დალაგებას ემსახურება და ჟურნალზე არ არის დაკიდებული.
+     */
+    public function open(Request $request, CastMember $castMember): JsonResponse
+    {
+        $counted = ActorMark::countOpen((int) $request->user()->id, (int) $castMember->id);
+
+        return response()->json([
+            'counted' => $counted,
+            'opens' => (int) ActorMark::forActor((int) $request->user()->id, (int) $castMember->id)->opens,
+        ]);
+    }
+
+    /** გახსნების განულება ერთ მსახიობზე — რჩეულის ნიშანი რჩება */
+    public function resetOpens(Request $request, CastMember $castMember): JsonResponse
+    {
+        return response()->json(['reset' => ActorMark::resetOpens((int) $request->user()->id, (int) $castMember->id)]);
+    }
+
+    /** გახსნების განულება ყველა მსახიობზე ერთად */
+    public function resetAllOpens(Request $request): JsonResponse
+    {
+        return response()->json(['reset' => ActorMark::resetOpens((int) $request->user()->id)]);
+    }
+
+    /**
      * ბარათი — ⚠️ რიცხვები **ჩემი ბიბლიოთეკისაა** და არა TMDB-ის ფილმოგრაფიის.
+     * ⚠️ გახსნების რიცხვი ბარათზე **არ გამოდის** — ის მხოლოდ მსახიობის გვერდის `i`-შია.
      *
      * @return array<string, mixed>
      */
@@ -133,6 +202,9 @@ class ActorController extends Controller
             ],
             'records' => (int) $member->getAttribute('records_count'),
             'photos' => (int) $member->getAttribute('photos_count'),
+            // ჩემი ვიდეო-ბმულები გალერეაში
+            'videos' => (int) $member->getAttribute('videos_count'),
+            'favorite' => (bool) $member->getAttribute('is_favorite'),
             'tags' => $index->tagsOf((int) $member->id),
             ...RecordLocks::state($member),
         ];

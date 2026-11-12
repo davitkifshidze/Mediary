@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AnimeListResource;
 use App\Http\Resources\MovieListResource;
 use App\Http\Resources\SeriesListResource;
+use App\Models\ActorMark;
 use App\Models\CastMember;
 use App\Models\CastMemberTag;
 use App\Models\Genre;
@@ -373,7 +374,18 @@ class CastController extends Controller
             /* საძიებო ტეგები **ჩემია და არა გლობალური**: `cast_members`
                საერთო ლექსიკონია, ტეგები კი `cast_member_tags`-შია, user-ზე. */
             'tags' => CastMemberTag::forActor((int) auth()->id(), $member->id),
+            /* ჩემი ნიშნები: რჩეული და გახსნების მთვლელი (`ActorMark`). ⚠️ რიცხვი მხოლოდ
+               აქ გამოდის — სიის ბარათზე ის არ იწერება. */
+            ...$this->marks($member),
         ];
+    }
+
+    /** @return array{favorite: bool, opens: int} */
+    private function marks(CastMember $member): array
+    {
+        $mark = ActorMark::forActor((int) auth()->id(), (int) $member->id);
+
+        return ['favorite' => (bool) $mark->is_favorite, 'opens' => (int) $mark->opens];
     }
 
     /** @return array<string, mixed> ხელით შექმნილის დეტალების წესები */

@@ -2,13 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Drama, Globe, Plus, RefreshCw, Search, Tags, Trash2, UserMinus, FilterX } from 'lucide-react'
+import { Drama, Globe, Plus, RefreshCw, RotateCcw, Search, Tags, Trash2, UserMinus, FilterX } from 'lucide-react'
 import {
   ACTOR_RECORD_STEPS,
   ACTOR_SORTS,
   ACTORS_KEY,
+  DEFAULT_ACTOR_SORT,
   detachActorEverywhere,
   fetchActors,
+  resetActorOpens,
+  setActorFavorite,
   trashActor,
   type ActorCard,
   type ActorListItem,
@@ -20,12 +23,15 @@ import { relockRecord } from '@/api/locks'
 import { actorLockBase, lockMenuActions } from '@/lib/locks'
 import { RecordLockDialog } from '@/components/locks/RecordLock'
 import { actorName, deptKey } from '@/lib/actors'
+import { actorViewOf, type ActorView } from '@/lib/actorViews'
 import { errorMessage } from '@/lib/errors'
 import { useFilterDraft } from '@/lib/filters'
 import { useContentLang } from '@/lib/settings'
 import { ActorFormDialog } from '@/components/actors/ActorFormDialog'
 import { ActorTagsDialog } from '@/components/actors/ActorTagsDialog'
 import { ActorTile } from '@/components/actors/ActorTile'
+import { ActorPhotosDialog } from '@/components/actors/ActorPhotosDialog'
+import { PhotoStack } from '@/components/ui/photo-stack'
 import { FilterGroup, FilterOption, FilterOptionList, FilterPanel, FilterTrigger } from '@/components/FilterPanel'
 import { WebImageDialog } from '@/components/WebImageDialog'
 import { Button } from '@/components/ui/button'
@@ -40,7 +46,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { usePagedList } from '@/lib/paged'
 import { ACTOR_COLUMNS, useActorsPageSize } from '@/lib/pageSize'
 import { PageSizePick } from '@/components/ui/page-size-pick'
-import { MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
+import { contextMenuItems, favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 /* ============================================================
@@ -50,6 +56,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
    ჩემი ფოტო აქვს. ⚠️ ავზი ათასობითაა, ამიტომ ფილტრი, დახარისხება და გვერდები
    სერვერზეა (`GET /actors`); გვერდის ზომა ბადის სვეტების ჯერადია (`PageSizePick`, ბრაუზერში ინახება) —
    ნომრები + „მეტის ჩვენება", გვერდი `?page=`-შია.
+
+   ⚠️ **სამი ხედი** (`?view=`, საიდბარის ქვემენიუ — `lib/actorViews.ts`): ყველა · რჩეულები ·
+   გალერეა. „გალერეა" მხოლოდ ფოტოიან ან ვიდეოიან მსახიობებს აჩვენებს, **დასტებად**; დაჭერა
+   მის ფოტოებს დიდ ფანჯარაში ხსნის. ⚠️ რჩეულები ნებისმიერ დალაგებაზე თავშია; ნაგულისხმევი
+   რიგი — ფოტოებისა და ვიდეო-ბმულების რაოდენობით, ტოლობისას გახსნებით (სერვერი).
 
    ⚠️ სქესი ჭრილებია მთვლელით („ყველა · ქალები · კაცები"), დანარჩენი ფილტრი —
    პანელში (მისამართში ინახება, ბრაუზერის „უკან" მუშაობს). `/gallery/actors`
@@ -66,6 +77,13 @@ interface PanelFilters {
   locked: string
 }
 
+/** ცარიელი სია ხედის მიხედვით — რა აკლია და როგორ გაჩნდება */
+const EMPTY_TEXT = {
+  all: { title: 'actors.empty', hint: 'actors.emptyHint' },
+  favorites: { title: 'actors.emptyFavorites', hint: 'actors.emptyFavoritesHint' },
+  gallery: { title: 'actors.emptyGallery', hint: 'actors.emptyGalleryHint' },
+} as const satisfies Record<ActorView, { title: string; hint: string }>
+
 const EMPTY_FILTERS: PanelFilters = { known_for: '', tag: '', photos: '', records: '', synced: '', locked: '' }
 const PANEL_KEYS = Object.keys(EMPTY_FILTERS) as (keyof PanelFilters)[]
 
@@ -80,6 +98,7 @@ export function ActorsPage() {
   const search = params.toString()
 
   const gender = params.get('gender') ?? 'all'
+  const view = actorViewOf(params.get('view'))
   const applied = useMemo<PanelFilters>(() => {
     const p = new URLSearchParams(search)
     return Object.fromEntries(PANEL_KEYS.map((key) => [key, p.get(key) ?? ''])) as unknown as PanelFilters
@@ -87,7 +106,9 @@ export function ActorsPage() {
 
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
-  const [sort, setSort] = useState<ActorSort>('name')
+  const [sort, setSort] = useState<ActorSort>(DEFAULT_ACTOR_SORT)
+  // „გალერეის" ხედი: რომელი მსახიობის ფოტოებია გახსნილი დიდ ფანჯარაში
+  const [photosOf, setPhotosOf] = useState<ActorCard | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [tagging, setTagging] = useState<ActorCard | null>(null)
   const [webFor, setWebFor] = useState<ActorCard | null>(null)
@@ -110,6 +131,10 @@ export function ActorsPage() {
     records_min: applied.records ? Number(applied.records) : undefined,
     synced: applied.synced === 'yes' || applied.synced === 'no' ? applied.synced : undefined,
     locked: applied.locked === '1' ? true : undefined,
+    favorite: view === 'favorites' ? true : undefined,
+    // „გალერეა": ვისაც ჩემი ფოტო ან ვიდეო-ბმული აქვს, დასტის ესკიზებით
+    media: view === 'gallery' ? true : undefined,
+    thumbs: view === 'gallery' ? true : undefined,
     sort,
     locale: lang === 'ka' ? 'ka' : 'en',
   }
@@ -131,6 +156,8 @@ export function ActorsPage() {
   /** მისამართი = მოქმედი ფილტრი; სქესი ჭრილია და ცალკე ინახება */
   const write = (next: PanelFilters, nextGender = gender) => {
     const p = new URLSearchParams()
+    // ხედი ფილტრი არ არის — ფილტრის ცვლილება მას არ კარგავს
+    if (view !== 'all') p.set('view', view)
     if (nextGender !== 'all') p.set('gender', nextGender)
     PANEL_KEYS.forEach((key) => next[key] && p.set(key, next[key]))
     setPanelOpen(false)
@@ -151,6 +178,36 @@ export function ActorsPage() {
     },
     onError: fail,
   })
+
+  /* რჩეულის ნიშანი — ჩემი; სია თავიდან იკითხება, რადგან რჩეული თავში გადადის */
+  const favorite = useMutation({
+    mutationFn: (actor: ActorCard) => setActorFavorite(actor.id, !actor.favorite),
+    onSuccess: (_, actor) => {
+      qc.invalidateQueries({ queryKey: [ACTORS_KEY] })
+      qc.invalidateQueries({ queryKey: ['actor', String(actor.id)] })
+    },
+    onError: fail,
+  })
+
+  /* გახსნების განულება ყველა მსახიობზე — რჩეულის ნიშნები რჩება */
+  const resetOpens = useMutation({
+    mutationFn: () => resetActorOpens(),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: [ACTORS_KEY] })
+      qc.invalidateQueries({ queryKey: ['actor'] })
+      toast({ title: t('actors.opensReset', { count: result.reset }), variant: 'success' })
+    },
+    onError: fail,
+  })
+
+  const askResetOpens = async () => {
+    const ok = await confirm({
+      title: t('actors.opensResetAllTitle'),
+      description: t('actors.opensResetAllDesc'),
+      confirmText: t('actors.opensResetAction'),
+    })
+    if (ok) resetOpens.mutate()
+  }
 
   const detach = useMutation({
     mutationFn: (actor: ActorCard) => detachActorEverywhere(actor.id),
@@ -193,6 +250,7 @@ export function ActorsPage() {
 
     return [
       { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => navigate(`/actors/${actor.id}`) },
+      favoriteAction(actor.favorite, () => favorite.mutate(actor), t),
       { key: 'tags', label: t('actors.menuTags'), icon: Tags, run: () => setTagging(actor) },
       { key: 'web', label: t('actors.menuWebPhotos'), icon: Globe, run: () => setWebFor(actor) },
       ...(actor.has_tmdb
@@ -243,12 +301,14 @@ export function ActorsPage() {
   }
 
   const filtered = activeCount > 0 || !!term || gender !== 'all'
+  /** ცარიელი სიის ტექსტი — ხედის მიხედვით (ფილტრის გარეშე) */
+  const empty = EMPTY_TEXT[view]
 
   return (
     <PageContainer>
       <PageHeader
         tool="actors"
-        title={t('actors.title')}
+        title={view === 'all' ? t('actors.title') : `${t('actors.title')} · ${t(`actors.view.${view}`)}`}
         subtitle={t('actors.count', { count: total })}
         actions={
           <>
@@ -274,6 +334,13 @@ export function ActorsPage() {
                 ))}
               </SelectContent>
             </Select>
+            {/* მთვლელი მხოლოდ დალაგებას ემსახურება — განულებაც იქ ჩანს, სადაც მას ხედავ */}
+            {sort === 'opens' && (
+              <Button variant="outline" disabled={resetOpens.isPending} onClick={() => void askResetOpens()} data-testid="actors-reset-opens">
+                <RotateCcw className="size-4" />
+                {t('actors.opensResetAction')}
+              </Button>
+            )}
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             <Button onClick={() => setCreating(true)}>
               <Plus className="size-4" />
@@ -306,8 +373,8 @@ export function ActorsPage() {
             query.isError ? null : (
               <EmptyState kind={filtered ? 'search' : undefined}
                 icon={<Drama className="size-6" />}
-                title={filtered ? t('actors.emptyFiltered') : t('actors.empty')}
-                hint={filtered ? t('empty.filteredHint') : t('actors.emptyHint')}
+                title={filtered ? t('actors.emptyFiltered') : t(empty.title)}
+                hint={filtered ? t('empty.filteredHint') : t(empty.hint)}
                 actions={
                   filtered ? (
                     <Button
@@ -326,11 +393,38 @@ export function ActorsPage() {
             )
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" data-testid="actors-grid">
-                {items.map((actor) => (
-                  <ActorTile key={actor.id} actor={actor} actions={actionsFor(actor)} />
-                ))}
-              </div>
+              {view === 'gallery' ? (
+                /* დასტები: სახელი + რაოდენობა; დაჭერა ფოტოებს დიდ ფანჯარაში ხსნის */
+                <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" data-testid="actors-stacks">
+                  {items.map((actor) =>
+                    actor.hidden ? (
+                      <ActorTile key={actor.id} actor={actor} actions={[]} />
+                    ) : (
+                      <PhotoStack
+                        key={actor.id}
+                        title={actorName(actor, lang).title}
+                        subtitle={actorName(actor, lang).alt}
+                        label={[
+                          actor.photos ? t('gallery.photos', { count: actor.photos }) : null,
+                          actor.videos ? t('actors.videos', { count: actor.videos }) : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                        images={actor.thumbs ?? []}
+                        count={actor.photos + actor.videos}
+                        onClick={() => setPhotosOf(actor)}
+                        menu={contextMenuItems(actionsFor(actor))}
+                      />
+                    ),
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" data-testid="actors-grid">
+                  {items.map((actor) => (
+                    <ActorTile key={actor.id} actor={actor} actions={actionsFor(actor)} onFavorite={(a) => favorite.mutate(a)} />
+                  ))}
+                </div>
+              )}
               <Pagination {...query.pagination} className="mt-8" />
             </>
           )}
@@ -408,6 +502,18 @@ export function ActorsPage() {
           </FilterGroup>
         </FilterPanel>
       </div>
+
+      {photosOf && (
+        <ActorPhotosDialog
+          actorId={photosOf.id}
+          name={actorName(photosOf, lang).title}
+          onClose={() => {
+            setPhotosOf(null)
+            // ფანჯარაში ფოტო შეიძლება წაიშალა ან დაემატა — დასტის რიცხვი თავიდან
+            qc.invalidateQueries({ queryKey: [ACTORS_KEY] })
+          }}
+        />
+      )}
 
       {locking && (
         <RecordLockDialog

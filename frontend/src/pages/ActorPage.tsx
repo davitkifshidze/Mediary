@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Loader2, Plus } from 'lucide-react'
 import { fetchActor, type Suggestion } from '@/api/media'
-import { ACTORS_KEY } from '@/api/actors'
+import { ACTORS_KEY, countActorOpen } from '@/api/actors'
 import { actorLockBase } from '@/lib/locks'
 import { RecordLockedScreen } from '@/components/locks/RecordLock'
 import { mediaOf, type MediaType } from '@/lib/media'
@@ -175,6 +175,21 @@ export function ActorPage() {
   const { settings } = useSettings()
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({ queryKey: ['actor', id], queryFn: () => fetchActor(id!) })
   const qc = useQueryClient()
+
+  /* გახსნის დათვლა — ერთხელ თითო მსახიობზე ამ გვერდზე (სერვერი მაინც წუთში ერთხელ ითვლის).
+     ⚠️ დამალულზე არა: ჩაკეტილი, დაუხსნელი მსახიობი „გახსნილი" არ არის. მთვლელი მხოლოდ
+     დალაგებას ემსახურება, ამიტომ ჩავარდნილი მოთხოვნა ჩუმად რჩება. */
+  const counted = useRef<string | null>(null)
+  const ready = !!data && !data.actor.hidden
+  useEffect(() => {
+    if (!ready || !id || counted.current === id) return
+    counted.current = id
+    countActorOpen(Number(id))
+      .then((result) => {
+        qc.setQueryData(['actor', id], (old: typeof data) => (old ? { ...old, actor: { ...old.actor, opens: result.opens } } : old))
+      })
+      .catch(() => {})
+  }, [ready, id, qc])
 
   const alreadyOwned = useAlreadyOwned(id, data)
   const movieSuggestions = useMemo(

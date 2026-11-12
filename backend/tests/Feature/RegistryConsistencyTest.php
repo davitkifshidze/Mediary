@@ -777,6 +777,7 @@ class RegistryConsistencyTest extends TestCase
         'message_reactions' => 'რეაქცია გადართვაა (ხელახლა დაჭერა ხსნის)',
         'user_blocks' => 'პარამეტრი — ბლოკის მოხსნა ცალკე მოქმედებაა',
         'cast_member_tags' => 'ძებნის ტეგები — ველის რედაქტირება',
+        'actor_marks' => 'რჩეულის ნიშანი გადართვაა, გახსნების მთვლელი — რიცხვი; შიგთავსი არაა',
         'episode_watches' => 'ეპიზოდის მონიშვნა გადართვაა, არა წაშლა',
         'note_notifications' => 'მიწოდების ჟურნალი — მანქანა წერს',
         'serp_searches' => 'ძებნის მრიცხველი',

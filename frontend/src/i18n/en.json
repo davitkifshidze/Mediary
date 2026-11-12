@@ -613,7 +613,9 @@
     "detailsUnavailable": "The source returned nothing",
     "noDetails": "No biography fetched yet — press “Refresh from TMDB”.",
     "homepage": "Official site",
-    "noTmdbId": "This actor has no TMDB id — there is nothing to refresh from"
+    "noTmdbId": "This actor has no TMDB id — there is nothing to refresh from",
+    "opensInfo": "You have opened this page {{count}} time(s). The number only drives the order of the actors list and is shown nowhere else.",
+    "opensReset": "Opens reset"
   },
   "franchise": {
     "continue": "Continue franchise",
@@ -5089,7 +5091,9 @@
       "name": "By name",
       "records": "By number of records",
       "popularity": "By popularity",
-      "recent": "Recently added"
+      "recent": "Recently added",
+      "media": "By photos and videos",
+      "opens": "Most opened"
     },
     "gender": {
       "all": "All",
@@ -5176,7 +5180,22 @@
     "deleteTitle": "Delete the actor",
     "deleteDesc": "“{{name}}” moves to the trash with its links (on {{links}} records) and photos ({{photos}}) — they come back together, and are deleted for good when the trash period ends.",
     "deleteDescShort": "“{{name}}” moves to the trash with its links on records and its photos — they come back together, and are deleted for good when the trash period ends.",
-    "deleted": "“{{name}}” moved to the trash"
+    "deleted": "“{{name}}” moved to the trash",
+    "view": {
+      "all": "All",
+      "favorites": "Favourites",
+      "gallery": "Gallery"
+    },
+    "videos": "{{count}} video(s)",
+    "openPage": "Actor's page",
+    "emptyFavorites": "No favourite actors yet",
+    "emptyFavoritesHint": "Press the star on an actor's card — favourites always come first in the list.",
+    "emptyGallery": "No actors with photos yet",
+    "emptyGalleryHint": "Only actors whose photos or video links you have in the gallery appear here.",
+    "opensResetAction": "Reset opens",
+    "opensResetAllTitle": "Reset opens for every actor?",
+    "opensResetAllDesc": "The counter only drives sorting: after the reset the “most opened” order starts over. Favourites and photos stay as they are.",
+    "opensReset": "Reset for {{count}} actor(s)"
   },
   "lock": {
     "lock": "Lock",

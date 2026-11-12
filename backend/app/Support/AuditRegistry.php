@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\ActorMark;
 use App\Models\Anime;
 use App\Models\AnimeTranslation;
 use App\Models\ApprovalRequest;
@@ -269,6 +270,7 @@ class AuditRegistry
         AuditLog::class => 'ლოგის ლოგირება უსასრულო ციკლია',
         // „აღარ განაახლო" მსახიობზე: პარამეტრია და არა შიგთავსი (ჩანაწერზე იგივე გადამრთველი სვეტია და ილოგება)
         CastMemberSyncPref::class => 'თითო მომხმარებლის გადამრთველი — პარამეტრია, არა შიგთავსი',
+        ActorMark::class => 'რჩეულის ნიშანი ერთი დაწკაპუნებაა, გახსნების მთვლელი კი ყოველ გახსნაზე იცვლება',
 
         // მანქანის წერილი — ადამიანის ქმედება არაა
         NoteNotification::class => 'მიწოდების რიგი; მანქანა წერს და წუთში ერთხელ იცვლება',
