@@ -177,8 +177,8 @@ final class ExportDomain
             'model' => NoteEntry::class,
             'with' => ['status', 'category', 'files'],
             'fields' => [
-                'id', 'title', 'category', 'status', 'status_name', 'finished_at', 'tags', 'description',
-                'links', 'is_favorite', 'visibility', 'created_at',
+                'id', 'title', 'icon', 'color', 'category', 'status', 'status_name', 'finished_at', 'tags', 'description',
+                'links', 'is_favorite', 'photo_path', 'visibility', 'created_at',
                 'custom_fields', 'files',
             ],
         ],
@@ -261,6 +261,7 @@ final class ExportDomain
         'bookmark' => ['thumbnail_path', null],
         'course' => ['thumbnail_path', null],
         'place' => ['photo_path', null],
+        'note' => ['photo_path', null],
     ];
 
     /**

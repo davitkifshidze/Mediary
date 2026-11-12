@@ -795,6 +795,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/notes/{note}', [NoteEntryController::class, 'destroy']);
         Route::patch('/notes/{note}/favorite', [NoteEntryController::class, 'toggleFavorite']);
         Route::patch('/notes/{note}/status', [NoteEntryController::class, 'setStatus']);
+        // მთავარი ფოტო პრივატულ დისკზეა — მხოლოდ აქედან გაიცემა (ატვირთვა და მოშორება `PATCH /notes/{note}`-ია)
+        Route::get('/notes/{note}/photo', [NoteEntryController::class, 'photo']);
 
         /* ატვირთვები (სქრინშოტი/ვიდეო/დოკუმენტი) — კვოტაზე გადის */
         Route::get('/notes/{note}/files', [NoteEntryFileController::class, 'index']);

@@ -167,11 +167,14 @@ export function ModalShell({
   wide,
   size,
   hint,
+  lead,
   aside,
   fill,
   children,
 }: {
   title: string
+  /** სათაურის წინ — ჩანაწერის პატარა ფილა (ფოტო ან აიქონი ფერად ფონზე) */
+  lead?: ReactNode
   onClose: () => void
   /**
    * „უკან" — მხოლოდ მაშინ, როცა მოდალი სხვა ეკრანიდან შემოვიდა.
@@ -266,6 +269,7 @@ export function ModalShell({
                 (მარჯვნივ მიკრული), დახურვა კი ყოველთვის ზედა კუთხეში რჩება. */}
             <div className="flex min-h-8 min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-2">
               <div className="flex min-w-0 items-center gap-2">
+                {lead}
                 <DialogPrimitive.Title
                   className={cn(
                     'min-w-0 truncate font-display text-lg font-semibold tracking-tight',

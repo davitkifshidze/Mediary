@@ -297,6 +297,12 @@ class MediaryImportTest extends TestCase
         $this->assertSame($this->bob->id, (int) $noteCopy->category->user_id);
         $this->assertNotSame($note->category_id, $noteCopy->category_id);
         Storage::disk('private')->assertExists($noteCopy->files()->firstOrFail()->path);
+        // იერი: აიქონი და ფერი — როგორც ფაილშია; ფოტო — ბობის ახალი ფაილი, ისევ პრივატულ დისკზე
+        $this->assertSame(['ChefHat', 'c4'], [$noteCopy->icon, $noteCopy->color]);
+        $this->assertStringStartsWith('notes/photos/', (string) $noteCopy->photo_path);
+        $this->assertNotSame($note->photo_path, $noteCopy->photo_path);
+        Storage::disk('private')->assertExists($noteCopy->photo_path);
+        Storage::disk('public')->assertMissing($noteCopy->photo_path);
 
         // ადგილი: მარშრუტი
         $placeCopy = Place::withoutGlobalScopes()->where('user_id', $this->bob->id)->firstOrFail();
@@ -537,7 +543,12 @@ class MediaryImportTest extends TestCase
             'user_id' => $this->alice->id, 'key' => 'recipes', 'name_ka' => 'რეცეპტები', 'name_en' => 'Recipes', 'sort_order' => 99,
         ]);
 
-        $note = NoteEntry::create(['user_id' => $this->alice->id, 'title' => 'Plan', 'description' => 'Line one', 'category_id' => $category->id]);
+        // იერი: აიქონი, ფერი და მთავარი ფოტო პრივატულ დისკზე
+        Storage::disk('private')->put('notes/photos/plan.png', base64_decode(self::PNG));
+        $note = NoteEntry::create([
+            'user_id' => $this->alice->id, 'title' => 'Plan', 'description' => 'Line one', 'category_id' => $category->id,
+            'icon' => 'ChefHat', 'color' => 'c4', 'photo_path' => 'notes/photos/plan.png',
+        ]);
 
         Storage::disk('private')->put('notes/files/docs/plan.pdf', self::PDF);
         $note->files()->create([

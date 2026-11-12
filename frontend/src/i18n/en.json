@@ -1472,7 +1472,10 @@
         "category": "Category",
         "status": "Status",
         "description": "Description",
-        "links": "Links"
+        "links": "Links",
+        "photo": "Main photo",
+        "icon": "Icon",
+        "color": "Background colour"
       },
       "bookmark": {
         "description": "Description",
@@ -1587,7 +1590,10 @@
         "rating": "BGG's own score is stored separately and isn't touched."
       },
       "note": {
-        "tags": "Your own labels, used for filtering."
+        "tags": "Your own labels, used for filtering.",
+        "photo": "Shown in all three list views and beside the window title. The photo is private — it is kept in protected storage and only you see it.",
+        "icon": "The note's own icon. Left empty, the category's icon is shown.",
+        "color": "Without a photo the icon is drawn on this colour."
       },
       "bookmark": {
         "description": "A short summary — filled in from the page automatically.",
@@ -2685,7 +2691,13 @@
     "reminderSent": "sent {{n}} times",
     "reminderForever": "Forever — no end set",
     "reminderPlannedHint": "The number is worked out from the schedule and the window: how many times its time comes round between the start and the end. Without an end it goes on forever.",
-    "reminderPlusMonths": "+{{n}} mo"
+    "reminderPlusMonths": "+{{n}} mo",
+    "look": "Look",
+    "lookHint": "The note's own icon and background colour, in any combination. With a main photo the list shows the photo; without one, the icon on the coloured background.",
+    "iconClear": "Clear the icon",
+    "colorNone": "No colour",
+    "photoHint": "Without a photo the card shows the icon",
+    "photoFailed": "The note was saved, but the photo could not be uploaded: {{reason}}"
   },
   "chat": {
     "title": "Chat",

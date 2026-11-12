@@ -462,6 +462,7 @@ class MediaryWriter
             'bookmark' => StorageFolder::BOOKMARK_THUMBNAILS,
             'course' => StorageFolder::COURSE_THUMBNAILS,
             'place' => StorageFolder::PLACE_PHOTOS,
+            'note' => StorageFolder::NOTE_PHOTOS,
             default => StorageFolder::customPhotos($module),
         };
     }

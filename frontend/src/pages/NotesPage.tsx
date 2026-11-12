@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ComponentProps } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -54,6 +54,7 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { NoteIconFace, useNotePhoto } from '@/components/NoteFace'
 import { RecordList, RecordView } from '@/components/RecordView'
 import { ViewToggle } from '@/components/ui/view-toggle'
 import { PageSizePick } from '@/components/ui/page-size-pick'
@@ -82,6 +83,18 @@ const SORTS = ['newest', MANUAL_SORT, 'oldest', 'title', 'updated'] as const
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
 const EMPTY_FILTERS = { categories: [] as string[], tags: [] as string[] }
 type PanelFilters = typeof EMPTY_FILTERS
+
+/**
+ * სიის ერთი ჩანაწერი **თავისი სახით**: მთავარი ფოტო, ან აიქონი ფონის ფერზე — სამივე ხედში
+ * (ბარათი, ბადე, სტრიქონი) ერთი წესით.
+ * ⚠️ ცალკე კომპონენტია, რადგან ფოტო პრივატულ დისკზეა და თითო რიგი მას თვითონ კითხულობს
+ * (`useNotePhoto` hook-ია — `map()`-ის შიგნით ვერ გამოიძახება).
+ */
+function NoteRecord({ note, ...props }: { note: NoteEntry } & Omit<ComponentProps<typeof RecordView>, 'photo' | 'placeholder'>) {
+  const photo = useNotePhoto(note)
+
+  return <RecordView {...props} photo={photo} placeholder={<NoteIconFace note={note} />} />
+}
 
 export function NotesPage() {
   const { t, i18n } = useTranslation()
@@ -376,13 +389,13 @@ export function NotesPage() {
                 },
               ]
               return (
-                <RecordView
+                <NoteRecord
                   key={note.id}
+                  note={note}
                   title={note.title}
                   onOpen={() => setOpened(note)}
                   openLabel={t('notes.open')}
                   rowPhotoClassName="size-11"
-                  placeholder={<ModuleIcon name={note.category?.icon ?? 'NotebookPen'} className="size-5" />}
                   meta={
                     <>
                       {note.category && (

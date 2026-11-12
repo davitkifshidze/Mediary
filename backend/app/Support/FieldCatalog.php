@@ -175,6 +175,10 @@ final class FieldCatalog
         ],
         'note' => [
             ['key' => 'title', 'type' => 'text', 'locked' => true, 'sort_order' => 10],
+            // იერი: მთავარი ფოტო, საკუთარი აიქონი და ფონის ფერი (ფოტოს გარეშე ბარათზე აიქონია ფერად ფონზე)
+            ['key' => 'photo', 'type' => 'file', 'sort_order' => 12],
+            ['key' => 'icon', 'type' => 'select', 'sort_order' => 14],
+            ['key' => 'color', 'type' => 'select', 'sort_order' => 16],
             ['key' => 'category', 'type' => 'select', 'sort_order' => 20],
             ['key' => 'status', 'type' => 'select', 'sort_order' => 30],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 50],

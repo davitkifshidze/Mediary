@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SelectWithAdd } from '@/components/ui/inline-add'
 import { useDictionaryAdd, useStatusAdd } from '@/lib/dictionaries'
 import { useTranslation } from 'react-i18next'
@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, X } from 'lucide-react'
 import {
   createNote,
+  setNotePhoto,
   updateNote,
   uploadNoteFiles,
   type NoteCategory,
@@ -25,9 +26,13 @@ import { TagSelect } from '@/components/TagSelect'
 import { Button } from '@/components/ui/button'
 import { RichText } from '@/components/ui/rich-text'
 import { Input } from '@/components/ui/input'
-import { joinHints } from '@/components/ui/field-label'
+import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { ColorPick } from '@/components/ui/color-pick'
+import { IconPicker } from '@/components/ui/icon-picker'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
+import { useNotePhoto } from '@/components/NoteFace'
+import { PosterUploader } from '@/components/PosterUploader'
 import { NoteRemindersDialog, NoteRemindersLink } from '@/components/NoteRemindersDialog'
 import { NoteUploads } from '@/components/NoteUploads'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -84,7 +89,20 @@ export function NoteForm({
     tags: note?.tags ?? [],
     // გასაღები; ცარიელი = ნაგულისხმევი (backend დაადებს)
     status: note?.status?.key ?? '',
+    // იერი: საკუთარი აიქონი (ცარიელი — კატეგორიისა) და ფონის ფერი
+    icon: note?.icon ?? null,
+    color: note?.color ?? null,
   })
+  /* ---------- მთავარი ფოტო ----------
+     ⚠️ ფოტო პრივატულ დისკზეა: შენახული — blob-ად იკითხება (`useNotePhoto`), ახლად არჩეული —
+     ბრაუზერის `blob:` მისამართია. ატვირთვა ჩანაწერის შენახვის **შემდეგ** მიდის (ფაილების წესი):
+     ახალ ჩანაწერს id ჯერ არ აქვს, JSON-ის ფორმა კი ფაილს ვერ წაიღებს. */
+  const savedPhoto = useNotePhoto(note)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [removePhoto, setRemovePhoto] = useState(false)
+  // არჩეული ფაილის `blob:` მისამართი ფანჯრის დახურვაზე ან შეცვლაზე თავისუფლდება
+  useEffect(() => () => void (photoPreview && URL.revokeObjectURL(photoPreview)), [photoPreview])
   /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი:
      ინდექსზე შუა სტრიქონის წაშლა ფოკუსსა და კარეტს მეზობელ ბმულზე გადაიტანდა.
      `unkeyRows()` გასაღებს payload-ში ჭრის. */
@@ -111,6 +129,18 @@ export function NoteForm({
     mutationFn: (input: NoteInput) => (current ? updateNote(current.id, input) : createNote(input)),
     onSuccess: async (saved) => {
       const problems: string[] = []
+
+      // მთავარი ფოტო — ჩანაწერის შემდეგ; ჩავარდნა (კვოტა, ფორმატი) ჩანაწერს არ აუქმებს
+      if (photoFile) {
+        try {
+          saved = await setNotePhoto(saved.id, photoFile)
+          setPhotoFile(null)
+          qc.invalidateQueries({ queryKey: ['storage'] })
+          qc.invalidateQueries({ queryKey: ['me'] })
+        } catch (e) {
+          problems.push(t('notes.photoFailed', { reason: errorMessage(e) }))
+        }
+      }
 
       if (pending.items.length) {
         const failed = await pending.run(
@@ -193,6 +223,10 @@ export function NoteForm({
       tags: form.tags,
       links: unkeyRows(links.filter((l) => l.url.trim())),
       status: form.status || undefined,
+      icon: form.icon,
+      color: form.color,
+      // ახალი ფოტო ძველს თვითონ ცვლის — „მოშორება" მხოლოდ მაშინ მიდის, როცა ახალი არ არის
+      ...(removePhoto && !photoFile ? { remove_photo: true } : {}),
     })
   }
 
@@ -229,7 +263,36 @@ export function NoteForm({
       </div>
 
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
-        <FormSection title={t('form.sections.basic')}>
+        {/* მარცხნივ მთავარი ფოტო, მარჯვნივ — სახელი და აღწერა */}
+        <FormSection
+          title={t('form.sections.basic')}
+          mediaVariant="wide"
+          mediaLabel={
+            <FieldLabel required={fields.required('photo')} hint={fields.hint('photo')}>
+              {fields.label('photo')}
+            </FieldLabel>
+          }
+          media={
+            fields.shows('photo') && (
+              <PosterUploader
+                fill
+                variant="wide"
+                preview={photoPreview ?? (removePhoto ? null : savedPhoto)}
+                hint={t('notes.photoHint')}
+                onSelect={(file) => {
+                  setPhotoFile(file)
+                  setPhotoPreview(URL.createObjectURL(file))
+                  setRemovePhoto(false)
+                }}
+                onClear={() => {
+                  setPhotoFile(null)
+                  setPhotoPreview(null)
+                  setRemovePhoto(true)
+                }}
+              />
+            )
+          }
+        >
           {/* ⚠️ სახელი `locked`-ია — მისი გარეშე ჩანაწერი არ ჩაიწერება;
               ჩაკეტვის მოხსნა ცხადი ქმედებაა, ამიტომ `shows()` აქაც ისმის. */}
           <FormField
@@ -256,6 +319,31 @@ export function NoteForm({
               value={form.description}
               onChange={(v) => setForm((f) => ({ ...f, description: v }))}
             />
+          </FormField>
+        </FormSection>
+
+        {/* იერი: საკუთარი აიქონი და ფონის ფერი — ფოტოს გარეშე ბარათზე სწორედ ეს ჩანს */}
+        <FormSection
+          title={t('notes.look')}
+          hint={t('notes.lookHint')}
+          className={fields.shows('icon') || fields.shows('color') ? undefined : 'hidden'}
+        >
+          <FormField
+            {...fields.field('icon')}
+            action={
+              form.icon && (
+                <Button type="button" variant="outline" size="xs" onClick={() => setForm((f) => ({ ...f, icon: null }))} data-testid="note-icon-clear">
+                  <X className="size-3" />
+                  {t('notes.iconClear')}
+                </Button>
+              )
+            }
+          >
+            <IconPicker value={form.icon} onChange={(icon) => setForm((f) => ({ ...f, icon }))} />
+          </FormField>
+
+          <FormField {...fields.field('color')}>
+            <ColorPick value={form.color} onChange={(color) => setForm((f) => ({ ...f, color }))} noneLabel={t('notes.colorNone')} />
           </FormField>
         </FormSection>
 

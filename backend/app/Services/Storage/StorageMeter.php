@@ -575,6 +575,24 @@ class StorageMeter
             ]);
         }
 
+        // ჩანაწერის მთავარი ფოტო (პრივატულ დისკზეა — `notes/photos`)
+        $notePhotos = $skip('note') ? collect() : $user->noteEntries()
+            ->withoutGlobalScopes(['owner', 'trash'])
+            ->whereNotNull('photo_path')
+            ->get(['id', 'title', 'photo_path', 'created_at']);
+
+        foreach ($notePhotos as $note) {
+            $add([
+                'kind' => 'primary',
+                'module' => 'note',
+                'owner_type' => 'note',
+                'owner_id' => (int) $note->id,
+                'path' => $note->photo_path,
+                'name' => $note->title,
+                'created_at' => $note->created_at,
+            ]);
+        }
+
         // ჩანაწერების ატვირთვები — სქრინშოტი/ვიდეო/დოკუმენტი
         $noteFiles = $skip('note') ? collect() : NoteEntryFile::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
@@ -934,7 +952,7 @@ class StorageMeter
         'video_file', 'book_file', 'board_game_file', 'game_file', 'note_entry_file',
         'course_file', 'place_file', 'bookmark_file', 'gallery_image', 'database_backup', 'field_value', 'message',
         // სვეტის ფაილი: მთავარი ფოტო და ავატარი
-        'user', 'movie', 'series', 'anime', 'video', 'song', 'bookmark', 'course', 'place', 'book', 'board_game', 'game',
+        'user', 'movie', 'series', 'anime', 'video', 'song', 'bookmark', 'course', 'place', 'book', 'board_game', 'game', 'note',
         // პირადი მოდულის ჩანაწერის მთავარი ფოტო და მიმაგრებული ფაილი
         'custom_record', 'custom_record_file',
         // პირადი გალერეის ფოტო/ვიდეო
@@ -1238,6 +1256,7 @@ class StorageMeter
             'bookmark' => 'bookmarks',
             'course' => 'courses',
             'place' => 'places',
+            'note' => 'noteEntries',
             'book' => 'books',
             'board_game' => 'boardGames',
             'game' => 'games',
@@ -1256,7 +1275,7 @@ class StorageMeter
 
         $columns = match ($relation) {
             'videos', 'songs', 'bookmarks', 'courses' => ['thumbnail_path', null],
-            'places' => ['photo_path', null],
+            'places', 'noteEntries' => ['photo_path', null],
             'books', 'games' => ['cover_path', 'cover_source'],
             'boardGames' => ['image_path', 'image_source'],
             default => ['poster_path', 'poster_source'],
@@ -1497,6 +1516,7 @@ class StorageMeter
             'bookmarks.thumbnail_path',
             'courses.thumbnail_path',
             'places.photo_path',
+            'note_entries.photo_path',
             // პირადი მოდულის ჩანაწერი (ველის ფაილები `CustomFields::TABLES`-იდან მოდის)
             'custom_records.photo_path',
             'custom_record_files.path',

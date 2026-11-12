@@ -8,6 +8,7 @@ use App\Models\Concerns\HasManualOrder;
 use App\Models\Concerns\HasStatus;
 use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
+use App\Services\Storage\StorageMeter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -75,6 +76,11 @@ class NoteEntry extends Model
                სია ცარიელი ბრუნდებოდა, ფაილები დისკზე რჩებოდა და კვოტაც არ
                თავისუფლდებოდა. `Video::booted()` ამას თავიდანვე სწორად აკეთებდა. */
             $entry->files()->withoutGlobalScopes(['owner', 'trash'])->get()->each->delete();
+
+            // მთავარი ფოტო სვეტშია და არა რიგში — ფაილი და კვოტა აქ თავისუფლდება
+            if ($entry->photo_path) {
+                app(StorageMeter::class)->deleteUpload($entry->user_id, $entry->photo_path);
+            }
         });
     }
 

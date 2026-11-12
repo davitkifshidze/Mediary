@@ -20,6 +20,13 @@ class NoteEntryResource extends JsonResource
             'title' => $this->title,
             'description' => $this->description,
 
+            /* იერი. ⚠️ ფოტო პრივატულ დისკზეა, ე.ი. აქ **API-ს გზაა** და არა `/storage/…`:
+               SPA მას სესიით კითხულობს (`usePrivateFileUrl`). `v` ფაილთან ერთად იცვლება —
+               სხვაგვარად შეცვლილი ფოტოს ნაცვლად ბრაუზერში წაკითხული ძველი დარჩებოდა. */
+            'icon' => $this->icon,
+            'color' => $this->color,
+            'photo_url' => $this->photo_path ? "/notes/{$this->id}/photo?v=".substr(md5($this->photo_path), 0, 8) : null,
+
             'category_id' => $this->category_id,
             'category' => $this->whenLoaded('category', fn () => new NoteCategoryResource($this->category)),
             'tags' => $this->tags ?? [],

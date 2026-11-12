@@ -8,9 +8,15 @@ use App\Http\Resources\NoteEntryResource;
 use App\Models\NoteEntry;
 use App\Models\Status;
 use App\Services\Stats\LibraryStats;
+use App\Services\Storage\StorageMeter;
+use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\RichText;
+use App\Support\SafeMime;
+use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
@@ -23,6 +29,8 @@ use Illuminate\Validation\Rule;
 class NoteEntryController extends Controller
 {
     use ReordersRecords;
+
+    public function __construct(private StorageMeter $meter) {}
 
     public function index(Request $request)
     {
@@ -92,6 +100,22 @@ class NoteEntryController extends Controller
         );
     }
 
+    /**
+     * **მთავარი ფოტო.** ფაილი პრივატულ დისკზეა (`notes/photos`), ე.ი. `/storage/…`-ით
+     * არ იხსნება: გაიცემა მხოლოდ აქედან, მფლობელს (`owner` scope → სხვისი 404),
+     * `SafeMime`-ის სათაურებით.
+     */
+    public function photo(NoteEntry $note)
+    {
+        abort_unless(is_string($note->photo_path) && $note->photo_path !== '', 404);
+
+        $disk = Storage::disk(StorageFolder::diskFor($note->photo_path));
+
+        abort_unless($disk->fileExists($note->photo_path), 404);
+
+        return SafeMime::response($disk, $note->photo_path, basename($note->photo_path));
+    }
+
     public function destroy(NoteEntry $note)
     {
         /* ⚠️ **კალათა** — `delete()` კი არა, `moveToTrash()`.
@@ -159,6 +183,12 @@ class NoteEntryController extends Controller
 
             'status' => [...$must, 'string', Status::rule('note')],
             'is_favorite' => ['nullable', 'boolean'],
+
+            // იერი: აიქონი, ფონის ფერი (პალიტრის გასაღები ან `#rrggbb` — სტატუსის წესი) და მთავარი ფოტო
+            'icon' => ['nullable', 'string', 'max:60'],
+            'color' => ['nullable', 'string', 'max:20', 'regex:/^(c([1-9]|1[0-2])|#[0-9a-fA-F]{6})$/'],
+            'photo' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
+            'remove_photo' => ['nullable', 'boolean'],
             // ⚠️ `public` აქაც დაშვებულია სქემის დონეზე, მაგრამ ეს მოდული
             // საჯარო პროფილზე მაინც არ ჩანს — ეს განზრახაა
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
@@ -193,6 +223,25 @@ class NoteEntryController extends Controller
         }
         if ($request->has('is_favorite')) {
             $entry->is_favorite = $request->boolean('is_favorite');
+        }
+
+        foreach (['icon', 'color'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $entry->{$field} = $data[$field] ?: null;
+            }
+        }
+
+        if ($request->boolean('remove_photo')) {
+            // ⚠️ ურნა — ფაილი დისკზე და კვოტაში რჩება, სანამ ურნიდან საბოლოოდ არ წაიშლება
+            ColumnTrash::capture($entry, 'photo_path');
+            $entry->photo_path = null;
+        }
+
+        if ($request->hasFile('photo')) {
+            // ⚠️ ჯერ ახალი ფაილი: 413-ზე (კვოტა) ძველი ხელუხლებელი რჩება და ურნაში არ ხვდება
+            $stored = $this->meter->storeUpload($request->user(), $request->file('photo'), StorageFolder::NOTE_PHOTOS);
+            ColumnTrash::capture($entry, 'photo_path');
+            $entry->photo_path = $stored;
         }
     }
 }

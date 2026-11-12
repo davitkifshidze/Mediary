@@ -27,6 +27,12 @@ export interface NoteEntry {
   id: number
   title: string
   description: string | null
+  /** საკუთარი აიქონი; ცარიელზე — კატეგორიისა */
+  icon: string | null
+  /** ფონის ფერი — პალიტრის გასაღები (`c1…c12`) ან `#rrggbb` */
+  color: string | null
+  /** მთავარი ფოტოს **API-ს გზა** (პრივატული დისკი) — `usePrivateFileUrl`-ით იკითხება */
+  photo_url: string | null
   category_id: number | null
   category?: NoteCategory | null
   tags: string[]
@@ -58,6 +64,10 @@ export interface NoteFilters extends ListParams {
 export interface NoteInput {
   title?: string
   description?: string | null
+  icon?: string | null
+  color?: string | null
+  /** მთავარი ფოტოს მოშორება (ფაილი ურნაში მიდის); ახალი ფოტო — `setNotePhoto()` */
+  remove_photo?: boolean
   category_id?: number | null
   tags?: string[]
   links?: NoteLink[]
@@ -89,6 +99,18 @@ export async function createNote(input: NoteInput): Promise<NoteEntry> {
 
 export async function updateNote(id: number, input: NoteInput): Promise<NoteEntry> {
   const { data } = await api.patch(`/notes/${id}`, input)
+  return data.data
+}
+
+/**
+ * მთავარი ფოტოს ატვირთვა — იგივე `PATCH /notes/{id}`, ოღონდ multipart-ით (`_method`):
+ * სხვა ველი არ იგზავნება, ე.ი. სერვერი მათ არ ეხება.
+ */
+export async function setNotePhoto(id: number, photo: File): Promise<NoteEntry> {
+  const fd = new FormData()
+  fd.append('_method', 'PATCH')
+  fd.append('photo', photo)
+  const { data } = await api.post(`/notes/${id}`, fd)
   return data.data
 }
 

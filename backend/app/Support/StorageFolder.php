@@ -26,6 +26,7 @@ namespace App\Support;
  *   games/covers           — თამაშის ყდა
  *   games/files/{images,docs} — `game_files` (ატვირთული სქრინშოტი/დოკუმენტი)
  *   notes/files/{images,videos,docs} — `note_entry_files`
+ *   notes/photos           — `note_entries.photo_path` (ჩანაწერის მთავარი ფოტო; პრივატული)
  *   bookmarks/thumbnails   — `bookmarks.thumbnail_path`
  *   bookmarks/files/images — `bookmark_files.path` (ჩემი ფოტოები)
  *   courses/thumbnails     — `courses.thumbnail_path`
@@ -107,6 +108,9 @@ final class StorageFolder
     public const PLACE_IMAGES = 'places/files/images';
 
     public const PLACE_DOCS = 'places/files/docs';
+
+    /** ჩანაწერის მთავარი ფოტო — `notes/` ფესვით პრივატულ დისკზეა */
+    public const NOTE_PHOTOS = 'notes/photos';
 
     public const NOTE_IMAGES = 'notes/files/images';
 

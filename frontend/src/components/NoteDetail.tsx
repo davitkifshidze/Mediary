@@ -5,6 +5,7 @@ import { CalendarPlus, ExternalLink } from 'lucide-react'
 import { toggleNoteFavorite, type NoteEntry } from '@/api/notes'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { Markdown } from '@/components/ui/markdown'
+import { NoteTile } from '@/components/NoteFace'
 import { NoteUploads } from '@/components/NoteUploads'
 import { NoteRemindersButton, NoteRemindersChip, NoteRemindersDialog } from '@/components/NoteRemindersDialog'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -60,7 +61,7 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
   }
 
   return (
-    <ModalShell title={note.title} onClose={onClose} wide>
+    <ModalShell title={note.title} lead={<NoteTile note={note} />} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
         {/* ჰეროში ორივე ღილაკი: შემხსენებელი (ქარვისფერი) და რჩეული, ერთი სიმაღლის */}
         <div className="flex flex-wrap items-center justify-end gap-2">
