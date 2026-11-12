@@ -73,6 +73,8 @@ class Anime extends Model
         'rating' => 'decimal:1',
         // „ჩემი ქულა" ცალკე სვეტშია; `rating` TMDB-ის საშუალოა
         'my_rating' => RatingCast::class,
+        // პირველი ეთერის თარიღი (TMDB) — „მალე" სექცია და გამოსვლის დღის შეტყობინება
+        'release_date' => 'date',
         'seasons' => 'integer',
         'episodes' => 'integer',
         'is_favorite' => 'boolean',

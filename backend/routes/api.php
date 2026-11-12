@@ -70,6 +70,7 @@ use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MediaLockController;
 use App\Http\Controllers\Api\MediaRatingController;
+use App\Http\Controllers\Api\MediaSoonController;
 use App\Http\Controllers\Api\MediaSyncController;
 use App\Http\Controllers\Api\MediaWatchController;
 use App\Http\Controllers\Api\ModuleController;
@@ -541,6 +542,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/movies', [MovieController::class, 'store']);
         Route::post('/movies/from-tmdb', [MovieController::class, 'storeFromTmdb']);
         Route::post('/movies/bulk-status', [MovieStatusController::class, 'bulkUpdate']);
+        // ⚠️ `{movie}`-ზე **ზემოთ**, თორემ „soon" id-ად წაიკითხება
+        Route::get('/movies/soon', [MediaSoonController::class, 'index'])->defaults('domain', 'movie');
         Route::get('/movies/{movie}', [MovieController::class, 'show']);
         Route::match(['put', 'patch'], '/movies/{movie}', [MovieController::class, 'update']);
         Route::delete('/movies/{movie}', [MovieController::class, 'destroy']);
@@ -559,6 +562,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/series', [SeriesController::class, 'store']);
         Route::post('/series/from-tmdb', [SeriesController::class, 'storeFromTmdb']);
         Route::post('/series/bulk-status', [SeriesStatusController::class, 'bulkUpdate']);
+        Route::get('/series/soon', [MediaSoonController::class, 'index'])->defaults('domain', 'series');
         Route::get('/series/{series}', [SeriesController::class, 'show']);
         Route::match(['put', 'patch'], '/series/{series}', [SeriesController::class, 'update']);
         Route::delete('/series/{series}', [SeriesController::class, 'destroy']);
@@ -581,6 +585,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/anime/from-tmdb', [AnimeController::class, 'storeFromTmdb']);
         // ⚠️ `{anime}`-ზე **ზემოთ**, თორემ „bulk-status" id-ად წაიკითხება
         Route::post('/anime/bulk-status', [AnimeStatusController::class, 'bulkUpdate']);
+        Route::get('/anime/soon', [MediaSoonController::class, 'index'])->defaults('domain', 'anime');
         Route::get('/anime/{anime}', [AnimeController::class, 'show']);
         Route::match(['put', 'patch'], '/anime/{anime}', [AnimeController::class, 'update']);
         Route::delete('/anime/{anime}', [AnimeController::class, 'destroy']);
@@ -1214,6 +1219,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/lookup/candidates', [LookupController::class, 'candidates']);
         Route::post('/lookup', [LookupController::class, 'lookup']);
         Route::get('/discover', [DiscoverController::class, 'index']);
+        // „TMDB-ზე მალე" — გამოცხადებული, ჯერ გამოუსვლელი სათაურები თრეილერით
+        Route::get('/discover/upcoming', [MediaSoonController::class, 'tmdb']);
     });
 
     // სინქრონი **არსებულ ჩანაწერს ცვლის** — ე.ი. `update` და არა `create`

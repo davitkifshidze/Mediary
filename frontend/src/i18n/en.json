@@ -815,7 +815,8 @@
       "genres": "genres",
       "cast": "cast",
       "poster": "poster",
-      "photos": "photos"
+      "photos": "photos",
+      "release": "release date"
     },
     "fields": "Text and metadata",
     "field": {
@@ -4093,7 +4094,8 @@
       "module_created": "A new module was created",
       "module_deleted": "A module was deleted",
       "module_disabled": "An admin disabled your module",
-      "share_imported": "Someone is adding records from your link"
+      "share_imported": "Someone is adding records from your link",
+      "release_today": "Out today"
     },
     "detail": {
       "module": "Module: {{name}}",
@@ -5190,5 +5192,37 @@
     "next": "Next page",
     "jump": "Page number",
     "total": "Total {{count}}"
+  },
+  "soon": {
+    "section": "Coming soon",
+    "hint": "Movies whose premiere is still ahead. The date comes from TMDB — when a title is added and on every sync; on release day you get a notification.",
+    "hintSeries": "Series whose first airing, new season or next episode is still ahead. The date comes from TMDB — when a title is added and on every sync; on release day you get a notification.",
+    "hintAnime": "Anime whose first airing, new season or next episode is still ahead. The date comes from TMDB — when a title is added and on every sync; on release day you get a notification.",
+    "tab": {
+      "mine": "My titles",
+      "tmdb": "Soon on TMDB",
+      "tmdbHint": "Announced, not out yet"
+    },
+    "emptyTitle": "Nothing of yours is still to come",
+    "emptyHint": "Titles you have added that are not out yet show up here. Older records get their date after a sync; new titles are on the “Soon on TMDB” tab.",
+    "tmdbLoading": "Fetching titles and trailers from TMDB…",
+    "tmdbEmpty": "TMDB has no upcoming titles to show",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "daysLeft": "{{count}} days left",
+    "kind": {
+      "premiere": "Premiere",
+      "season": "New season {{season}}",
+      "episode": "Season {{season}}, episode {{episode}}",
+      "episodeUnknown": "Next episode"
+    },
+    "tmdbStatus": {
+      "rumored": "Rumoured",
+      "planned": "Planned",
+      "in_production": "In production",
+      "post_production": "Post-production",
+      "pilot": "Pilot"
+    },
+    "dateUnknown": "Date unknown"
   }
 }

@@ -11,6 +11,7 @@ use App\Support\CastSync;
 use App\Support\Lang;
 use App\Support\SourceLog;
 use App\Support\Trailer;
+use App\Support\Upcoming;
 use Illuminate\Support\Str;
 
 class MovieEnricher
@@ -197,6 +198,8 @@ class MovieEnricher
         $movie->rating = $movie->rating ?: (isset($d['vote_average']) ? round((float) $d['vote_average'], 1) : null);
         // ტრეილერი — მხოლოდ ცარიელზე, ე.ი. ხელით ჩასმულს არ ვაბათილებთ
         $movie->trailer_url = $movie->trailer_url ?: $this->trailer($id);
+        // პრემიერის თარიღი და TMDB-ის მდგომარეობა — „მალე" სექცია მათზე დგას
+        Upcoming::stamp($movie, $d, false);
         if (! empty($d['belongs_to_collection'])) {
             $movie->tmdb_collection_id = $d['belongs_to_collection']['id'] ?? null;
             $movie->collection_name = $d['belongs_to_collection']['name'] ?? null;

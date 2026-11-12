@@ -65,6 +65,8 @@ class Movie extends Model
         'rating' => 'decimal:1',
         // „ჩემი ქულა" ცალკე სვეტშია; `rating` TMDB-ის საშუალოა
         'my_rating' => RatingCast::class,
+        // პრემიერის თარიღი (TMDB) — „მალე" სექცია და გამოსვლის დღის შეტყობინება
+        'release_date' => 'date',
         'is_favorite' => 'boolean',
         // სინქრონის კვალი და „აღარ განაახლო"
         'sync_paused' => 'boolean',

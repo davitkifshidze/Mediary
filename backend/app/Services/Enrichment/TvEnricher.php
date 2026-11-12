@@ -10,6 +10,7 @@ use App\Support\CastSync;
 use App\Support\Lang;
 use App\Support\SourceLog;
 use App\Support\Trailer;
+use App\Support\Upcoming;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -223,6 +224,8 @@ abstract class TvEnricher
            ⚠️ `null`-ზე წაშლაც აუცილებელია: დასრულებულ სერიალს `next_episode_to_air`
            აღარ აქვს, ე.ი. ჩანაწერიც უნდა გასუფთავდეს. */
         $this->applyNextAir($series, $d);
+        // პირველი ეთერი და TMDB-ის მდგომარეობა — „მალე" სექცია მათზე დგას
+        Upcoming::stamp($series, $d, true);
         $series->sync_status = 'synced';
         $series->save();
 

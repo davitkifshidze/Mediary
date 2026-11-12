@@ -28,7 +28,7 @@ import type { Status } from '@/api/types'
    ამიტომ განლაგება `modules.user_settings`-იდან პირდაპირ იკითხება.
    ============================================================ */
 
-export type PseudoSectionId = 'all' | 'favorite' | 'downloaded' | 'locked'
+export type PseudoSectionId = 'all' | 'favorite' | 'downloaded' | 'locked' | 'soon'
 
 export interface PseudoSection {
   id: PseudoSectionId
@@ -74,11 +74,23 @@ const LOCKED: PseudoSection = {
   defaultAt: 'end',
 }
 
+/**
+ * „მალე" — გამოუსვლელი სათაურები (ფილმის პრემიერა, სერიალის / ანიმეს პირველი ეთერი ან
+ * შემდეგი სეზონი / სერია). ⚠️ სიას არ ავიწროებს — თავის ხედს ხსნის (`SoonView`).
+ */
+const SOON: PseudoSection = {
+  id: 'soon',
+  labelKey: 'soon.section',
+  icon: 'CalendarClock',
+  color: 'var(--tool-requests)',
+  defaultAt: 'end',
+}
+
 /** ⚠️ სარკე: `App\Support\StatusDomain::RESERVED_KEYS` (სტატუსი ამ გასაღებებს არ იღებს) */
 export const PSEUDO_SECTIONS: Record<StatusDomain, PseudoSection[]> = {
-  movie: [ALL, FAVORITE, LOCKED],
-  series: [ALL, FAVORITE, LOCKED],
-  anime: [ALL, FAVORITE, LOCKED],
+  movie: [ALL, FAVORITE, SOON, LOCKED],
+  series: [ALL, FAVORITE, SOON, LOCKED],
+  anime: [ALL, FAVORITE, SOON, LOCKED],
   video: [ALL, DOWNLOADED, FAVORITE],
   note: [ALL, FAVORITE],
   bookmark: [ALL, FAVORITE],

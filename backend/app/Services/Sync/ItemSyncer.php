@@ -14,6 +14,7 @@ use App\Support\Redact;
 use App\Support\StorageFolder;
 use App\Support\SyncOutcome;
 use App\Support\Trailer;
+use App\Support\Upcoming;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Storage;
@@ -111,6 +112,13 @@ class ItemSyncer
                 $this->applyScalars($item, $d, $fields, $overwrite, $isSeries),
                 $this->applyTranslations($item, $d, $dka, $fields, $overwrite, $isSeries),
             );
+
+            /* გამოსვლის თარიღი და TMDB-ის მდგომარეობა — იმავე პასუხიდან, დამატებითი
+               მოთხოვნის გარეშე. ⚠️ არჩეულ ველებსა და `overwrite`-ს არ ეკითხება: ეს
+               TMDB-ის ფაქტია („მალე" სექცია მასზე დგას) და არა ხელით ნაწერი ველი. */
+            if (Upcoming::stamp($item, $d, $isSeries)) {
+                $changed[] = 'release';
+            }
 
             // ტრეილერი ცალკე რექვესთია (`/videos`), ამიტომ მხოლოდ არჩევისას
             if (in_array('trailer', $fields, true) && $this->applyTrailer($item, $overwrite, $isSeries)) {

@@ -7,6 +7,7 @@ import {
   Ban,
   Bell,
   Blocks,
+  CalendarClock,
   CheckCheck,
   CircleAlert,
   DatabaseBackup,
@@ -22,6 +23,8 @@ import {
   type AppNotification,
 } from '@/api/notifications'
 import { useDateFormat } from '@/lib/dates'
+import { soonWhat } from '@/lib/soon'
+import type { SoonKind } from '@/api/soon'
 import { LAYER_POPUP } from '@/lib/layers'
 import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -55,6 +58,8 @@ const ICONS: Record<string, typeof Bell> = {
   module_created: Blocks,
   module_deleted: Trash2,
   module_disabled: Ban,
+  // დღეს გამოდის — პრემიერა, ახალი სეზონი ან სერია
+  release_today: CalendarClock,
 }
 
 export function NotificationBell() {
@@ -93,6 +98,22 @@ export function NotificationBell() {
 
     if (n.type === 'storage_warning') {
       return t('notifications.detail.storage', { percent: d.percent, threshold: d.threshold })
+    }
+    /* დღეს გამოდის: სათაური ინტერფეისის ენაზე + რა გამოდის (პრემიერა · ახალი სეზონი · სერია).
+       ⚠️ სათაური ორივე ენაზე მოდის — ტექსტი ბაზაში არ ინახება, მხოლოდ ფაქტები */
+    if (n.type === 'release_today') {
+      const title = (i18n.language === 'en' ? d.title_en : d.title_ka) || d.title_en || d.title_ka || ''
+      const what = soonWhat(
+        {
+          kind: (d.kind as SoonKind | undefined) ?? 'premiere',
+          season: typeof d.season === 'number' ? d.season : null,
+          episode: typeof d.episode === 'number' ? d.episode : null,
+          tmdb_status: null,
+        },
+        t,
+      )
+
+      return [title, what].filter(Boolean).join(' · ')
     }
     if (n.type === 'backup_failed' && d.name) {
       return t('notifications.detail.backup', { name: d.name })

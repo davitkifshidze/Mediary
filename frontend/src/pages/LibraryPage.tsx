@@ -51,6 +51,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { FloatingPick } from '@/components/FloatingPick'
+import { SoonView } from '@/components/soon/SoonView'
 import { ListSearch } from '@/components/ListSearch'
 import { RandomPickDialog } from '@/components/RandomPickDialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -69,7 +70,18 @@ const MEDIA_DRILL_EXCEPT = ['year_min', 'year_max', 'my_rating_min', 'my_rating_
    ფრანჩაიზის დაჯგუფება და „აღმოაჩინე".
    ============================================================ */
 
+/**
+ * ⚠️ **„მალე" სიას არ ავიწროებს** — ის ფსევდო-სექციაა, რომელიც თავის ხედს ხატავს
+ * (ჩემი გამოუსვლელი სათაურები · TMDB-ზე მალე). ფილტრი, დალაგება და გვერდები მას არ
+ * ეხება, ამიტომ ცალკე კომპონენტია და არა კიდევ ერთი განშტოება სიის შიგნით.
+ */
 export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
+  const [params] = useSearchParams()
+
+  return params.get('view') === 'soon' ? <SoonView type={type} /> : <LibraryList type={type} />
+}
+
+function LibraryList({ type }: { type: MediaType }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   // სექციის სახელისთვის

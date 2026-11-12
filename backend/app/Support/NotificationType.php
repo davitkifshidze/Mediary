@@ -47,6 +47,9 @@ final class NotificationType
     /** ვიღაცამ ჩემი გაზიარების ბმულიდან ჩანაწერები დაიმატა (ერთი მიმღებზე დღეში) */
     public const SHARE_IMPORTED = 'share_imported';
 
+    /** დღეს გამოდის: ფილმის პრემიერა, სერიალის / ანიმეს პირველი ეთერი ან შემდეგი სერია */
+    public const RELEASE_TODAY = 'release_today';
+
     /** @var list<string> */
     public const ALL = [
         self::REQUEST_APPROVED,
@@ -58,6 +61,7 @@ final class NotificationType
         self::MODULE_DELETED,
         self::MODULE_DISABLED,
         self::SHARE_IMPORTED,
+        self::RELEASE_TODAY,
     ];
 
     /**
@@ -95,6 +99,9 @@ final class NotificationType
             self::MODULE_DISABLED => isset($data['module_key']) ? '/modules/'.$data['module_key'] : '/modules',
             // ბმულების სია — „ვინ დაიმატა" იქ ჩანს
             self::SHARE_IMPORTED => '/transfer?tab=share',
+            /* ჩანაწერზე გადასვლა: მისამართი შეტყობინებასთან ერთად იწერება (`path`) —
+               მოდულის `route_base` ბაზაშია და აქედან არ გამოითვლება */
+            self::RELEASE_TODAY => isset($data['path']) && is_string($data['path']) ? $data['path'] : null,
             default => null,
         };
     }
