@@ -4,7 +4,8 @@ import { CourseForm } from '@/components/CourseForm'
 import { useDictionaryAdd, useStatusAdd } from '@/lib/dictionaries'
 import { StatusLabel } from '@/components/StatusBadge'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
-import { useDrillParams } from '@/lib/statsLinks'
+import { drillChips, drillLabel, useDrillParams } from '@/lib/statsLinks'
+import type { PickFilterChip } from '@/lib/pick'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -130,6 +131,19 @@ const SORTS = ['newest', 'oldest', 'title', 'watched', 'size', 'downloaded'] as 
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
 const EMPTY_FILTERS = { types: [] as string[], tags: [] as string[], downloaded: false }
 type PanelFilters = typeof EMPTY_FILTERS
+
+/**
+ * „რა ვნახო დღეს" ფანჯრის ფილტრი — სიის ფილტრის ასლი: პანელის ველები + ის, რაც სიას
+ * პანელის გარეთ ავიწროებს (ძებნა, რჩეულები, კურსის საქაღალდე, სტატისტიკის ჭრილი).
+ */
+interface VideoPickFilter extends PanelFilters {
+  q: string
+  favorite: boolean
+  course: number | null
+  drill: Record<string, string>
+}
+
+const EMPTY_PICK_FILTER: VideoPickFilter = { ...EMPTY_FILTERS, q: '', favorite: false, course: null, drill: {} }
 
 export function VideosPage() {
   const { t, i18n } = useTranslation()
@@ -439,11 +453,104 @@ export function VideosPage() {
     writeFilters,
   )
 
-  const toggle = (key: 'types' | 'tags', value: string, on: boolean) =>
-    setDraft((d) => ({
-      ...d,
-      [key]: on ? [...d[key], value] : d[key].filter((x) => x !== value),
-    }))
+  /**
+   * პანელის ველები — ერთი აღწერა სიისა და „რა ვნახო დღეს" ფანჯრისთვის (ფანჯრის
+   * „ფილტრის შეცვლა" ზუსტად იმავეს აჩვენებს). ⚠️ `change` ფუნქციით ცვლის: ჯგუფის
+   * „გასუფთავება" თითო რიგს ზედიზედ ხსნის.
+   */
+  const filterFields = <T extends PanelFilters>(value: T, change: (update: (current: T) => T) => void) => {
+    const flip = (key: 'types' | 'tags', item: string, on: boolean) =>
+      change((d) => ({ ...d, [key]: on ? [...d[key], item] : d[key].filter((x) => x !== item) }))
+
+    return (
+      <>
+        {/* „ჩამოტვირთული" (`downloaded=1`); სექციიდან იგივე `?view=downloaded`-ით მოდის */}
+        <FilterGroup title={t('videos.local.tab')} count={value.downloaded ? 1 : 0}>
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-2 text-sm">
+            <span>{t('videos.local.onlyDownloaded')}</span>
+            <Switch
+              checked={value.downloaded}
+              onCheckedChange={(v) => change((d) => ({ ...d, downloaded: v }))}
+              aria-label={t('videos.local.onlyDownloaded')}
+            />
+          </label>
+        </FilterGroup>
+
+        {/* „ყველა"/„რჩეული" აქ განზრახ არ არის — ისინი საიდბარის სექციებია */}
+        <FilterGroup title={t('filter.types')} count={value.types.length}>
+          <FilterOptionList>
+            {allTypes.map((type) => (
+              <FilterOption
+                key={type.id}
+                label={videoTypeName(type, lang)}
+                count={type.videos_count}
+                checked={value.types.includes(String(type.id))}
+                onChange={(on) => flip('types', String(type.id), on)}
+              />
+            ))}
+          </FilterOptionList>
+        </FilterGroup>
+
+        <FilterGroup title={t('filter.tags')} count={value.tags.length}>
+          {tagOptions.length ? (
+            <FilterOptionList>
+              {tagOptions.map((tag) => (
+                <FilterOption
+                  key={tag}
+                  label={`#${tag}`}
+                  checked={value.tags.includes(tag)}
+                  onChange={(on) => flip('tags', tag, on)}
+                />
+              ))}
+            </FilterOptionList>
+          ) : (
+            <EmptyState size="line" className="px-1.5" title={t('videos.noTags')} />
+          )}
+        </FilterGroup>
+      </>
+    )
+  }
+
+  /** ფანჯრის ფილტრის პირობები ჩიპებად — თითო ✕-ით იხსნება */
+  const pickChips = (filter: VideoPickFilter): PickFilterChip<VideoPickFilter>[] => [
+    ...(filter.q.trim()
+      ? [{ key: 'q', label: t('pick.chip.search', { query: filter.q.trim() }), without: { ...filter, q: '' } }]
+      : []),
+    ...(filter.favorite ? [{ key: 'favorite', label: t('filter.favorite'), without: { ...filter, favorite: false } }] : []),
+    ...(filter.course
+      ? [
+          {
+            key: 'course',
+            label: folders.find((f) => f.id === filter.course)?.title ?? t('nav.courses'),
+            without: { ...filter, course: null },
+          },
+        ]
+      : []),
+    ...(filter.downloaded
+      ? [{ key: 'downloaded', label: t('videos.local.onlyDownloaded'), without: { ...filter, downloaded: false } }]
+      : []),
+    ...filter.types.map((id) => {
+      const type = allTypes.find((x) => String(x.id) === id)
+      return {
+        key: `type-${id}`,
+        label: type ? videoTypeName(type, lang) : id,
+        without: { ...filter, types: filter.types.filter((x) => x !== id) },
+      }
+    }),
+    ...filter.tags.map((tag) => ({
+      key: `tag-${tag}`,
+      label: `#${tag}`,
+      without: { ...filter, tags: filter.tags.filter((x) => x !== tag) },
+    })),
+    ...drillChips(filter.drill).map((chip) => ({
+      key: `drill-${chip.kind}`,
+      label: drillLabel(chip, t),
+      without: {
+        ...filter,
+        drill: Object.fromEntries(Object.entries(filter.drill).filter(([key]) => !chip.keys.includes(key))),
+      },
+    })),
+  ]
 
   // სათაური მიჰყვება იმას, რაც საიდბარში/პანელში აირჩა
   const onlyType = types.length === 1 ? allTypes.find((x) => String(x.id) === types[0]) : undefined
@@ -721,49 +828,7 @@ export function VideosPage() {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
-          {/* „მხოლოდ ჩამოტვირთული" (`downloaded=1`); სექციიდან იგივე `?view=downloaded`-ით მოდის */}
-          <FilterGroup title={t('videos.local.tab')} count={draft.downloaded ? 1 : 0}>
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-2 text-sm">
-              <span>{t('videos.local.onlyDownloaded')}</span>
-              <Switch
-                checked={draft.downloaded}
-                onCheckedChange={(v) => setDraft((d) => ({ ...d, downloaded: v }))}
-                aria-label={t('videos.local.onlyDownloaded')}
-              />
-            </label>
-          </FilterGroup>
-
-          {/* „ყველა"/„რჩეული" აქ განზრახ არ არის — ისინი საიდბარის სექციებია */}
-          <FilterGroup title={t('filter.types')} count={draft.types.length}>
-            <FilterOptionList>
-              {allTypes.map((type) => (
-                <FilterOption
-                  key={type.id}
-                  label={videoTypeName(type, lang)}
-                  count={type.videos_count}
-                  checked={draft.types.includes(String(type.id))}
-                  onChange={(on) => toggle('types', String(type.id), on)}
-                />
-              ))}
-            </FilterOptionList>
-          </FilterGroup>
-
-          <FilterGroup title={t('filter.tags')} count={draft.tags.length}>
-            {tagOptions.length ? (
-              <FilterOptionList>
-                {tagOptions.map((tag) => (
-                  <FilterOption
-                    key={tag}
-                    label={`#${tag}`}
-                    checked={draft.tags.includes(tag)}
-                    onChange={(on) => toggle('tags', tag, on)}
-                  />
-                ))}
-              </FilterOptionList>
-            ) : (
-              <EmptyState size="line" className="px-1.5" title={t('videos.noTags')} />
-            )}
-          </FilterGroup>
+          {filterFields(draft, setDraft)}
         </FilterPanel>
       </div>
 
@@ -771,15 +836,40 @@ export function VideosPage() {
           „გახსნა" აქ ფანჯარაა (`VideoDetail`) და არა გვერდი. */}
       <FloatingPick module="video" onOpen={() => setPickOpen(true)} />
       {pickOpen && (
-        <RandomPickDialog
+        <RandomPickDialog<VideoPickFilter>
           source={{
             domain: 'video',
             currentStatus: filters.status ?? null,
-            filterKey: JSON.stringify(filters),
             shape: 'wide',
-            fetch: async (opts) => {
-              const list = await pickRandomVideos(filters, opts)
-              picked.current = Object.fromEntries(list.map((v) => [v.id, v]))
+            filter: {
+              initial: {
+                q: term,
+                types,
+                tags,
+                downloaded: view === 'downloaded' || downloadedParam,
+                favorite: view === 'favorite',
+                course: courseId,
+                drill,
+              },
+              empty: EMPTY_PICK_FILTER,
+              chips: pickChips,
+              fields: filterFields,
+            },
+            fetch: async (opts, filter) => {
+              const list = await pickRandomVideos(
+                {
+                  q: filter.q.trim() || undefined,
+                  type_id: filter.types.length ? filter.types.join(',') : undefined,
+                  tag: filter.tags.length ? filter.tags.join(',') : undefined,
+                  favorite: filter.favorite || undefined,
+                  downloaded: filter.downloaded || undefined,
+                  course: filter.course ?? undefined,
+                  ...filter.drill,
+                },
+                opts,
+              )
+              // „კიდევ N" ულუფებს ამატებს — ძველი ჩანაწერებიც უნდა იხსნებოდეს
+              picked.current = { ...picked.current, ...Object.fromEntries(list.map((v) => [v.id, v])) }
               return list.map((v) => ({
                 id: v.id,
                 title: v.title,

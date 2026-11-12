@@ -4109,18 +4109,29 @@
     }
   },
   "pick": {
-    "title": "What should I watch",
-    "hint": "Picks a few records at random from the current filter. How many and from which statuses you choose right here, and it is remembered; at least one status stays selected.",
+    "title": "What should I watch today?",
+    "hint": "Picks a few records at random. The filter comes over from the list and can be changed right here — the list's own filter stays as it was. How many and from which statuses you choose here, and it is remembered; at least one status stays selected.",
     "count": "How many",
     "from": "From",
-    "againN": "Another {{count}}",
     "start": "Start it",
     "started": "The status has changed — enjoy!",
     "emptyTitle": "Nothing matches this filter",
-    "emptyHint": "Change the filter, the statuses or the section and try again.",
+    "emptyHint": "Change or drop the filter, or select more statuses.",
     "exhaustedTitle": "Everything has been shown",
-    "exhaustedHint": "Nothing else is left in this scope — start over or select more statuses.",
-    "restart": "Start over"
+    "restart": "Start over",
+    "moreN": "{{count}} more",
+    "filter": "Filter",
+    "editFilter": "Change the filter",
+    "withoutFilter": "No filter",
+    "chip": {
+      "search": "Search: {{query}}",
+      "allGenres": "All genres together"
+    },
+    "restored": "The previous status is back",
+    "startedLabel": "Started",
+    "undoStart": "Started — press to bring the previous status back",
+    "restartHint": "A fresh random pick from the same scope",
+    "filterNone": "none"
   },
   "goals": {
     "title": "Goals for {{year}}",

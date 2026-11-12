@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
-import { drillChips, useDrillParams, type DrillChip } from '@/lib/statsLinks'
+import { drillChips, drillLabel, useDrillParams, type DrillChip } from '@/lib/statsLinks'
 import { Chip } from '@/components/ui/chip'
 
 /* ============================================================
@@ -19,20 +19,6 @@ export function DrillChips({ except = [] }: { except?: readonly string[] }) {
 
   if (!chips.length) return null
 
-  const month = (ym: string) => {
-    const [year, m] = ym.split('-')
-    return `${t(`stats.month.${Number(m)}`)} ${year}`
-  }
-
-  const label = (chip: DrillChip) =>
-    chip.kind === 'done'
-      ? t('drill.done', { month: month(chip.value) })
-      : chip.kind === 'watched'
-        ? t('drill.watched', { month: month(chip.value) })
-        : chip.kind === 'year'
-          ? t('drill.year', { year: chip.value })
-          : t('drill.rating', { score: chip.value })
-
   const remove = (chip: DrillChip) =>
     setParams((current) => {
       const next = new URLSearchParams(current)
@@ -45,7 +31,7 @@ export function DrillChips({ except = [] }: { except?: readonly string[] }) {
     <>
       {chips.map((chip) => (
         <Chip key={chip.kind} active remove title={t('drill.remove')} onClick={() => remove(chip)} data-drill={chip.kind}>
-          {label(chip)}
+          {drillLabel(chip, t)}
         </Chip>
       ))}
     </>

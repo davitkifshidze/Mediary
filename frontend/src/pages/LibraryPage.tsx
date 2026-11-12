@@ -31,18 +31,21 @@ import { ViewToggle } from '@/components/ui/view-toggle'
 import { PageSizePick } from '@/components/ui/page-size-pick'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { DiscoverModal } from '@/components/DiscoverModal'
+import { FilterPanel, FilterTrigger } from '@/components/FilterPanel'
+import { LibraryFilterFields } from '@/components/LibraryFilterFields'
+import { straightenRanges, useFilterDraft } from '@/lib/filters'
 import {
-  FilterGroup,
-  FilterOption,
-  FilterOptionList,
-  FilterPanel,
-  FilterRange,
-  FilterTrigger,
-} from '@/components/FilterPanel'
-import { filterCount, straightenRanges, useFilterDraft } from '@/lib/filters'
+  EMPTY_DRAFT,
+  EMPTY_PICK_FILTER,
+  GENRE_MODES,
+  RANGE_PAIRS,
+  pickFilterChips,
+  pickFilterParams,
+  type LibraryDraft as Draft,
+  type LibraryPickFilter,
+  type Ranges,
+} from '@/lib/libraryFilter'
 import { useModuleSetting } from '@/lib/moduleSetting'
-import { Chip, ChipRow } from '@/components/ui/chip'
-import { InfoHint } from '@/components/ui/info-hint'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
@@ -57,9 +60,6 @@ import { cn } from '@/lib/utils'
 /** მედიის წელსა და ჩემს ქულას გვერდი თავის ფილტრის პანელში კითხულობს და არა ჭრილის ჩიპად */
 const MEDIA_DRILL_EXCEPT = ['year_min', 'year_max', 'my_rating_min', 'my_rating_max']
 
-/** რამდენიმე ჟანრი: ერთი მაინც (`any`) თუ ყველა ერთად (`all`) — მოდულზე ახსოვს */
-const GENRE_MODES = ['any', 'all'] as const
-
 /* ============================================================
    ბიბლიოთეკა — ბადე + მარჯვენა ფილტრების პანელი.
 
@@ -68,45 +68,6 @@ const GENRE_MODES = ['any', 'all'] as const
    მხოლოდ ისეთი კონტროლი რჩება, რაც ფილტრი არაა — ძებნა, დალაგება,
    ფრანჩაიზის დაჯგუფება და „აღმოაჩინე".
    ============================================================ */
-
-interface Ranges {
-  yearMin: string
-  yearMax: string
-  /** TMDB-ის რეიტინგი */
-  ratingMin: string
-  ratingMax: string
-  /** ჩემი ქულა — ცალკე დიაპაზონი, TMDB-ისას არ ერევა */
-  myRatingMin: string
-  myRatingMax: string
-}
-
-const EMPTY_RANGES: Ranges = {
-  yearMin: '',
-  yearMax: '',
-  ratingMin: '',
-  ratingMax: '',
-  myRatingMin: '',
-  myRatingMax: '',
-}
-
-/** „დან – მდე" წყვილები — შებრუნებული წყვილი გაშვებისას თავისით გადაისმება */
-const RANGE_PAIRS: readonly [keyof Ranges, keyof Ranges][] = [
-  ['yearMin', 'yearMax'],
-  ['ratingMin', 'ratingMax'],
-  ['myRatingMin', 'myRatingMax'],
-]
-
-/**
- * პანელის მონახაზი — ჯერ გაუშვებელი მონიშვნები.
- * სტატუსი **აქ არ არის**: ის სექციიდან/`?view=`-იდან მოდის და
- * პანელში დუბლი იყო.
- */
-interface Draft {
-  genres: string[]
-  ranges: Ranges
-}
-
-const EMPTY_DRAFT: Draft = { genres: [], ranges: EMPTY_RANGES }
 
 export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   const { t, i18n } = useTranslation()
@@ -203,19 +164,9 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     writeFilters,
   )
 
-  const toggleGenre = (slug: string, on: boolean) =>
-    setDraft((d) => ({
-      ...d,
-      genres: on ? [...d.genres, slug] : d.genres.filter((g) => g !== slug),
-    }))
-
-  const setRange = (key: keyof Ranges, value: string) =>
-    setDraft((d) => ({ ...d, ranges: { ...d.ranges, [key]: value } }))
-
   /* ---------- მონაცემები ---------- */
 
   const num = (v: string) => (v.trim() !== '' && !Number.isNaN(Number(v)) ? Number(v) : undefined)
-  const currentYear = new Date().getFullYear()
 
   // ველი + მიმართულება → backend sort მნიშვნელობა
   const sortValue = sortField === 'added' ? (sortDir === 'desc' ? 'added' : 'added_asc') : `${sortField}_${sortDir}`
@@ -429,89 +380,46 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
-          {/* სტატუსის ჯგუფი აქ განზრახ არ არის — სექცია საიდბარშია */}
-          <FilterGroup title={t('filter.genres')} count={draft.genres.length}>
-            {/* რამდენიმე ჟანრი: ერთი მაინც თუ ყველა ერთად — მაშინვე მოქმედებს და ახსოვს */}
-            <ChipRow className="mb-2 items-center gap-1.5 px-0.5">
-              {GENRE_MODES.map((mode) => (
-                <Chip key={mode} active={genreMode === mode} onClick={() => setGenreMode(mode)} className="py-1">
-                  {t(`filter.genreMode.${mode}`)}
-                </Chip>
-              ))}
-              <InfoHint info={t('filter.genreMode.hint')} />
-            </ChipRow>
-            <FilterOptionList>
-              {genreList.map((g) => (
-                <FilterOption
-                  key={g.slug}
-                  label={genreName(g, lang)}
-                  // ⚠️ თითო მოდული თავის რიცხვს: ანიმეს გვერდზე ფილმების რაოდენობა ცარიელ ჟანრს სავსედ აჩვენებდა
-                  count={type === 'series' ? g.series_count : type === 'anime' ? g.animes_count : g.movies_count}
-                  checked={draft.genres.includes(g.slug)}
-                  onChange={(on) => toggleGenre(g.slug, on)}
-                />
-              ))}
-            </FilterOptionList>
-          </FilterGroup>
-
-          {/* ⚠️ დიაპაზონები **გაშლილია** (ჯგუფის ნაგულისხმევი მდგომარეობა):
-              შეკეცილი ჯგუფი მალავდა იმას, რომ წელი და ქულა საერთოდ იფილტრება.
-              შეკეცვა შესაძლებელი რჩება, უბრალოდ ხელით. */}
-          <FilterGroup title={t('filter.ranges')} count={filterCount(draft.ranges)} info={t('filter.rangesHint')}>
-            <div className="space-y-3 px-0.5 pt-1">
-              <FilterRange
-                label={t('filter.year')}
-                from={draft.ranges.yearMin}
-                to={draft.ranges.yearMax}
-                onFrom={(v) => setRange('yearMin', v)}
-                onTo={(v) => setRange('yearMax', v)}
-                fromPlaceholder="1700"
-                toPlaceholder={String(currentYear + 1)}
-                min={1700}
-                max={currentYear + 1}
-              />
-              <FilterRange
-                label={t('filter.tmdbRating')}
-                from={draft.ranges.ratingMin}
-                to={draft.ranges.ratingMax}
-                onFrom={(v) => setRange('ratingMin', v)}
-                onTo={(v) => setRange('ratingMax', v)}
-                fromPlaceholder="0.0"
-                toPlaceholder="10.0"
-                min={0}
-                max={10}
-                step="0.1"
-              />
-              <FilterRange
-                label={t('filter.myRating')}
-                from={draft.ranges.myRatingMin}
-                to={draft.ranges.myRatingMax}
-                onFrom={(v) => setRange('myRatingMin', v)}
-                onTo={(v) => setRange('myRatingMax', v)}
-                fromPlaceholder="1"
-                toPlaceholder="10"
-                min={1}
-                max={10}
-                step="0.5"
-              />
-            </div>
-          </FilterGroup>
+          {/* ველები ერთია სიისა და „რა ვნახო დღეს" ფანჯრისთვის; ჟანრების რეჟიმი აქ
+              მაშინვე მოქმედებს და მოდულზე ახსოვს */}
+          <LibraryFilterFields
+            type={type}
+            genres={genreList}
+            draft={draft}
+            onChange={setDraft}
+            genreMode={genreMode}
+            onGenreMode={setGenreMode}
+          />
         </FilterPanel>
       </div>
 
-      {/* „რა ვნახო დღეს": მოტივტივე კამათელი მარჯვენა ქვედა
-          კუთხეში (სათაურის ზოლიდან აქ გადმოვიდა); არჩევანი სერვერზე ხდება, იმავე
-          ფილტრით, რაც სიას აქვს — სტატუსს კი დიალოგის ჩიპები წყვეტენ. */}
+      {/* „რა ვნახო დღეს?": მოტივტივე კამათელი მარჯვენა ქვედა კუთხეში; არჩევანი სერვერზე
+          ხდება. ფილტრი სიიდან მოჰყვება, მაგრამ ფანჯარა მის ასლზე მუშაობს — იქ შეცვლილი
+          სიას არ ეხება; სტატუსს ფანჯრის ჩიპები წყვეტენ. */}
       <FloatingPick module={type} onOpen={() => setPickOpen(true)} />
       {pickOpen && (
-        <RandomPickDialog
+        <RandomPickDialog<LibraryPickFilter>
           source={{
             domain: type,
             currentStatus: filters.status ?? null,
-            filterKey: JSON.stringify(filters),
             shape: 'poster',
-            fetch: async (opts) =>
-              (await api.pickRandom(filters, opts)).map((m) => ({
+            filter: {
+              initial: { q, genres, genreMode, ranges, favorite: view === 'favorite', drill },
+              empty: EMPTY_PICK_FILTER,
+              chips: (filter) => pickFilterChips(filter, { genres: genreList, lang, t }),
+              fields: (filter, change) => (
+                <LibraryFilterFields
+                  type={type}
+                  genres={genreList}
+                  draft={filter}
+                  onChange={(update) => change((current) => ({ ...current, ...update(current) }))}
+                  genreMode={filter.genreMode}
+                  onGenreMode={(mode) => change((current) => ({ ...current, genreMode: mode }))}
+                />
+              ),
+            },
+            fetch: async (opts, filter) =>
+              (await api.pickRandom(pickFilterParams(filter), opts)).map((m) => ({
                 id: m.id,
                 title: (lang === 'ka' ? m.title_ka : m.title_en) || m.title_en || m.title_ka || '',
                 poster: m.poster,

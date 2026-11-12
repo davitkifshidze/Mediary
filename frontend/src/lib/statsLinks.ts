@@ -106,6 +106,22 @@ export interface DrillChip {
   keys: string[]
 }
 
+/** ჩიპის წარწერა — „თვე: მარტი 2026", „გამოსვლის წელი: 2011", „ჩემი ქულა: 7" */
+export function drillLabel(chip: DrillChip, t: (key: string, options?: Record<string, unknown>) => string): string {
+  const month = (ym: string) => {
+    const [year, m] = ym.split('-')
+    return `${t(`stats.month.${Number(m)}`)} ${year}`
+  }
+
+  return chip.kind === 'done'
+    ? t('drill.done', { month: month(chip.value) })
+    : chip.kind === 'watched'
+      ? t('drill.watched', { month: month(chip.value) })
+      : chip.kind === 'year'
+        ? t('drill.year', { year: chip.value })
+        : t('drill.rating', { score: chip.value })
+}
+
 /** აქტიური ჭრილები ჩიპებად — წლის და ქულის წყვილი ერთ ჩიპად */
 export function drillChips(drill: Record<string, string>): DrillChip[] {
   const chips: DrillChip[] = []

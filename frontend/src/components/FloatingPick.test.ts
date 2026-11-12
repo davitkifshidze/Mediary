@@ -6,8 +6,9 @@ import i18n from '@/i18n'
 /* ============================================================
    **მოტივტივე კამათელი**.
 
-   ⚠️ მოწმდება: წარწერა მუდამ ჩანს და ციკლად მიდის — ასო-ასო იწერება
-   (70 ms/ასო) → 1.5 წამი დგას → ასო-ასო იშლება → პაუზა → თავიდან იწერება;
+   ⚠️ მოწმდება: წარწერა ციკლად მიდის — ასო-ასო იწერება (70 ms/ასო) → 1.5 წამი
+   დგას → ასო-ასო იშლება → პაუზა → თავიდან იწერება; **ცარიელი ჩარჩო არასდროს
+   ჩანს** — პირველ ასომდე და პაუზაში ბუშტი საერთოდ არ იხატება;
    `prefers-reduced-motion`-ზე — სრული ტექსტი უძრავად, კურსორის გარეშე;
    ჰოვერზე სრული ტექსტი უმალ ჩანს; დაჭერა `onOpen`-ს უშვებს.
    ============================================================ */
@@ -41,9 +42,9 @@ async function mount(onOpen: () => void = () => {}) {
 }
 
 const tip = () => document.getElementById('floating-pick-tip')
-/** ბუშტის ტექსტი კურსორის გარეშე */
-const words = () => tip()!.textContent!.replace('|', '')
-const phase = () => tip()!.getAttribute('data-phase')
+/** ბუშტის ტექსტი კურსორის გარეშე; ბუშტის გარეშე — ცარიელი */
+const words = () => tip()?.textContent?.replace('|', '') ?? ''
+const phase = () => document.querySelector('[data-phase]')!.getAttribute('data-phase')
 
 /** ტაიმერები ცალ-ცალკე უნდა გაიაროს — ყოველი ნაბიჯი ახალ რენდერს და ახალ ტაიმერს იწვევს */
 async function tick(ms: number, step = 10) {
@@ -57,13 +58,13 @@ describe('FloatingPick', () => {
     const text = i18n.t('pick.title')
     await mount()
 
-    // დასაწყისში ბუშტი არის, მაგრამ ტექსტი ჯერ ცარიელია — მხოლოდ კურსორი
-    expect(tip()).not.toBeNull()
-    expect(words()).toBe('')
-    expect(tip()!.querySelector('[data-caret]')).not.toBeNull()
+    // წარწერას კითხვის ნიშანი აქვს; პირველ ასომდე ჩარჩო არ არსებობს
+    expect(text.endsWith('?')).toBe(true)
+    expect(tip()).toBeNull()
 
     await tick(70 * 3)
     expect(words()).toBe(text.slice(0, 3))
+    expect(tip()!.querySelector('[data-caret]')).not.toBeNull()
 
     await tick(70 * text.length)
     expect(words()).toBe(text)
@@ -75,11 +76,12 @@ describe('FloatingPick', () => {
     await tick(45 * 2)
     expect(words().length).toBeLessThan(text.length)
 
+    // ბოლო ასოს წაშლის შემდეგ ჩარჩოც ქრება — პაუზაში ცარიელი ყუთი არ დგას
     await tick(45 * text.length)
-    expect(words()).toBe('')
+    expect(tip()).toBeNull()
     expect(phase()).toBe('pause')
 
-    // პაუზის შემდეგ — თავიდან; ბუშტი არ ქრება
+    // პაუზის შემდეგ — თავიდან
     await tick(600)
     expect(phase()).toBe('typing')
     await tick(70 * text.length)
@@ -119,8 +121,8 @@ describe('FloatingPick', () => {
     await act(async () => {
       button.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }))
     })
-    // ჰოვერის შემდეგ ისევ ციკლის ტექსტია (ჯერ ცარიელი — დრო არ გასულა)
-    expect(words()).toBe('')
+    // ჰოვერის შემდეგ ისევ ციკლია (დრო არ გასულა — ჯერ არც ჩარჩოა)
+    expect(tip()).toBeNull()
   })
 
   it('opens the dialog on click', async () => {

@@ -13,11 +13,14 @@ import { MODULE_ACCENT_FALLBACK, modAccent, useModules } from '@/lib/modules'
    იწევს — დამკვრელის ზოლი და გვერდითა პანელი ვერ დაფარავენ (იგივე წესი,
    რაც რიგის ტოსტს აქვს `ui/queue.tsx`-ში).
 
-   ⚠️ **წარწერა მუდამ ჩანს და ციკლად იწერება**: ასო-ასო
-   (70 ms/ასო, მბჟუტავი კურსორით) → 1.5 წამი დგას → ასო-ასო იშლება → მოკლე
-   პაუზა → თავიდან, სამუდამოდ. ადრე სესიაში ერთხელ იწერებოდა და ქრებოდა
-   (`sessionStorage`) — შენი სიტყვით „სულ გამოდიოდეს". ჰოვერზე სრული ტექსტი
-   უმალ ჩანს; ციკლი ქვემოთ გრძელდება. ბიბლიოთეკის გარეშე: ტაიმერი + CSS.
+   ⚠️ **წარწერა ციკლად იწერება**: ასო-ასო (70 ms/ასო, მბჟუტავი კურსორით) →
+   1.5 წამი დგას → ასო-ასო იშლება → მოკლე პაუზა → თავიდან, სამუდამოდ. ჰოვერზე
+   სრული ტექსტი უმალ ჩანს; ციკლი ქვემოთ გრძელდება. ბიბლიოთეკის გარეშე:
+   ტაიმერი + CSS.
+
+   ⚠️ **ცარიელი ჩარჩო არასდროს ჩანს**: ჩარჩო ტექსტის სიგანეს მიჰყვება, ე.ი.
+   წაშლისას მასთან ერთად იკეცება, ბოლო ასოს წაშლის შემდეგ კი საერთოდ ქრება —
+   პაუზაში ეკრანზე მხოლოდ კამათელია. ადრე 0.6 წამი ცარიელი ყუთი იდგა.
 
    ⚠️ ბუშტი `aria-hidden`-ია: ღილაკს იგივე სრული ტექსტი `aria-label`-ად აქვს,
    ნახევრად აკრეფილი სიტყვა ეკრანის მკითხველს არაფერს ეტყოდა.
@@ -77,9 +80,12 @@ export function FloatingPick({ module, onOpen }: { module: string; onOpen: () =>
 
   const full = hover || phase === 'still'
   const shown = full ? text : text.slice(0, typed)
+  // არც ერთი ასო — არც ჩარჩო (პაუზა და პირველი ასოს მოლოდინი)
+  const tip = shown !== ''
 
   return (
     <div
+      data-phase={phase}
       className={cn(
         // `--player-lift`: მოტივტივე ვიდეო ამ კუთხეს თუ ფარავს, კამათელი მის ზემოთ ადის
         'fixed bottom-[calc(1.5rem+var(--player-h,0px)+var(--player-lift,0px))] right-[calc(1.5rem+var(--player-w,0px))] flex items-center gap-3',
@@ -87,19 +93,20 @@ export function FloatingPick({ module, onOpen }: { module: string; onOpen: () =>
       )}
       style={modAccent(color) ?? MODULE_ACCENT_FALLBACK}
     >
-      <div
-        aria-hidden
-        id="floating-pick-tip"
-        data-phase={phase}
-        className="fb-card pointer-events-none whitespace-nowrap rounded-md border border-border bg-card px-3 py-2 text-sm font-medium shadow-md"
-      >
-        {shown}
-        {!full && (
-          <span className="fb-caret ml-px inline-block text-[var(--mod)]" data-caret>
-            |
-          </span>
-        )}
-      </div>
+      {tip && (
+        <div
+          aria-hidden
+          id="floating-pick-tip"
+          className="pointer-events-none whitespace-nowrap rounded-md border border-border bg-card px-3 py-2 text-sm font-medium shadow-md"
+        >
+          {shown}
+          {!full && (
+            <span className="fb-caret ml-px inline-block text-[var(--mod)]" data-caret>
+              |
+            </span>
+          )}
+        </div>
+      )}
       <button
         type="button"
         onClick={onOpen}

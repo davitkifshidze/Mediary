@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { QueryKey } from '@tanstack/react-query'
 import type { StatusDomainKey } from '@/api/statuses'
 import type { Status } from '@/api/types'
@@ -18,13 +19,16 @@ import type { Status } from '@/api/types'
 export const PICK_SETTING = 'pick'
 
 /**
- * დიალოგის `NumberPick`-ის სია: „1 · 5 · 10 · სხვა" (ხელით —
+ * დიალოგის `NumberPick`-ის სია: „4 · 8 · 12 · 16 · სხვა" (ხელით —
  * `PICK_MAX`-მდე); ჭერი ბაზისაც არის (`PicksRandomRecords::$pickMax`).
+ *
+ * ⚠️ **4-ის ჯერადები**: ფანჯრის ბადე ოთხსვეტიანია (ოთხზე სტატუსი და ორი ღილაკი
+ * ეტევა), ე.ი. ჯერადი რაოდენობა ბოლო რიგს ყოველთვის ავსებს.
  */
-export const PICK_COUNTS = [1, 5, 10]
+export const PICK_COUNTS = [4, 8, 12, 16]
 export const PICK_MAX = 20
-/** რამდენი, თუ მოდულზე არაფერი შენახულა (ადრე — 1) */
-const PICK_DEFAULT = 5
+/** რამდენი, თუ მოდულზე არაფერი შენახულა — ორი სავსე რიგი */
+const PICK_DEFAULT = 8
 
 export interface PickOptions {
   count?: number
@@ -91,19 +95,43 @@ export interface PickRecord {
   statusKey: string | null
 }
 
-export interface PickSource {
+/** ფანჯრის ფილტრის ერთი პირობა ჩიპად — ✕-ით იხსნება */
+export interface PickFilterChip<F> {
+  key: string
+  label: string
+  /** იგივე ფილტრი ამ პირობის გარეშე */
+  without: F
+}
+
+/**
+ * **ფანჯრის ფილტრი** — სიიდან მოყოლილი, მაგრამ მისგან დამოუკიდებელი.
+ *
+ * ⚠️ ფანჯარა სიის ფილტრს ჩუმად იღებდა: არც ჩანდა, არც იცვლებოდა — „რატომ
+ * მთავაზობს მხოლოდ კომედიებს" პასუხგაუცემელი რჩებოდა. ახლა ის **ასლია**:
+ * პირობები ჩიპებად ჩანს, იხსნება და იცვლება, სიის მისამართს კი არაფერი ეხება.
+ */
+export interface PickFilter<F> {
+  /** სიის მიმდინარე ფილტრი — ფანჯრის საწყისი მდგომარეობა */
+  initial: F
+  /** „ფილტრის გარეშე" */
+  empty: F
+  chips: (filter: F) => PickFilterChip<F>[]
+  /** „ფილტრის შეცვლა" — იგივე ველები, რაც სიის პანელშია */
+  fields: (filter: F, change: (update: (current: F) => F) => void) => ReactNode
+}
+
+export interface PickSource<F = unknown> {
   /** მოდულის გასაღები — სტატუსების ლექსიკონი და `module_user.settings` */
   domain: StatusDomainKey
   /** სიის ცხადად არჩეული სტატუსი (`?view=`) — ნაგულისხმევი ფარგლების საწყისი */
   currentStatus: string | null
-  /** სიის დანარჩენი ფილტრის ანაბეჭდი — query-ის გასაღების ნაწილი */
-  filterKey: string
+  filter: PickFilter<F>
   /** ბარათის ფორმა — ჩონჩხები მას პასუხამდე ხატავენ */
   shape: PickRecord['shape']
-  fetch: (opts: Required<PickOptions>) => Promise<PickRecord[]>
+  fetch: (opts: Required<PickOptions>, filter: F) => Promise<PickRecord[]>
   setStatus: (id: number, statusKey: string) => Promise<unknown>
   /** „გახსნა" — გვერდი წყვეტს: დეტალის გვერდი (მედია) თუ ფანჯარა (ვიდეო) */
   open: (record: PickRecord) => void
-  /** რომელი სიები უნდა განახლდეს „დავიწყოთ"-ის შემდეგ */
+  /** რომელი სიები უნდა განახლდეს სტატუსის შეცვლის შემდეგ */
   invalidate: QueryKey[]
 }
