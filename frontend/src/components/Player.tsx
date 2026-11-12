@@ -712,6 +712,20 @@ function BubbleFace({
   }
 
   return (
+    <div className="group relative size-full">
+      {/* დახურვა — ბუშტის ზედა მარჯვენა კუთხეში, ოდნავ გარეთ: ჰოვერზე ჩნდება, სენსორულ
+          ეკრანზე (ჰოვერი არ არსებობს) ყოველთვის ჩანს. ⚠️ ცალკე ღილაკია და არა ბუშტის
+          შვილი: ბუშტზე დაჭერა პანელს შლის, გადათრევა კი ადგილს ცვლის. */}
+      <button
+        type="button"
+        onClick={player.close}
+        aria-label={t('playback.close')}
+        title={t('playback.close')}
+        data-bubble-close
+        className="absolute -right-2 -top-2 z-10 grid size-5 cursor-pointer place-items-center rounded-full border border-border bg-card text-muted-foreground opacity-0 shadow transition-opacity hover:border-destructive hover:text-destructive group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+      >
+        <X className="size-3" />
+      </button>
     <button
       type="button"
       onPointerDown={press}
@@ -748,6 +762,7 @@ function BubbleFace({
         )}
       </svg>
     </button>
+    </div>
   )
 }
 

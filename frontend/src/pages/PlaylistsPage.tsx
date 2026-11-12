@@ -186,7 +186,8 @@ function PlayPlaylistButton({ playlist }: { playlist: Playlist }) {
     mutationFn: () => fetchPlaylist(playlist.id),
     onSuccess: (full) => {
       const items = (full.songs ?? []).map(songItem)
-      if (items.length) player.play(items, 0, full.name)
+      // რიგის გადალაგება ამ ფლეილისტში ინახება
+      if (items.length) player.play(items, 0, full.name, null, { kind: 'playlist', id: full.id })
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })

@@ -159,7 +159,10 @@ export function SongsPage() {
       // ჩატვირთული გვერდი რჩება
     }
     const at = song ? list.findIndex((entry) => entry.id === song.id) : 0
-    player.play(list.map(songItem), Math.max(at, 0), t('songs.title'))
+    /* ⚠️ რიგის გადალაგება სიმღერების ხელით რიგში მხოლოდ მაშინ ინახება, როცა სია სწორედ
+       ხელით რიგითაა დაკრული — სხვა დალაგების (სათაური, თარიღი) რიგის შენახვა ხელით
+       რიგს მთლიანად გადააწერდა. */
+    player.play(list.map(songItem), Math.max(at, 0), t('songs.title'), null, sort === MANUAL_SORT ? { kind: 'songs' } : null)
   }
   // მიმაგრებული ფაილები/ჩანიშვნები. ⚠️ დაკვრისგან **ცალკეა**:
   // სიმღერაზე დაჭერა ისევ უკრავს, სამაგრები ცალკე ღილაკზეა.

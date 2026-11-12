@@ -730,6 +730,44 @@ describe('Player — ფანჯარაში · მოტივტივე 
     expect(frame()).toBe(before)
   })
 
+  it('ბუშტს კუთხეში დახურვის ღილაკი აქვს — ხურავს და აჩერებს', async () => {
+    await mountWith()
+    await play()
+    await click(byLabel('playback.toBubble'))
+
+    const close = document.querySelector<HTMLButtonElement>('[data-bubble-close]')!
+    // ცალკე ღილაკია და არა ბუშტის შვილი: ბუშტზე დაჭერა პანელს შლის
+    expect(close.closest('[data-bubble]')).toBeNull()
+    expect(close.className).toContain('group-hover:opacity-100')
+    expect(close.className).toContain('[@media(hover:none)]:opacity-100')
+
+    await click(close)
+    expect(api!.current).toBeNull()
+    expect(api!.queue).toHaveLength(0)
+    expect(api!.bubbled).toBe(false)
+  })
+
+  it('რიგს ახსოვს, საიდან დაიწყო; ამოღების შემდეგ ფლეილისტის რიგი აღარ ინახება', async () => {
+    await mountWith()
+    await act(async () => api!.play(ITEMS, 0, 'Evening', null, { kind: 'playlist', id: 4 }))
+    await flush()
+    expect(api!.home).toEqual({ kind: 'playlist', id: 4 })
+
+    // რიგიდან ამოღება ფლეილისტს არ ეხება — ამიტომ მისი შენახვაც წყდება
+    await act(async () => api!.remove(api!.queue[1].uid))
+    expect(api!.home).toBeNull()
+
+    // სიმღერების ხელით რიგი მოწოდებულებს ერთმანეთში ალაგებს — ამოღება უვნებელია
+    await act(async () => api!.play(ITEMS, 0, 'Songs', null, { kind: 'songs' }))
+    await flush()
+    await act(async () => api!.remove(api!.queue[1].uid))
+    expect(api!.home).toEqual({ kind: 'songs' })
+
+    // წყაროს გარეშე რიგს სახლი არ აქვს
+    await play()
+    expect(api!.home).toBeNull()
+  })
+
   it('ბუშტი გადაითრევა და უახლოეს კიდეს ეკვრის; ადგილი ახსოვს', async () => {
     await mountWith()
     await play()

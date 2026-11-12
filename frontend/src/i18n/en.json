@@ -3302,7 +3302,9 @@
     "moveFrame": "Move the frame",
     "resizeFrame": "Resize the frame",
     "toBubble": "Collapse to a bubble",
-    "fromBubble": "Open the player"
+    "fromBubble": "Open the player",
+    "orderSaved": "Order is saved",
+    "orderSavedHint": "Reordering the queue is written to its source — the playlist or the manual order of songs — and shows everywhere."
   },
   "statuses": {
     "titleMovie": "Movie statuses",

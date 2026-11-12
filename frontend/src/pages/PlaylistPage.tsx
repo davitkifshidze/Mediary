@@ -17,6 +17,7 @@ import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
 import { sortByIds } from '@/lib/reorder'
 import { songItem, usePlayer } from '@/lib/player'
+import type { QueueHome } from '@/lib/queueHome'
 import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
@@ -74,6 +75,8 @@ export function PlaylistPage() {
      რომელსაც suppress არ ჰქონდა — და სწორედ ის უშლიდა ხელს წესის
      `error`-ად ჩართვას. */
   const songs = playlist?.songs ?? NO_SONGS
+  /** რიგის „სახლი": აქედან დაკრული რიგის გადალაგება ამ ფლეილისტში ინახება */
+  const home: QueueHome = { kind: 'playlist', id: playlistId }
   const songIds = useMemo(() => songs.map((s) => s.id), [songs])
 
   const save = useMutation({
@@ -157,7 +160,7 @@ export function PlaylistPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => player.play(songs.map(songItem), 0, playlist.name)}
+              onClick={() => player.play(songs.map(songItem), 0, playlist.name, null, home)}
             >
               <Play className="size-3.5" />
               {t('playback.playAll')}
@@ -211,7 +214,7 @@ export function PlaylistPage() {
               key: 'play',
               label: t('playback.playFromHere'),
               icon: MENU_ICONS.play,
-              run: () => player.play(songs.map(songItem), i, playlist.name),
+              run: () => player.play(songs.map(songItem), i, playlist.name, null, home),
             },
             {
               key: 'source',
@@ -239,7 +242,7 @@ export function PlaylistPage() {
 
               {/* სურათზე დაჭერა **ამ ადგილიდან** უშვებს პლეილისტს */}
               <button
-                onClick={() => player.play(songs.map(songItem), i, playlist.name)}
+                onClick={() => player.play(songs.map(songItem), i, playlist.name, null, home)}
                 aria-label={t('playback.playFromHere')}
                 title={t('playback.playFromHere')}
                 className="group relative h-10 w-16 shrink-0 cursor-pointer overflow-hidden rounded bg-muted"

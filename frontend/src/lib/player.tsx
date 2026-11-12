@@ -19,6 +19,7 @@ import { markVideoWatched, type Video, type VideoPlatform } from '@/api/videos'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import type { EmbedEvent } from '@/lib/embed'
 import { removeEntry, reorderEntries } from '@/lib/playerQueue'
+import type { QueueHome } from '@/lib/queueHome'
 import { PLAYER_MAX_WIDTH_OPTIONS, useSettings } from '@/lib/settings'
 import { safeGet, safeRemove, safeSet } from '@/lib/storage'
 
@@ -251,6 +252,11 @@ interface PlayerApi {
   registerAnchor: (key: string, el: HTMLElement | null, window?: PlayerWindow | null) => void
   /** ვინ გაუშვა რიგი (`play`-ის მეოთხე არგუმენტი — კურსი, გალერეის სია); ფანჯრის ადგილი მას ცნობს */
   origin: string | null
+  /**
+   * რიგის „სახლი" (`play`-ის მეხუთე არგუმენტი) — ფლეილისტი ან სიმღერების ხელით რიგი:
+   * გადალაგება იქ ინახება (`lib/queueHome.ts`). `null` — რიგი არსად ინახება.
+   */
+  home: QueueHome | null
   /** „გატანა": ვიდეო ფანჯრიდან მოტივტივე ჩარჩოში — ფანჯარა იხურება */
   popped: boolean
   popOut: () => void
@@ -271,7 +277,7 @@ interface PlayerApi {
   panelWidth: string
   /** გადათრევა მიმდინარეობს — სცენაზე გამჭვირვალე ფენა, რომ iframe-მა მაუსი არ „შეჭამოს" */
   resizing: boolean
-  play: (items: PlayerItem[], startAt?: number, source?: string | null, origin?: string | null) => void
+  play: (items: PlayerItem[], startAt?: number, source?: string | null, origin?: string | null, home?: QueueHome | null) => void
   toggle: () => void
   next: () => void
   prev: () => void
@@ -375,6 +381,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [popped, setPopped] = useState(false)
   const [bubbled, setBubbled] = useState(false)
   const [origin, setOrigin] = useState<string | null>(null)
+  const [home, setHome] = useState<QueueHome | null>(null)
   /* ⚠️ ref-ები, რომ ფანჯრის დახურვამ (დემონტაჟი) **იმავე წამის** მდგომარეობა წაიკითხოს:
      „გატანა" ჯერ `popped`-ს წერს, მერე ფანჯარას ხურავს — state ჯერ არ განახლებულა */
   const poppedRef = useRef(false)
@@ -450,12 +457,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /* ⚠️ ახალი რიგი „გატანას" აუქმებს: ბარათის „დაკვრა" ფანჯარას ხსნის და ვიდეო
      იქ უნდა ჩაჯდეს — წინა ვიდეოს „გატანა" ახალზე არ ვრცელდება. */
   const play = useCallback(
-    (items: PlayerItem[], startAt = 0, label: string | null = null, from: string | null = null) => {
+    (items: PlayerItem[], startAt = 0, label: string | null = null, from: string | null = null, at: QueueHome | null = null) => {
       if (!items.length) return
       const entries = items.map((item) => ({ ...item, uid: nextUid++ }))
       setQueue(entries)
       setSource(label)
       setOrigin(from)
+      setHome(at)
       setPopped(false)
       poppedRef.current = false
       // ახალ რიგს მფლობელი ჯერ არ ჰყავს — ის ფანჯარაა, სადაც პირველად ჩაჯდება (`inline`)
@@ -527,6 +535,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setExpanded(false)
     setSource(null)
     setOrigin(null)
+    setHome(null)
     setPopped(false)
     setBubbled(false)
     poppedRef.current = false
@@ -554,6 +563,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         close()
         return
       }
+      /* ⚠️ ამოღების შემდეგ რიგი ფლეილისტს აღარ ასახავს: მისი შენახვა ამოღებულ სიმღერას
+         ფლეილისტიდანაც წაშლიდა — ამიტომ სახლი იხსნება. სიმღერების ხელით რიგი მოწოდებულ
+         ჩანაწერებს მხოლოდ ერთმანეთში ალაგებს, ე.ი. იქ ამოღება უვნებელია. */
+      setHome((at) => (at?.kind === 'playlist' ? null : at))
 
       setQueue(out.queue)
       if (out.restart && out.current !== null) start(out.current)
@@ -645,6 +658,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       anchor: here ? (anchor?.el ?? null) : null,
       registerAnchor,
       origin,
+      home,
       popped,
       popOut,
       popIn,
@@ -683,6 +697,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       anchor,
       registerAnchor,
       origin,
+      home,
       popped,
       popOut,
       popIn,

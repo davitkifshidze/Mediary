@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowDown, ArrowUp, AudioLines, ListMusic, ListVideo, ListX, Music, Play, Video } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { ArrowDown, ArrowUp, AudioLines, ListMusic, ListVideo, ListX, Music, Play, Save, Video } from 'lucide-react'
 import { storageUrl } from '@/lib/api'
 import { moveWithin } from '@/lib/reorder'
+import { errorMessage } from '@/lib/errors'
 import { usePlayer, type PlayerLayout, type QueueEntry } from '@/lib/player'
+import { reorderEntries } from '@/lib/playerQueue'
+import { homeOrder, saveQueueOrder } from '@/lib/queueHome'
 import { cn } from '@/lib/utils'
 import { formatDuration } from '@/lib/videoDuration'
 import { MENU_ICONS, RecordActionMenu, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { useToast } from '@/components/ui/feedback'
 import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
 
 /* ============================================================
@@ -25,6 +30,10 @@ import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable
 
    ⚠️ **გადალაგება `Sortable`-ითაა + „ერთით წინ/უკან" მენიუში** —
    მენიუს პუნქტები კლავიატურისა და სენსორული ეკრანის მოკლე გზაა.
+
+   ⚠️ **გადალაგება რიგის „სახლში" ინახება** (`lib/queueHome.ts`): ფლეილისტიდან
+   დაკრულისა — ფლეილისტში, სიმღერების ხელით რიგიდან დაკრულისა — იმავე რიგში.
+   სახლის გარეშე რიგი მხოლოდ დაკვრას ცვლის; სათაური ამბობს, ინახება თუ არა.
    ============================================================ */
 
 export function PlayerQueue({ layout }: { layout: PlayerLayout }) {
@@ -33,10 +42,27 @@ export function PlayerQueue({ layout }: { layout: PlayerLayout }) {
   const { queue, index, playing, source, current } = player
   const side = layout === 'side'
 
+  const qc = useQueryClient()
+  const { toast } = useToast()
+  /** გადალაგება სადმე ინახება? (სათაურის ნიშანი) */
+  const saves = homeOrder(player.home, queue) !== null
+
   const uids = useMemo(() => queue.map((entry) => entry.uid), [queue])
+
+  /** ახალი რიგი დამკვრელში — და მის სახლში, თუ აქვს */
+  const reorder = (next: number[]) => {
+    const ordered = reorderEntries(queue, next)
+    if (!ordered) return
+
+    player.reorder(next)
+    saveQueueOrder(player.home, ordered)
+      .then((keys) => keys?.forEach((queryKey) => qc.invalidateQueries({ queryKey })))
+      .catch((e) => toast({ title: errorMessage(e), variant: 'error' }))
+  }
+
   const moveBy = (uid: number, delta: number) => {
     const next = moveWithin(uids, uid, delta)
-    if (next) player.reorder(next)
+    if (next) reorder(next)
   }
 
   const listRef = useRef<HTMLOListElement>(null)
@@ -77,14 +103,23 @@ export function PlayerQueue({ layout }: { layout: PlayerLayout }) {
         <Icon className="size-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{source ?? t('playback.queue')}</p>
-          <p className="text-xs tabular-nums text-muted-foreground">
-            {t('playback.queue')} · {t('playback.position', { index: index + 1, total: queue.length })}
+          <p className="flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground">
+            <span>
+              {t('playback.queue')} · {t('playback.position', { index: index + 1, total: queue.length })}
+            </span>
+            {/* გადალაგება ფლეილისტში / სიმღერების რიგში იწერება */}
+            {saves && (
+              <span className="inline-flex items-center gap-1" title={t('playback.orderSavedHint')} data-testid="queue-saves">
+                <Save className="size-3" />
+                {t('playback.orderSaved')}
+              </span>
+            )}
           </p>
         </div>
       </header>
 
       <ol ref={listRef} className="fb-scroll relative min-h-0 flex-1 space-y-0.5 overflow-y-auto p-1.5">
-        <Sortable ids={uids} onReorder={player.reorder}>
+        <Sortable ids={uids} onReorder={reorder}>
         {queue.map((entry, i) => (
           <QueueRow
             key={entry.uid}
