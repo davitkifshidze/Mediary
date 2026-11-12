@@ -383,7 +383,7 @@ export function WebVideoDialog({
 
         {/* ---------- 2. სად ვეძებთ ---------- */}
         <StepSection step={2} title={t('web.stepSources')}>
-          <WebSourcePicker engines={available} selected={selected} onChange={setEngines} disabled={search.isPending} />
+          <WebSourcePicker engines={available} selected={selected} onChange={setEngines} disabled={search.isPending} quota={shownQuota} />
         </StepSection>
 
         {/* ---------- 3. შედეგები ---------- */}

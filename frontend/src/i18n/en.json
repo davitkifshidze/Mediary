@@ -3127,8 +3127,6 @@
     "empty": "Nothing found."
   },
   "web": {
-    "allTogether": "All at once",
-    "onlyFirst": "Only the first",
     "noSafeToggle": "This source has no safe-search switch — the source itself decides what comes back.",
     "remaining": "{{count}} left",
     "costSerpApi": "SerpApi: {{count}} search(es)",
@@ -3173,7 +3171,6 @@
     "quotaOurs": "Our counter",
     "quotaRenews": "Renews",
     "quotaPlan": "Plan: {{plan}}",
-    "free": "free",
     "freeHint": "A free catalogue — no key, no limit, licensed images. In exchange its tag search is weak: it matches file names and descriptions, not what is in the picture.",
     "contextAdd": "Add to the query:",
     "attachesTo": "Downloaded photos attach to: {{name}}",
@@ -3207,7 +3204,11 @@
     "pagesCostWarn": "Each page costs one credit.",
     "importQuotaStopped": "Storage ran out — {{count}} photos were not downloaded",
     "importProgress": "Downloading {{done}} / {{total}}",
-    "missingKeys": "{{names}} — these sources turn on with your own key."
+    "missingKeys": "{{names}} — these sources turn on with your own key.",
+    "selectAllSources": "Select all",
+    "sourceFree": "Free",
+    "sourceCredit": "Uses credit",
+    "sourceOwnKey": "Uses credit · your own key"
   },
   "empty": {
     "filteredHint": "A filter or the search is cutting the list — clear it and the records come back.",

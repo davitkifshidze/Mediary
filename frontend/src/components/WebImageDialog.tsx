@@ -524,7 +524,7 @@ export function WebImageDialog({
 
           {/* ---------- 2. სად ვეძებთ ---------- */}
           <StepSection step={STEP.sources} title={t('web.stepSources')}>
-            <WebSourcePicker engines={available} selected={selected} onChange={setEngines} disabled={busy} />
+            <WebSourcePicker engines={available} selected={selected} onChange={setEngines} disabled={busy} quota={shownQuota} />
 
             {missingKeys.length > 0 && (
               <CredentialMissingNotice provider={missingKeys[0]} className="mt-3">
