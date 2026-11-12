@@ -7,7 +7,7 @@ use App\Models\Module;
 use App\Models\Status;
 use App\Models\User;
 use App\Support\AuditRegistry;
-use App\Support\AuditSettings;
+use App\Support\AuditRules;
 use App\Support\CustomModules;
 use App\Support\Openable;
 use Illuminate\Database\Eloquent\Model;
@@ -40,7 +40,7 @@ use Throwable;
  * ისმება.
  *
  * ⚠️ **ყოველი ჩაწერის წინ მოწმდება, ჩართულია თუ არა ტიპი**
- * (`AuditSettings`, სუპერადმინის გადამრთველები). კარიბჭე აქაა და არა
+ * (`AuditRules` — მთავარი ადმინის წესები მოდულსა და ანგარიშზე). კარიბჭე აქაა და არა
  * გამომძახებლებში — ერთადერთი მწერალი ერთადერთი ადგილია, სადაც გამორთვა
  * ყველგან ერთნაირად მოქმედებს.
  */
@@ -74,7 +74,7 @@ class AuditLogger
      */
     public function log(string $action, array $attributes = []): ?AuditLog
     {
-        if (! $this->enabled || ! $this->tableExists() || ! AuditSettings::enabled($action)) {
+        if (! $this->enabled || ! $this->tableExists() || ! $this->wanted($action, $attributes)) {
             return null;
         }
 
@@ -131,11 +131,25 @@ class AuditLogger
      */
     public function visit(string $path, ?string $module = null): ?AuditLog
     {
-        if (! $this->enabled || ! $this->tableExists() || ! AuditSettings::enabled(AuditLog::ACTION_VISIT)) {
+        if (! $this->enabled || ! $this->tableExists()) {
             return null;
         }
 
         $path = self::maskPath($path);
+
+        /* ⚠️ სხვისი პირადი მოდულის გასაღები ლოგში არ იწერება: გასაღები
+           კლიენტიდან მოდის, და „ამ ანგარიშმა X-ის მოდულში შეიხედა" ფაქტი არ არის —
+           ის გვერდი მისთვის 404-ია. საკუთარი ჩვეულებრივად იწერება. */
+        if (CustomModules::isKey($module) && ! CustomModules::owns(Auth::user(), $module)) {
+            $module = null;
+        }
+
+        $module ??= $this->moduleForPath($path);
+
+        // წესი მოდულზეა დამოკიდებული, ამიტომ მოდული გამეორების შემოწმებამდე დგინდება
+        if (! AuditRules::enabled(AuditLog::ACTION_VISIT, $module, Auth::id())) {
+            return null;
+        }
 
         $recent = AuditLog::where('user_id', Auth::id())
             ->where('action', AuditLog::ACTION_VISIT)
@@ -147,15 +161,8 @@ class AuditLogger
             return null;
         }
 
-        /* ⚠️ სხვისი პირადი მოდულის გასაღები ლოგში არ იწერება: გასაღები
-           კლიენტიდან მოდის, და „ამ ანგარიშმა X-ის მოდულში შეიხედა" ფაქტი არ არის —
-           ის გვერდი მისთვის 404-ია. საკუთარი ჩვეულებრივად იწერება. */
-        if (CustomModules::isKey($module) && ! CustomModules::owns(Auth::user(), $module)) {
-            $module = null;
-        }
-
         return $this->log(AuditLog::ACTION_VISIT, [
-            'module' => $module ?? $this->moduleForPath($path),
+            'module' => $module,
             'route' => $path,
         ]);
     }
@@ -173,12 +180,17 @@ class AuditLogger
      */
     public function open(Model $record, string $source = self::OPEN_LIBRARY, ?string $anonKey = null): ?AuditLog
     {
-        if (! $this->enabled || ! $this->tableExists() || ! AuditSettings::enabled(AuditLog::ACTION_OPEN)) {
+        if (! $this->enabled || ! $this->tableExists()) {
             return null;
         }
 
         $type = AuditRegistry::typeFor($record);
+        $module = Openable::has($type) ? Openable::module($type, $record) : AuditRegistry::moduleFor($record);
         $viewer = Auth::user();
+
+        if (! AuditRules::enabled(AuditLog::ACTION_OPEN, $module, $viewer?->getAuthIdentifier())) {
+            return null;
+        }
 
         if ($viewer) {
             $recent = AuditLog::query()
@@ -201,7 +213,7 @@ class AuditLogger
         }
 
         return $this->log(AuditLog::ACTION_OPEN, [
-            'module' => Openable::has($type) ? Openable::module($type, $record) : AuditRegistry::moduleFor($record),
+            'module' => $module,
             'subject_type' => $type,
             'subject_id' => $record->getKey(),
             'subject_label' => AuditRegistry::labelFor($record),
@@ -231,13 +243,17 @@ class AuditLogger
      */
     public function profileVisit(User $owner, Request $request): ?AuditLog
     {
-        if (! $this->enabled || ! $this->tableExists() || ! AuditSettings::enabled(AuditLog::ACTION_PROFILE_VISIT)) {
+        if (! $this->enabled || ! $this->tableExists()) {
             return null;
         }
 
         $viewer = $request->user();
 
         if ($viewer && (int) $viewer->getKey() === (int) $owner->getKey()) {
+            return null;
+        }
+
+        if (! AuditRules::enabled(AuditLog::ACTION_PROFILE_VISIT, null, $viewer?->getKey())) {
             return null;
         }
 
@@ -316,6 +332,27 @@ class AuditLogger
         return (string) preg_replace('#[A-Za-z0-9_\-]{24,}#', '•••', $text);
     }
 
+    /**
+     * ეს ჩაწერა წესებით ნებადართულია? — მოდულისა და ანგარიშის გათვალისწინებით.
+     *
+     * ⚠️ **წესის ცვლილება ყოველთვის იწერება**: „ვინ გამორთო დაჭერები" სწორედ ის
+     * რიგია, რომელიც გამორთვამ არ უნდა წაშალოს — არც მაშინ, როცა ადმინის
+     * ჭრილში რედაქტირების ჩაწერა თვითონ არის გამორთული.
+     * ⚠️ ანგარიში ისაა, ვინც მოქმედებს (`Auth`), თუ გამომძახებელმა `user_id`
+     * ცხადად არ გადმოსცა; შეუსვლელზე (წარუმატებელი შესვლა, სტუმრის გახსნა)
+     * მხოლოდ მოდულისა და გლობალური დონე მოქმედებს.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    private function wanted(string $action, array $attributes): bool
+    {
+        if (($attributes['subject_type'] ?? null) === AuditRules::SUBJECT) {
+            return true;
+        }
+
+        return AuditRules::enabled($action, $attributes['module'] ?? null, $attributes['user_id'] ?? Auth::id());
+    }
+
     /** დროებით გამორთვა (მიგრაციული/ერთჯერადი სამუშაოსთვის — იხ. კლასის შენიშვნა) */
     public function suppress(callable $callback): mixed
     {
@@ -363,14 +400,7 @@ class AuditLogger
             return $this->routeBases[$first];
         }
 
-        return match ($first) {
-            'users', 'roles', 'requests', 'purge', 'audit' => 'admin',
-            'settings', 'profile', 'people' => 'account',
-            'chat' => 'chat',
-            'genres' => 'genre',
-            'actors' => 'cast',
-            default => null,
-        };
+        return AuditRegistry::PATH_MODULES[$first] ?? null;
     }
 
     /**

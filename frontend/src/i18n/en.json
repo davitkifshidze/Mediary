@@ -3163,14 +3163,14 @@
       "duty_type": "Duty shift type",
       "duty_rate": "Duty rate",
       "duty_pattern": "Duty rhythm",
-      "goal": "Goal"
+      "goal": "Goal",
+      "audit_rule": "Log rule"
     },
     "subtitleWarn": "The log is kept forever — cleanup is manual only.",
     "views": {
       "log": "Log",
       "opens": "Opens",
-      "profiles": "Profiles",
-      "settings": "Settings"
+      "profiles": "Profiles"
     },
     "opens": {
       "total": "{{count}} rows — person × record",
@@ -3194,11 +3194,36 @@
       "detailTitle": "{{name}} · from @{{owner}}'s profile",
       "noImports": "Nothing was added from this profile."
     },
-    "settings": {
-      "title": "What the log records",
-      "hint": "A switch changes recording for every account. A disabled kind is no longer written (what is already logged stays), and clicks, opens, refreshes and page visits are no longer even sent by the browser. Chat deletion is protected — it is always recorded.",
-      "saved": "Log settings saved",
+    "rules": {
+      "title": "Log rules",
+      "hint": "What the log records — on four levels, and the most specific one wins: user + module → user → module → everywhere. A cell with no rule of its own (“as above”) shows, faded, what the level above decides. What is switched off is no longer written (what is already logged stays), and clicks, opens, refreshes and page visits are no longer even sent by the browser. A temporary switch-off ends on its own when its time is up. A rule change itself is always recorded; chat deletion is protected.",
+      "saved": "Log rules saved",
       "protected": "Protected — always recorded",
+      "moduleless": "This action has no module",
+      "pickUser": "Pick a user",
+      "scopes": {
+        "all": "For everyone",
+        "user": "Per user"
+      },
+      "columns": {
+        "kind": "Action",
+        "everywhere": "Everywhere"
+      },
+      "states": {
+        "on": "Recorded",
+        "off": "Not recorded — until switched on by hand",
+        "offUntil": "Not recorded until {{time}}",
+        "inheritOn": "As above — recorded",
+        "inheritOff": "As above — not recorded"
+      },
+      "menu": {
+        "inherit": "As above",
+        "on": "On",
+        "off": "Off — until switched on by hand",
+        "off_hour": "Off — for 1 hour",
+        "off_day": "Off — until the end of the day",
+        "off_week": "Off — for 7 days"
+      },
       "kinds": {
         "login": "Sign-in",
         "login_failed": "Failed sign-in",

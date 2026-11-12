@@ -9,7 +9,8 @@ import { MemoryRouter } from 'react-router-dom'
    ⚠️ რა მოწმდება: გამორთულ ტიპზე ქსელში **არაფერი** მიდის; ჩართულზე დაჭერები
    რიგში გროვდება და ~5 წამში ერთ პაკეტად იგზავნება (წარწერით, როლით, გვერდით);
    ველზე (input) დაჭერა არ იწერება და მნიშვნელობა არსად ჩანს; ჩანაწერის გახსნა
-   მხოლოდ ჩართულ `open`-ზე იგზავნება.
+   მხოლოდ ჩართულ `open`-ზე იგზავნება; მოდულის წესი (`audit_paths`) პასუხს
+   მხოლოდ თავის მისამართებზე ცვლის — ორივე მიმართულებით.
    ============================================================ */
 
 const mocks = vi.hoisted(() => ({
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   recordOpen: vi.fn(),
   recordVisit: vi.fn(),
   kinds: [] as string[],
+  paths: {} as Record<string, Record<string, boolean>>,
 }))
 
 vi.mock('@/api/audit', async (original) => ({
@@ -28,7 +30,7 @@ vi.mock('@/api/audit', async (original) => ({
 
 vi.mock('@/lib/auth', () => {
   // ⚠️ იგივე ობიექტი ყოველ გამოძახებაზე (CLAUDE.md-ის წესი)
-  const auth = { get user() { return { audit_kinds: mocks.kinds } } }
+  const auth = { get user() { return { audit_kinds: mocks.kinds, audit_paths: mocks.paths } } }
   return { useAuth: () => auth }
 })
 
@@ -47,6 +49,7 @@ afterEach(() => {
   root = null
   container = null
   mocks.kinds = []
+  mocks.paths = {}
   vi.clearAllMocks()
   vi.useRealTimers()
 })
@@ -112,6 +115,67 @@ describe('useAuditEvents', () => {
 
     expect(mocks.sendAuditEvents).toHaveBeenCalledWith([expect.objectContaining({ label: 'შენახვა' })], true)
   })
+
+  it('keeps quiet on the pages of a module whose clicks are off', async () => {
+    mocks.kinds = ['click']
+    mocks.paths = { click: { books: false } }
+    const el = await mount((lib) => h(Events, { lib }))
+
+    act(() => (el.querySelector('[data-testid="save"]') as HTMLElement).click())
+    act(() => vi.advanceTimersByTime(6000))
+
+    expect(mocks.sendAuditEvents).not.toHaveBeenCalled()
+  })
+
+  it('sends clicks from the one module where they are on', async () => {
+    mocks.paths = { click: { books: true } }
+    const el = await mount((lib) => h(Events, { lib }))
+
+    act(() => (el.querySelector('[data-testid="save"]') as HTMLElement).click())
+    act(() => vi.advanceTimersByTime(5000))
+
+    expect(mocks.sendAuditEvents).toHaveBeenCalledTimes(1)
+    expect(mocks.sendAuditEvents.mock.calls[0][0]).toEqual([{ action: 'click', path: '/books', label: 'შენახვა', role: 'button' }])
+  })
+})
+
+describe('useVisitTracker', () => {
+  function Visit({ lib }: { lib: typeof import('@/lib/audit') }) {
+    lib.useVisitTracker()
+    return null
+  }
+
+  it('records the page unless its module has visits off', async () => {
+    mocks.kinds = ['visit']
+    mocks.paths = { visit: { books: false } }
+    await mount((lib) => h(Visit, { lib }))
+    expect(mocks.recordVisit).not.toHaveBeenCalled()
+
+    act(() => root?.unmount())
+    container?.remove()
+
+    mocks.paths = { visit: { movies: false } }
+    await mount((lib) => h(Visit, { lib }))
+    expect(mocks.recordVisit).toHaveBeenCalledWith('/books')
+  })
+
+  it('records the page of the one module where visits are on', async () => {
+    mocks.paths = { visit: { books: true } }
+    await mount((lib) => h(Visit, { lib }))
+
+    expect(mocks.recordVisit).toHaveBeenCalledWith('/books')
+  })
+})
+
+describe('pathSegment', () => {
+  it('is the first segment, or two for a private module', async () => {
+    const { pathSegment } = await import('@/lib/audit')
+
+    expect(pathSegment('/movies/7')).toBe('movies')
+    expect(pathSegment('/c/c5-recipes/3')).toBe('c/c5-recipes')
+    expect(pathSegment('/c')).toBe('c')
+    expect(pathSegment('/')).toBe('')
+  })
 })
 
 describe('useRecordOpen', () => {
@@ -130,5 +194,13 @@ describe('useRecordOpen', () => {
     mocks.kinds = ['open']
     await mount((lib) => h(Open, { lib, id: 5 }))
     expect(mocks.recordOpen).toHaveBeenCalledWith('book', 5)
+  })
+
+  it('still reports the open when the kind is on in some module only', async () => {
+    // ჩანაწერის მოდულს სერვერი ადგენს — SPA აგზავნის, თუ გახსნა სადმე მაინც იწერება
+    mocks.paths = { open: { movies: true } }
+    await mount((lib) => h(Open, { lib, id: 9 }))
+
+    expect(mocks.recordOpen).toHaveBeenCalledWith('book', 9)
   })
 })

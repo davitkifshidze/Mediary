@@ -98,6 +98,7 @@ const GalleryRecordPage = lazy(() => import('@/pages/GalleryRecordPage').then((m
 const PurgePage = lazy(() => import('@/pages/PurgePage').then((m) => ({ default: m.PurgePage })))
 const CredentialsPage = lazy(() => import('@/pages/CredentialsPage').then((m) => ({ default: m.CredentialsPage })))
 const AuditPage = lazy(() => import('@/pages/AuditPage').then((m) => ({ default: m.AuditPage })))
+const AuditRulesPage = lazy(() => import('@/pages/AuditRulesPage').then((m) => ({ default: m.AuditRulesPage })))
 
 
 /**
@@ -387,6 +388,9 @@ function AppShell() {
           {canAdmin('roles') && <Route path="roles/:id" element={<RolePage />} />}
           {/* აუდიტ-ლოგი; გვერდი თვითონაც ამოწმებს უფლებას */}
           {canAdmin('audit') && <Route path="audit" element={<AuditPage />} />}
+          {/* ჟურნალის წესები (გვერდი თვითონ ამოწმებს super_admin-ს) */}
+          <Route path="audit/rules" element={<AuditRulesPage />} />
+
           {/* ძველი მისამართები არ ტყდება */}
           <Route path="admin" element={<Navigate to="/users" replace />} />
           <Route path="admin/users/:id" element={<Navigate to="/users" replace />} />

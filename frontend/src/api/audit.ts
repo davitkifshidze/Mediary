@@ -187,7 +187,8 @@ export async function purgeAuditLogs(
    ხილული „შევედი N-ჯერ" წაიშალა (`api/visits.ts`): ჩანაწერის გახსნა
    ახლა მხოლოდ ჟურნალშია (`open`), „ვინ რა გახსნა და რამდენჯერ" კი ჟურნალის
    „გახსნების" ხედია. ⚠️ SPA მხოლოდ **ჩართულ** ტიპებს აგზავნის
-   (`user.audit_kinds`); სერვერი გამორთულს მაინც აგდებს — ეს მეორე კარიბჭეა.
+   (`user.audit_kinds`, მისამართზე გადახვევით — `user.audit_paths`); სერვერი
+   გამორთულს მაინც აგდებს — ეს მეორე კარიბჭეა.
    ============================================================ */
 
 /**
@@ -309,22 +310,63 @@ export async function fetchAuditProfiles(
   return data
 }
 
-/** „ჟურნალის პარამეტრები" (სუპერადმინი) — თითო გადამრთველი */
-export interface AuditKindSetting {
-  key: string
+/* ---------- „ჟურნალის წესები" (მთავარი ადმინი) ---------- */
+
+/** დროებითი გამორთვის ვადა; ვადის გარეშე — ხელით ჩართვამდე */
+export type AuditRuleUntil = 'hour' | 'day' | 'week'
+
+/** ერთი მოქმედი წესი: სახეობა · მოდული (ან ყველა) · მომხმარებელი (ან ყველა) */
+export interface AuditRule {
+  kind: string
+  module: string | null
+  user_id: number | null
   enabled: boolean
-  /** ჩატის წაშლა — ვერ გამოირთვება */
-  protected: boolean
+  /** მხოლოდ დროებით გამორთულზე — ამ დროის შემდეგ წესი აღარ მოქმედებს */
+  expires_at: string | null
 }
 
-export async function fetchAuditSettings(): Promise<AuditKindSetting[]> {
-  const { data } = await api.get('/admin/audit/settings')
+export interface AuditRuleKind {
+  key: string
+  /** ჩატის წაშლა — ვერ გამოირთვება */
+  protected: boolean
+  /** მოდული არ აქვს (შესვლა, გასვლა…) — მხოლოდ „ყველგან" უჯრა */
+  moduleless: boolean
+}
+
+export interface AuditRuleModule {
+  key: string
+  name_ka: string | null
+  name_en: string | null
+  /** პირადი მოდულის მფლობელი; საბაზისოსა და ფსევდო-ჭრილზე — `null` */
+  owner_id: number | null
+  owner: string | null
+}
+
+export interface AuditRulesData {
+  kinds: AuditRuleKind[]
+  until: AuditRuleUntil[]
+  modules: AuditRuleModule[]
+  users: { id: number; name: string; username: string | null }[]
+  rules: AuditRule[]
+}
+
+/** ერთი შეცვლილი უჯრა; `inherit` — „როგორც ზემოთ" (რიგი იშლება) */
+export interface AuditRuleChange {
+  kind: string
+  module: string | null
+  user_id: number | null
+  state: 'on' | 'off' | 'inherit'
+  until?: AuditRuleUntil | null
+}
+
+export async function fetchAuditRules(): Promise<AuditRulesData> {
+  const { data } = await api.get('/admin/audit/rules')
   return data.data
 }
 
-/** მხოლოდ გამორთულები იგზავნება — ნაგულისხმევად ყველაფერი ჩართულია */
-export async function saveAuditSettings(off: string[]): Promise<AuditKindSetting[]> {
-  const { data } = await api.put('/admin/audit/settings', { off })
+/** მხოლოდ შეცვლილი უჯრები იგზავნება; პასუხი — ახალი სრული მდგომარეობა */
+export async function saveAuditRules(rules: AuditRuleChange[]): Promise<AuditRulesData> {
+  const { data } = await api.put('/admin/audit/rules', { rules })
   return data.data
 }
 

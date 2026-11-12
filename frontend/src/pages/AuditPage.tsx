@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Lock, Search, Trash2, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { AlertTriangle, Lock, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import {
   fetchAuditLogs,
   fetchAuditMeta,
@@ -16,11 +17,10 @@ import { useAuth } from '@/lib/auth'
 import { AuditOpens } from '@/components/audit/AuditOpens'
 import { AuditProfiles } from '@/components/audit/AuditProfiles'
 import { AuditScope } from '@/components/audit/AuditScope'
-import { AuditSettingsPanel } from '@/components/audit/AuditSettingsPanel'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DateRangePicker } from '@/components/ui/date-picker'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -56,8 +56,9 @@ import { EmptyState } from '@/components/ui/empty-state'
    **შიგნით** მუშაობს: ვისი · რა პერიოდის · ტექსტური ძებნა.
 
    ⚠️ **სამი ხედი**: „ჟურნალი" (ეს სია), „გახსნები" (ვინ რა გახსნა და
-   რამდენჯერ — `AuditOpens`, იმავე ფილტრით) და „პარამეტრები" (რა იწერება —
-   `AuditSettingsPanel`, **მხოლოდ სუპერადმინს**: გადამრთველი ყველა ანგარიშს ეხება).
+   რამდენჯერ — `AuditOpens`, იმავე ფილტრით) და „პროფილები" (`AuditProfiles`,
+   **მხოლოდ სუპერადმინს**). რა იწერება — ცალკე გვერდია: „ჟურნალის წესები"
+   (`AuditRulesPage`, ბმული სათაურის ზოლში, ისიც მხოლოდ სუპერადმინს).
    ============================================================ */
 
 const CONFIRM_WORD = 'DELETE'
@@ -91,7 +92,7 @@ const ACTION_TONE: Record<AuditAction, string> = {
   profile_visit: 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
 }
 
-type AuditView = 'log' | 'opens' | 'profiles' | 'settings'
+type AuditView = 'log' | 'opens' | 'profiles'
 
 export function AuditPage() {
   const { t, i18n } = useTranslation()
@@ -100,7 +101,7 @@ export function AuditPage() {
   const qc = useQueryClient()
   const fmt = useDateFormat()
 
-  /** ჟურნალი · გახსნები · პარამეტრები (ბოლო — მხოლოდ სუპერადმინს) */
+  /** ჟურნალი · გახსნები · პროფილები (ბოლო — მხოლოდ სუპერადმინს) */
   const [view, setView] = useState<AuditView>('log')
   /** გამოყენებული ფილტრი — სია, გეგმა და წაშლა სამივე მასზე დგას */
   const [filters, setFilters] = useState<AuditFilters>({})
@@ -184,13 +185,8 @@ export function AuditPage() {
   const views: TabItem<AuditView>[] = [
     { value: 'log', label: t('audit.views.log') },
     { value: 'opens', label: t('audit.views.opens') },
-    // „ვინ შევიდა ვის პროფილში" და პარამეტრები — მხოლოდ სუპერადმინს
-    ...(me?.is_super_admin
-      ? [
-          { value: 'profiles' as AuditView, label: t('audit.views.profiles') },
-          { value: 'settings' as AuditView, label: t('audit.views.settings') },
-        ]
-      : []),
+    // „ვინ შევიდა ვის პროფილში" — მხოლოდ სუპერადმინს
+    ...(me?.is_super_admin ? [{ value: 'profiles' as AuditView, label: t('audit.views.profiles') }] : []),
   ]
 
   return (
@@ -199,199 +195,201 @@ export function AuditPage() {
         tool="audit"
         title={t('audit.title')}
         hint={<InfoHint info={t('audit.subtitle')} critical={t('audit.subtitleWarn')} />}
+        actions={
+          me?.is_super_admin && (
+            <Link to="/audit/rules" className={buttonVariants({ variant: 'outline', size: 'sm' })} data-testid="audit-rules-link">
+              <SlidersHorizontal className="size-3.5" />
+              {t('audit.rules.title')}
+            </Link>
+          )
+        }
       />
 
       <Tabs items={views} value={view} onChange={setView} className="mb-5" />
 
-      {view === 'settings' ? (
-        <AuditSettingsPanel />
+      {/* ---------- ჭრილები: მოქმედების ტაბები + მოდულის ბარათები ---------- */}
+      {view === 'log' && (
+        <AuditScope
+          meta={meta}
+          summary={summary}
+          filters={filters}
+          onChange={(next) => apply(next)}
+        />
+      )}
+
+      {/* ---------- ჭრილის შიგნით: ვისი · როდის · ძებნა ---------- */}
+      <section className="mb-6 rounded-xl border border-border bg-card/40 p-4">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="audit-user">{t('audit.filters.user')}</Label>
+            <Select
+              value={filters.user_id ? String(filters.user_id) : 'all'}
+              onValueChange={(v) => apply({ user_id: v === 'all' ? null : Number(v) })}
+            >
+              <SelectTrigger id="audit-user">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('audit.filters.allUsers')}</SelectItem>
+                {meta?.users.map((u) => (
+                  <SelectItem key={u.id} value={String(u.id)}>
+                    {u.name} · {u.username}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="audit-range">{t('audit.filters.period')}</Label>
+            <DateRangePicker
+              id="audit-range"
+              value={{ from: filters.from ?? null, to: filters.to ?? null }}
+              onChange={(range) => apply({ from: range.from, to: range.to })}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="audit-q">{t('audit.filters.search')}</Label>
+            <div className="flex gap-2">
+              <Input
+                id="audit-q"
+                value={search}
+                placeholder={t('audit.filters.searchHint')}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && apply({ q: search })}
+              />
+              <Button variant="secondary" onClick={() => apply({ q: search })}>
+                <Search className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {view === 'opens' ? (
+        <AuditOpens filters={filters} moduleName={moduleName} />
+      ) : view === 'profiles' ? (
+        <AuditProfiles filters={filters} />
       ) : (
         <>
-          {/* ---------- ჭრილები: მოქმედების ტაბები + მოდულის ბარათები ---------- */}
-          {view === 'log' && (
-            <AuditScope
-              meta={meta}
-              summary={summary}
-              filters={filters}
-              onChange={(next) => apply(next)}
-            />
-          )}
-
-          {/* ---------- ჭრილის შიგნით: ვისი · როდის · ძებნა ---------- */}
-          <section className="mb-6 rounded-xl border border-border bg-card/40 p-4">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="audit-user">{t('audit.filters.user')}</Label>
-                <Select
-                  value={filters.user_id ? String(filters.user_id) : 'all'}
-                  onValueChange={(v) => apply({ user_id: v === 'all' ? null : Number(v) })}
+          {/* ---------- მოქმედებები მონიშნულებზე ---------- */}
+          <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
+            <span className="text-muted-foreground">{t('audit.total', { count: total })}</span>
+            {canDelete && (
+              <>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={selected.length === 0}
+                  onClick={() => setConfirming('selected')}
                 >
-                  <SelectTrigger id="audit-user">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t('audit.filters.allUsers')}</SelectItem>
-                    {meta?.users.map((u) => (
-                      <SelectItem key={u.id} value={String(u.id)}>
-                        {u.name} · {u.username}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  <Trash2 className="size-4" />
+                  {t('audit.deleteSelected', { count: selected.length })}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setConfirming('filter')}>
+                  <Trash2 className="size-4" />
+                  {t('audit.deleteFiltered')}
+                </Button>
+              </>
+            )}
+          </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="audit-range">{t('audit.filters.period')}</Label>
-                <DateRangePicker
-                  id="audit-range"
-                  value={{ from: filters.from ?? null, to: filters.to ?? null }}
-                  onChange={(range) => apply({ from: range.from, to: range.to })}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="audit-q">{t('audit.filters.search')}</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="audit-q"
-                    value={search}
-                    placeholder={t('audit.filters.searchHint')}
-                    onChange={(e) => setSearch(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && apply({ q: search })}
-                  />
-                  <Button variant="secondary" onClick={() => apply({ q: search })}>
-                    <Search className="size-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {view === 'opens' ? (
-            <AuditOpens filters={filters} moduleName={moduleName} />
-          ) : view === 'profiles' ? (
-            <AuditProfiles filters={filters} />
-          ) : (
-            <>
-              {/* ---------- მოქმედებები მონიშნულებზე ---------- */}
-              <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
-                <span className="text-muted-foreground">{t('audit.total', { count: total })}</span>
-                {canDelete && (
-                  <>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={selected.length === 0}
-                      onClick={() => setConfirming('selected')}
-                    >
-                      <Trash2 className="size-4" />
-                      {t('audit.deleteSelected', { count: selected.length })}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setConfirming('filter')}>
-                      <Trash2 className="size-4" />
-                      {t('audit.deleteFiltered')}
-                    </Button>
-                  </>
+          {/* ---------- სია ---------- */}
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="w-10 p-2">
+                    {canDelete && (
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={(v) =>
+                          setSelected(v ? selectableIds : [])
+                        }
+                        aria-label={t('audit.selectAll')}
+                      />
+                    )}
+                  </th>
+                  <th className="p-2">{t('audit.columns.when')}</th>
+                  <th className="p-2">{t('audit.columns.who')}</th>
+                  <th className="p-2">{t('audit.columns.action')}</th>
+                  <th className="p-2">{t('audit.columns.module')}</th>
+                  <th className="p-2">{t('audit.columns.subject')}</th>
+                  <th className="p-2">{t('audit.columns.how')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading && (
+                  <tr>
+                    <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                      {t('common.loading')}
+                    </td>
+                  </tr>
                 )}
-              </div>
-
-              {/* ---------- სია ---------- */}
-              <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-                    <tr>
-                      <th className="w-10 p-2">
-                        {canDelete && (
+                {!isLoading && rows.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-2">
+                      <EmptyState size="compact" title={t('audit.empty')} />
+                    </td>
+                  </tr>
+                )}
+                {rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    onClick={() => setDiff(row)}
+                    className="cursor-pointer border-t border-border transition-colors hover:bg-muted/40"
+                  >
+                    <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                      {canDelete &&
+                        (row.is_protected ? (
+                          // ეს რიგი აღდგენის აღრიცხვაა და არ იშლება
+                          <Lock className="size-4 text-muted-foreground" aria-label={t('audit.protected')} />
+                        ) : (
                           <Checkbox
-                            checked={allSelected}
+                            checked={selected.includes(row.id)}
                             onCheckedChange={(v) =>
-                              setSelected(v ? selectableIds : [])
+                              setSelected((s) => (v ? [...s, row.id] : s.filter((id) => id !== row.id)))
                             }
-                            aria-label={t('audit.selectAll')}
                           />
+                        ))}
+                    </td>
+                    <td className="whitespace-nowrap p-2 text-muted-foreground">
+                      {fmt.dateTime(row.created_at)}
+                    </td>
+                    <td className="p-2">{row.user?.username ?? row.user_label ?? '—'}</td>
+                    <td className="p-2">
+                      <span
+                        className={cn(
+                          'rounded-md px-2 py-0.5 text-xs',
+                          ACTION_TONE[row.action as AuditAction] ?? 'bg-muted text-muted-foreground',
                         )}
-                      </th>
-                      <th className="p-2">{t('audit.columns.when')}</th>
-                      <th className="p-2">{t('audit.columns.who')}</th>
-                      <th className="p-2">{t('audit.columns.action')}</th>
-                      <th className="p-2">{t('audit.columns.module')}</th>
-                      <th className="p-2">{t('audit.columns.subject')}</th>
-                      <th className="p-2">{t('audit.columns.how')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoading && (
-                      <tr>
-                        <td colSpan={7} className="p-6 text-center text-muted-foreground">
-                          {t('common.loading')}
-                        </td>
-                      </tr>
-                    )}
-                    {!isLoading && rows.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="p-2">
-                          <EmptyState size="compact" title={t('audit.empty')} />
-                        </td>
-                      </tr>
-                    )}
-                    {rows.map((row) => (
-                      <tr
-                        key={row.id}
-                        onClick={() => setDiff(row)}
-                        className="cursor-pointer border-t border-border transition-colors hover:bg-muted/40"
                       >
-                        <td className="p-2" onClick={(e) => e.stopPropagation()}>
-                          {canDelete &&
-                            (row.is_protected ? (
-                              // ეს რიგი აღდგენის აღრიცხვაა და არ იშლება
-                              <Lock className="size-4 text-muted-foreground" aria-label={t('audit.protected')} />
-                            ) : (
-                              <Checkbox
-                                checked={selected.includes(row.id)}
-                                onCheckedChange={(v) =>
-                                  setSelected((s) => (v ? [...s, row.id] : s.filter((id) => id !== row.id)))
-                                }
-                              />
-                            ))}
-                        </td>
-                        <td className="whitespace-nowrap p-2 text-muted-foreground">
-                          {fmt.dateTime(row.created_at)}
-                        </td>
-                        <td className="p-2">{row.user?.username ?? row.user_label ?? '—'}</td>
-                        <td className="p-2">
-                          <span
-                            className={cn(
-                              'rounded-md px-2 py-0.5 text-xs',
-                              ACTION_TONE[row.action as AuditAction] ?? 'bg-muted text-muted-foreground',
-                            )}
-                          >
-                            {t(`audit.actions.${row.action}`, row.action)}
-                          </span>
-                        </td>
-                        <td className="p-2 text-muted-foreground">
-                          {row.module ? moduleName(row.module) : '—'}
-                        </td>
-                        <td className="max-w-[22rem] truncate p-2">
-                          {row.subject?.label ?? (row.subject ? `#${row.subject.id}` : '—')}
-                          {row.subject && (
-                            <span className="ml-1 text-xs text-muted-foreground">
-                              {t(`audit.subjects.${row.subject.type}`, row.subject.type)}
-                            </span>
-                          )}
-                        </td>
-                        <td className="max-w-[16rem] truncate p-2 text-xs text-muted-foreground">
-                          {row.method} /{row.route}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        {t(`audit.actions.${row.action}`, row.action)}
+                      </span>
+                    </td>
+                    <td className="p-2 text-muted-foreground">
+                      {row.module ? moduleName(row.module) : '—'}
+                    </td>
+                    <td className="max-w-[22rem] truncate p-2">
+                      {row.subject?.label ?? (row.subject ? `#${row.subject.id}` : '—')}
+                      {row.subject && (
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          {t(`audit.subjects.${row.subject.type}`, row.subject.type)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="max-w-[16rem] truncate p-2 text-xs text-muted-foreground">
+                      {row.method} /{row.route}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-              {/* ---------- გვერდები ---------- */}
-              <Pagination className="mt-4" {...log.pagination} />
-            </>
-          )}
+          {/* ---------- გვერდები ---------- */}
+          <Pagination className="mt-4" {...log.pagination} />
         </>
       )}
 

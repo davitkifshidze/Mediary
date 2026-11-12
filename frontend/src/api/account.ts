@@ -47,6 +47,12 @@ export interface User {
    * `click`); მხოლოდ საკუთარ თავზე მოდის. გამორთულზე ქსელში არაფერი მიდის.
    */
   audit_kinds?: string[]
+  /**
+   * სად განსხვავდება პასუხი `audit_kinds`-ისგან: ტიპი → მისამართის პირველი
+   * სეგმენტი (პირად მოდულზე `c/{key}`) → იწერება თუ არა. მოდულის წესები
+   * სერვერზეა; SPA მხოლოდ სეგმენტს ეძებს.
+   */
+  audit_paths?: Record<string, Record<string, boolean>>
   created_at: string | null
   /** ადმინის მიერ მინიჭებული მოდულები */
   modules?: string[]

@@ -3,7 +3,7 @@
 use App\Http\Controllers\Api\ActorController;
 use App\Http\Controllers\Api\ActorLockController;
 use App\Http\Controllers\Api\Admin\AdminAuditController;
-use App\Http\Controllers\Api\Admin\AdminAuditSettingsController;
+use App\Http\Controllers\Api\Admin\AdminAuditRulesController;
 use App\Http\Controllers\Api\Admin\AdminInstallationController;
 use App\Http\Controllers\Api\Admin\AdminModuleController;
 use App\Http\Controllers\Api\Admin\AdminPurgeController;
@@ -1631,11 +1631,11 @@ Route::middleware('auth:sanctum')->group(function () {
           და ურნის ზედა ზღვარი. */
         Route::put('/uploads/limits', [AdminInstallationController::class, 'updateUploads']);
         Route::put('/settings/trash', [AdminInstallationController::class, 'updateTrash']);
-        /* „ჟურნალის პარამეტრები": რომელი ტიპი იწერება (ყველა ანგარიშზე) */
-        Route::get('/audit/settings', [AdminAuditSettingsController::class, 'show']);
+        /* „ჟურნალის წესები": რომელი ტიპი იწერება — გლობალურად, მოდულზე, მომხმარებელზე */
+        Route::get('/audit/rules', [AdminAuditRulesController::class, 'index']);
+        Route::put('/audit/rules', [AdminAuditRulesController::class, 'update']);
         /* „ვინ შევიდა ვის პროფილში და რა გადმოიტანა" — მხოლოდ სუპერადმინი */
         Route::get('/audit/profiles', [AdminAuditController::class, 'profiles']);
-        Route::put('/audit/settings', [AdminAuditSettingsController::class, 'update']);
 
         /* მასობრივი წაშლა — ორნაბიჯიანი: გეგმა, მერე `confirm=DELETE` */
         Route::post('/purge/plan', [AdminPurgeController::class, 'plan']);

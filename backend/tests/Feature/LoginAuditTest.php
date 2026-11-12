@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Support\AppSettings;
-use App\Support\AuditSettings;
+use App\Support\AuditRules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -81,7 +81,7 @@ class LoginAuditTest extends TestCase
         $this->assertSame(0, $this->failures()->count());
 
         $this->postJson('/api/auth/logout')->assertNoContent();
-        AuditSettings::save(['login_failed']);
+        AuditRules::apply([['kind' => 'login_failed', 'state' => 'off']]);
 
         $this->postJson('/api/auth/login', ['login' => 'alice', 'password' => 'wrong-pass-9'])->assertStatus(422);
         $this->assertSame(0, $this->failures()->count());

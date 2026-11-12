@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AuditRules;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +42,9 @@ class Module extends Model
         static::addGlobalScope('trash', function (Builder $q) {
             $q->whereNull($q->getModel()->getTable().'.trashed_at');
         });
+
+        // საბოლოოდ წაშლილი მოდულის ჟურნალის წესები — იგივე გასაღებით ახალს ძველი წესი არ უნდა დახვდეს
+        static::deleted(fn (Module $module) => AuditRules::forgetModule((string) $module->key));
     }
 
     public function users(): BelongsToMany

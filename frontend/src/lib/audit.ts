@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   AUDIT_EVENT_BATCH,
@@ -15,13 +15,44 @@ import { useAuth } from '@/lib/auth'
 
    ოთხი ტიპი იგზავნება აქედან: გვერდზე გადასვლა (`visit`), ჩანაწერის გახსნა
    (`open`), განახლება (`refresh`) და დაჭერა (`click`). ⚠️ **მხოლოდ ჩართული**
-   — სუპერადმინის გადამრთველები `/auth/me`-ში მოდის (`user.audit_kinds`);
-   გამორთულზე ქსელში არაფერი მიდის (სერვერი მაინც აგდებს — მეორე კარიბჭე).
+   — მთავარი ადმინის წესები `/auth/me`-ში მოდის: `user.audit_kinds` (რა იწერება
+   ამ ანგარიშზე) და `user.audit_paths` (რომელ მისამართზეა პასუხი სხვა — მოდულის
+   წესი). გამორთულზე ქსელში არაფერი მიდის (სერვერი მაინც აგდებს — მეორე კარიბჭე).
    ============================================================ */
 
-/** SPA-ს ჩართული ტიპები; ავტორიზაციის გარეშე — არცერთი */
-function useAuditKinds(): readonly string[] {
-  return useAuth().user?.audit_kinds ?? []
+const NO_KINDS: readonly string[] = []
+const NO_PATHS: Record<string, Record<string, boolean>> = {}
+
+/**
+ * მისამართის ის ნაწილი, რომლითაც სერვერი მოდულს ცნობს: პირველი სეგმენტი,
+ * პირადი მოდულის გვერდზე — ორი (`c/{key}`).
+ */
+export function pathSegment(pathname: string): string {
+  const parts = pathname.split('/').filter(Boolean)
+
+  return parts[0] === 'c' && parts[1] ? `c/${parts[1]}` : (parts[0] ?? '')
+}
+
+interface AuditGate {
+  /** ეს ტიპი ამ მისამართზე იწერება? */
+  on: (kind: string, pathname: string) => boolean
+  /** ტიპი სადმე მაინც იწერება? — მსმენელი საერთოდ საჭიროა თუ არა */
+  anywhere: (kind: string) => boolean
+}
+
+/** SPA-ს კარიბჭე; ავტორიზაციის გარეშე არაფერი იწერება */
+function useAuditGate(): AuditGate {
+  const user = useAuth().user
+  const kinds = user?.audit_kinds ?? NO_KINDS
+  const paths = user?.audit_paths ?? NO_PATHS
+
+  return useMemo(
+    () => ({
+      on: (kind, pathname) => paths[kind]?.[pathSegment(pathname)] ?? kinds.includes(kind),
+      anywhere: (kind) => kinds.includes(kind) || Object.values(paths[kind] ?? {}).some(Boolean),
+    }),
+    [kinds, paths],
+  )
 }
 
 /**
@@ -41,7 +72,7 @@ function useAuditKinds(): readonly string[] {
 export function useVisitTracker(): void {
   const { pathname } = useLocation()
   const last = useRef<string | null>(null)
-  const enabled = useAuditKinds().includes('visit')
+  const enabled = useAuditGate().on('visit', pathname)
 
   useEffect(() => {
     if (!enabled || last.current === pathname) return
@@ -55,9 +86,13 @@ export function useVisitTracker(): void {
  * **ჩანაწერის გახსნა** — ყოფილი `VisitBadge`-ის ადგილი: ბეჯი
  * წაიშალა, ჩაწერა კი დეტალის გახსნაზე რჩება (ფილმის გვერდის მაუნთი, ფანჯრის
  * გახსნა). იგივე ჩანაწერი იმავე ადამიანისგან წუთში ერთხელ — სერვერზე.
+ *
+ * ⚠️ ჩანაწერის მოდულს სერვერი ჩანაწერიდან ადგენს და არა მისამართიდან (ფანჯარა
+ * სხვა გვერდიდანაც იხსნება), ამიტომ აქ სიგნალი მიდის, თუ გახსნა **სადმე მაინც**
+ * იწერება — მოდულის წესს სერვერი წყვეტს.
  */
 export function useRecordOpen(type: OpenType, id: number | null | undefined): void {
-  const enabled = useAuditKinds().includes('open')
+  const enabled = useAuditGate().anywhere('open')
 
   useEffect(() => {
     if (!enabled || id == null) return
@@ -115,9 +150,9 @@ let refreshReported = false
 export function useAuditEvents(): void {
   const { pathname } = useLocation()
   const path = useRef(pathname)
-  const kinds = useAuditKinds()
-  const clicks = kinds.includes('click')
-  const refresh = kinds.includes('refresh')
+  const gate = useAuditGate()
+  const clicks = gate.anywhere('click')
+  const refresh = gate.on('refresh', window.location.pathname)
 
   useEffect(() => {
     path.current = pathname
@@ -143,6 +178,9 @@ export function useAuditEvents(): void {
     }
 
     const onClick = (e: MouseEvent) => {
+      // მოდულის წესი: ამ გვერდზე დაჭერა შეიძლება არ იწერებოდეს, სხვაგან კი იწერებოდეს
+      if (!gate.on('click', path.current)) return
+
       const event = clickEvent(e.target, path.current)
       if (!event) return
       queue.push(event)
@@ -161,5 +199,5 @@ export function useAuditEvents(): void {
       window.clearInterval(timer)
       flush()
     }
-  }, [clicks])
+  }, [clicks, gate])
 }

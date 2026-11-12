@@ -81,7 +81,7 @@ final class ModuleTables
     /** სისტემის ცხრილები — ანგარიშები, უფლებები, ჟურნალი, რიგები, ჩატი, ურნა… */
     public const SYSTEM = [
         'users', 'roles', 'modules', 'module_user', 'app_settings', 'user_credentials', 'user_blocks',
-        'audit_logs', 'approval_requests', 'notifications', 'serp_searches', 'translation_usages',
+        'audit_logs', 'audit_rules', 'approval_requests', 'notifications', 'serp_searches', 'translation_usages',
         'trash_entries', 'trashed_files', 'trashed_messages', 'share_links', 'share_link_imports',
         'conversations', 'conversation_user', 'conversation_nicknames', 'messages', 'message_hides', 'message_reactions',
         'batch_items', 'database_backups', 'goals',

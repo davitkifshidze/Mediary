@@ -4,7 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Role;
 use App\Services\Storage\StorageMeter;
-use App\Support\AuditSettings;
+use App\Support\AuditRules;
 use App\Support\CustomModules;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -69,11 +69,18 @@ class UserResource extends JsonResource
                მეორე ფაქტორი ჯერ არ მოქმედებს — და გვერდი სწორედ ამას ხატავს. */
             'two_factor_enabled' => $this->hasTwoFactor(),
             /* რომელ ჟურნალის ტიპს აგზავნის SPA (გვერდი · განახლება · გახსნა ·
-               დაჭერა); გამორთულზე ქსელში არაფერი მიდის. ⚠️ მხოლოდ საკუთარ თავზე —
-               ადმინის მომხმარებლების სიაში ეს ველი არაფერს ნიშნავს. */
+               დაჭერა) ამ ანგარიშზე, და რომელ მისამართზეა პასუხი სხვა (`audit_paths`:
+               ტიპი → მისამართის პირველი სეგმენტი → იწერება თუ არა); გამორთულზე
+               ქსელში არაფერი მიდის. ⚠️ მხოლოდ საკუთარ თავზე — ადმინის მომხმარებლების
+               სიაში ეს ველები არაფერს ნიშნავს. */
             'audit_kinds' => $this->when(
                 (int) $request->user()?->getAuthIdentifier() === (int) $this->id,
-                fn () => AuditSettings::clientKinds(),
+                fn () => AuditRules::clientKinds($this->id),
+            ),
+            'audit_paths' => $this->when(
+                (int) $request->user()?->getAuthIdentifier() === (int) $this->id,
+                // ცარიელიც ობიექტია (`{}`) და არა სია
+                fn () => (object) AuditRules::clientPaths($this->id),
             ),
             'two_factor_pending' => ! $this->hasTwoFactor() && (bool) $this->two_factor_secret,
             'settings' => $this->settings,

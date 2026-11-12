@@ -8,6 +8,7 @@ use App\Models\AnimeTranslation;
 use App\Models\ApprovalRequest;
 use App\Models\AppSetting;
 use App\Models\AuditLog;
+use App\Models\AuditRule;
 use App\Models\BatchItem;
 use App\Models\BoardGame;
 use App\Models\BoardGameFile;
@@ -243,6 +244,9 @@ class AuditRegistry
         /* ინსტალაციის პარამეტრი (ატვირთვის ლიმიტები, ურნის
            ზედა ზღვარი): „ვინ შეცვალა ლიმიტი ყველასთვის" ადმინის ჭრილში ჩანს */
         AppSetting::class => 'admin',
+        /* ჟურნალის წესი: „ვინ გამორთო დაჭერები და ვისზე" — `AuditLogger` ამ რიგს
+           წესების მიუხედავად წერს */
+        AuditRule::class => 'admin',
         ApprovalRequest::class => 'admin',
         Conversation::class => 'chat',
         Message::class => 'chat',
@@ -310,6 +314,25 @@ class AuditRegistry
 
     /** მოდულის რიგის გარეშე არსებული ჭრილები — ფილტრში მოდულების გვერდით ჩანს */
     public const PSEUDO_MODULES = ['account', 'admin', 'chat', 'genre', 'cast'];
+
+    /**
+     * SPA-ს მისამართის პირველი სეგმენტი → ფსევდო-ჭრილი: გვერდები, რომლებსაც
+     * `modules.route_base` არ აღწერს. ორი მკითხველი ჰყავს — `AuditLogger`
+     * (მისამართი → მოდული) და `AuditRules` (მოდული → მისამართები, SPA-სთვის).
+     */
+    public const PATH_MODULES = [
+        'users' => 'admin',
+        'roles' => 'admin',
+        'requests' => 'admin',
+        'purge' => 'admin',
+        'audit' => 'admin',
+        'settings' => 'account',
+        'profile' => 'account',
+        'people' => 'account',
+        'chat' => 'chat',
+        'genres' => 'genre',
+        'actors' => 'cast',
+    ];
 
     /**
      * ველები, რომლებიც ლოგში **არასდროს** ხვდება.

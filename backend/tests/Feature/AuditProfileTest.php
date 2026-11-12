@@ -144,7 +144,7 @@ class AuditProfileTest extends TestCase
     public function test_the_switch_turns_profile_visits_off(): void
     {
         $this->actingAs($this->admin)
-            ->putJson('/api/admin/audit/settings', ['off' => ['profile_visit']])
+            ->putJson('/api/admin/audit/rules', ['rules' => [['kind' => 'profile_visit', 'state' => 'off']]])
             ->assertOk();
 
         $this->actingAs($this->visitor)->getJson('/api/public/profiles/davit')->assertOk();

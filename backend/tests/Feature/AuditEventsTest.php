@@ -6,7 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Module;
 use App\Models\User;
 use App\Support\AppSettings;
-use App\Support\AuditSettings;
+use App\Support\AuditRules;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -99,7 +99,7 @@ class AuditEventsTest extends TestCase
 
     public function test_a_disabled_kind_is_dropped_on_the_server_too(): void
     {
-        AuditSettings::save(['click']);
+        AuditRules::apply([['kind' => 'click', 'state' => 'off']]);
 
         $this->actingAs($this->user)->postJson('/api/audit/events', ['events' => [
             ['action' => 'click', 'path' => '/books', 'role' => 'button'],
