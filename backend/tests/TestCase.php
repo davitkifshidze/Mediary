@@ -11,6 +11,7 @@ use App\Support\CredentialProviders;
 use App\Support\CustomModules;
 use App\Support\SafeHttp;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Storage;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -41,6 +42,14 @@ abstract class TestCase extends BaseTestCase
         CustomModules::flush();
         // ⚠️ ტესტი DNS-ს არ ეკითხება: კონტეინერიდან აღებული `SafeHttp` ჰოსტის სახელს ქსელის გარეშე ხსნის
         $this->app->bind(SafeHttp::class, OfflineSafeHttp::class);
+        /* ⚠️ **ტესტი დეველოპერის ნამდვილ დისკზე არ წერს.** ორი ტესტი `Storage::fake()`-ს
+           არ იძახებდა და ყოველი გაშვება `storage/app/public`-ში ფაილს ტოვებდა
+           (ოთხბაიტიანი `gallery/images/*.jpg`, `videos/files/docs/v.pdf`) — ისინი
+           ობოლი ფაილების სკანერსა და საცავის შემოწმებებში ჩანდა. ყალბი დისკი აქ
+           ყველა ტესტს აქვს; ტესტი, რომელსაც სუფთა დისკი შუა გზაზე სჭირდება, მას
+           თავიდან აყენებს. */
+        Storage::fake('public');
+        Storage::fake('private');
     }
 
     /**

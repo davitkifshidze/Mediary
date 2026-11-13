@@ -190,7 +190,11 @@ class BackupRunner
             'status' => $status,
             'error' => $error,
             'note' => 'restored '.now()->toDateTimeString(),
-            'finished_at' => now(),
+            /* ⚠️ **წარმატებულ აღდგენაზე `finished_at` დამპის გადაღების დროდ რჩება**
+               (აღდგენის დრო `note`-შია): ეს სვეტი „როდის არის ეს ასლი"-ს პასუხია —
+               მასზე დგას `mediary:doctor`-ის „ბოლო ასლი" და ურნის წმენდის დაცვა, და
+               სამი კვირის წინანდელი დამპის აღდგენა მას „დღევანდელ ასლად" აქცევდა. */
+            'finished_at' => $status === DatabaseBackup::STATUS_READY ? ($target['finished_at'] ?? now()) : now(),
         ]);
 
         if ($status === DatabaseBackup::STATUS_READY) {

@@ -31,6 +31,7 @@ Mediary — a personal, bilingual (Georgian/English), multi-user media catalog.
 powershell -File C:\xampp\mysql\dumps\start-mysql.ps1   # 1. MariaDB (XAMPP): port 3306, db `mediary`, user root, no password
 cd backend && php artisan serve --port=8000              # 2. API
 cd frontend && npm run dev                               # 3. SPA → http://localhost:5173
+cd backend && php artisan schedule:work                  # 4. scheduler — manual like the rest; without it nothing time-based runs
 ```
 
 - MariaDB is not a Windows service. Start it with the script above (it repairs the known Aria and replication-file failures and prints the real log lines), stop it with `mysqladmin -u root --protocol=tcp shutdown` — never by closing the window. Registering it as a service named `MySQL` needs an elevated shell and is still pending.

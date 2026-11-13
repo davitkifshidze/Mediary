@@ -314,6 +314,76 @@ class DatabaseBackupTest extends TestCase
         $this->assertDatabaseHas('database_backups', ['id' => $manual->id]);
     }
 
+    /**
+     * ⚠️ **ჩავარდნილი ღამე კარგ ასლს ვერ აძევებს.** `keep` რიგებს ითვლიდა და
+     * არა ასლებს: ორი კარგი ასლის შემდეგ ორი ჩავარდნა და ერთი ახალი კარგი —
+     * და `keep=2`-ზე ერთადერთი ძველი კარგი ასლი იშლებოდა.
+     */
+    public function test_keep_counts_only_the_copies_that_succeeded(): void
+    {
+        config()->set('mediary.backup.auto', true);
+        $this->fakeDumper();
+
+        $this->artisan('backups:auto', ['--keep' => 2])->assertSuccessful();
+        $this->artisan('backups:auto', ['--keep' => 2])->assertSuccessful();
+        $good = DatabaseBackup::where('source', DatabaseBackup::SOURCE_SCHEDULE)->orderBy('id')->pluck('id')->all();
+
+        // ორი ჩავარდნილი ღამე — რიგი არსებობს, ფაილი არა
+        foreach (range(1, 2) as $_) {
+            DatabaseBackup::create([
+                'user_id' => $this->admin->id, 'name' => 'failed.sql.gz', 'status' => DatabaseBackup::STATUS_FAILED,
+                'driver' => 'mysql', 'source' => DatabaseBackup::SOURCE_SCHEDULE, 'started_at' => now(), 'finished_at' => now(),
+            ]);
+        }
+
+        $this->artisan('backups:auto', ['--keep' => 2])->assertSuccessful();
+
+        $ready = DatabaseBackup::where('source', DatabaseBackup::SOURCE_SCHEDULE)
+            ->where('status', DatabaseBackup::STATUS_READY)->orderBy('id')->pluck('id')->all();
+
+        // ორი კარგი ასლი რჩება: ბოლო ძველი და ახალი; ყველაზე ძველი კარგი — წაშლილია
+        $this->assertCount(2, $ready);
+        $this->assertSame($good[1], $ready[0]);
+        // ბოლო შენახულ ასლზე ახალი ჩავარდნა ისტორიაში რჩება
+        $this->assertSame(2, DatabaseBackup::where('status', DatabaseBackup::STATUS_FAILED)->count());
+
+        // კიდევ ერთი კარგი ღამე: ძველი ჩავარდნები ბოლო შენახულ ასლზე ძველია და ქრება
+        $this->artisan('backups:auto', ['--keep' => 2])->assertSuccessful();
+        $this->artisan('backups:auto', ['--keep' => 2])->assertSuccessful();
+        $this->assertSame(0, DatabaseBackup::where('status', DatabaseBackup::STATUS_FAILED)->count());
+        $this->assertSame(2, DatabaseBackup::where('source', DatabaseBackup::SOURCE_SCHEDULE)->count());
+    }
+
+    /**
+     * ⚠️ **ურნის წმენდას მხოლოდ აქ გადაღებული ახალი ასლი ხსნის.** ატვირთული ფაილი
+     * სხვა დროის (ან სხვა ბაზის) ასლია და მისი `finished_at` ატვირთვის წამია —
+     * ძველი დამპის ატვირთვა წმენდას „ახალი ასლით" ხსნიდა.
+     */
+    public function test_an_uploaded_dump_does_not_unlock_the_trash_prune(): void
+    {
+        config()->set('mediary.backup.auto', true);
+
+        DatabaseBackup::create([
+            'user_id' => $this->admin->id, 'name' => 'old.sql', 'path' => 'backups/old.sql', 'size' => 10,
+            'status' => DatabaseBackup::STATUS_READY, 'driver' => 'mysql', 'source' => DatabaseBackup::SOURCE_UPLOAD,
+            'started_at' => now(), 'finished_at' => now(),
+        ]);
+
+        $this->artisan('trash:prune')->assertFailed();
+
+        // სამი დღის წინ გადაღებული დამპიც ვერ ხსნის…
+        $dump = DatabaseBackup::create([
+            'user_id' => $this->admin->id, 'name' => 'mine.sql', 'path' => 'backups/mine.sql', 'size' => 10,
+            'status' => DatabaseBackup::STATUS_READY, 'driver' => 'mysql', 'source' => DatabaseBackup::SOURCE_DUMP,
+            'started_at' => now()->subDays(3), 'finished_at' => now()->subDays(3),
+        ]);
+        $this->artisan('trash:prune')->assertFailed();
+
+        // …დღევანდელი — ხსნის
+        $dump->forceFill(['finished_at' => now()->subHour()])->save();
+        $this->artisan('trash:prune')->assertSuccessful();
+    }
+
     /** გვერდი ხედავს, ჩართულია თუ არა და როდის გაკეთდა ბოლო ავტომატური */
     public function test_the_list_reports_the_schedule_and_the_last_automatic_copy(): void
     {
@@ -344,6 +414,28 @@ class DatabaseBackupTest extends TestCase
         $stored = (int) $this->admin->fresh()->storage_used_bytes;
         $this->assertNotSame(123, $stored);
         $this->assertSame((int) app(StorageMeter::class)->files($this->admin->fresh())->sum('size'), $stored);
+    }
+
+    /**
+     * ⚠️ **აღდგენა ასლს „დღევანდელად" არ აქცევს.** `finished_at` დამპის გადაღების
+     * დროა: მასზე დგას „ბოლო ასლი" და ურნის წმენდის დაცვა. აღდგენის დრო `note`-შია.
+     */
+    public function test_a_restore_keeps_the_time_the_dump_was_taken(): void
+    {
+        config()->set('mediary.backup.auto', true);
+
+        $backup = $this->runFakeDump('three-weeks-old');
+        $taken = now()->subWeeks(3)->startOfSecond();
+        $backup->forceFill(['finished_at' => $taken])->save();
+
+        app(DatabaseDumper::class)->shouldReceive('restore')->andReturnNull();
+        // აღდგენამდე უსაფრთხოების დამპი იღება — ის ახალია და ურნის წმენდას ხსნის; აქ ძველს ვამოწმებთ
+        app(BackupRunner::class)->restore($backup->fresh());
+
+        $restored = DatabaseBackup::findOrFail($backup->id);
+        $this->assertSame(DatabaseBackup::STATUS_READY, $restored->status);
+        $this->assertTrue($taken->equalTo($restored->finished_at), 'აღდგენამ დამპის დრო გადაწერა');
+        $this->assertStringStartsWith('restored ', (string) $restored->note);
     }
 
     /**

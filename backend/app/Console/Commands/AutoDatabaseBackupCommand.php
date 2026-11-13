@@ -99,13 +99,26 @@ class AutoDatabaseBackupCommand extends Command
             return;
         }
 
-        $old = DatabaseBackup::withoutGlobalScope('owner')
+        $scheduled = fn () => DatabaseBackup::withoutGlobalScope('owner')
             ->where('user_id', $owner->id)
-            ->where('source', DatabaseBackup::SOURCE_SCHEDULE)
-            ->orderByDesc('id')
-            ->skip($keep)
-            ->take(PHP_INT_MAX)
-            ->get();
+            ->where('source', DatabaseBackup::SOURCE_SCHEDULE);
+
+        /* ⚠️ **`keep` წარმატებულ ასლებს ითვლის.** ჩავარდნილი რიგი ასლი არ არის —
+           მის ჩათვლაზე ექვსი ჩავარდნილი ღამე შვიდი კარგი ასლიდან ექვსს აძევებდა
+           და ბოლოს ერთი რჩებოდა. */
+        $ready = fn () => $scheduled()->where('status', DatabaseBackup::STATUS_READY)->orderByDesc('id');
+
+        $old = $ready()->skip($keep)->take(PHP_INT_MAX)->get();
+
+        /* ჩავარდნილი რიგი ფაილს არ ინახავს — ის მხოლოდ ისტორიაა. ბოლო შენახულ
+           ასლზე ძველი ჩავარდნა აღარაფერს ამბობს და სიას მხოლოდ ამძიმებს. */
+        $oldestKept = $ready()->skip($keep - 1)->value('id');
+
+        if ($oldestKept) {
+            $old = $old->concat(
+                $scheduled()->where('status', DatabaseBackup::STATUS_FAILED)->where('id', '<', $oldestKept)->get(),
+            );
+        }
 
         foreach ($old as $backup) {
             $backup->delete();

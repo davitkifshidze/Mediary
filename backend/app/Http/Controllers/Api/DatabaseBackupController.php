@@ -235,11 +235,11 @@ class DatabaseBackupController extends Controller
             'subject_label' => 'restore: '.$backup->name,
         ]);
 
+        // ⚠️ `finished_at` არ იცვლება — ის დამპის გადაღების დროა და აღდგენის შემდეგაც ასე რჩება
         $backup->forceFill([
             'status' => DatabaseBackup::STATUS_RUNNING,
             'error' => null,
             'started_at' => now(),
-            'finished_at' => null,
         ])->save();
 
         if (! $process->dispatch([PHP_BINARY, base_path('artisan'), 'backups:run', (string) $backup->id, '--restore'])) {

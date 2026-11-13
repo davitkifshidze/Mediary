@@ -38,6 +38,12 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <!-- ⚠️ ნაკრები დეველოპერის ლოგში არ წერს. ტესტები შეცდომებსა და წყაროების ჩავარდნებს
+             განზრახ იწვევს, ე.ი. `.env`-ის არხით ისინი `storage/logs/laravel.log`-სა და
+             `sources-*.log`-ში ეწერებოდა: ფაილი 94 MB-მდე გაიზარდა და ჩანაწერების ~97% ტესტებისა იყო —
+             ნამდვილი შეცდომა მათ შორის ვეღარ იძებნებოდა. ლოგის შიგთავსს ტესტი `Log`-ის ყალბით ამოწმებს. -->
+        <env name="LOG_CHANNEL" value="null"/>
+        <env name="LOG_SOURCES" value="false"/>
         <!-- ტესტი ნამდვილ yt-dlp-ს (ქსელს) არასდროს იძახებს: `.env`-ის ბილიკი აქ არარსებულით იცვლება;
              yt-dlp-ის ქცევას ტესტი ყალბი `YtDlp`-ით ამოწმებს -->
         <env name="YTDLP_BINARY" value="tests-have-no-yt-dlp"/>

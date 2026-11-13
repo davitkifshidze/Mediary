@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Support\Redact;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -148,6 +149,14 @@ class UserCredential extends Model
         }
 
         self::$warned[$key] = true;
+
+        /* ⚠️ **დღეში ერთხელ და არა ყოველ მოთხოვნაზე.** სტატიკური მეხსიერება ერთ
+           მოთხოვნას ფარავს, ვებ-სერვერზე კი ყოველი მოთხოვნა ახალი პროცესია: ერთი
+           გაუშიფრავი გასაღები დღეში ათობით ერთნაირ ხაზს წერდა. მდგომარეობა
+           `/credentials`-ზე ისედაც ჩანს („ვერ იშიფრება"). */
+        if (! Cache::add('credential-unreadable:'.$key, true, now()->addDay())) {
+            return;
+        }
 
         Log::warning('user credential cannot be decrypted — APP_KEY has changed?', [
             'user_id' => $this->user_id,

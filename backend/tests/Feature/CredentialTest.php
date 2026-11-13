@@ -853,6 +853,23 @@ class CredentialTest extends TestCase
         Log::shouldHaveReceived('warning')
             ->withArgs(fn (string $message) => str_contains($message, 'cannot be decrypted'))
             ->once();
+
+        /* ⚠️ …და **დღეში ერთხელ**: შემდეგი მოთხოვნა ახალი პროცესია (სტატიკური
+           მეხსიერება ცარიელია), მაგრამ იგივე გაფრთხილება ლოგს აღარ ავსებს. */
+        UserCredential::flushWarnings();
+        $this->actingAs($this->user)->getJson('/api/credentials')->assertOk();
+
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn (string $message) => str_contains($message, 'cannot be decrypted'))
+            ->once();
+
+        $this->travel(25)->hours();
+        UserCredential::flushWarnings();
+        $this->actingAs($this->user)->getJson('/api/credentials')->assertOk();
+
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn (string $message) => str_contains($message, 'cannot be decrypted'))
+            ->twice();
     }
 
     /**

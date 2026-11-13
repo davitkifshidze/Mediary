@@ -67,9 +67,20 @@ class PruneTrashCommand extends Command
         return self::SUCCESS;
     }
 
+    /**
+     * **ბოლო 24 საათში ამ ბაზის ასლი აღებულია?**
+     *
+     * ⚠️ ითვლება მხოლოდ **აქ გადაღებული** დამპი (ხელით ან გრაფიკით). ატვირთული
+     * ფაილი სხვა ბაზის ან სხვა დროის ასლია — მისი `finished_at` ატვირთვის წამია,
+     * ე.ი. ძველი დამპის ატვირთვა ურნის წმენდას „ახალი ასლით" ხსნიდა, მაშინ როცა
+     * წასაშლელი ჩანაწერები არცერთ ასლში არ იდო. აღდგენილი დამპის `finished_at`
+     * გადაღების დროდ რჩება (`BackupRunner::restore()`), ამიტომ ძველი ასლის
+     * აღდგენაც მას „ახლად" ვეღარ აქცევს.
+     */
     private function recentBackup(): bool
     {
         return DatabaseBackup::where('status', DatabaseBackup::STATUS_READY)
+            ->whereIn('source', [DatabaseBackup::SOURCE_DUMP, DatabaseBackup::SOURCE_SCHEDULE])
             ->where('finished_at', '>=', now()->subDay())
             ->exists();
     }

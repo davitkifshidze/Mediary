@@ -66,12 +66,18 @@ return [
          * აპლიკაციის ლოგში ისინი ხმაურში იკარგებოდა. `daily` — რადგან ეს
          * ისტორიაა და არა ერთჯერადი შეტყობინება.
          */
-        'sources' => [
+        /* ⚠️ `LOG_SOURCES=false` — ტესტებისთვის (`phpunit.xml`): ნაკრები წყაროების
+           ჩავარდნებს განზრახ იწვევს და მათი ჩაწერა დეველოპერის ნამდვილ ფაილს
+           ტესტის ხმაურით ავსებდა. */
+        'sources' => env('LOG_SOURCES', true) ? [
             'driver' => 'daily',
             'path' => storage_path('logs/sources.log'),
             'level' => 'debug',
             'max_files' => env('LOG_SOURCES_DAYS', 14),
             'replace_placeholders' => true,
+        ] : [
+            'driver' => 'monolog',
+            'handler' => NullHandler::class,
         ],
 
         'single' => [

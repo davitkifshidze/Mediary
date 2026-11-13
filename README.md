@@ -79,7 +79,7 @@ cp .env.example .env          # Windows: copy .env.example .env
 
 ---
 
-## გაშვება (dev) — ორი ტერმინალი
+## გაშვება (dev) — სამი ტერმინალი
 
 ```bash
 # 1) Backend API  → http://localhost:8000
@@ -87,9 +87,20 @@ cd backend && php artisan serve --port=8000
 
 # 2) Frontend SPA → http://localhost:5173
 cd frontend && npm run dev
+
+# 3) Scheduler — შეხსენებები, ღამის ასლი, ურნის წმენდა, „დღეს გამოვიდა"
+cd backend && php artisan schedule:work
 ```
 
 გახსენი **http://localhost:5173**.
+
+⚠️ **მესამე ტერმინალი არჩევითი არ არის.** scheduler-ის გარეშე აპი იხსნება, მაგრამ
+ჩუმად აღარ მუშაობს ყველაფერი, რაც დროზეა მიბმული: ჩანიშვნის შეხსენება
+(`notes:remind`, ყოველ წუთს), ბაზის ღამის ასლი (`backups:auto`, 03:00), ურნის წმენდა
+(`trash:prune`, 03:30 — ახალი ასლის გარეშე უარს ამბობს), ფრანჩაიზის შემოწმება
+(`franchises:check`, 04:00) და „დღეს გამოვიდა" (`media:release-notify`, 09:00). ის
+ხელით ეშვება, როგორც დანარჩენი ორი; გამორჩენას `php artisan mediary:doctor` გეტყვის
+(„scheduler" და „ბოლო ასლი").
 
 ---
 
