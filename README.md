@@ -204,6 +204,20 @@ FIRST_USER_IS_ADMIN=false
         FallbackResource /index.html
     </Directory>
 
+    # ⚠️ **ატვირთული ფაილი არასდროს სრულდება.** `/storage` მომხმარებლის
+    # ფაილებია იმავე ჰოსტზე, სადაც PHP მუშაობს: აპი `.php`-ს იქ არ წერს
+    # (`UploadLimits::NEVER`, `mediary:doctor` ამას ამოწმებს), მაგრამ ვჰოსტი
+    # მეორე ფენაა — სკრიპტის გაფართოება აქ უბრალოდ 403-ია, `mod_php`-ითაც და
+    # PHP-FPM-ის `SetHandler`-ითაც.
+    <Directory /srv/mediary/backend/storage/app/public>
+        Require all granted
+        Options -ExecCGI -Indexes
+        AllowOverride None
+        <FilesMatch "(?i)\.(php\d*|phtml|phar|shtml|cgi|pl|py)$">
+            Require all denied
+        </FilesMatch>
+    </Directory>
+
     # ⚠️ **ჰედერები აქაც საჭიროა**: SPA-ს HTML-სა და
     # `/storage/*`-ს **Laravel არ ემსახურება**, ე.ი. `SetSecurityHeaders` მათ
     # ვერ სწვდება — ორივე ფენას თავისი უნდა ჰქონდეს.

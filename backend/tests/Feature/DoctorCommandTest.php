@@ -9,6 +9,7 @@ use App\Services\Video\YtDlp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -39,6 +40,9 @@ class DoctorCommandTest extends TestCase
         mkdir($this->envDir);
         $this->writeEnv("APP_NAME=Mediary\n");
         $this->app->useEnvironmentPath($this->envDir);
+
+        // საჯარო დისკიც ტესტისაა — `doctor` მას ათვალიერებს და დეველოპერის ფაილები პასუხს არ უნდა წყვეტდეს
+        Storage::fake('public');
     }
 
     protected function tearDown(): void
@@ -144,6 +148,27 @@ class DoctorCommandTest extends TestCase
             ->assertSuccessful();
 
         $this->assertSame(4242, (int) $user->refresh()->storage_used_bytes, 'doctor-მა მრიცხველი გადაწერა');
+    }
+
+    /**
+     * ⚠️ **საჯარო დისკზე შესრულებადი ფაილი FAIL-ია.** ატვირთვის ყველა გზა
+     * ასეთ გაფართოებას უარყოფს, ე.ი. ნაპოვნი ფაილი ხვრელია და არა წვრილმანი;
+     * ჩვეულებრივი სურათი და PDF კი შემოწმებას არ აფერხებს.
+     */
+    public function test_a_script_on_the_public_disk_fails(): void
+    {
+        $this->binaries(true);
+        $this->makeUser();
+        Cache::put(SendNoteRemindersCommand::HEARTBEAT, now()->toIso8601String(), 60);
+
+        Storage::disk('public')->put('gallery/images/photo.jpg', 'x');
+        Storage::disk('public')->put('books/files/docs/book.pdf', 'x');
+        $this->artisan('mediary:doctor')->assertSuccessful();
+
+        Storage::disk('public')->put('gallery/images/shell.PHP', 'x');
+        $this->artisan('mediary:doctor')
+            ->expectsOutputToContain('gallery/images/shell.PHP')
+            ->assertFailed();
     }
 
     /**

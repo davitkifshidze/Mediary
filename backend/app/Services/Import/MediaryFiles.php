@@ -23,6 +23,12 @@ use ZipArchive;
  * სახელიდან, `UploadLimits`-ის სახეობის სიით (`svg`/`html` — არასდროს),
  * ჩაწერა კი `StorageMeter`-ით — კვოტა და მოდულის ლიმიტი (413) მოქმედებს.
  *
+ * ⚠️ **დისკზე ფაილის გაფართოებაც შიგთავსიდან მოდის.** ZIP-ის ჩანაწერის
+ * სახელი ფაილის ავტორისაა: GIF-ის თავსართიანი `shell.php` შიგთავსით
+ * სურათია და შემოწმებას გადის, საჯარო დისკზე კი `.php`-ად ჩაწერილს ვებ-
+ * სერვერი შეასრულებდა (`.html` — შენახული XSS). ორიგინალი სახელი მხოლოდ
+ * `name`-ად რჩება (ჩამოტვირთვის სახელი).
+ *
  * ⚠️ **საერთო ფაილი (TMDB-ის პოსტერი) კვოტის გარეშე იწერება** — ზუსტად ისე,
  * როგორც `MediaDownloader` წერს: იმავე გზაზე, თუ თავისუფალია; თუ იქ იგივე
  * ფაილია — ხელახლა არ იწერება; სხვა ფაილის შემთხვევაში ახალი სახელით.
@@ -67,16 +73,16 @@ class MediaryFiles
         }
 
         try {
-            $mime = $this->allowed($user, $temp, $kind);
-            if ($mime === null) {
+            $format = $this->allowed($user, $temp, $kind, basename((string) $path));
+            if ($format === null) {
                 return null;
             }
 
             $size = (int) filesize($temp);
-            $stored = $this->meter->storeLocalFile($user, $temp, $folder, basename((string) $path));
+            $stored = $this->meter->storeLocalFile($user, $temp, $folder, 'file.'.$format['extension']);
             $this->written[] = $stored;
 
-            return ['path' => $stored, 'size' => $size, 'mime' => $mime, 'name' => basename((string) $path)];
+            return ['path' => $stored, 'size' => $size, 'mime' => $format['mime'], 'name' => basename((string) $path)];
         } finally {
             @unlink($temp);
         }
@@ -149,22 +155,41 @@ class MediaryFiles
     }
 
     /**
-     * შიგთავსით ამოცნობილი ფორმატი სახეობის სიაშია? — `mime` ან `null`.
+     * შიგთავსით ამოცნობილი ფორმატი სახეობის სიაშია? — ტიპი და დისკის
+     * გაფართოება, ან `null`.
      *
      * ⚠️ `UploadLimits::rule()`-ის იგივე წესი: გაფართოება **შიგთავსიდან**
      * იცნობა, `NEVER` (svg, html…) კი არასდროს გადის.
+     *
+     * ⚠️ **სახელის გაფართოება მხოლოდ მაშინ რჩება, როცა შიგთავსი მას
+     * ადასტურებს** — პირდაპირ (`photo.jpeg` → `image/jpeg`) ან ფსევდონიმით
+     * (`data.csv`, რომელსაც `finfo` `text/plain`-ად კითხულობს; `book.mobi` →
+     * `prc`). სხვა შემთხვევაში იწერება შიგთავსის გაფართოება: `shell.php`
+     * GIF-ის ბაიტებით → `.gif`.
+     *
+     * @return array{mime: string, extension: string}|null
      */
-    private function allowed(User $user, string $temp, string $kind): ?string
+    private function allowed(User $user, string $temp, string $kind, string $name): ?array
     {
         $mime = (string) (new \finfo(FILEINFO_MIME_TYPE))->file($temp);
-        $accepted = UploadLimits::accepted(UploadLimits::effective($kind, $user)['formats']);
+        $formats = UploadLimits::effective($kind, $user)['formats'];
         $extensions = MimeTypes::getDefault()->getExtensions($mime);
 
         if ($extensions === [] || array_intersect($extensions, UploadLimits::NEVER) !== []) {
             return null;
         }
 
-        return array_intersect($extensions, $accepted) !== [] ? $mime : null;
+        $matched = array_values(array_intersect($extensions, UploadLimits::accepted($formats)));
+
+        if ($matched === []) {
+            return null;
+        }
+
+        $named = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        $confirmed = in_array($named, $matched, true)
+            || (in_array($named, $formats, true) && array_intersect(UploadLimits::ALIASES[$named] ?? [], $matched) !== []);
+
+        return ['mime' => $mime, 'extension' => $confirmed ? $named : $matched[0]];
     }
 
     /**

@@ -22,6 +22,7 @@ use App\Models\Status;
 use App\Models\User;
 use App\Models\Video;
 use App\Services\Modules\CustomFieldService;
+use App\Services\Storage\StorageMeter;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -334,6 +335,98 @@ class MediaryImportTest extends TestCase
 
     /* ---------- წვდომა და უსაფრთხოება ---------- */
 
+    /**
+     * ⚠️ **დისკზე გაფართოებას შიგთავსი წყვეტს და არა ZIP-ის ჩანაწერის სახელი.**
+     * არქივში ყველა სურათს `.php` ჰქვია (GIF-ის თავსართით — `finfo` მას
+     * სურათად ცნობს), ყველა PDF-ს — `.html`. ხუთივე გზაზე (პოსტერი, გალერეა,
+     * `file` ველი, მიმაგრებული ფაილი, ხელით შექმნილი მსახიობის ფოტო) ფაილი
+     * თავისი ნამდვილი გაფართოებით იწერება — საჯარო დისკზე `.php` შესრულდებოდა,
+     * `.html` კი სკრიპტიან დოკუმენტად გაიხსნებოდა.
+     */
+    public function test_a_file_is_stored_with_the_extension_of_its_content_not_of_its_name(): void
+    {
+        $movie = $this->aliceMovie(withFiles: true);
+        $this->aliceBook();
+        $this->aliceNote();
+
+        Storage::disk('public')->put('cast/uploads/local.png', base64_decode(self::PNG));
+        $local = new CastMember;
+        $local->forceFill(['name' => 'Local Actor', 'photo_path' => 'cast/uploads/local.png', 'created_by' => $this->alice->id])->save();
+        $movie->castLinks()->attach($local->id, ['character' => 'Extra', 'billing_order' => 1, 'is_manual' => true, 'is_hidden' => false, 'is_removed' => false, 'is_edited' => false]);
+
+        $res = $this->actingAs($this->alice)->post('/api/export/archive', ['files' => true])->assertOk();
+        $original = $res->baseResponse->getFile()->getPathname();
+        $disguised = $this->disguised($original);
+        @unlink($original);
+
+        $plan = $this->plan($this->bob, (string) file_get_contents($disguised), 'mediary-all-2026-10-05.zip');
+        @unlink($disguised);
+
+        foreach (['movie', 'book', 'note'] as $module) {
+            $this->assertTrue($this->item($this->bob, $plan, $module, 0)['ok'], $module);
+        }
+
+        $copy = Movie::withoutGlobalScopes()->where('user_id', $this->bob->id)->firstOrFail();
+        $noteCopy = NoteEntry::withoutGlobalScopes()->where('user_id', $this->bob->id)->firstOrFail();
+        $bookCopy = Book::withoutGlobalScopes()->where('user_id', $this->bob->id)->firstOrFail();
+        $actor = CastMember::withoutGlobalScopes()->where('created_by', $this->bob->id)->firstOrFail();
+        $scan = DB::table('movie_field_values')->where('user_id', $this->bob->id)->where('field_key', 'scan')->value('value_path');
+
+        $stored = [
+            'პოსტერი' => [$copy->poster_path, 'gif'],
+            'გალერეა' => [GalleryImage::withoutGlobalScopes()->where('user_id', $this->bob->id)->value('path'), 'gif'],
+            '`file` ველი' => [$scan, 'pdf'],
+            'წიგნის ფაილი' => [BookFile::withoutGlobalScopes()->where('book_id', $bookCopy->id)->value('path'), 'pdf'],
+            'ჩანიშვნის ფაილი' => [$noteCopy->files()->value('path'), 'pdf'],
+            'ჩანიშვნის ფოტო' => [$noteCopy->photo_path, 'gif'],
+            'მსახიობის ფოტო' => [$actor->photo_path, 'gif'],
+        ];
+
+        foreach ($stored as $what => [$path, $extension]) {
+            $this->assertNotNull($path, $what);
+            $this->assertSame($extension, pathinfo((string) $path, PATHINFO_EXTENSION), $what);
+        }
+
+        // არცერთ დისკზე არ დევს ფაილი, რომელსაც სერვერი ან ბრაუზერი შეასრულებდა
+        foreach (['public', 'private'] as $disk) {
+            foreach (Storage::disk($disk)->allFiles() as $file) {
+                $this->assertContains(pathinfo($file, PATHINFO_EXTENSION), ['png', 'jpg', 'gif', 'pdf'], "{$disk}: {$file}");
+            }
+        }
+
+        // ჩამოტვირთვის სახელი ფაილში წერია და ისეთივე რჩება — დისკის სახელს ის არ წყვეტს
+        $this->assertSame('dune.html', BookFile::withoutGlobalScopes()->where('book_id', $bookCopy->id)->value('original_name'));
+    }
+
+    /** ⚠️ მეორე ფენა: `StorageMeter` თვითონაც არ წერს ფაილს აკრძალული გაფართოებით — და ადგილსაც არ ჯავშნის */
+    public function test_the_meter_refuses_an_extension_a_browser_or_the_server_would_run(): void
+    {
+        $meter = app(StorageMeter::class);
+        $temp = (string) tempnam(sys_get_temp_dir(), 'mediary-test-');
+        file_put_contents($temp, base64_decode(self::PNG));
+
+        foreach (['shell.php', 'page.HTML', 'icon.svg', 'x.phtml', 'x.p hp'] as $name) {
+            try {
+                $meter->storeLocalFile($this->bob, $temp, 'gallery/images', $name);
+                $this->fail("{$name} ჩაიწერა");
+            } catch (\InvalidArgumentException) {
+                // ასეც უნდა იყოს
+            }
+        }
+
+        try {
+            $meter->storeContents($this->bob, 'x', 'gallery/images', 'php');
+            $this->fail('storeContents-მა php ჩაწერა');
+        } catch (\InvalidArgumentException) {
+            // ასეც უნდა იყოს
+        }
+
+        @unlink($temp);
+
+        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame(0, (int) $this->bob->fresh()->storage_used_bytes);
+    }
+
     public function test_access_tokens_and_foreign_archives_are_checked(): void
     {
         $this->aliceBook();
@@ -598,6 +691,39 @@ class MediaryImportTest extends TestCase
             ->postJson('/api/import/item', ['token' => $plan['token'], 'module' => $source, 'index' => $index])
             ->assertOk()
             ->json();
+    }
+
+    /**
+     * იგივე არქივი სხვა სახელებით: ყველა სურათი — `.php` (GIF-ის თავსართიანი
+     * PHP), ყველა PDF — `.html`; მოდულების JSON-ში გზებიც შესაბამისად იცვლება.
+     */
+    private function disguised(string $zipPath): string
+    {
+        $polyglot = "GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;<?php echo 'x'; ?>";
+
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($zipPath) === true);
+        $entries = [];
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = (string) $zip->getNameIndex($i);
+            $body = (string) $zip->getFromIndex($i);
+
+            if (str_starts_with($name, 'modules/')) {
+                $body = str_replace(['.png"', '.pdf"'], ['.php"', '.html"'], $body);
+            } elseif (str_starts_with($name, 'files/') && str_ends_with($name, '.png')) {
+                $name = substr($name, 0, -4).'.php';
+                $body = $polyglot;
+            } elseif (str_starts_with($name, 'files/') && str_ends_with($name, '.pdf')) {
+                $name = substr($name, 0, -4).'.html';
+            }
+
+            $entries[$name] = $body;
+        }
+
+        $zip->close();
+
+        return $this->zipWith($entries);
     }
 
     /** @param  array<string, string>  $entries */

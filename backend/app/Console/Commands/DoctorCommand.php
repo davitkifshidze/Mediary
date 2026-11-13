@@ -9,10 +9,12 @@ use App\Services\Backup\DatabaseDumper;
 use App\Services\Storage\StorageMeter;
 use App\Services\Video\YtDlp;
 use App\Support\CredentialProviders;
+use App\Support\UploadLimits;
 use Dotenv\Dotenv;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * **„რა არ მუშაობს ამ მანქანაზე" — ერთი პასუხი**.
@@ -61,6 +63,7 @@ class DoctorCommand extends Command
         $this->scheduler();
         $this->backups();
         $this->storage($meter);
+        $this->publicFiles();
         $this->viewers($inspector);
         $this->settings();
         $this->line('');
@@ -286,6 +289,34 @@ class DoctorCommand extends Command
                 warnOnly: true,
             );
         }
+    }
+
+    /**
+     * **საჯარო დისკზე არ დევს ფაილი, რომელსაც სერვერი ან ბრაუზერი შეასრულებს.**
+     *
+     * ⚠️ საჯარო დისკს ვებ-სერვერი პირდაპირ გასცემს, Laravel-ის გვერდის ავლით:
+     * `.php` იქ **სრულდება** (`artisan serve` და PHP-იანი ვჰოსტი), `.html` და
+     * `.svg` კი აპის მისამართზე სკრიპტიან დოკუმენტად იხსნება. ატვირთვის ყველა
+     * გზა ასეთ გაფართოებას უარყოფს (`UploadLimits::NEVER`), ე.ი. აქ ნაპოვნი
+     * ფაილი ან ხელით ჩადებულია, ან რომელიღაც გზამ წესი გამოტოვა — ორივე
+     * **FAIL**-ია და არა გაფრთხილება.
+     */
+    private function publicFiles(): void
+    {
+        $this->section('საჯარო დისკი');
+
+        $found = array_values(array_filter(
+            Storage::disk('public')->allFiles(),
+            fn (string $path) => in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), UploadLimits::NEVER, true),
+        ));
+
+        $this->check(
+            'შესრულებადი ფაილები',
+            $found === [],
+            $found === []
+                ? 'არ არის'
+                : count($found).' ფაილი აკრძალული გაფართოებით — პირველი: '.$found[0],
+        );
     }
 
     /**

@@ -33,6 +33,7 @@ use App\Support\GalleryParent;
 use App\Support\NotificationType;
 use App\Support\StorageFolder;
 use App\Support\TrashDomain;
+use App\Support\UploadLimits;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\UploadedFile;
@@ -1928,10 +1929,11 @@ class StorageMeter
      */
     public function storeContents(User $user, string $contents, string $folder, string $extension = 'jpg'): string
     {
+        $extension = $this->safeExtension(ltrim($extension, '.'));
         $size = strlen($contents);
         $this->claim($user, $size, $folder);
 
-        $path = trim($folder, '/').'/'.Str::random(40).'.'.ltrim($extension, '.');
+        $path = trim($folder, '/').'/'.Str::random(40).'.'.$extension;
 
         return $this->write($user, $size, function () use ($folder, $path, $contents) {
             $this->disk($folder)->put($path, $contents);
@@ -1950,13 +1952,15 @@ class StorageMeter
      *
      * ⚠️ კვოტა მაინც `guard()`-ზე გადის (ანგარიშიც და მოდულის ლიმიტიც):
      * ჩამოწერამდე მხოლოდ სავარაუდო ზომა ვიცოდით, აქ კი ნამდვილი.
+     *
+     * ⚠️ `$name` მხოლოდ გაფართოებას იძლევა და ის `safeExtension()`-ზე გადის.
      */
     public function storeLocalFile(User $user, string $absolutePath, string $folder, ?string $name = null): string
     {
+        $extension = $this->safeExtension(strtolower(pathinfo($name ?: $absolutePath, PATHINFO_EXTENSION)) ?: 'mp4');
         $size = is_file($absolutePath) ? (int) filesize($absolutePath) : 0;
         $this->claim($user, $size, $folder);
 
-        $extension = strtolower(pathinfo($name ?: $absolutePath, PATHINFO_EXTENSION)) ?: 'mp4';
         $path = trim($folder, '/').'/'.Str::random(40).'.'.$extension;
 
         return $this->write($user, $size, function () use ($absolutePath, $folder, $path) {
@@ -1974,6 +1978,26 @@ class StorageMeter
 
             return $path;
         });
+    }
+
+    /**
+     * **დისკზე ჩასაწერი გაფართოება — ბოლო ფენა.**
+     *
+     * ⚠️ გამომძახებელი გაფართოებას თვითონ ადგენს (შიგთავსიდან), მაგრამ
+     * საჯარო დისკს ვებ-სერვერი პირდაპირ გასცემს: `.php` იქ შესრულდებოდა,
+     * `.html`/`.svg` კი სკრიპტიან დოკუმენტად გაიხსნებოდა. ამიტომ
+     * `UploadLimits::NEVER`-ის გაფართოებით ან უცნაური სიმბოლოებით ფაილი
+     * **არ იწერება** — კვოტის დაჯავშნამდე, რომ მრიცხველი ხელუხლებელი დარჩეს.
+     */
+    private function safeExtension(string $extension): string
+    {
+        $extension = strtolower($extension);
+
+        if (! preg_match('/^[a-z0-9]{1,12}$/', $extension) || in_array($extension, UploadLimits::NEVER, true)) {
+            throw new \InvalidArgumentException("ამ გაფართოებით ფაილი არ იწერება: {$extension}");
+        }
+
+        return $extension;
     }
 
     /**
