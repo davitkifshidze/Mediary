@@ -56,13 +56,15 @@ final class ModuleTables
         'gallery_images' => ['gallery_images'],
         'statuses' => ['statuses'],
         'locks' => ['record_locks'],
+        // „შემოთავაზებების" ჩემი ნაწილი — „არ მაინტერესებს"; წყაროების ქეში და ვექტორები სისტემისაა
+        'suggestions' => ['hidden_suggestions'],
     ];
 
     /** მოდული → რომელ საერთო ჯგუფებს იყენებს (ეს ექსპორტში „ამასთან ერთად საჭიროა") */
     public const USES = [
-        'movie' => ['genres', 'cast', 'watches', 'gallery_images', 'statuses', 'locks'],
-        'series' => ['genres', 'cast', 'episodes', 'watches', 'gallery_images', 'statuses', 'locks'],
-        'anime' => ['genres', 'cast', 'episodes', 'watches', 'gallery_images', 'statuses', 'locks'],
+        'movie' => ['genres', 'cast', 'watches', 'gallery_images', 'statuses', 'locks', 'suggestions'],
+        'series' => ['genres', 'cast', 'episodes', 'watches', 'gallery_images', 'statuses', 'locks', 'suggestions'],
+        'anime' => ['genres', 'cast', 'episodes', 'watches', 'gallery_images', 'statuses', 'locks', 'suggestions'],
         'video' => ['gallery_images', 'statuses'],
         'song' => ['gallery_images'],
         'book' => ['gallery_images'],
@@ -85,6 +87,8 @@ final class ModuleTables
         'trash_entries', 'trashed_files', 'trashed_messages', 'share_links', 'share_link_imports',
         'conversations', 'conversation_user', 'conversation_nicknames', 'messages', 'message_hides', 'message_reactions',
         'batch_items', 'sync_runs', 'sync_run_items', 'database_backups', 'goals',
+        // „შემოთავაზებების" გლობალური ქეში — წყაროდან თავიდან ივსება, ამიტომ მოდულთან ერთად არ მიდის
+        'suggestion_sources', 'suggestion_vectors',
         'migrations', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'sessions',
         'password_reset_tokens',
     ];

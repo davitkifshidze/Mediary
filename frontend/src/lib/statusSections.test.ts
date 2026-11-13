@@ -50,6 +50,7 @@ describe('arrangeSections', () => {
       'watched',
       'favorite',
       'soon',
+      'suggestions',
       'locked',
       'sync',
     ])
@@ -82,30 +83,31 @@ describe('arrangeSections', () => {
     const layout = { hidden: [], placement: placementFromRows(arrangeSections(STATUSES, PSEUDO_SECTIONS.series, EMPTY_LAYOUT)) }
     const grown = [...STATUSES, status('abandoned', 4)]
 
-    expect(ids(arrangeSections(grown, PSEUDO_SECTIONS.series, layout)).slice(-5)).toEqual(['abandoned', 'favorite', 'soon', 'locked', 'sync'])
+    expect(ids(arrangeSections(grown, PSEUDO_SECTIONS.series, layout)).slice(-6)).toEqual(['abandoned', 'favorite', 'soon', 'suggestions', 'locked', 'sync'])
   })
 
   it('drops a pseudo section with a dead anchor to the end instead of losing it', () => {
     const layout = { hidden: [], placement: [{ id: 'favorite', at: 'deleted_status' }] }
 
-    expect(ids(arrangeSections(STATUSES, PSEUDO_SECTIONS.series, layout)).slice(-4)).toEqual(['favorite', 'soon', 'locked', 'sync'])
+    expect(ids(arrangeSections(STATUSES, PSEUDO_SECTIONS.series, layout)).slice(-5)).toEqual(['favorite', 'soon', 'suggestions', 'locked', 'sync'])
   })
 
   it('marks hidden rows but keeps them in the list', () => {
     const rows = arrangeSections(STATUSES, PSEUDO_SECTIONS.series, { hidden: ['favorite', 'watched'], placement: [] })
 
-    expect(rows).toHaveLength(9)
+    expect(rows).toHaveLength(10)
     expect(rows.filter((r) => r.hidden).map((r) => r.id)).toEqual(['watched', 'favorite'])
   })
 
   it('falls back to defaults when there are no statuses at all', () => {
     const rows = arrangeSections([], PSEUDO_SECTIONS.series, EMPTY_LAYOUT)
 
-    expect(ids(rows)).toEqual(['all', 'favorite', 'soon', 'locked', 'sync'])
+    expect(ids(rows)).toEqual(['all', 'favorite', 'soon', 'suggestions', 'locked', 'sync'])
     expect(placementFromRows(rows)).toEqual([
       { id: 'all', at: 'start' },
       { id: 'favorite', at: 'end' },
       { id: 'soon', at: 'end' },
+      { id: 'suggestions', at: 'end' },
       { id: 'locked', at: 'end' },
       { id: 'sync', at: 'end' },
     ])
@@ -121,7 +123,7 @@ describe('pseudo sections', () => {
       expect(sync.path).toBe('/sync')
       expect(sync.hideWarningKey).toBe('mediaSync.hideWarning')
       expect(
-        PSEUDO_SECTIONS[domain].filter((s) => s.id !== 'sync' && s.id !== 'franchises').every((s) => !s.path && !s.hideWarningKey),
+        PSEUDO_SECTIONS[domain].filter((s) => !['sync', 'franchises', 'suggestions'].includes(s.id)).every((s) => !s.path && !s.hideWarningKey),
       ).toBe(true)
     }
     expect(PSEUDO_SECTIONS.video.some((s) => s.id === 'sync')).toBe(false)
@@ -130,7 +132,7 @@ describe('pseudo sections', () => {
   /* „ფრანჩაიზები" მხოლოდ ფილმებს აქვს (TMDB-ის კოლექცია): ბმულია თავის გვერდზე,
      „მალეს" შემდეგ დგას და დამალვის გაფრთხილება არ სჭირდება */
   it('gives movies alone a franchises link after "soon"', () => {
-    expect(ids(arrangeSections([], PSEUDO_SECTIONS.movie, EMPTY_LAYOUT))).toEqual(['all', 'favorite', 'soon', 'franchises', 'locked', 'sync'])
+    expect(ids(arrangeSections([], PSEUDO_SECTIONS.movie, EMPTY_LAYOUT))).toEqual(['all', 'favorite', 'soon', 'franchises', 'suggestions', 'locked', 'sync'])
 
     const franchises = PSEUDO_SECTIONS.movie.find((s) => s.id === 'franchises')!
     expect(franchises.path).toBe('/franchises')
@@ -138,6 +140,23 @@ describe('pseudo sections', () => {
 
     for (const domain of ['series', 'anime', 'video', 'note', 'bookmark'] as const) {
       expect(PSEUDO_SECTIONS[domain].some((s) => s.id === 'franchises')).toBe(false)
+    }
+  })
+
+  /* „შემოთავაზებები" სამივე მედია-მოდულს აქვს — ბმულია თავის გვერდზე, „ჩაკეტილის" წინ;
+     სხვა მოდულებს მსგავსების წყარო არ აქვთ */
+  it('gives the three media modules a suggestions link', () => {
+    for (const domain of ['movie', 'series', 'anime'] as const) {
+      const suggestions = PSEUDO_SECTIONS[domain].find((s) => s.id === 'suggestions')!
+      expect(suggestions.path).toBe('/suggestions')
+      expect(suggestions.hideWarningKey).toBeUndefined()
+
+      const order = PSEUDO_SECTIONS[domain].map((s) => s.id)
+      expect(order.indexOf('suggestions')).toBe(order.indexOf('locked') - 1)
+    }
+
+    for (const domain of ['video', 'note', 'bookmark'] as const) {
+      expect(PSEUDO_SECTIONS[domain].some((s) => s.id === 'suggestions')).toBe(false)
     }
   })
 })

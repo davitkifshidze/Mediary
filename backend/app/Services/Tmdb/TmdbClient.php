@@ -267,6 +267,17 @@ class TmdbClient
         ));
     }
 
+    /**
+     * **მსგავსების მასალა ერთ პასუხში** — სათაურის დეტალები, რეკომენდაციები, მსგავსი
+     * სათაურები და საკვანძო სიტყვები (`append_to_response`), ფილმზეც და სერიალზეც.
+     *
+     * ⚠️ საკვანძო სიტყვები ფილმზე `keywords.keywords`-შია, სერიალზე — `keywords.results`-ში.
+     */
+    public function related(int $id, bool $tv = false, string $language = 'en-US', string $append = 'recommendations,similar,keywords'): array
+    {
+        return $this->get(($tv ? '/tv/' : '/movie/').$id, ['language' => $language, 'append_to_response' => $append]);
+    }
+
     /* ---------- სერიალები (TV) ---------- */
 
     /** IMDb ID-ით TMDB tv id (ან null) */

@@ -14,7 +14,6 @@ use App\Support\MissingCredential;
 use App\Support\SourceLog;
 use App\Support\Trailer;
 use App\Support\Upcoming;
-use App\Support\VideoUrl;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -82,26 +81,10 @@ class MediaSoonController extends Controller
             'poster' => $record->poster_path ? asset('storage/'.$record->poster_path) : null,
             ...Upcoming::facts($record, $tv, $today),
             'tmdb_status' => $record->tmdb_status,
-            'trailer' => $this->trailer($record->trailer_url),
+            'trailer' => Trailer::forPlayer($record->trailer_url),
             'status' => StatusResource::brief($record->status),
             'is_favorite' => (bool) $record->is_favorite,
         ];
-    }
-
-    /**
-     * თრეილერი აპის ფლეიერისთვის — ჩაშენებადი მისამართით (allowlist `VideoUrl`-შია).
-     *
-     * @return array{url: string, embed_url: ?string, platform: ?string}|null
-     */
-    private function trailer(?string $url): ?array
-    {
-        if (! $url) {
-            return null;
-        }
-
-        $parsed = VideoUrl::parse($url);
-
-        return ['url' => $url, 'embed_url' => $parsed['embed_url'] ?? null, 'platform' => $parsed['platform'] ?? null];
     }
 
     /**
@@ -207,7 +190,7 @@ class MediaSoonController extends Controller
                     ->map(fn (Genre $g) => ['name_en' => $g->name_en, 'name_ka' => $g->name_ka])
                     ->values()
                     ->all(),
-                'trailer' => $this->trailer($this->tmdbTrailer($tmdb, (int) $r['id'], $tv)),
+                'trailer' => Trailer::forPlayer($this->tmdbTrailer($tmdb, (int) $r['id'], $tv)),
             ];
         }
 

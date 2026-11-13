@@ -54,6 +54,7 @@ use App\Models\GameVideo;
 use App\Models\Genre;
 use App\Models\GenreTranslation;
 use App\Models\Goal;
+use App\Models\HiddenSuggestion;
 use App\Models\MediaWatch;
 use App\Models\Message;
 use App\Models\MessageHide;
@@ -83,6 +84,8 @@ use App\Models\ShareLink;
 use App\Models\Song;
 use App\Models\SongGenre;
 use App\Models\Status;
+use App\Models\SuggestionSource;
+use App\Models\SuggestionVector;
 use App\Models\SyncRun;
 use App\Models\SyncRunItem;
 use App\Models\TranslationUsage;
@@ -302,6 +305,9 @@ class AuditRegistry
         TvEpisode::class => 'TMDB-ის ეპიზოდი — გლობალური ფაქტი, რომელსაც მომხმარებელი არ ქმნის',
         FranchisePart::class => 'TMDB-ის ფრანჩაიზის ნაწილი — გლობალური ფაქტი, რომელსაც მომხმარებელი არ ქმნის',
         FranchiseReminder::class => '„უკვე მეცნობა / აღარ შემახსენო" — შეხსენების პარამეტრი, არა შიგთავსი',
+        SuggestionSource::class => 'გარე წყაროს პასუხის ქეში („შემოთავაზებები") — მანქანა წერს, გლობალურია',
+        SuggestionVector::class => 'აღწერის ვექტორი („შემოთავაზებები") — მანქანის გამოთვლა, გლობალური ქეში',
+        HiddenSuggestion::class => '„არ მაინტერესებს" შემოთავაზებაზე — ერთი დაწკაპუნება, პარამეტრია და არა შიგთავსი',
         MessageHide::class => 'ჩემთვის დამალვა; წაშლა კი ცხადად იწერება',
         ConversationNickname::class => 'საუბრის მეტსახელი — ჩემი ხედის პარამეტრი',
 

@@ -734,6 +734,7 @@ class RegistryConsistencyTest extends TestCase
      */
     private const NOT_TRASHED = [
         'franchise_reminders' => 'შეხსენების პარამეტრი („უკვე მეცნობა / აღარ შემახსენო") — ჩანაწერი არ არის',
+        'hidden_suggestions' => '„არ მაინტერესებს" შემოთავაზებაზე — გადართვაა: მოხსნა „დამალულების" სიიდან თვითონ შექცევადი ნაბიჯია',
         // ფაილი `trashed_files`-ში მიდის (`field_file`); ტექსტური მნიშვნელობის „წაშლა" ჩანაწერის რედაქტირებაა
         'movie_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         'series_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',

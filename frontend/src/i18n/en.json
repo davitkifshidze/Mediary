@@ -5505,6 +5505,79 @@
     },
     "dateUnknown": "Date unknown"
   },
+  "suggest": {
+    "section": "Suggestions",
+    "hint": "Movies like the ones you pick — from your own list (added but not watched yet) and from outside it (not added yet). Choose what to go by above; every title says why it was suggested.",
+    "hintSeries": "Series like the ones you pick — from your own list (added but not watched yet) and from outside it (not added yet). Choose what to go by above; every title says why it was suggested.",
+    "hintAnime": "Anime like the ones you pick — from your own list (added but not watched yet) and from outside it (not added yet). Choose what to go by above; every title says why it was suggested.",
+    "again": "Start over",
+    "basis": {
+      "title": "Based on",
+      "hint": "Pick one or more statuses and / or “Favorites” — suggestions look for titles like those. From a long list one run takes {{limit}} titles: favorites and your highest-rated first, then the most recently watched. You can also pick specific titles by hand.",
+      "used": "Built on {{count}} titles",
+      "usedOf": "{{used}} of {{total}}",
+      "pick": "Pick titles",
+      "narrow": "Narrow down"
+    },
+    "pick": {
+      "title": "Which titles to build on",
+      "hint": "These are the titles of the chosen statuses. Whatever you tick becomes exactly what suggestions are built on (up to {{limit}}); with nothing ticked — the whole list.",
+      "searchPh": "Search by title…",
+      "total": "{{total}} in total",
+      "chosen": "{{count}} picked",
+      "emptyTitle": "No title found",
+      "emptyHint": "Change the search or pick another status.",
+      "clear": "Clear picks",
+      "apply": "Apply"
+    },
+    "cut": {
+      "all": "All",
+      "mine": "From my list",
+      "new": "New"
+    },
+    "hiddenList": "Hidden",
+    "hide": "Not interested",
+    "restore": "Bring back",
+    "hiddenDone": "It will not be suggested again — bring it back from “Hidden”",
+    "restoredDone": "The title is back among suggestions",
+    "inLibrary": "In your list",
+    "trailerMissing": "This title has no trailer",
+    "ratingFrom": "TMDB rating from",
+    "addAs": "Add with status",
+    "addShown": "Add the new ones shown",
+    "emptyBasisTitle": "Choose what to go by",
+    "emptyBasisHint": "Pick a status or “Favorites” above — suggestions are made of titles like those.",
+    "emptyPoolTitle": "Nothing in what you picked",
+    "emptyPoolHint": "These statuses (and the narrowing) hold nothing yet, or their titles have no TMDB record. Pick another status or clear the narrowing.",
+    "emptyHiddenTitle": "Nothing is hidden",
+    "emptyHiddenHint": "Whatever you mark “Not interested” shows up here, and you can bring it back from here.",
+    "emptyTitle": "No suggestion found",
+    "emptyHint": "Change the filter or widen the basis — more statuses or other titles.",
+    "progress": {
+      "sources": "Collecting what is like your titles",
+      "titles": "Reading the details of the titles found",
+      "keywords": "Searching by shared themes",
+      "plot": "Comparing plots",
+      "hint": "On the first run each title is asked from the source separately. The answer is kept — the next visit is instant."
+    },
+    "source": {
+      "missing": "You have no {{source}} key — this source is skipped.",
+      "failed": "{{source}} is not answering right now — the result goes without it; try again in a while.",
+      "gemini": {
+        "missing": "Without a Gemini key plots are not compared — the order comes from the other signals.",
+        "failed": "Gemini is not answering right now or its limit ran out — plots are only partly compared; it will continue later."
+      },
+      "plotMissing": "{{count}} titles have no plot comparison yet: Gemini handles about a hundred descriptions a minute. Open the page again in a minute — the rest will be added.",
+      "toCredentials": "Credentials"
+    },
+    "why": {
+      "bases": "Like: {{titles}}",
+      "more": "and {{count}} more",
+      "plot": "Close in plot: {{title}} — {{match}}%",
+      "genres": "Shared genres: {{genres}}",
+      "keywords": "Shared themes: {{keywords}}"
+    }
+  },
   "mediaSync": {
     "section": "Sync",
     "hint": "Refresh movie data from TMDB — title, description, genres, cast, poster.",

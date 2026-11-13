@@ -75,6 +75,7 @@ use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MediaLockController;
 use App\Http\Controllers\Api\MediaRatingController;
 use App\Http\Controllers\Api\MediaSoonController;
+use App\Http\Controllers\Api\MediaSuggestionController;
 use App\Http\Controllers\Api\MediaSyncController;
 use App\Http\Controllers\Api\MediaWatchController;
 use App\Http\Controllers\Api\ModuleController;
@@ -594,6 +595,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/movies/soon', [MediaSoonController::class, 'index'])->defaults('domain', 'movie');
         // „ფრანჩაიზები": ჩემი დაუსრულებელი ფრანჩაიზები ნაწილებით — ისიც `{movie}`-ზე ზემოთ
         Route::get('/movies/franchises', [MovieCollectionController::class, 'index']);
+        // „შემოთავაზებები": მსგავსი სათაურები ჩემი არჩევანის მიხედვით — `{movie}`-ზე ზემოთ; `PATCH` → `update`
+        Route::get('/movies/suggestions', [MediaSuggestionController::class, 'index'])->defaults('domain', 'movie');
+        Route::get('/movies/suggestions/basis', [MediaSuggestionController::class, 'basis'])->defaults('domain', 'movie');
+        Route::get('/movies/suggestions/trailer', [MediaSuggestionController::class, 'trailer'])->defaults('domain', 'movie');
+        Route::patch('/movies/suggestions/hidden', [MediaSuggestionController::class, 'hide'])->defaults('domain', 'movie');
         Route::get('/movies/{movie}', [MovieController::class, 'show']);
         Route::match(['put', 'patch'], '/movies/{movie}', [MovieController::class, 'update']);
         Route::delete('/movies/{movie}', [MovieController::class, 'destroy']);
@@ -616,6 +622,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/series/from-tmdb', [SeriesController::class, 'storeFromTmdb']);
         Route::post('/series/bulk-status', [SeriesStatusController::class, 'bulkUpdate']);
         Route::get('/series/soon', [MediaSoonController::class, 'index'])->defaults('domain', 'series');
+        Route::get('/series/suggestions', [MediaSuggestionController::class, 'index'])->defaults('domain', 'series');
+        Route::get('/series/suggestions/basis', [MediaSuggestionController::class, 'basis'])->defaults('domain', 'series');
+        Route::get('/series/suggestions/trailer', [MediaSuggestionController::class, 'trailer'])->defaults('domain', 'series');
+        Route::patch('/series/suggestions/hidden', [MediaSuggestionController::class, 'hide'])->defaults('domain', 'series');
         Route::get('/series/{series}', [SeriesController::class, 'show']);
         Route::match(['put', 'patch'], '/series/{series}', [SeriesController::class, 'update']);
         Route::delete('/series/{series}', [SeriesController::class, 'destroy']);
@@ -639,6 +649,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // ⚠️ `{anime}`-ზე **ზემოთ**, თორემ „bulk-status" id-ად წაიკითხება
         Route::post('/anime/bulk-status', [AnimeStatusController::class, 'bulkUpdate']);
         Route::get('/anime/soon', [MediaSoonController::class, 'index'])->defaults('domain', 'anime');
+        Route::get('/anime/suggestions', [MediaSuggestionController::class, 'index'])->defaults('domain', 'anime');
+        Route::get('/anime/suggestions/basis', [MediaSuggestionController::class, 'basis'])->defaults('domain', 'anime');
+        Route::get('/anime/suggestions/trailer', [MediaSuggestionController::class, 'trailer'])->defaults('domain', 'anime');
+        Route::patch('/anime/suggestions/hidden', [MediaSuggestionController::class, 'hide'])->defaults('domain', 'anime');
         Route::get('/anime/{anime}', [AnimeController::class, 'show']);
         Route::match(['put', 'patch'], '/anime/{anime}', [AnimeController::class, 'update']);
         Route::delete('/anime/{anime}', [AnimeController::class, 'destroy']);

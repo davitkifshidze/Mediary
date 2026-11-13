@@ -21,6 +21,22 @@ class Trailer
     ];
 
     /**
+     * თრეილერი აპის ფლეიერისთვის — ჩაშენებადი მისამართით (allowlist `VideoUrl`-შია).
+     *
+     * @return array{url: string, embed_url: ?string, platform: ?string}|null
+     */
+    public static function forPlayer(?string $url): ?array
+    {
+        if (! $url) {
+            return null;
+        }
+
+        $parsed = VideoUrl::parse($url);
+
+        return ['url' => $url, 'embed_url' => $parsed['embed_url'] ?? null, 'platform' => $parsed['platform'] ?? null];
+    }
+
+    /**
      * საუკეთესო ტრეილერის YouTube URL, ან `null`.
      *
      * პასუხები **პრიორიტეტის რიგით** გადმოეცემა (მაგ. ka, შემდეგ en) და

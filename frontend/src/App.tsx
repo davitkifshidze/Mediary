@@ -44,6 +44,7 @@ const GuestRecordPage = lazy(() => import('@/pages/GuestRecordPage').then((m) =>
 const NotificationsPage = lazy(() => import('@/pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })))
 const MediaSyncPage = lazy(() => import('@/pages/MediaSyncPage').then((m) => ({ default: m.MediaSyncPage })))
 const FranchisesPage = lazy(() => import('@/pages/FranchisesPage').then((m) => ({ default: m.FranchisesPage })))
+const SuggestionsPage = lazy(() => import('@/pages/SuggestionsPage').then((m) => ({ default: m.SuggestionsPage })))
 const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default: m.StatsPage })))
 const GoalsPage = lazy(() => import('@/pages/GoalsPage').then((m) => ({ default: m.GoalsPage })))
 const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })))
@@ -193,6 +194,8 @@ function mediaRoutes(type: MediaType) {
     <Route key={`${type}-sync`} path={`${base}/sync`} element={<MediaSyncPage type={type} />} />,
     // ქვემენიუს „ფრანჩაიზები" — მხოლოდ ფილმებს აქვს (TMDB-ის კოლექცია)
     ...(type === 'movie' ? [<Route key="movie-franchises" path={`${base}/franchises`} element={<FranchisesPage />} />] : []),
+    // ქვემენიუს „შემოთავაზებები" — მსგავსი სათაურები ჩემი არჩევანის მიხედვით; `key` — მოდულის შეცვლაზე გვერდი თავიდან იწყება
+    <Route key={`${type}-suggestions`} path={`${base}/suggestions`} element={<SuggestionsPage key={type} type={type} />} />,
     <Route key={`${type}-show`} path={`${base}/:id`} element={<MoviePage type={type} />} />,
     <Route key={`${type}-edit`} path={`${base}/:id/edit`} element={<MovieFormPage type={type} />} />,
   ]
