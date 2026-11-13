@@ -53,7 +53,7 @@ vi.mock('@/components/SettingsSaveBar', () => ({ SettingsSaveBar: () => null }))
 
 // ⚠️ კონტექსტის ჰუკი ყოველ გამოძახებაზე ერთსა და იმავე ობიექტს აბრუნებს
 const state = { dirty: false }
-const settings = { settings: { syncDelayMs: 350, dateFormat: 'dmy' }, set: mocks.set, isDirty: () => state.dirty }
+const settings = { settings: { syncDelayMs: 350, translateDelayMs: 4000, dateFormat: 'dmy' }, set: mocks.set, isDirty: () => state.dirty }
 vi.mock('@/lib/settings', async (original) => ({
   ...(await original<typeof import('@/lib/settings')>()),
   useSettings: () => settings,
@@ -83,6 +83,11 @@ const run = (over: Partial<SyncRun> = {}): SyncRun => ({
   total: 3,
   done: 3,
   counts: { updated: 2, unchanged: 1, skipped: 0, failed: 0 },
+  left: 0,
+  state: 'finished',
+  resumable: false,
+  retryable: false,
+  stoppable: false,
   types: ['series'],
   started_at: '2026-11-13T10:00:00+04:00',
   last_at: '2026-11-13T10:05:00+04:00',
@@ -94,6 +99,7 @@ const overview = (over: Partial<SyncOverview> = {}): SyncOverview => ({
   last: { sync: null, episodes: run(), cast: null },
   runs: 4,
   latest: run(),
+  unfinished: [],
   ...over,
 })
 

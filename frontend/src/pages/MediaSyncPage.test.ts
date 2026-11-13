@@ -18,6 +18,9 @@ import i18n from '@/i18n'
    სერვერის „რამდენია გასაშვები"-ა, ქვედა ხაზი — ბოლო გაშვება (ბმული მის გვერდზე);
    ბარათი, რომელიც ამ ანგარიშს არ ეკუთვნის, არ იხატება; „მონაცემების" და
    „მსახიობების" ღილაკი ერთსა და იმავე ფანჯარას ხსნის თავისი ნაკადით და ამ მოდულზე.
+   გაწყვეტილ გაშვებას გვერდი ბარათების ზემოთ თვითონ სთავაზობს: „გაგრძელება" სერვერს
+   იმავე გაშვების გაგრძელებას სთხოვს (პარამეტრების პაუზით) და რიცხვებს თავიდან კითხულობს;
+   სერვერზე მიმდინარე გაშვება იქვე ჩანს პროგრესითა და „შეჩერებით".
    სეზონების ბარათი: გეგმა ნაგულისხმევად დაუსრულებელ სერიალებს იღებს და „ყველა"
    გადამრთველით იცვლება; „დაწყება" ფონურ პარტიას უშვებს არჩეული პაუზით, პროგრესი და
    შედეგი (განახლდა · გამოტოვდა · ჩავარდა, მიზეზით) ჩანს; „შეჩერება" პარტიას აუქმებს;
@@ -30,11 +33,15 @@ const mocks = vi.hoisted(() => ({
   fetchBatch: vi.fn(),
   cancelBatch: vi.fn(),
   fetchSyncOverview: vi.fn(),
+  resumeSyncRun: vi.fn(),
+  stopSyncRun: vi.fn(),
 }))
 
 vi.mock('@/api/syncRuns', async (original) => ({
   ...(await original<typeof import('@/api/syncRuns')>()),
   fetchSyncOverview: mocks.fetchSyncOverview,
+  resumeSyncRun: mocks.resumeSyncRun,
+  stopSyncRun: mocks.stopSyncRun,
 }))
 
 vi.mock('@/api/episodes', async (original) => ({
@@ -55,7 +62,7 @@ vi.mock('@/components/SyncDialog', () => ({
     open ? h('div', { 'data-testid': 'sync-dialog', 'data-only': only, 'data-flow': flow }) : null,
 }))
 
-const settings = { settings: { syncDelayMs: 350 } }
+const settings = { settings: { syncDelayMs: 350, translateDelayMs: 4000 } }
 vi.mock('@/lib/settings', async (original) => ({
   ...(await original<typeof import('@/lib/settings')>()),
   useSettings: () => settings,
@@ -73,6 +80,11 @@ const run = (over: Partial<SyncRun> = {}): SyncRun => ({
   total: 6,
   done: 6,
   counts: { updated: 3, unchanged: 2, skipped: 0, failed: 1 },
+  left: 0,
+  state: 'finished',
+  resumable: false,
+  retryable: false,
+  stoppable: false,
   types: ['movie'],
   started_at: '2026-11-13T10:00:00+04:00',
   last_at: '2026-11-13T10:05:00+04:00',
@@ -84,6 +96,7 @@ const overview = (over: Partial<SyncOverview> = {}): SyncOverview => ({
   last: { sync: null, episodes: null, cast: null },
   runs: 0,
   latest: null,
+  unfinished: [],
   ...over,
 })
 
@@ -204,6 +217,55 @@ describe('MediaSyncPage', () => {
     await act(async () => button(i18n.t('syncCards.castOpen'))!.click())
     expect(box.querySelector('[data-testid="sync-dialog"]')?.getAttribute('data-only')).toBe('movie')
     expect(box.querySelector('[data-testid="sync-dialog"]')?.getAttribute('data-flow')).toBe('cast')
+  })
+
+  it('offers an interrupted run above the cards and continues it on the server', async () => {
+    const broken = run({ key: 'bbbb1111-2222-4333-8444-555566667777', total: 170, done: 12, left: 158, state: 'interrupted', resumable: true })
+    mocks.fetchSyncOverview.mockResolvedValue(overview({ unfinished: [broken] }))
+    mocks.resumeSyncRun.mockResolvedValue({ ...broken, state: 'running', resumable: false })
+    const box = await mount('movie')
+
+    const offer = box.querySelector<HTMLElement>('[data-testid="sync-unfinished"] [data-testid="unfinished-run"]')!
+    // ბარათების ზემოთ დგას და ამბობს, რა სახის გაშვება გაწყდა და რამდენი გაკეთდა
+    expect(offer.compareDocumentPosition(box.querySelector('[data-testid="sync-cards"]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(offer.textContent).toContain(i18n.t('syncCards.interrupted', { kind: i18n.t('syncResults.kind.sync') }))
+    expect(offer.textContent).toContain(i18n.t('syncResults.partial', { done: 12, total: 170 }))
+    expect(offer.querySelector('[data-testid="run-progress"]')!.getAttribute('aria-valuenow')).toBe('7')
+    expect(offer.querySelector('[data-testid="unfinished-run-link"]')!.getAttribute('href')).toBe('/sync/results/bbbb1111-2222-4333-8444-555566667777')
+
+    // „გაგრძელება" რიცხვით — რამდენი დარჩა; პაუზა პარამეტრებიდანაა
+    const resume = offer.querySelector<HTMLButtonElement>('[data-testid="run-resume"]')!
+    expect(resume.querySelector('[data-testid="count-badge"]')!.textContent).toBe('158')
+    await act(async () => resume.click())
+    await flush()
+
+    expect(mocks.resumeSyncRun).toHaveBeenCalledWith('bbbb1111-2222-4333-8444-555566667777', { only: undefined, delay_ms: 350 })
+    // გაგრძელების შემდეგ რიცხვები და შეთავაზება თავიდან იკითხება
+    expect(mocks.fetchSyncOverview.mock.calls.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('keeps a run that continues on the server in view, with its progress and a stop', async () => {
+    const live = run({ key: 'cccc1111-2222-4333-8444-555566667777', kind: 'cast', total: 40, done: 10, left: 30, state: 'running', stoppable: true })
+    mocks.fetchSyncOverview.mockResolvedValue(overview({ unfinished: [live] }))
+    mocks.stopSyncRun.mockResolvedValue({ ...live, state: 'interrupted', stoppable: false, resumable: true })
+    const box = await mount('movie')
+
+    const card = box.querySelector<HTMLElement>('[data-testid="unfinished-run"]')!
+    expect(card.dataset.state).toBe('running')
+    expect(card.textContent).toContain(i18n.t('syncCards.running', { kind: i18n.t('syncResults.kind.cast') }))
+    expect(card.querySelector('[data-testid="run-progress"]')!.getAttribute('aria-valuenow')).toBe('25')
+    // მიმდინარეზე „გაგრძელება" არ არის — „შეჩერებაა"
+    expect(card.querySelector('[data-testid="run-resume"]')).toBeNull()
+
+    await act(async () => card.querySelector<HTMLButtonElement>('[data-testid="run-stop"]')!.click())
+    await flush()
+    expect(mocks.stopSyncRun).toHaveBeenCalledWith('cccc1111-2222-4333-8444-555566667777')
+  })
+
+  it('shows no offer when nothing is unfinished', async () => {
+    const box = await mount('movie')
+
+    expect(box.querySelector('[data-testid="sync-unfinished"]')).toBeNull()
   })
 
   it('leaves out a card the account has no right to run', async () => {

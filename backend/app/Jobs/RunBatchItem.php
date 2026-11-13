@@ -209,7 +209,9 @@ class RunBatchItem implements ShouldQueue
     }
 
     /**
-     * ერთეულის შედეგი სინქრონიზაციის ისტორიაში — გაშვების გასაღები პარტიის id-ია.
+     * ერთეულის შედეგი სინქრონიზაციის ისტორიაში — გაშვების გასაღები პარტიის id-ია, ხოლო
+     * პარტიაზე, რომელიც გაწყვეტილ გაშვებას **აგრძელებს** (`options.run`), — იმ გაშვებისა:
+     * რიცხვები ერთ ისტორიაში გროვდება.
      *
      * ⚠️ გალერეის პარტია ისტორიაში არ იწერება (სინქრონიზაციის სახეობა არ არის), პარტიის
      * გარეშე გაშვებულ job-ს კი გასაღები არ აქვს.
@@ -226,7 +228,7 @@ class RunBatchItem implements ShouldQueue
 
         app(SyncHistory::class)->record(
             $this->userId,
-            $batch->id,
+            (string) ($batch->options['run'] ?? $batch->id),
             $this->kind,
             SyncHistory::SOURCE_BATCH,
             $batch->totalJobs,

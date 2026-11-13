@@ -5,16 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Jobs\RunBatchItem;
 use App\Models\BatchItem;
-use App\Models\User;
-use App\Services\Cast\CastPool;
-use App\Services\Credentials\CredentialStore;
-use App\Services\Notify\Notifier;
-use App\Services\Translation\ItemTranslator;
-use App\Support\BackgroundProcess;
-use App\Support\CredentialProviders;
+use App\Models\SyncRun;
+use App\Services\Batch\BatchLauncher;
+use App\Services\Sync\SyncHistory;
 use App\Support\MediaDomain;
-use App\Support\MissingCredential;
-use App\Support\NotificationType;
 use Illuminate\Bus\Batch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
@@ -34,45 +28,14 @@ use Illuminate\Validation\Rule;
  * იძახებს, ე.ი. შედეგი იდენტურია; განსხვავება მხოლოდ ისაა, **ვინ ატრიალებს
  * ციკლს**. სწორედ ამიტომ ეს **დამატებითი** ღილაკია და არა ჩანაცვლება.
  *
- * ⚠️ **worker ავტომატურად ეშვება** (`queue:work --stop-when-empty`) —
- * `BackgroundProcess`-ით, ზუსტად ისე, როგორც `yt-dlp` ეშვება. ე.ი.
- * მუდმივად გაშვებული მეოთხე პროცესი **არ** სჭირდება: worker ამოწურავს
- * რიგს და თვითონ ითიშება. თუ `popen`/`exec` გამორთულია, პასუხი
- * **503 `worker_unavailable`**-ია და არა ჩუმად გაჩერებული პარტია —
- * იგივე წესი, რაც `ytdlp_unavailable`-ს აქვს.
+ * ⚠️ **შემოწმებები, პარტიის ჩაწერა და worker-ის გაშვება `BatchLauncher`-შია** —
+ * გაწყვეტილი სინქრონიზაციის გაგრძელება (`SyncRunController::resume()`) იმავე გზით
+ * მიდის. worker-ის გარეშე პასუხი **503 `worker_unavailable`**-ია და არა ჩუმად
+ * გაჩერებული პარტია — იგივე წესი, რაც `ytdlp_unavailable`-ს აქვს.
  */
 class BatchController extends Controller
 {
-    /**
-     * ერთ პარტიაში რამდენი ერთეული ეტევა.
-     *
-     * ⚠️ **1000-დან 5000-მდე აიწია მსახიობების გამო**: ცოცხალ
-     * ბაზაში ერთი ანგარიშის ბიბლიოთეკა 3530 მსახიობია, ე.ი. „ვისაც ჯერ არ
-     * განახლებია" პირველ გაშვებაზე 1000-ზე ბევრად მეტია და გადაცემა 422-ით
-     * ჩავარდებოდა. რეალური საზღვარი ერთი INSERT-ის ზომაა — იხ. `INSERT_CHUNK`.
-     */
-    private const MAX_ITEMS = 5000;
-
-    /**
-     * **რამდენი job იწერება ერთ INSERT-ში.**
-     *
-     * ⚠️ `Batch::add()` მთელ სიას **ერთი** INSERT-ით წერს (`DatabaseQueue::bulk`),
-     * ერთი job კი ~800 ბაიტია — ამ მანქანაზე `max_allowed_packet` 1 MB-ია,
-     * ე.ი. ~1270-ზე მეტი ერთეული ერთ რექვესთში **MySQL-ის შეცდომით** ჩავარდებოდა
-     * (sqlite-ის ტესტებს ეს ზღვარი საერთოდ არ აქვს და ვერ დაინახავდა).
-     * 500 ცალი ~400 KB-ია — ორმაგი მარაგი.
-     */
-    private const INSERT_CHUNK = 500;
-
-    /**
-     * ⚠️ **worker-ის სიცოცხლის ჭერი.** `--stop-when-empty` მას რიგის
-     * ამოწურვისთანავე აჩერებს, `--max-time` კი უკიდურესი შემთხვევის
-     * დაზღვევაა: გაჭედილი job-ის გამო პროცესი სამუდამოდ არ უნდა დარჩეს
-     * (ზუსტად ის, რაც ვიდეოს ჩამოწერას დაემართა).
-     */
-    private const WORKER_MAX_SECONDS = 3600;
-
-    public function store(Request $request, BackgroundProcess $background)
+    public function store(Request $request, BatchLauncher $launcher, SyncHistory $history)
     {
         /* ⚠️ **მსახიობის ერთეულს დომენი არ აქვს** (`type: 'actor'`):
            `cast_members` გლობალური ლექსიკონია და მედია-დომენად ვერ ჩაჯდება. */
@@ -80,7 +43,7 @@ class BatchController extends Controller
 
         $data = $request->validate([
             'kind' => ['required', Rule::in(RunBatchItem::KINDS)],
-            'items' => ['required', 'array', 'min:1', 'max:'.self::MAX_ITEMS],
+            'items' => ['required', 'array', 'min:1', 'max:'.BatchLauncher::MAX_ITEMS],
             'items.*.type' => ['required', Rule::in(match (true) {
                 $castKind => [RunBatchItem::ACTOR],
                 // სეზონი მხოლოდ სერიალსა და ანიმეს აქვს
@@ -89,123 +52,38 @@ class BatchController extends Controller
             })],
             'items.*.id' => ['required', 'integer', 'min:1'],
             'options' => ['nullable', 'array'],
+            // ბრაუზერის რიგმა დარჩენილი სერვერს გადასცა — შედეგი იმავე გაშვებაში გროვდება
+            'run' => ['sometimes', 'nullable', 'uuid'],
         ]);
 
         $user = $request->user();
+        $options = $data['options'] ?? [];
 
-        if ($castKind) {
-            /* ⚠️ მსახიობს მოდული არ აქვს — „ვის შეუძლია" ჩართული მედია-მოდული
-               წყვეტს, ზუსტად ისე, როგორც `/cast/sync/plan`-ზე. */
-            if (! CastPool::typesFor($user)) {
-                return response()->json(['message' => 'module_disabled'], 403);
-            }
-        } else {
-            /* ⚠️ **უფლება აქვე მოწმდება და არა job-ში.** სამივე ოპერაცია
-               არსებულ ჩანაწერს ცვლის, ე.ი. `update` სჭირდება — იგივე წესი,
-               რაც `/media/sync/{type}/{id}`-ს. job-ში შემოწმება გვიანია:
-               მაშინ პასუხი უკვე გაცემულია და უარი არსად ჩანს. */
-            foreach (array_unique(array_column($data['items'], 'type')) as $type) {
-                if (! $user->hasModule($type) || ! $user->hasPermission($type, 'update')) {
-                    return response()->json([
-                        'message' => 'forbidden_permission',
-                        'permission' => "{$type}.update",
-                    ], 403);
-                }
-            }
+        if ($denied = $launcher->denies($user, $data['kind'], $data['items'], $options)) {
+            return $denied;
         }
 
-        /* ⚠️ **გასაღებიც აქვე მოწმდება, უფლების გვერდით.**
-           გასაღები მხოლოდ მომხმარებლისაა, ე.ი. მის გარეშე 300-ერთეულიანი
-           პარტია 300-ჯერ ერთსა და იმავე მიზეზზე ჩავარდებოდა — და ეს მხოლოდ
-           ბოლოს გამოჩნდებოდა. თარგმანს ერთი წყაროც ჰყოფნის (TMDB ან Gemini). */
-        if ($missing = $this->missingCredential($data['kind'], $data['options'] ?? [])) {
-            return MissingCredential::response($missing);
-        }
+        $tracked = in_array($data['kind'], SyncHistory::KINDS, true);
+        /* გაშვება, რომელსაც ეს პარტია აგრძელებს: ჩემი უნდა იყოს (`owner` scope) და იმავე
+           სახეობის — სხვა შემთხვევაში პარტია ახალი გაშვებაა, როგორც ყოველთვის */
+        $continued = $tracked && filled($data['run'] ?? null)
+            ? SyncRun::query()->where('key', $data['run'])->where('kind', $data['kind'])->first()
+            : null;
 
-        $jobs = array_map(
-            fn (array $item) => new RunBatchItem(
-                userId: (int) $user->getKey(),
-                kind: $data['kind'],
-                type: $item['type'],
-                recordId: (int) $item['id'],
-                options: $data['options'] ?? [],
-            ),
-            $data['items'],
-        );
+        $batch = $launcher->dispatch($user, $data['kind'], $data['items'], $options, $continued?->key);
 
-        /* ⚠️ **ნაწილებად** (იხ. `INSERT_CHUNK`): პირველი ნაწილი პარტიას ქმნის,
-           დანარჩენი `add()`-ით ემატება — **worker-ის გაშვებამდე**, ე.ი. პარტია
-           მანამდე ვერ „დასრულდება", სანამ ყველა ერთეული ჩაწერილი არ არის. */
-        $chunks = array_chunk($jobs, self::INSERT_CHUNK);
-
-        $batch = Bus::batch(array_shift($chunks))
-            ->name($data['kind'])
-            // ⚠️ ერთი ჩანაწერის ჩავარდნა დანარჩენებს არ აჩერებს — SPA-ს რიგის ქცევა
-            ->allowFailures()
-            /* **მფლობელი პარტიაშივე ჩაიწერება**.
-               ⚠️ `Illuminate\Bus\Batch` **Eloquent-მოდელი არ არის**, ე.ი.
-               `EnsureRecordOwnership` მას ვერ ხედავს და `BelongsToUser`-იც
-               არ ეხება — სხვისი UUID-ით პროგრესის კითხვა და მიმდინარე
-               პარტიის გაუქმება შესაძლებელი იყო. `withOption()` `job_batches.options`-ში
-               ჯდება, ე.ი. ცალკე ცხრილი არ სჭირდება. */
-            ->withOption('user_id', (int) $user->getKey())
-            /* ⚠️ **`finally` და არა `then`**: `allowFailures()`-ის
-               პირობებში `then` მხოლოდ სუფთა გავლაზე ისვრის, ე.ი. სწორედ ის
-               პარტია, რომელსაც ყველაზე მეტად სჭირდება შეტყობინება (ერთი
-               ჩავარდნა სამასიდან), ჩუმად დამთავრდებოდა.
-               ⚠️ **`$user->getKey()` და არა `$user`**: callback სერიალიზდება
-               `job_batches`-ში და მთელი მოდელის ჩაკერვა იქ მის იმ დროინდელ
-               ასლს გაყინავდა. */
-            ->finally(function (Batch $done) use ($user, $data) {
-                app(Notifier::class)->send(User::find($user->getKey()), NotificationType::BATCH_DONE, [
-                    'kind' => $data['kind'],
-                    'total' => $done->totalJobs,
-                    'failed' => $done->failedJobs,
-                    // გაშვების გასაღები — შეტყობინება „სინქრონიზაციის შედეგებში" ამ გაშვებას ხსნის
-                    'run' => $done->id,
-                ]);
-            })
-            ->dispatch();
-
-        foreach ($chunks as $chunk) {
-            $batch = $batch->add($chunk);
-        }
-
-        if (! $this->startWorker($background)) {
-            // ⚠️ პარტია იშლება: ჩაწერილი, მაგრამ არასდროს გაშვებული რიგი
-            // „მუშაობს"-ად გამოჩნდებოდა და სამუდამოდ 0%-ზე იდგებოდა
-            $batch->cancel();
-
+        if (! $launcher->start($batch)) {
             return response()->json(['message' => 'worker_unavailable'], 503);
         }
 
+        // ისტორია: ახალ გაშვებას — რაზე და რით გაეშვა; გაგრძელებულს — რომელი პარტია ავსებს ახლა
+        if ($continued) {
+            $history->attach($continued, $batch->id);
+        } elseif ($tracked) {
+            $history->open((int) $user->getKey(), $batch->id, $data['kind'], SyncHistory::SOURCE_BATCH, $data['items'], $options, $batch->id);
+        }
+
         return response()->json($this->payload($batch->fresh()), 202);
-    }
-
-    /**
-     * რომელი წყაროს გასაღები აკლია ამ ოპერაციას; `null` — არაფერი.
-     *
-     * ⚠️ სინქრონი, გალერეა და მსახიობი TMDB-ზე დგანან; თარგმანი კი არჩეულ
-     * წყაროებზე — ერთი მაინც უნდა მუშაობდეს (`ItemTranslator`-ის წესი).
-     */
-    private function missingCredential(string $kind, array $options): ?string
-    {
-        if ($kind !== 'translate') {
-            return CredentialStore::configured(CredentialProviders::TMDB) ? null : CredentialProviders::TMDB;
-        }
-
-        $sources = array_values(array_intersect(ItemTranslator::SOURCES, (array) ($options['sources'] ?? [])))
-            ?: ItemTranslator::SOURCES;
-
-        foreach ($sources as $source) {
-            $provider = $source === 'gemini' ? CredentialProviders::GEMINI : CredentialProviders::TMDB;
-
-            if (CredentialStore::configured($provider)) {
-                return null;
-            }
-        }
-
-        return $sources === ['gemini'] ? CredentialProviders::GEMINI : CredentialProviders::TMDB;
     }
 
     /** პარტიის მდგომარეობა — SPA ამას ეკითხება, სანამ მიმდინარეობს */
@@ -316,29 +194,5 @@ class BatchController extends Controller
                 'error' => $item->error,
             ])
             ->all();
-    }
-
-    /**
-     * **worker-ის გაშვება მოთხოვნისამებრ.**
-     *
-     * ⚠️ **`--stop-when-empty` არის ის, რაც მუდმივ პროცესს ზედმეტს ხდის.**
-     * worker რიგს ამოწურავს და ითიშება; მომდევნო პარტია ახალს გაუშვებს.
-     * ე.ი. „გაუშვი მეოთხე პროცესი და არ დაგავიწყდეს" — რომელიც პარტიების
-     * ერთადერთი რეალური წინაპირობა იყო — აღარ არსებობს.
-     *
-     * ⚠️ **პარალელური worker-ები უვნებელია**: ისინი ერთსა და იმავე რიგს
-     * კითხულობენ, ხოლო job-ის „დაჭერა" ბაზის დონეზეა (`reserved_at`) —
-     * ორჯერ დამუშავება გამორიცხულია.
-     */
-    private function startWorker(BackgroundProcess $background): bool
-    {
-        return $background->dispatch([
-            PHP_BINARY,
-            base_path('artisan'),
-            'queue:work',
-            '--stop-when-empty',
-            '--tries=1',
-            '--max-time='.self::WORKER_MAX_SECONDS,
-        ]);
     }
 }

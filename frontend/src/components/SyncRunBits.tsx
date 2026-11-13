@@ -1,15 +1,24 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { SYNC_RUN_RESULTS, type SyncRun, type SyncRunResult } from '@/api/syncRuns'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { CircleCheck, Loader2, Play, RotateCw, Square, Unplug } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { resumeSyncRun, stopSyncRun, SYNC_RUN_RESULTS, type SyncRun, type SyncRunResult, type SyncRunState } from '@/api/syncRuns'
 import { useDateFormat } from '@/lib/dates'
+import { errorMessage } from '@/lib/errors'
+import { useSettings } from '@/lib/settings'
 import { SYNC_RESULT_LOOK } from '@/lib/syncLook'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
+import { Badge, CountBadge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { useToast } from '@/components/ui/feedback'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    **გაშვების წვრილი ნაწილები** — შედეგების გვერდიც და სინქრონიზაციის ბარათებიც
-   ერთსა და იმავეს ხატავენ: შედეგის ჯამებს, დაუსრულებელი გაშვების ზოლს და „ბოლო
-   გაშვების" ხაზს.
+   ერთსა და იმავეს ხატავენ: შედეგის ჯამებს, გაშვების მდგომარეობას, დაუსრულებელი
+   გაშვების ზოლს, „ბოლო გაშვების" ხაზს და გაწყვეტილი გაშვების ღილაკებს
+   („გაგრძელება" · „ჩავარდნილების თავიდან გაშვება" · „შეჩერება").
    ============================================================ */
 
 /**
@@ -42,9 +51,28 @@ export function RunCounts({ counts, className }: { counts: Record<SyncRunResult,
   )
 }
 
-/** დაუსრულებელი გაშვების ზოლი — რამდენს აქვს შედეგი დაგეგმილიდან; სრულზე არ იხატება */
-export function RunProgress({ run, className }: { run: Pick<SyncRun, 'done' | 'total'>; className?: string }) {
-  if (run.total <= 0 || run.done >= run.total) return null
+const STATE_LOOK: Record<SyncRunState, { icon: LucideIcon; tone: string; soft: string; spin?: boolean }> = {
+  running: { icon: Loader2, tone: 'text-[var(--icon-info)]', soft: 'bg-[color-mix(in_oklab,var(--icon-info)_14%,transparent)]', spin: true },
+  interrupted: { icon: Unplug, tone: 'text-[var(--icon-warn)]', soft: 'bg-[color-mix(in_oklab,var(--icon-warn)_14%,transparent)]' },
+  finished: { icon: CircleCheck, tone: 'text-[var(--icon-ok)]', soft: 'bg-secondary' },
+}
+
+/** გაშვების მდგომარეობა: მიმდინარეობს · გაწყდა · დასრულდა */
+export function RunStateBadge({ state }: { state: SyncRunState }) {
+  const { t } = useTranslation()
+  const { icon: Icon, tone, soft, spin } = STATE_LOOK[state]
+
+  return (
+    <Badge className={cn('font-normal', soft)} data-testid="run-state" data-state={state}>
+      <Icon className={cn('size-3.5', tone, spin && 'animate-spin')} />
+      {t(`syncResults.state.${state}`)}
+    </Badge>
+  )
+}
+
+/** დაუსრულებელი გაშვების ზოლი — რამდენს აქვს შედეგი დაგეგმილიდან; დასრულებულზე არ იხატება */
+export function RunProgress({ run, className }: { run: Pick<SyncRun, 'done' | 'total' | 'state'>; className?: string }) {
+  if (run.state === 'finished' || run.total <= 0 || run.done >= run.total) return null
 
   const percent = Math.round((run.done / run.total) * 100)
 
@@ -57,7 +85,7 @@ export function RunProgress({ run, className }: { run: Pick<SyncRun, 'done' | 't
       className={cn('block h-1.5 overflow-hidden rounded-md bg-muted', className)}
       data-testid="run-progress"
     >
-      <span className="block h-full rounded-md bg-[var(--mod)]" style={{ width: `${percent}%` }} />
+      <span className="block h-full rounded-md bg-[var(--mod)] transition-[width]" style={{ width: `${percent}%` }} />
     </span>
   )
 }
@@ -90,5 +118,90 @@ export function LastRun({ run, kind = false }: { run: SyncRun | null | undefined
       </span>
       <RunCounts counts={run.counts} />
     </Link>
+  )
+}
+
+/**
+ * **გაშვების ღილაკები**: მიმდინარეზე — „შეჩერება"; გაწყვეტილზე — „გაგრძელება" (მხოლოდ
+ * ის, რასაც შედეგი არ აქვს); ჩავარდნილებზე — „ჩავარდნილების თავიდან გაშვება". ორივე
+ * იმავე პარამეტრებით და იმავე გაშვებაში ეშვება, სერვერზე ფონურად — ჩანართის დახურვა
+ * მას აღარ წყვეტს.
+ *
+ * ⚠️ `one` — ვიწრო ადგილი (გაშვებების სია, სინქრონიზაციის ბარათი): ერთი ღილაკი, ის,
+ * რომელიც ახლა ყველაზე საჭიროა; გაშვების გვერდზე ორივე ვარიანტი ჩანს.
+ * ⚠️ პაუზა ერთეულებს შორის პარამეტრებიდანაა — თარგმანს თავისი აქვს (Gemini-ს ლიმიტი).
+ */
+export function RunActions({ run, one = false }: { run: SyncRun; one?: boolean }) {
+  const { t } = useTranslation()
+  const { toast } = useToast()
+  const { settings } = useSettings()
+  const qc = useQueryClient()
+
+  const refresh = () => {
+    for (const key of ['sync-run', 'sync-run-items', 'sync-runs', 'sync-overview']) {
+      qc.invalidateQueries({ queryKey: [key] })
+    }
+  }
+
+  const resume = useMutation({
+    mutationFn: (only?: 'failed') =>
+      resumeSyncRun(run.key, {
+        only,
+        delay_ms: run.kind === 'translate' ? settings.translateDelayMs : settings.syncDelayMs,
+      }),
+    onSuccess: (_, only) => {
+      toast({ title: t(only === 'failed' ? 'syncResults.retried' : 'syncResults.resumed'), variant: 'success' })
+      refresh()
+    },
+    onError: (e) => {
+      toast({ title: errorMessage(e), variant: 'error' })
+      refresh()
+    },
+  })
+
+  const stop = useMutation({
+    mutationFn: () => stopSyncRun(run.key),
+    onSuccess: refresh,
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  const busy = resume.isPending || stop.isPending
+
+  if (run.state === 'running') {
+    // ბრაუზერის რიგით მიმდინარე გაშვებას სერვერი ვერ აჩერებს — მას რიგის საკუთარი ღილაკი აქვს
+    return !run.stoppable ? null : (
+      <Button size="sm" variant="destructiveOutline" disabled={busy} onClick={() => stop.mutate()} data-testid="run-stop">
+        <Square className="size-4" />
+        {t('mediaSync.stop')}
+      </Button>
+    )
+  }
+
+  if (!run.resumable && !run.retryable) {
+    // გაწყდა, მაგრამ ღილაკი არ აქვს: ძველი გაშვებაა — რაზე და რით გაეშვა, მასზე არ ინახება
+    return run.state === 'interrupted' ? (
+      <span data-testid="run-old">
+        <InfoHint info={t('errors.sync_run_not_resumable')} />
+      </span>
+    ) : null
+  }
+
+  return (
+    <span className="flex flex-wrap items-center gap-2" data-testid="run-actions">
+      {run.resumable && (
+        <Button size="sm" disabled={busy} onClick={() => resume.mutate(undefined)} data-testid="run-resume">
+          {resume.isPending && resume.variables === undefined ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
+          {t('syncResults.resume')}
+          <CountBadge count={run.left} />
+        </Button>
+      )}
+      {run.retryable && !(one && run.resumable) && (
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => resume.mutate('failed')} data-testid="run-retry">
+          {resume.isPending && resume.variables === 'failed' ? <Loader2 className="size-4 animate-spin" /> : <RotateCw className="size-4" />}
+          {t('syncResults.retryFailed')}
+          <CountBadge count={run.counts.failed} />
+        </Button>
+      )}
+    </span>
   )
 }

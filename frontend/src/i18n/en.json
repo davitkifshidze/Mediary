@@ -1374,7 +1374,10 @@
     "screenshot_album_has_no_person": "A screenshot album has no person.",
     "screenshot_not_public": "A screenshot album can never be public.",
     "goal_limit": "The goal limit is reached — delete an old goal.",
-    "goal_classifier_unknown": "This condition does not belong to that module."
+    "goal_classifier_unknown": "This condition does not belong to that module.",
+    "sync_run_running": "The run is in progress — wait for it or stop it.",
+    "sync_run_not_resumable": "This run did not keep what it ran on and with what settings — it cannot be continued.",
+    "sync_run_nothing_left": "Nothing is left to run."
   },
   "fields": {
     "title": "Fields",
@@ -5667,7 +5670,7 @@
     "title": "Sync results",
     "open": "View results",
     "allRuns": "All runs",
-    "hint": "The history of every run: when, what kind, which modules and with what result. Inside a run you see each item — what came back, why, and what changed to what: an item unfolds to show the old and the new value of every field (older runs list only the field names). “Don't run again” switches on the same toggle as “Don't update” on the record's page. History is kept for 90 days; locked records are not shown here.",
+    "hint": "The history of every run: when, what kind, which modules and with what result. Inside a run you see each item — what came back, why, and what changed to what: an item unfolds to show the old and the new value of every field (older runs list only the field names). On an interrupted run “Continue” runs only what has no result yet — with the same settings, in the same run, on the server in the background; “Run the failed ones again” runs only those that failed. “Don't run again” switches on the same toggle as “Don't update” on the record's page. History is kept for 90 days; locked records are not shown here.",
     "none": "Nothing has been run yet",
     "noneHint": "When you run data, seasons, cast or translation, the outcome shows up here.",
     "noItems": "This run has no such item",
@@ -5682,7 +5685,7 @@
       "queue": "From the browser queue"
     },
     "units": "{{count}} items",
-    "partial": "{{done}} / {{total}} — incomplete",
+    "partial": "{{done}} / {{total}}",
     "result": {
       "updated": "Updated",
       "unchanged": "Unchanged",
@@ -5729,6 +5732,20 @@
       "homepage": "Official site",
       "profile_links": "Social links",
       "photo": "Profile photo"
+    },
+    "state": {
+      "running": "Running",
+      "interrupted": "Interrupted",
+      "finished": "Finished"
+    },
+    "resume": "Continue",
+    "retryFailed": "Run the failed ones again",
+    "resumed": "The run continues — on the server, in the background",
+    "retried": "The failed ones are running again — on the server, in the background",
+    "param": {
+      "title": "Ran with:",
+      "media": "Poster and photos",
+      "mediaMissing": "Missing files only"
     }
   },
   "syncCards": {
@@ -5745,7 +5762,9 @@
     "resultsText": "The history of every run — what came back, why, and what changed to what.",
     "resultsCount": "runs in the history",
     "lastRun": "Last run: {{date}}",
-    "neverRan": "Never run yet"
+    "neverRan": "Never run yet",
+    "interrupted": "Interrupted run — {{kind}}",
+    "running": "Run in progress — {{kind}}"
   },
   "locks": {
     "title": "Locked",

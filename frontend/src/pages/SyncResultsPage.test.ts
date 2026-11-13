@@ -18,6 +18,12 @@ import i18n from '@/i18n'
    „აღარ გაეშვას" მონიშნულ ერთეულებს ან ყველა ჩავარდნილს აგზავნის და მერე სიას
    თავიდან კითხულობს; გასაღების ფორმა UUID-ია.
 
+   ⚠️ **გაწყვეტილი გაშვება**: გაშვებას მდგომარეობის ნიშანი აქვს (მიმდინარეობს · გაწყდა ·
+   დასრულდა); გაწყვეტილზე „გაგრძელება" (რიცხვით — რამდენი დარჩა) სერვერს იმავე გაშვების
+   გაგრძელებას სთხოვს, ჩავარდნილებზე — „ჩავარდნილების თავიდან გაშვება"; სიაში ერთი ღილაკია,
+   გაშვების გვერდზე ორივე; მიმდინარეზე — „შეჩერება"; დასრულებულს ღილაკი არ აქვს.
+   გაშვების გვერდი ამბობს, რით გაეშვა (ველები, გადაწერა).
+
    ⚠️ **„რა რით შეიცვალა"**: ერთეული, რომელსაც მნიშვნელობები აქვს, იშლება — ყოველ
    ველზე „იყო → გახდა", ცარიელიდან შევსებულზე „ახალი" ნიშანი ძველის გარეშე,
    ჟანრებზე რა დაემატა და რა მოაკლდა, პოსტერზე მხოლოდ ფაქტი, თარგმანზე წყარო; გრძელი
@@ -32,6 +38,11 @@ const run = (extra: Partial<SyncRun> = {}): SyncRun => ({
   total: 4,
   done: 4,
   counts: { updated: 1, unchanged: 1, skipped: 1, failed: 1 },
+  left: 0,
+  state: 'finished',
+  resumable: false,
+  retryable: false,
+  stoppable: false,
   types: ['movie'],
   started_at: '2026-11-13T10:00:00+04:00',
   last_at: '2026-11-13T10:05:00+04:00',
@@ -75,6 +86,8 @@ const mocks = vi.hoisted(() => ({
   fetchSyncRun: vi.fn(),
   fetchSyncRunItems: vi.fn(),
   pauseSyncRunItems: vi.fn(),
+  resumeSyncRun: vi.fn(),
+  stopSyncRun: vi.fn(),
 }))
 
 vi.mock('@/api/syncRuns', async (original) => ({
@@ -158,7 +171,11 @@ const click = async (el: Element | null | undefined) => {
 
 describe('SyncResultsPage: the list of runs', () => {
   it('links each run to its own page and shows all four counts', async () => {
-    mocks.fetchSyncRuns.mockResolvedValue({ items: [run(), run({ key: 'aaaa1111-2222-4333-8444-555566667777', kind: 'cast', source: 'batch', types: ['actor'], total: 9, done: 5 })], total: 2, lastPage: 1 })
+    mocks.fetchSyncRuns.mockResolvedValue({
+      items: [run(), run({ key: 'aaaa1111-2222-4333-8444-555566667777', kind: 'cast', source: 'batch', types: ['actor'], total: 9, done: 5, left: 4, state: 'interrupted' })],
+      total: 2,
+      lastPage: 1,
+    })
     await mount('/sync/results')
 
     const runs = all<HTMLAnchorElement>('[data-testid="sync-run"]')
@@ -174,14 +191,14 @@ describe('SyncResultsPage: the list of runs', () => {
     mocks.fetchSyncRuns.mockResolvedValue({
       items: [
         run({ types: ['movie', 'series'], counts: { updated: 3, unchanged: 0, skipped: 0, failed: 1 } }),
-        run({ key: 'aaaa1111-2222-4333-8444-555566667777', kind: 'cast', source: 'batch', types: ['actor'], total: 8, done: 2 }),
+        run({ key: 'aaaa1111-2222-4333-8444-555566667777', kind: 'cast', source: 'batch', types: ['actor'], total: 8, done: 2, left: 6, state: 'interrupted' }),
       ],
       total: 2,
       lastPage: 1,
     })
     await mount('/sync/results')
 
-    const [full, partial] = all<HTMLAnchorElement>('[data-testid="sync-run"]')
+    const [full, partial] = all<HTMLElement>('[data-testid="sync-run-card"]')
     // სახეობას თავისი ფერი აქვს — ბარათი მას აქცენტად იღებს
     expect(full.style.getPropertyValue('--mod')).toBe('var(--tool-sync)')
     expect(partial.style.getPropertyValue('--mod')).toBe('var(--tool-actors)')
@@ -209,6 +226,109 @@ describe('SyncResultsPage: the list of runs', () => {
 
     expect(all('[data-testid="sync-run"]')).toHaveLength(0)
     expect(document.body.textContent).toContain(i18n.t('syncResults.none'))
+  })
+})
+
+describe('SyncResultsPage: an interrupted run', () => {
+  const BROKEN = 'bbbb1111-2222-4333-8444-555566667777'
+  const HALF = 'cccc1111-2222-4333-8444-555566667777'
+  const LIVE = 'dddd1111-2222-4333-8444-555566667777'
+  const QUEUED = 'eeee1111-2222-4333-8444-555566667777'
+
+  const broken = () => run({ key: BROKEN, total: 170, done: 12, left: 158, state: 'interrupted', resumable: true, retryable: true, counts: { updated: 9, unchanged: 0, skipped: 0, failed: 3 } })
+
+  it('says the state of each run and offers one button in the list', async () => {
+    mocks.fetchSyncRuns.mockResolvedValue({
+      items: [
+        broken(),
+        // ყველაფერს შედეგი აქვს, მაგრამ ორი ჩავარდა — მხოლოდ თავიდან გაშვება
+        run({ key: HALF, retryable: true, counts: { updated: 2, unchanged: 0, skipped: 0, failed: 2 } }),
+        run({ key: LIVE, kind: 'translate', total: 40, done: 10, left: 30, state: 'running', stoppable: true }),
+        // ბრაუზერის რიგით მიმდინარე: სერვერი მას ვერ აჩერებს — ღილაკი არ აქვს
+        run({ key: QUEUED, total: 6, done: 1, left: 5, state: 'running' }),
+        run(),
+      ],
+      total: 5,
+      lastPage: 1,
+    })
+    mocks.resumeSyncRun.mockResolvedValue(broken())
+    mocks.stopSyncRun.mockResolvedValue(broken())
+    await mount('/sync/results')
+
+    const cards = all<HTMLElement>('[data-testid="sync-run-card"]')
+    expect(cards.map((card) => card.querySelector('[data-testid="run-state"]')!.getAttribute('data-state'))).toEqual(['interrupted', 'finished', 'running', 'running', 'finished'])
+    expect(cards[0].querySelector('[data-testid="run-state"]')!.textContent).toBe(i18n.t('syncResults.state.interrupted'))
+
+    // გაწყვეტილზე სიაში ერთი ღილაკია — „გაგრძელება", რამდენი დარჩა
+    const resume = cards[0].querySelector<HTMLButtonElement>('[data-testid="run-resume"]')!
+    expect(resume.textContent).toContain(i18n.t('syncResults.resume'))
+    expect(resume.querySelector('[data-testid="count-badge"]')!.textContent).toBe('158')
+    expect(cards[0].querySelector('[data-testid="run-retry"]')).toBeNull()
+    // ღილაკი ბმულის შიგნით არ არის — დაჭერა გაშვების გვერდს არ ხსნის
+    expect(resume.closest('a')).toBeNull()
+
+    // მხოლოდ ჩავარდნილები; მიმდინარეზე — შეჩერება; დასრულებულს ღილაკი არ აქვს
+    expect(cards[1].querySelector('[data-testid="run-resume"]')).toBeNull()
+    expect(cards[1].querySelector('[data-testid="run-retry"]')!.querySelector('[data-testid="count-badge"]')!.textContent).toBe('2')
+    expect(cards[2].querySelector('[data-testid="run-actions"]')).toBeNull()
+    expect(cards[2].querySelector('[data-testid="run-stop"]')).not.toBeNull()
+    expect(cards[3].querySelector('button')).toBeNull()
+    expect(cards[4].querySelector('button')).toBeNull()
+
+    await click(resume)
+    expect(mocks.resumeSyncRun).toHaveBeenLastCalledWith(BROKEN, { only: undefined, delay_ms: 200 })
+    // გაგრძელების შემდეგ სია თავიდან იკითხება
+    expect(mocks.fetchSyncRuns.mock.calls.length).toBeGreaterThanOrEqual(2)
+
+    await click(cards[1].querySelector('[data-testid="run-retry"]'))
+    expect(mocks.resumeSyncRun).toHaveBeenLastCalledWith(HALF, { only: 'failed', delay_ms: 200 })
+
+    // თარგმანს თავისი პაუზა აქვს; მიმდინარე გაშვება ჩერდება
+    await click(cards[2].querySelector('[data-testid="run-stop"]'))
+    expect(mocks.stopSyncRun).toHaveBeenCalledWith(LIVE)
+  })
+
+  it('shows both variants and what the run ran with on its own page', async () => {
+    mocks.fetchSyncRun.mockResolvedValue({ ...broken(), params: { fields: ['title', 'year'], media: true, only_missing: true, overwrite: true } })
+    mocks.fetchSyncRunItems.mockResolvedValue({ items: ITEMS, total: 4, lastPage: 1 })
+    mocks.resumeSyncRun.mockResolvedValue(broken())
+    await mount(`/sync/results/${BROKEN}`)
+
+    const head = document.querySelector<HTMLElement>('[data-testid="sync-run-head"]')!
+    expect(head.querySelector('[data-testid="run-state"]')!.getAttribute('data-state')).toBe('interrupted')
+    expect(head.querySelector('[data-testid="run-progress"]')!.getAttribute('aria-valuenow')).toBe('7')
+
+    // რით გაეშვა: მედია, ველები და გადაწერა
+    const params = head.querySelector('[data-testid="run-params"]')!.textContent!
+    for (const key of ['syncResults.param.mediaMissing', 'sync.field.title', 'sync.field.year', 'sync.modeOverwrite']) {
+      expect(params).toContain(i18n.t(key))
+    }
+
+    // ორივე ვარიანტი: გაგრძელება და ჩავარდნილების თავიდან გაშვება
+    expect(head.querySelector('[data-testid="run-resume"]')).not.toBeNull()
+    const retry = head.querySelector<HTMLButtonElement>('[data-testid="run-retry"]')!
+    expect(retry.textContent).toContain(i18n.t('syncResults.retryFailed'))
+    expect(retry.querySelector('[data-testid="count-badge"]')!.textContent).toBe('3')
+
+    await click(retry)
+    expect(mocks.resumeSyncRun).toHaveBeenLastCalledWith(BROKEN, { only: 'failed', delay_ms: 200 })
+    // გაშვებაც და ერთეულებიც თავიდან იკითხება
+    expect(mocks.fetchSyncRun.mock.calls.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('gives a finished or an old run nothing to continue', async () => {
+    // ძველი გაშვება: გაწყდა, მაგრამ რაზე და რით გაეშვა, არ ინახება
+    mocks.fetchSyncRun.mockResolvedValue({ ...run({ total: 9, done: 5, left: 4, state: 'interrupted' }), params: null })
+    mocks.fetchSyncRunItems.mockResolvedValue({ items: ITEMS, total: 4, lastPage: 1 })
+    await mount('/sync/results/0b0e7a8c-1111-4222-8333-444455556666')
+
+    const head = document.querySelector<HTMLElement>('[data-testid="sync-run-head"]')!
+    expect(head.querySelector('[data-testid="run-state"]')!.textContent).toBe(i18n.t('syncResults.state.interrupted'))
+    expect(head.querySelector('[data-testid="run-resume"]')).toBeNull()
+    expect(head.querySelector('[data-testid="run-retry"]')).toBeNull()
+    expect(head.querySelector('[data-testid="run-params"]')).toBeNull()
+    // ღილაკის ნაცვლად — ახსნა, რატომ არ გრძელდება
+    expect(head.querySelector('[data-testid="run-old"]')).not.toBeNull()
   })
 })
 

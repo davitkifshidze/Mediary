@@ -8,6 +8,11 @@ import { readPage, type Page } from '@/lib/paged'
    რიგი (გასაღებს რიგი თვითონ ქმნის — `newRunKey()` — და ყოველ ერთეულს თან ატანს).
    ერთეულზე ინახება შედეგი, მიზეზი და **რა შეიცვალა**: ველების სია (`changes`) და
    რა რით (`details` — ძველი და ახალი მნიშვნელობა). ისტორია 90 დღე ინახება.
+
+   გაშვებამ იცის, **რაზე და რით გაეშვა** (დაგეგმილი ერთეულები და პარამეტრები): ფონურ
+   პარტიაზე სერვერი თვითონ წერს, ბრაუზერის რიგი კი გაშვების დასაწყისში აგზავნის
+   (`openSyncRun`). ამიტომ გაწყვეტილი გაშვება გრძელდება — მხოლოდ იმაზე, რასაც შედეგი არ
+   აქვს, იმავე პარამეტრებით და იმავე გაშვებაში (`resumeSyncRun`; სერვერზე, ფონურად).
    ============================================================ */
 
 /** მონაცემები · სეზონები და სერიები · მსახიობები · თარგმანი */
@@ -16,6 +21,24 @@ export type SyncRunKind = 'sync' | 'episodes' | 'cast' | 'translate'
 export const SYNC_RUN_RESULTS = ['updated', 'unchanged', 'skipped', 'failed'] as const
 
 export type SyncRunResult = (typeof SYNC_RUN_RESULTS)[number]
+
+/**
+ * მიმდინარეობს · გაწყდა (ერთეულები დარჩა და გაშვება აღარ მიდის) · დასრულდა.
+ * ⚠️ ბრაუზერის რიგზე სერვერმა მხოლოდ ბოლო ერთეულის დრო იცის: „გაწყდა" მაშინაა, როცა რიგი
+ * გაჩერდა (`stopSyncRun`) ან ორი წუთია დუმს.
+ */
+export type SyncRunState = 'running' | 'interrupted' | 'finished'
+
+/** რით გაეშვა — სახეობის მიხედვით: ველები, გადაწერა, მედია, წყაროები */
+export interface SyncRunParams {
+  fields?: string[]
+  media?: boolean
+  only_missing?: boolean
+  overwrite?: boolean
+  overwrite_photo?: boolean
+  sources?: string[]
+  review?: boolean
+}
 
 export interface SyncRun {
   /** გაშვების გასაღები (UUID) — მისამართშიც ეს წერია */
@@ -27,6 +50,17 @@ export interface SyncRun {
   total: number
   /** რამდენს აქვს შედეგი — შეწყვეტილ გაშვებაზე `total`-ზე ნაკლებია */
   done: number
+  /** რამდენი დარჩა გასაშვები */
+  left: number
+  state: SyncRunState
+  /** „გაგრძელება" შეიძლება: გაწყდა და დაგეგმილი სია ინახება (ძველ გაშვებებს არ აქვს) */
+  resumable: boolean
+  /** „ჩავარდნილების თავიდან გაშვება" შეიძლება: ჩავარდნილი აქვს და არ მიმდინარეობს */
+  retryable: boolean
+  /** „შეჩერება" შეიძლება: მიმდინარეობს და სერვერის ფონური პარტია ატარებს (ბრაუზერის რიგს თავისი ღილაკი აქვს) */
+  stoppable: boolean
+  /** მხოლოდ ერთი გაშვების პასუხში; `null` — ძველი გაშვება, პარამეტრები არ ინახება */
+  params?: SyncRunParams | null
   counts: Record<SyncRunResult, number>
   /** რომელ ტიპებს შეეხო: `movie` · `series` · `anime` · `actor` */
   types: string[]
@@ -75,6 +109,11 @@ export interface SyncOverview {
   /** ისტორიაში სულ რამდენი გაშვებაა და რომელია ბოლო — ყველა სახეობა ერთად */
   runs: number
   latest: SyncRun | null
+  /**
+   * დაუსრულებელი გაშვებები, ახლიდან ძველისკენ: გაწყვეტილი, რომლის გაგრძელებაც შეიძლება, და
+   * სერვერზე ფონურად მიმდინარე (გაგრძელებული გაშვება აქვე ჩანს, სანამ არ დასრულდება)
+   */
+  unfinished: SyncRun[]
 }
 
 export async function fetchSyncOverview(type?: string): Promise<SyncOverview> {
@@ -109,6 +148,36 @@ export async function fetchSyncRunItems(
 export async function pauseSyncRunItems(key: string, paused: boolean, target: { items: number[] } | { failed: true }): Promise<number> {
   const { data } = await api.post(`/sync/runs/${key}/pause`, { paused, ...target })
   return data.changed as number
+}
+
+/**
+ * ბრაუზერის რიგის გაშვების დასაწყისი: რაზე და რით ეშვება. სერვერი ამით იგებს, რა დარჩება
+ * გასაშვები, თუ რიგი გაწყდება. ⚠️ ვერ გაგზავნილი დასაწყისი რიგს არ აჩერებს — გაშვება
+ * პირველივე ერთეულზე მაინც იქმნება, უბრალოდ გაგრძელება არ ექნება.
+ */
+export async function openSyncRun(
+  key: string,
+  kind: SyncRunKind,
+  items: { type: string; id: number }[],
+  params: SyncRunParams,
+): Promise<void> {
+  await api.post('/sync/runs', { key, kind, items, params })
+}
+
+/**
+ * გაწყვეტილი გაშვების გაგრძელება (ან, `only: 'failed'` — მხოლოდ ჩავარდნილების თავიდან
+ * გაშვება): იმავე პარამეტრებით, იმავე გაშვებაში, სერვერზე ფონურად. `delay_ms` — პაუზა
+ * ერთეულებს შორის.
+ */
+export async function resumeSyncRun(key: string, opts: { only?: 'failed'; delay_ms?: number } = {}): Promise<SyncRun> {
+  const { data } = await api.post(`/sync/runs/${key}/resume`, opts)
+  return data.data
+}
+
+/** გაშვების გაჩერება: ფონური პარტია უქმდება, ბრაუზერის რიგის გაშვება „გაწყვეტილად" ინიშნება */
+export async function stopSyncRun(key: string): Promise<SyncRun> {
+  const { data } = await api.post(`/sync/runs/${key}/stop`)
+  return data.data
 }
 
 /** ბრაუზერის რიგის გაშვების გასაღები — სერვერი პირველივე ერთეულზე ქმნის გაშვებას */

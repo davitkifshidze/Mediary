@@ -366,9 +366,15 @@ Route::middleware('auth:sanctum')->group(function () {
     // სინქრონიზაციის გვერდების ბარათები: რამდენია გასაშვები და რა დააბრუნა ბოლო გაშვებამ
     Route::get('/sync/overview', [SyncRunController::class, 'overview']);
     Route::get('/sync/runs', [SyncRunController::class, 'index']);
+    // ბრაუზერის რიგის გაშვების დასაწყისი: რაზე და რით ეშვება — გაწყვეტილი გაშვება ამით გრძელდება
+    Route::post('/sync/runs', [SyncRunController::class, 'store']);
     Route::get('/sync/runs/{run}', [SyncRunController::class, 'show']);
     Route::get('/sync/runs/{run}/items', [SyncRunController::class, 'items']);
     Route::post('/sync/runs/{run}/pause', [SyncRunController::class, 'pause']);
+    /* გაწყვეტილის გაგრძელება (ან მხოლოდ ჩავარდნილების თავიდან გაშვება) და მიმდინარის
+       გაჩერება. უფლებასა და წყაროს გასაღებს კონტროლერი ამოწმებს — პარტიის წესით. */
+    Route::post('/sync/runs/{run}/resume', [SyncRunController::class, 'resume']);
+    Route::post('/sync/runs/{run}/stop', [SyncRunController::class, 'stop']);
 
     /* ---------- ჩაკეტილები ----------
        ყველა ჩემი ლოკი ერთ სიაში (ფილმი · სერიალი · ანიმე · მსახიობი · ალბომები ·

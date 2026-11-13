@@ -5,6 +5,8 @@ namespace App\Services\Sync;
 use App\Models\SyncRun;
 use App\Models\SyncRunItem;
 use App\Services\Cast\CastEnricher;
+use App\Services\Translation\ItemTranslator;
+use App\Support\AppTime;
 use App\Support\SyncOutcome;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -17,7 +19,8 @@ use Throwable;
  * (თითო ერთეულზე ერთი მოკლე მოთხოვნა: `/media/sync/…`, `/translations/…`,
  * `/cast/sync/…`). ორივე ერთეულის შედეგს აქ აწერს, გაშვების გასაღებით: პარტიაზე
  * ეს მისი id-ია, რიგზე — რიგის მიერ გენერირებული `run` (მოთხოვნის პარამეტრი).
- * გაშვების რიგი პირველივე ერთეულზე იქმნება — ცალკე „დაწყების" მოთხოვნა არ არსებობს.
+ * გაშვების რიგი პირველივე ერთეულზე იქმნება; **რაზე და რით** ეშვება (დაგეგმილი სია და
+ * პარამეტრები), ცალკე იწერება — `open()`: მისით გრძელდება გაწყვეტილი გაშვება.
  *
  * ⚠️ **ისტორია ვერასდროს ტეხს სინქრონიზაციას** (`AuditLogger`-ის წესი): ჩაწერა
  * try/catch-შია და ჩავარდნა მხოლოდ `report()`-ით ფიქსირდება.
@@ -56,8 +59,106 @@ class SyncHistory
     /** მსახიობის ერთეულის ტიპი — მედია-დომენი არ არის (`RunBatchItem::ACTOR`) */
     public const ACTOR = 'actor';
 
-    /** ერთ გაშვებაში მაქსიმუმ რამდენი ერთეული ითვლება დაგეგმილად (`BatchController::MAX_ITEMS`) */
-    private const MAX_TOTAL = 5000;
+    /** ერთ გაშვებაში მაქსიმუმ რამდენი ერთეული ითვლება დაგეგმილად (`BatchLauncher::MAX_ITEMS`) */
+    public const MAX_TOTAL = 5000;
+
+    /**
+     * **გაშვების გახსნა: რაზე და რით ეშვება.** დაგეგმილი ერთეულები (`plan`) და
+     * პარამეტრები (`params`) აქ იწერება — გაწყვეტილი გაშვება ამით გრძელდება.
+     *
+     * ფონურ პარტიაზე ამას პარტიის გამშვები იძახებს (გასაღები და `batch_id` — პარტიის
+     * id), ბრაუზერის რიგზე — რიგი თვითონ, გაშვების დასაწყისში (`POST /sync/runs`).
+     *
+     * ⚠️ პირველი ერთეულის შედეგმა შეიძლება დაასწროს — გაშვება მაშინ უკვე არსებობს
+     * გეგმის გარეშე და აქ მხოლოდ ივსება; ერთხელ ჩაწერილი გეგმა აღარ იცვლება.
+     *
+     * @param  list<array{type: string, id: int|string}>  $items
+     * @param  array<string, mixed>  $options  გაშვების პარამეტრები — ნედლად; ინახება მხოლოდ სახეობის ნაცნობი გასაღებები
+     */
+    public function open(int $userId, string $key, string $kind, string $source, array $items, array $options = [], ?string $batchId = null): ?SyncRun
+    {
+        if (! in_array($kind, self::KINDS, true) || ! Str::isUuid($key)) {
+            return null;
+        }
+
+        try {
+            $plan = [];
+
+            foreach (array_slice($items, 0, self::MAX_TOTAL) as $item) {
+                $plan[(string) $item['type']][(int) $item['id']] = true;
+            }
+
+            $plan = array_map(fn (array $ids) => array_keys($ids), $plan);
+            $total = array_sum(array_map('count', $plan));
+            $facts = ['params' => self::params($kind, $options), 'plan' => $plan, 'batch_id' => $batchId];
+
+            $run = SyncRun::withoutGlobalScope('owner')->firstOrCreate(
+                ['user_id' => $userId, 'key' => $key],
+                ['kind' => $kind, 'source' => $source, 'total' => $total, ...$facts],
+            );
+
+            if (! $run->wasRecentlyCreated && $run->plan === null) {
+                $run->update(['total' => max($total, (int) $run->total), ...$facts]);
+            }
+
+            return $run;
+        } catch (Throwable $e) {
+            report($e);
+
+            return null;
+        }
+    }
+
+    /**
+     * გაშვების პარამეტრები — მხოლოდ ის გასაღებები, რომლებიც ამ სახეობის ერთეულს მართლა
+     * გადაეცემა (`RunBatchItem::run()`); პაუზა (`delay_ms`) გაშვების ფაქტი არ არის.
+     *
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    public static function params(string $kind, array $options): array
+    {
+        $list = fn (string $key, array $allowed) => array_values(array_intersect($allowed, array_map('strval', (array) ($options[$key] ?? []))));
+
+        return match ($kind) {
+            self::KIND_SYNC => [
+                'fields' => $list('fields', ItemSyncer::FIELDS),
+                'media' => (bool) ($options['media'] ?? false),
+                'only_missing' => (bool) ($options['only_missing'] ?? false),
+                'overwrite' => (bool) ($options['overwrite'] ?? false),
+            ],
+            self::KIND_TRANSLATE => [
+                'sources' => $list('sources', ItemTranslator::SOURCES) ?: ItemTranslator::SOURCES,
+                'review' => (bool) ($options['review'] ?? false),
+            ],
+            self::KIND_CAST => [
+                'fields' => $list('fields', CastEnricher::FIELDS) ?: CastEnricher::FIELDS,
+                'overwrite_photo' => (bool) ($options['overwrite_photo'] ?? false),
+            ],
+            default => [],
+        };
+    }
+
+    /**
+     * გაშვებას ახალი ფონური პარტია ავსებს (გაგრძელება, ან ბრაუზერის რიგმა დარჩენილი
+     * სერვერს გადასცა): „გაჩერებულია" იხსნება და ბოლო აქტივობის დრო ახლდება.
+     */
+    public function attach(SyncRun $run, string $batchId): void
+    {
+        $run->forceFill(['batch_id' => $batchId, 'stopped_at' => null])->save();
+        $run->touch();
+    }
+
+    /**
+     * გაშვება ხელით გაჩერდა. ⚠️ `updated_at` არ იცვლება — ის ბოლო **ერთეულის** დროა და
+     * გაშვებების სია მისით ლაგდება.
+     */
+    public function stop(SyncRun $run): void
+    {
+        $run->timestamps = false;
+        $run->forceFill(['stopped_at' => AppTime::now()])->save();
+        $run->timestamps = true;
+    }
 
     /**
      * ერთეულის შედეგის ჩაწერა.
@@ -88,7 +189,8 @@ class SyncHistory
 
             $run = SyncRun::withoutGlobalScope('owner')->firstOrCreate(
                 ['user_id' => $userId, 'key' => $key],
-                ['kind' => $kind, 'source' => $source, 'total' => $total],
+                // ფონური პარტიის გაშვების გასაღები თვითონ პარტიის id-ია
+                ['kind' => $kind, 'source' => $source, 'total' => $total, 'batch_id' => $source === self::SOURCE_BATCH ? $key : null],
             );
 
             // რიგს ერთეულები გზადაგზა შეიძლება დაემატოს — დაგეგმილი რიცხვი მხოლოდ იზრდება
@@ -99,7 +201,9 @@ class SyncHistory
             SyncRunItem::updateOrCreate(
                 ['sync_run_id' => $run->getKey(), 'type' => $type, 'record_id' => $recordId],
                 [
-                    'title' => $title === null ? null : mb_substr($title, 0, 200),
+                    /* ⚠️ უსათაურო შედეგი ადრე ჩაწერილ სათაურს არ შლის: თავიდან გაშვებული
+                       ერთეული, რომლის ჩანაწერიც მანამდე წაიშალა, სიაში ისევ თავისი სახელით რჩება */
+                    ...($title === null ? [] : ['title' => mb_substr($title, 0, 200)]),
                     'result' => $result,
                     'reason' => $reason === null || $reason === '' ? null : mb_substr($reason, 0, 500),
                     'changes' => $result === self::UPDATED && $changes !== [] ? array_values(array_unique($changes)) : null,

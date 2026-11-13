@@ -354,3 +354,104 @@ describe('queue: the four sync outcomes', () => {
     expect(text).toContain(i18n.t('queue.failed', { count: 1 }))
   })
 })
+
+/* ============================================================
+   **გაშვება, რომელიც გაწყვეტის შემდეგ გრძელდება**.
+
+   ⚠️ რიგი გაშვების დასაწყისში სერვერს ეუბნება, რაზე და რით ეშვება (`openSyncRun`) —
+   იმავე გასაღებით, რომელიც მერე ყოველ ერთეულს მიჰყვება; „დანარჩენის გაჩერება" გაშვებას
+   სერვერზეც აჩერებს (`stopSyncRun`), რომ ისტორიაში მაშინვე „გაწყვეტილი" იყოს; სერვერზე
+   გადაცემული დარჩენილი ნაწილი იმავე გაშვებას ავსებს და არა ახალს.
+   ============================================================ */
+
+// ⚠️ ნაგულისხმევი პასუხი აქვეა: რიგი ამ ორს ამ ფაილის ყველა ტესტში იძახებს
+const runMocks = vi.hoisted(() => ({
+  openSyncRun: vi.fn(async (..._args: unknown[]) => undefined),
+  stopSyncRun: vi.fn(async (..._args: unknown[]) => undefined),
+  startBatch: vi.fn(),
+  fetchBatch: vi.fn(),
+}))
+
+vi.mock('@/api/syncRuns', async (original) => ({
+  ...(await original<typeof import('@/api/syncRuns')>()),
+  openSyncRun: runMocks.openSyncRun,
+  stopSyncRun: runMocks.stopSyncRun,
+}))
+
+vi.mock('@/api/batches', async (original) => ({
+  ...(await original<typeof import('@/api/batches')>()),
+  startBatch: runMocks.startBatch,
+  fetchBatch: runMocks.fetchBatch,
+}))
+
+const OPTS = { fields: ['title' as const], overwrite: true }
+
+/** ორი ფილმი რიგში: პირველი „მუშავდება" (პასუხი არ მოდის), მეორე ელოდება */
+async function runTwoMovies() {
+  const { QueueProvider, useQueue } = await import('@/components/ui/queue')
+  mocks.syncItem.mockReturnValue(new Promise(() => {}))
+
+  function Starter() {
+    const { enqueueSync } = useQueue()
+
+    useEffect(() => {
+      enqueueSync(
+        [
+          { type: 'movie', id: 1, title: 'First film', year: null },
+          { type: 'movie', id: 2, title: 'Second film', year: null },
+        ],
+        OPTS,
+      )
+    }, [enqueueSync])
+
+    return null
+  }
+
+  return render(h(QueueProvider, null, h(Starter)))
+}
+
+const panelButton = (el: Element, label: string) => [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes(label))
+
+describe('queue: a run that can be continued', () => {
+  it('tells the server what the run covers, under the key its items carry', async () => {
+    await runTwoMovies()
+
+    expect(runMocks.openSyncRun).toHaveBeenCalledTimes(1)
+    const [key, kind, planned, params] = runMocks.openSyncRun.mock.calls[0]
+    expect(key).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-/)
+    expect(kind).toBe('sync')
+    // გეგმა მხოლოდ ტიპი და id-ია; პარამეტრები — რითაც ერთეულები ეშვება
+    expect(planned).toEqual([
+      { type: 'movie', id: 1 },
+      { type: 'movie', id: 2 },
+    ])
+    expect(params).toEqual(OPTS)
+
+    // იგივე გასაღები და იგივე რიცხვი მიჰყვება ერთეულს
+    expect(mocks.syncItem).toHaveBeenCalledWith('movie', 1, { ...OPTS, run: key, run_total: 2 }, expect.any(AbortSignal))
+  })
+
+  it('stops the run on the server when the rest is cancelled', async () => {
+    const el = await runTwoMovies()
+    const key = runMocks.openSyncRun.mock.calls[0][0]
+
+    await act(async () => panelButton(el, i18n.t('queue.cancel'))!.click())
+    await flush()
+
+    expect(runMocks.stopSyncRun).toHaveBeenCalledTimes(1)
+    expect(runMocks.stopSyncRun).toHaveBeenCalledWith(key)
+  })
+
+  it('hands the rest to the server as a part of the same run', async () => {
+    runMocks.startBatch.mockResolvedValue({ id: 'b-1', finished: false })
+    runMocks.fetchBatch.mockResolvedValue({ id: 'b-1', finished: true, items: [] })
+    const el = await runTwoMovies()
+    const key = runMocks.openSyncRun.mock.calls[0][0]
+
+    await act(async () => panelButton(el, i18n.t('queue.handOff'))!.click())
+    await flush()
+
+    // გადაეცემა მხოლოდ ის, რაც ჯერ არ დაწყებულა — იმავე პარამეტრებითა და გაშვების გასაღებით
+    expect(runMocks.startBatch).toHaveBeenCalledWith('sync', [{ type: 'movie', id: 2 }], OPTS, key)
+  })
+})

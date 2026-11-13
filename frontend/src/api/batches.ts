@@ -49,12 +49,17 @@ export interface BatchStatus {
   items?: BatchItemResult[]
 }
 
+/**
+ * `run` — სინქრონიზაციის გაშვება, რომელსაც ეს პარტია **აგრძელებს** (ბრაუზერის რიგმა
+ * დარჩენილი სერვერს გადასცა): შედეგი იმავე გაშვებაში გროვდება და არა ახალში.
+ */
 export async function startBatch(
   kind: BatchKind,
   items: BatchItem[],
   options: Record<string, unknown> = {},
+  run?: string,
 ): Promise<BatchStatus> {
-  const { data } = await api.post<BatchStatus>('/batches', { kind, items, options })
+  const { data } = await api.post<BatchStatus>('/batches', { kind, items, options, ...(run ? { run } : {}) })
   return data
 }
 

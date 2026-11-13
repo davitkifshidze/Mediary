@@ -7,10 +7,12 @@ use App\Models\CastMember;
 use App\Models\CastMemberSyncPref;
 use App\Models\SyncRun;
 use App\Models\SyncRunItem;
+use App\Services\Batch\BatchLauncher;
 use App\Services\Cast\CastPool;
 use App\Services\Sync\SyncFacts;
 use App\Services\Sync\SyncHistory;
 use App\Services\Sync\SyncOverview;
+use App\Services\Sync\SyncResume;
 use App\Support\MediaDomain;
 use App\Support\RecordLocks;
 use App\Support\RichText;
@@ -34,6 +36,13 @@ use Illuminate\Validation\Rule;
  * ⚠️ „ამათზე აღარ გაეშვას" იმავე გადამრთველს წერს, რასაც ჩანაწერის გვერდი —
  * `sync_paused` (მოდელით, ე.ი. ჟურნალშიც ჩანს) და მსახიობზე ჩემს
  * `cast_member_sync_prefs`-ს; ახალი მექანიზმი არ ჩნდება.
+ *
+ * ⚠️ **გაშვებას მდგომარეობა აქვს** (მიმდინარეობს · გაწყდა · დასრულდა — `SyncResume`) და
+ * გაწყვეტილი **გრძელდება**: `resume()` უშვებს მხოლოდ იმას, რასაც შედეგი არ აქვს
+ * (ან, `only=failed`, მხოლოდ ჩავარდნილებს) — იმავე პარამეტრებით და იმავე გაშვებაში,
+ * ფონური პარტიით, რომ ჩანართის დახურვამ ხელმეორედ აღარ გაწყვიტოს. რაზე და რით
+ * გაეშვა, გაშვებაზე ინახება: პარტიაზე სერვერი წერს, ბრაუზერის რიგი კი `store()`-ით
+ * აგზავნის.
  */
 class SyncRunController extends Controller
 {
@@ -45,6 +54,16 @@ class SyncRunController extends Controller
     /** სინქრონიზაციის გვერდის ბარათები: მონაცემები · სეზონები და სერიები · მსახიობები */
     private const OVERVIEW_KINDS = [SyncHistory::KIND_SYNC, SyncHistory::KIND_EPISODES, SyncHistory::KIND_CAST];
 
+    /** სინქრონიზაციის გვერდი ამდენ დაუსრულებელ გაშვებას აჩვენებს — ბოლო გაშვებებიდან */
+    private const OFFERED = 3;
+
+    private const OFFERED_AMONG = 20;
+
+    /** გაგრძელებული გაშვების ერთეულებს შორის პაუზის ჭერი — `RunBatchItem`-ის ჭერის ტოლი */
+    private const MAX_DELAY_MS = 5000;
+
+    public function __construct(private readonly SyncResume $resume) {}
+
     public function index(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -54,12 +73,13 @@ class SyncRunController extends Controller
         ]);
 
         $runs = SyncRun::query()
+            ->forList()
             ->when(isset($data['kind']), fn (Builder $q) => $q->where('kind', $data['kind']))
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
             ->paginate((int) ($data['per_page'] ?? self::PER_PAGE));
 
-        $stats = $this->stats($runs->getCollection()->modelKeys());
+        $stats = $this->stats($runs->getCollection());
 
         return response()->json([
             'data' => $runs->getCollection()->map(fn (SyncRun $run) => $this->payload($run, $stats))->values(),
@@ -75,13 +95,19 @@ class SyncRunController extends Controller
      * `type` — მოდულის გვერდი (`/series/sync`): რიცხვები და ბოლო გაშვებები მხოლოდ ამ
      * მოდულზე. ⚠️ მსახიობების ბოლო გაშვება მოდულით არ იფილტრება — მისი ერთეული
      * მსახიობია და არა ჩანაწერი; ისტორიის ჯამი და ბოლო გაშვებაც ყოველთვის მთლიანია.
+     *
+     * `unfinished` — დაუსრულებელი გაშვებები: გაწყვეტილი, რომლის გაგრძელებაც შეიძლება
+     * (გვერდი მას თვითონ სთავაზობს), და სერვერზე ფონურად მიმდინარე — გაგრძელებული გაშვება
+     * გვერდიდან არ ქრება, სანამ მიდის. ბრაუზერის რიგით მიმდინარე აქ არ არის: ის თავის
+     * ჩანართში, რიგის პანელში ჩანს. მოდულის გვერდზე — რომელთა გეგმაშიც ეს მოდულია (და
+     * მსახიობებისა).
      */
     public function overview(Request $request, SyncOverview $overview): JsonResponse
     {
         $data = $request->validate(['type' => ['sometimes', MediaDomain::rule()]]);
         $type = $data['type'] ?? null;
 
-        $recent = fn () => SyncRun::query()->orderByDesc('updated_at')->orderByDesc('id');
+        $recent = fn () => SyncRun::query()->forList()->orderByDesc('updated_at')->orderByDesc('id');
         $last = [];
 
         foreach (self::OVERVIEW_KINDS as $kind) {
@@ -95,7 +121,17 @@ class SyncRunController extends Controller
         }
 
         $latest = $recent()->first();
-        $stats = $this->stats(collect($last)->push($latest)->filter()->map->getKey()->unique()->values()->all());
+
+        // გაგრძელებაც და ფონური გაშვებაც მხოლოდ იმას აქვს, რასაც დაგეგმილი სია აქვს; მოდულის გვერდზე — გეგმაში ეს მოდულია
+        $candidates = SyncRun::query()
+            ->whereNotNull('plan')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->limit(self::OFFERED_AMONG)
+            ->get()
+            ->filter(fn (SyncRun $run) => $type === null || $run->kind === SyncHistory::KIND_CAST || array_key_exists($type, $run->plan ?? []));
+
+        $stats = $this->stats(collect($last)->push($latest)->concat($candidates)->filter());
         $shape = fn (?SyncRun $run) => $run ? $this->payload($run, $stats) : null;
 
         return response()->json([
@@ -103,12 +139,117 @@ class SyncRunController extends Controller
             'last' => array_map($shape, $last),
             'runs' => SyncRun::query()->count(),
             'latest' => $shape($latest),
+            'unfinished' => $candidates
+                ->map($shape)
+                ->filter(fn (array $run) => $run['resumable'] || $run['stoppable'])
+                ->take(self::OFFERED)
+                ->values(),
         ]);
+    }
+
+    /**
+     * **ბრაუზერის რიგის გაშვების დასაწყისი**: რაზე და რით ეშვება. რიგი ამას ერთხელ
+     * აგზავნის, ერთეულებამდე — სერვერმა რომ იცოდეს, რა დარჩა, თუ რიგი გაწყდება
+     * (ფონურ პარტიაზე იგივეს `BatchController::store()` წერს).
+     *
+     * ⚠️ აქ არაფერი ეშვება და არცერთი ჩანაწერი არ იკითხება — იწერება მხოლოდ ტიპი და id.
+     * უფლებას ერთეულის მოთხოვნა ამოწმებს, გაგრძელებისას კი `resume()`.
+     */
+    public function store(Request $request, SyncHistory $history): JsonResponse
+    {
+        $data = $request->validate([
+            'key' => ['required', 'uuid'],
+            'kind' => ['required', Rule::in(SyncHistory::KINDS)],
+            'items' => ['required', 'array', 'min:1', 'max:'.SyncHistory::MAX_TOTAL],
+            'items.*.type' => ['required', Rule::in([...MediaDomain::TYPES, SyncHistory::ACTOR])],
+            'items.*.id' => ['required', 'integer', 'min:1'],
+            'params' => ['sometimes', 'nullable', 'array'],
+        ]);
+
+        $run = $history->open(
+            (int) $request->user()->getKey(),
+            $data['key'],
+            $data['kind'],
+            SyncHistory::SOURCE_QUEUE,
+            $data['items'],
+            $data['params'] ?? [],
+        );
+
+        abort_unless($run, 422);
+
+        return response()->json(['data' => $this->payload($run, $this->stats([$run]), true)], 201);
     }
 
     public function show(SyncRun $run): JsonResponse
     {
-        return response()->json(['data' => $this->payload($run, $this->stats([$run->getKey()]))]);
+        return response()->json(['data' => $this->payload($run, $this->stats([$run]), true)]);
+    }
+
+    /**
+     * **გაწყვეტილი გაშვების გაგრძელება** — მხოლოდ ის, რასაც შედეგი არ აქვს; `only=failed` —
+     * მხოლოდ ჩავარდნილების თავიდან გაშვება. იმავე პარამეტრებით და იმავე გაშვებაში:
+     * ახალი პარტიის ერთეულები შედეგს ამ გაშვების გასაღებით წერენ.
+     *
+     * ⚠️ **მიმდინარე გაშვება არ გრძელდება** (409) — ერთეულები ორჯერ გაეშვებოდა.
+     * ⚠️ **ძველ გაშვებას გაგრძელება არ აქვს** (409): რაზე და რით გაეშვა, მასზე არ ინახება.
+     * ⚠️ წაშლილი ან შეჩერებული ჩანაწერი პარტიაში მიდის და იქ **გამოიტოვება მიზეზით** —
+     * ისტორიაში ჩანს, რატომ არ გაეშვა, და გაშვება სრულდება.
+     * ⚠️ უფლება და წყაროს გასაღები აქვე მოწმდება — ზუსტად ისე, როგორც ახალ პარტიაზე.
+     */
+    public function resume(Request $request, SyncRun $run, BatchLauncher $launcher, SyncHistory $history): JsonResponse
+    {
+        $data = $request->validate([
+            'only' => ['sometimes', 'nullable', Rule::in(['failed'])],
+            'delay_ms' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:'.self::MAX_DELAY_MS],
+        ]);
+
+        $failedOnly = ($data['only'] ?? null) === 'failed';
+
+        if ($this->resume->of($run)['state'] === SyncRun::RUNNING) {
+            return response()->json(['message' => 'sync_run_running'], 409);
+        }
+
+        if ($run->params === null || (! $failedOnly && $run->plan === null)) {
+            return response()->json(['message' => 'sync_run_not_resumable'], 409);
+        }
+
+        $items = $failedOnly ? $this->resume->failed($run) : $this->resume->remaining($run);
+
+        if ($items === []) {
+            return response()->json(['message' => 'sync_run_nothing_left'], 409);
+        }
+
+        $user = $request->user();
+        $options = [...$run->params, 'delay_ms' => (int) ($data['delay_ms'] ?? 0)];
+
+        if ($denied = $launcher->denies($user, $run->kind, $items, $options)) {
+            return $denied;
+        }
+
+        // წინა პარტია (გათიშული სერვერის ნარჩენი) აღარ უნდა გაეშვას ახლის გვერდით
+        $this->resume->liveBatch($run)?->cancel();
+
+        $batch = $launcher->dispatch($user, $run->kind, $items, $options, $run->key);
+        $history->attach($run, $batch->id);
+
+        if (! $launcher->start($batch)) {
+            return response()->json(['message' => 'worker_unavailable'], 503);
+        }
+
+        return response()->json(['data' => $this->payload($run, $this->stats([$run]), true)], 202);
+    }
+
+    /**
+     * **გაშვების გაჩერება.** ფონური პარტია უქმდება (დარჩენილი ერთეულები აღარ გაეშვება);
+     * ბრაუზერის რიგის გაშვება „გაჩერებულად" ინიშნება — რიგმა თვითონ იცის, რომ გაჩერდა,
+     * სერვერი კი სხვაგვარად მხოლოდ დუმილით მიხვდებოდა.
+     */
+    public function stop(SyncRun $run, SyncHistory $history): JsonResponse
+    {
+        $this->resume->liveBatch($run)?->cancel();
+        $history->stop($run);
+
+        return response()->json(['data' => $this->payload($run, $this->stats([$run]), true)]);
     }
 
     /** გაშვების ერთეულები — შედეგის ფილტრით, სათაურით ძებნით, გვერდებად */
@@ -277,51 +418,58 @@ class SyncRunController extends Controller
     }
 
     /**
-     * გაშვებების რიცხვები ერთი query-ით: რამდენი ერთეული რა შედეგით და რომელ ტიპზე.
+     * გაშვებების რიცხვები: რამდენი ერთეული რა შედეგით და რომელ ტიპზე (ერთი query), და
+     * მდგომარეობა — მიმდინარეობს · გაწყდა · დასრულდა — იმით, რამდენი დარჩა (`SyncResume`).
      *
-     * @param  list<int>  $runIds
-     * @return array<int, array{counts: array<string, int>, types: list<string>}>
+     * @param  iterable<SyncRun>  $runs
+     * @return array<int, array{counts?: array<string, int>, types?: list<string>, state: string, left: int}>
      */
-    private function stats(array $runIds): array
+    private function stats(iterable $runs): array
     {
-        $stats = [];
+        $stats = $this->resume->describe($runs);
 
-        if ($runIds === []) {
+        if ($stats === []) {
             return $stats;
         }
 
         $rows = SyncRunItem::query()
             ->visible()
-            ->whereIn('sync_run_id', $runIds)
+            ->whereIn('sync_run_id', array_keys($stats))
             ->selectRaw('sync_run_id, type, result, count(*) as n')
             ->groupBy('sync_run_id', 'type', 'result')
             ->toBase()
             ->get();
 
+        $types = [];
+
         foreach ($rows as $row) {
             $run = (int) $row->sync_run_id;
             $stats[$run]['counts'][$row->result] = ($stats[$run]['counts'][$row->result] ?? 0) + (int) $row->n;
-            $stats[$run]['types'][$row->type] = true;
+            $types[$run][$row->type] = true;
         }
 
-        foreach ($stats as $run => $stat) {
-            $stats[$run]['types'] = array_keys($stat['types']);
+        foreach ($types as $run => $seen) {
+            $stats[$run]['types'] = array_keys($seen);
         }
 
         return $stats;
     }
 
     /**
-     * @param  array<int, array{counts: array<string, int>, types: list<string>}>  $stats
+     * @param  array<int, array{counts?: array<string, int>, types?: list<string>, state: string, left: int}>  $stats
+     * @param  bool  $full  ერთი გაშვების პასუხი — თან პარამეტრები (რით გაეშვა)
      * @return array<string, mixed>
      */
-    private function payload(SyncRun $run, array $stats): array
+    private function payload(SyncRun $run, array $stats, bool $full = false): array
     {
+        $stat = $stats[$run->getKey()] ?? ['state' => SyncRun::FINISHED, 'left' => 0];
         $counts = [];
 
         foreach (SyncHistory::RESULTS as $result) {
-            $counts[$result] = (int) ($stats[$run->getKey()]['counts'][$result] ?? 0);
+            $counts[$result] = (int) ($stat['counts'][$result] ?? 0);
         }
+
+        $interrupted = $stat['state'] === SyncRun::INTERRUPTED;
 
         return [
             'key' => $run->key,
@@ -330,11 +478,21 @@ class SyncRunController extends Controller
             // დაგეგმილი ერთეულები; `done` — რამდენს აქვს შედეგი (შეწყვეტილ გაშვებაზე ნაკლებია)
             'total' => max((int) $run->total, array_sum($counts)),
             'done' => array_sum($counts),
+            // რამდენი დარჩა გასაშვები და რა მდგომარეობაშია გაშვება
+            'left' => $stat['left'],
+            'state' => $stat['state'],
+            // „გაგრძელება": გაწყდა და ინახება, რაზე და რით გაეშვა (ძველ გაშვებებს არ აქვს)
+            'resumable' => $interrupted && $run->hasPlan() && $run->params !== null,
+            // „ჩავარდნილების თავიდან გაშვება": ჩავარდნილი აქვს, პარამეტრები ინახება და არ მიმდინარეობს
+            'retryable' => $stat['state'] !== SyncRun::RUNNING && $counts[SyncHistory::FAILED] > 0 && $run->params !== null,
+            // „შეჩერება": მიმდინარეობს და ფონური პარტია ატარებს — ბრაუზერის რიგს სერვერი ვერ აჩერებს
+            'stoppable' => $stat['state'] === SyncRun::RUNNING && $run->batch_id !== null,
             'counts' => $counts,
             // რომელ მოდულებს შეეხო (`movie` · `series` · `anime` · `actor`)
-            'types' => $stats[$run->getKey()]['types'] ?? [],
+            'types' => $stat['types'] ?? [],
             'started_at' => $run->created_at?->toIso8601String(),
             'last_at' => $run->updated_at?->toIso8601String(),
+            ...($full ? ['params' => $run->params] : []),
         ];
     }
 }

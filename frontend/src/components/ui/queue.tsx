@@ -16,7 +16,7 @@ import {
 import { importItem, type ImportPlanItem } from '@/api/import'
 import { addShareItem, type ShareDomainKey, type ShareStatusMode } from '@/api/shareLinks'
 import { addProfileItem } from '@/api/publicProfile'
-import { newRunKey } from '@/api/syncRuns'
+import { newRunKey, openSyncRun, stopSyncRun, type SyncRunKind, type SyncRunParams } from '@/api/syncRuns'
 import { restoreFromTrash } from '@/api/trash'
 import {
   mediaApi,
@@ -208,6 +208,15 @@ function runParams(item: Pick<QItem, 'run' | 'runTotal'>): { run?: string; run_t
   return item.run ? { run: item.run, run_total: item.runTotal } : {}
 }
 
+/**
+ * გაშვების დასაწყისი სერვერს: რაზე და რით ეშვება. გაწყვეტილი გაშვება (დახურული ჩანართი,
+ * გადატვირთული გვერდი, „შეჩერება") ამით გრძელდება შედეგების გვერდიდან.
+ * ⚠️ ჩავარდნა რიგს არ აჩერებს — გაშვება პირველივე ერთეულზე მაინც იქმნება.
+ */
+function announceRun(run: string, kind: SyncRunKind, planned: { type: string; id: number }[], params: SyncRunParams) {
+  if (planned.length) void openSyncRun(run, kind, planned, params).catch(() => {})
+}
+
 /** რიგში დასამატებელი TMDB ჩანაწერი; `status`/`favorite` — არჩევითი */
 export interface AddQueueItem {
   tmdbId: number
@@ -331,6 +340,18 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const { settings } = useSettings()
   const runningRef = React.useRef(false)
   const abortRef = React.useRef<AbortController | null>(null)
+  /* რიგის ახლანდელი შიგთავსი updater-ის გარეთ: გაშვების გეგმა (რა ჩადგება მართლა რიგში)
+     სერვერს ერთხელ ეგზავნება, updater-ს კი StrictMode ორჯერ იძახებს */
+  const itemsRef = React.useRef(items)
+  itemsRef.current = items
+
+  /** ამ სახეობის რიგში უკვე მდგარი ერთეულები — ახალ გაშვებაში არ ხვდება */
+  const busyKeys = (kind: QKind, keyOf: (item: QItem) => string) =>
+    new Set(
+      itemsRef.current
+        .filter((i) => i.kind === kind && (i.status === 'pending' || i.status === 'running'))
+        .map(keyOf),
+    )
 
   /**
    * პაუზა ერთეულის **სახეობის** მიხედვით:
@@ -390,6 +411,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     setExpanded(true) // სინქრონი გრძელია — პროგრესი მაშინვე ჩანს
     // ⚠️ გასაღები updater-ის გარეთ იქმნება — StrictMode updater-ს ორჯერ იძახებს
     const run = newRunKey()
+    // გაშვება მხოლოდ ისაა, რაც მართლა ჩადგება: რიგში უკვე მდგარი სხვა გაშვებისაა
+    const taken = busyKeys('sync', (i) => `${i.mediaType}:${i.itemId}`)
+    const planned = toSync.filter((s) => !taken.has(`${s.type}:${s.id}`))
+    announceRun(run, 'sync', planned.map((s) => ({ type: s.type, id: s.id })), opts)
     setItems((cur) => {
       const base = freshBase(cur)
       const busy = new Set(
@@ -397,7 +422,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           .filter((i) => i.kind === 'sync' && (i.status === 'pending' || i.status === 'running'))
           .map((i) => `${i.mediaType}:${i.itemId}`),
       )
-      const fresh = toSync
+      const fresh = planned
         .filter((s) => !busy.has(`${s.type}:${s.id}`))
         .map((s) => ({
           id: nextId++,
@@ -408,7 +433,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           status: 'pending' as QStatus,
           opts,
           run,
-          runTotal: toSync.length,
+          runTotal: planned.length,
         }))
       return fresh.length ? [...base, ...fresh] : base
     })
@@ -454,6 +479,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   ) => {
     setExpanded(true) // თარგმანი გრძელია — პროგრესი მაშინვე ჩანს
     const run = newRunKey()
+    // ჟანრების ლექსიკონი ისტორიის ერთეული არ არის — გეგმაში მხოლოდ ჩანაწერებია
+    const taken = busyKeys('translate', (i) => (i.genresDict ? 'genres' : `${i.mediaType}:${i.itemId}`))
+    const planned = toRun.filter((r) => !taken.has(`${r.type}:${r.id}`))
+    announceRun(run, 'translate', planned.map((r) => ({ type: r.type, id: r.id })), { sources, review })
     setItems((cur) => {
       const base = freshBase(cur)
       const busy = new Set(
@@ -461,7 +490,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           .filter((i) => i.kind === 'translate' && (i.status === 'pending' || i.status === 'running'))
           .map((i) => (i.genresDict ? 'genres' : `${i.mediaType}:${i.itemId}`)),
       )
-      const fresh: QItem[] = toRun
+      const fresh: QItem[] = planned
         .filter((r) => !busy.has(`${r.type}:${r.id}`))
         .map((r) => ({
           id: nextId++,
@@ -473,7 +502,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           sources,
           review,
           run,
-          runTotal: toRun.length,
+          runTotal: planned.length,
         }))
       // ჟანრები ბოლოს — ერთი რექვესთი მთელ ლექსიკონზე
       if (genres && !busy.has('genres')) {
@@ -568,6 +597,9 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const enqueueCast = React.useCallback((toSync: CastSyncPlanItem[], opts: CastSyncOptions) => {
     setExpanded(true) // გრძელია — პროგრესი მაშინვე ჩანს
     const run = newRunKey()
+    const taken = busyKeys('cast', (i) => `actor:${i.itemId}`)
+    const planned = toSync.filter((a) => !taken.has(`actor:${a.id}`))
+    announceRun(run, 'cast', planned.map((a) => ({ type: 'actor', id: a.id })), opts)
     setItems((cur) => {
       const base = freshBase(cur)
       const busy = new Set(
@@ -575,7 +607,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           .filter((i) => i.kind === 'cast' && (i.status === 'pending' || i.status === 'running'))
           .map((i) => `actor:${i.itemId}`),
       )
-      const fresh = toSync
+      const fresh = planned
         .filter((a) => !busy.has(`actor:${a.id}`))
         .map((a) => ({
           id: nextId++,
@@ -587,7 +619,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           status: 'pending' as QStatus,
           castOpts: opts,
           run,
-          runTotal: toSync.length,
+          runTotal: planned.length,
         }))
       return fresh.length ? [...base, ...fresh] : base
     })
@@ -637,9 +669,20 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   )
 
   const cancelPending = React.useCallback(() => {
+    // გაჩერებული გაშვება ისტორიაში მაშინვე „გაწყვეტილია" — იქიდან გრძელდება
+    const stopped = new Set(
+      itemsRef.current
+        .filter((i) => i.run && (i.status === 'pending' || i.status === 'running'))
+        .map((i) => i.run!),
+    )
     setItems((cur) => cur.filter((i) => i.status !== 'pending'))
     abortRef.current?.abort()
-  }, [])
+    for (const run of stopped) {
+      void stopSyncRun(run)
+        .then(() => ['sync-overview', 'sync-runs', 'sync-run'].forEach((key) => qc.invalidateQueries({ queryKey: [key] })))
+        .catch(() => {})
+    }
+  }, [qc])
 
   const cancelOne = React.useCallback((qid: number) => {
     setItems((cur) => cur.filter((i) => !(i.id === qid && i.status === 'pending')))
@@ -1024,6 +1067,9 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             : handoffKind === 'cast'
               ? { ...(first.castOpts ?? {}) }
               : { sources: first.sources, review: first.review },
+        /* ერთი გაშვების დარჩენილი ნაწილი იმავე გაშვებაში გრძელდება — ისტორიაში ორი
+           ნახევარი არ ჩნდება; რამდენიმე გაშვების ნარევი კი ახალი გაშვებაა */
+        pendingItems.every((i) => i.run && i.run === first.run) ? first.run : undefined,
       )
 
       // გადაცემულები კლიენტის რიგიდან ქრება — ორჯერ დამუშავება არ გვინდა

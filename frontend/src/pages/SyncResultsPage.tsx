@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -21,7 +21,7 @@ import { isMediaKey, modAccent } from '@/lib/modules'
 import { usePagedList, usePages } from '@/lib/paged'
 import { SYNC_KIND_LOOK, SYNC_RESULT_LOOK } from '@/lib/syncLook'
 import { cn } from '@/lib/utils'
-import { RunCounts, RunProgress } from '@/components/SyncRunBits'
+import { RunActions, RunCounts, RunProgress, RunStateBadge } from '@/components/SyncRunBits'
 import { Badge, CountBadge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -49,11 +49,20 @@ import { QueryErrorState } from '@/components/ui/query-error-state'
    პოსტერსა და ფოტოზე — მხოლოდ ფაქტი, თარგმანზე — რომელმა წყარომ შეავსო. ძველ
    გაშვებებს მნიშვნელობები არ აქვს — იქ ისევ ველების სია ჩანს.
 
+   **გაშვებას მდგომარეობა აქვს** — მიმდინარეობს · გაწყდა · დასრულდა. გაწყვეტილზე
+   (ჩანართი დაიხურა, რიგი შეჩერდა, პარტია შეწყდა ან სერვერი გაითიშა) ღილაკია
+   „გაგრძელება": ეშვება მხოლოდ ის, რასაც შედეგი არ აქვს — იმავე პარამეტრებით და იმავე
+   გაშვებაში, სერვერზე ფონურად. მისი მეორე ვარიანტია „ჩავარდნილების თავიდან გაშვება".
+   მიმდინარე გაშვების გვერდი თვითონ ახლდება; „შეჩერება" მას წყვეტს.
+
    ⚠️ „აღარ გაეშვას" ჩანაწერის იმავე გადამრთველს წერს, რასაც მისი გვერდი
    („აღარ განაახლო"): მონიშნულებზე ან გაშვების ყველა ჩავარდნილზე ერთად; იქვე
    ბრუნდება („ისევ გაეშვას").
    ⚠️ ისტორია 90 დღე ინახება; ჩაკეტილი ჩანაწერის ერთეული აქ არ ჩანს.
    ============================================================ */
+
+/** რამდენ ხანში ერთხელ იკითხება მიმდინარე გაშვება */
+const POLL_MS = 3000
 
 export function SyncResultsPage() {
   const { key } = useParams()
@@ -91,9 +100,10 @@ function RunSummary({ run }: { run: SyncRun }) {
               {typeName(type)}
             </Badge>
           ))}
+          <RunStateBadge state={run.state} />
         </span>
         <span className="mt-1 block text-xs text-muted-foreground">
-          {[dateTime(run.started_at), t(`syncResults.source.${run.source}`), run.done < run.total ? t('syncResults.partial', { done: run.done, total: run.total }) : t('syncResults.units', { count: run.total })]
+          {[dateTime(run.started_at), t(`syncResults.source.${run.source}`), run.state === 'finished' ? t('syncResults.units', { count: run.total }) : t('syncResults.partial', { done: run.done, total: run.total })]
             .filter(Boolean)
             .join(' · ')}
         </span>
@@ -133,15 +143,17 @@ function RunList() {
         <>
           <ul className="space-y-2">
             {list.items.map((run) => (
-              <li key={run.key}>
-                <Link
-                  to={`/sync/results/${run.key}`}
-                  data-testid="sync-run"
-                  style={modAccent(SYNC_KIND_LOOK[run.kind].color)}
-                  className="block rounded-lg border border-border bg-card p-3 transition-colors hover:border-[var(--mod)]"
-                >
+              // ⚠️ ღილაკი ბმულის შიგნით ვერ ჯდება — ბარათი რიგია: ბმული და მის გვერდით გაშვების ღილაკი
+              <li
+                key={run.key}
+                style={modAccent(SYNC_KIND_LOOK[run.kind].color)}
+                className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:border-[var(--mod)]"
+                data-testid="sync-run-card"
+              >
+                <Link to={`/sync/results/${run.key}`} data-testid="sync-run" className="block min-w-0 flex-1 basis-72">
                   <RunSummary run={run} />
                 </Link>
+                <RunActions run={run} one />
               </li>
             ))}
           </ul>
@@ -161,12 +173,24 @@ function RunDetail({ runKey }: { runKey: string }) {
   const [picked, setPicked] = useState<ReadonlySet<number>>(new Set())
   /** რომელი ერთეულებია გაშლილი — „რა რით შეიცვალა" */
   const [opened, setOpened] = useState<ReadonlySet<number>>(new Set())
+  const paramLabels = useParamLabels()
 
-  const run = useQuery({ queryKey: ['sync-run', runKey], queryFn: () => fetchSyncRun(runKey) })
+  const run = useQuery({
+    queryKey: ['sync-run', runKey],
+    queryFn: () => fetchSyncRun(runKey),
+    // მიმდინარე გაშვება თვითონ ახლდება; გაწყვეტილი და დასრულებული აღარ იკითხება
+    refetchInterval: (query) => (query.state.data?.state === 'running' ? POLL_MS : false),
+  })
   const items = usePages({
     queryKey: ['sync-run-items', runKey, result, q.trim()],
     fetchPage: (page, perPage) => fetchSyncRunItems(runKey, { result, q: q.trim(), page, per_page: perPage }),
   })
+
+  // ახალი შედეგი მოვიდა — ერთეულების სიაც თავიდან
+  const done = run.data?.done
+  useEffect(() => {
+    if (done !== undefined) qc.invalidateQueries({ queryKey: ['sync-run-items', runKey] })
+  }, [done, qc, runKey])
 
   const pause = useMutation({
     mutationFn: (v: { paused: boolean; target: { items: number[] } | { failed: true } }) => pauseSyncRunItems(runKey, v.paused, v.target),
@@ -238,6 +262,13 @@ function RunDetail({ runKey }: { runKey: string }) {
             data-testid="sync-run-head"
           >
             <RunSummary run={run.data} />
+            {/* მეორე რიგი მხოლოდ მაშინ, როცა სათქმელი ან გასაკეთებელი არის: რით გაეშვა და გაშვების ღილაკები */}
+            {(paramLabels(run.data).length > 0 || run.data.state === 'interrupted' || run.data.retryable || run.data.stoppable) && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+                <RunParams labels={paramLabels(run.data)} />
+                <RunActions run={run.data} />
+              </div>
+            )}
           </div>
 
           <ChipRow className="mb-3">
@@ -333,6 +364,47 @@ function RunDetail({ runKey }: { runKey: string }) {
         </>
       )}
     </PageContainer>
+  )
+}
+
+/**
+ * რით გაეშვა — წარწერებად: მედია, ველები, გადაწერა, წყაროები. ძველ გაშვებას პარამეტრები
+ * არ აქვს (`null`), სეზონებს — საერთოდ არ აქვს: სია ცარიელია.
+ */
+function useParamLabels() {
+  const { t } = useTranslation()
+
+  return ({ kind, params }: Pick<SyncRun, 'kind' | 'params'>): string[] => {
+    if (!params) return []
+
+    const fieldName = (field: string) => t(kind === 'cast' ? `castSync.field.${field}` : `sync.field.${field}`, field)
+
+    return [
+      params.media ? t(params.only_missing ? 'syncResults.param.mediaMissing' : 'syncResults.param.media') : null,
+      ...(params.fields ?? []).map(fieldName),
+      kind === 'sync' && (params.fields ?? []).length > 0 ? t(params.overwrite ? 'sync.modeOverwrite' : 'sync.modeEmpty') : null,
+      params.overwrite_photo ? t('castSync.overwritePhoto') : null,
+      ...(params.sources ?? []).map((source) => t(`translate.source.${source}`, source)),
+      params.review ? t('translate.source.review') : null,
+    ].filter((part): part is string => !!part)
+  }
+}
+
+/** „გაეშვა: …" — პარამეტრები ნიშნებად; ცარიელზე მხოლოდ ადგილს იკავებს, რომ ღილაკები მარჯვნივ დარჩეს */
+function RunParams({ labels }: { labels: string[] }) {
+  const { t } = useTranslation()
+
+  if (labels.length === 0) return <span />
+
+  return (
+    <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 text-xs text-muted-foreground" data-testid="run-params">
+      {t('syncResults.param.title')}
+      {labels.map((label) => (
+        <Badge key={label} className="bg-secondary font-normal text-foreground">
+          {label}
+        </Badge>
+      ))}
+    </span>
   )
 }
 

@@ -275,6 +275,10 @@ export const CODES = [
   'no_tmdb_id',
   'no_translation_source',
   'worker_unavailable',
+  // გაწყვეტილი სინქრონიზაციის გაგრძელება: მიმდინარეა · ძველია (გეგმა არ ინახება) · არაფერი დარჩა
+  'sync_run_running',
+  'sync_run_not_resumable',
+  'sync_run_nothing_left',
   // დანარჩენი
   'custom_field_file_limit',
   'not_the_author',
