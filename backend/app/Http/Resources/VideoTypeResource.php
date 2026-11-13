@@ -19,6 +19,8 @@ class VideoTypeResource extends JsonResource
             'color' => $this->color,
             'sort_order' => $this->sort_order,
             'videos_count' => $this->whenCounted('videos'),
+            // კურსში მცხოვრები ვიდეოები ამ ტიპით — სიაში არ ჩანს, წაშლის ფანჯარა კი ცალკე ითვლის
+            'lessons_count' => $this->whenCounted('lessons'),
         ];
     }
 }

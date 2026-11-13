@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Status;
 use App\Models\Video;
+use App\Support\ModuleList;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -166,7 +167,11 @@ class VideoBulkController extends Controller
      */
     private function records(array $data): Collection
     {
-        $query = Video::query();
+        /* ⚠️ **ყველა სკოუპი მხოლოდ სიაში მყოფ ვიდეოს ეხება** (`ModuleList`) —
+           `ids`-იც: კურსში მცხოვრები ვიდეო ვიდეოების მოდულის ჩანაწერი არ არის,
+           ე.ი. „ყველას" სტატუსის შეცვლა ან წაშლა კურსის ფანჯარას არ უნდა
+           აცარიელებდეს; პრევიუს რიცხვიც იმავე სიმრავლეს ითვლის. */
+        $query = ModuleList::narrow(Video::query());
 
         match ($data['scope']) {
             'ids' => $query->whereIn('id', array_map('intval', $data['scope_ids'])),

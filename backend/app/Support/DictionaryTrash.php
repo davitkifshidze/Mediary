@@ -68,12 +68,23 @@ final class DictionaryTrash
      *
      * @param  list<int>  $ids  ჩანაწერები, რომლებიც `move_to`/`clear_records`-მა ახლა გადაიტანა
      * @param  int|null  $to  სად წავიდნენ (`null` — ცარიელზე)
+     * @param  list<int>  $lessonIds  კურსის ვიდეოები, რომლებიც თავის სამიზნეზე გადავიდა
+     * @param  int|null  $lessonsTo  სად წავიდნენ ისინი
      */
-    public static function trash(Model $row, string $kind, array $ids = [], ?int $to = null): void
+    public static function trash(Model $row, string $kind, array $ids = [], ?int $to = null, array $lessonIds = [], ?int $lessonsTo = null): void
     {
         $map = self::MAP[$kind];
 
-        $row->trash_meta = $ids ? ['ids' => array_values(array_map('intval', $ids)), 'to' => $to] : null;
+        /* ⚠️ კურსის ვიდეოებს საკუთარი ჯგუფი აქვს: „ჩანაწერებიანად" წაშლისას და
+           ცარიელად დატოვებისას ისინი სხვა ადგილას მიდიან, ვიდრე სიაში მყოფი —
+           აღდგენამ თითო ჯგუფი იქ უნდა ეძებოს, სადაც წაშლამ დატოვა. */
+        $meta = $ids ? ['ids' => array_values(array_map('intval', $ids)), 'to' => $to] : [];
+
+        if ($lessonIds) {
+            $meta['lessons'] = ['ids' => array_values(array_map('intval', $lessonIds)), 'to' => $lessonsTo];
+        }
+
+        $row->trash_meta = $meta ?: null;
 
         if (isset($map['pivot'])) {
             // `trash` scope-ით relation მხოლოდ ცოცხალ ჩანაწერებს აბრუნებს
@@ -96,7 +107,7 @@ final class DictionaryTrash
     /** რამდენ ჩანაწერს დააბრუნებს აღდგენა — სიისთვის */
     public static function remembered(Model $row): int
     {
-        return count($row->trash_meta['ids'] ?? []);
+        return count($row->trash_meta['ids'] ?? []) + count($row->trash_meta['lessons']['ids'] ?? []);
     }
 
     /**
@@ -126,18 +137,30 @@ final class DictionaryTrash
 
             $relation->syncWithoutDetaching($valid);
             $moved = count($valid);
-        } elseif ($ids) {
-            $model = isset($map['status']) ? StatusDomain::model((string) $row->module) : $map['records'];
-            $column = isset($map['status']) ? 'status_id' : $map['column'];
+        } elseif (! isset($map['pivot'])) {
+            // ორი ჯგუფი: სიაში მყოფი ჩანაწერები და კურსის ვიდეოები — თითო იქ იძებნება, სადაც წაშლამ დატოვა
+            $groups = [
+                [$ids, $to],
+                [array_map('intval', $row->trash_meta['lessons']['ids'] ?? []), $row->trash_meta['lessons']['to'] ?? null],
+            ];
 
-            $records = $model::withoutGlobalScopes(['owner', 'trash'])
-                ->where('user_id', $row->user_id)
-                ->whereIn('id', $ids)
-                ->when($to, fn ($q) => $q->where($column, $to), fn ($q) => $q->whereNull($column));
+            foreach ($groups as [$groupIds, $groupTo]) {
+                if (! $groupIds) {
+                    continue;
+                }
 
-            $moved = isset($map['status'])
-                ? DictionaryRecords::move($records, fn ($record) => $record->applyStatus($row))
-                : DictionaryRecords::move($records, fn ($record) => $record->{$column} = $row->getKey());
+                $model = isset($map['status']) ? StatusDomain::model((string) $row->module) : $map['records'];
+                $column = isset($map['status']) ? 'status_id' : $map['column'];
+
+                $records = $model::withoutGlobalScopes(['owner', 'trash'])
+                    ->where('user_id', $row->user_id)
+                    ->whereIn('id', $groupIds)
+                    ->when($groupTo, fn ($q) => $q->where($column, $groupTo), fn ($q) => $q->whereNull($column));
+
+                $moved += isset($map['status'])
+                    ? DictionaryRecords::move($records, fn ($record) => $record->applyStatus($row))
+                    : DictionaryRecords::move($records, fn ($record) => $record->{$column} = $row->getKey());
+            }
         }
 
         self::forget($row);

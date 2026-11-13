@@ -615,22 +615,32 @@ function DeleteDictionaryEntry({
   // ⚠️ გადასატანი არსად — ნაგულისხმევი „ცარიელი", თორემ მონიშნული იყო გამორთული ვარიანტი
   const [mode, setMode] = useState<DeleteMode>(others.length ? 'reassign' : 'empty')
   const [moveTo, setMoveTo] = useState('')
+  const [lessonsTo, setLessonsTo] = useState('')
   const [confirmWord, setConfirmWord] = useState('')
 
   const count = def.count(item)
+  /* კურსში მცხოვრები ვიდეოები: `count`-ში არ შედის და წაშლით არასდროს იშლება —
+     ყოველთვის სხვა ერთეულზე გადადის. გადატანისას იმავე სამიზნეს მიჰყვება,
+     დანარჩენ შემთხვევაში (ცარიელი · ჩანაწერებიანად · სიაში არაფერია) თავისას ითხოვს. */
+  const lessons = def.lessons?.(item) ?? 0
+  const lessonsFollow = count > 0 && mode === 'reassign'
+  const lessonsNeedTarget = lessons > 0 && !lessonsFollow
 
   const remove = useMutation({
-    mutationFn: () =>
-      def.remove(
+    mutationFn: () => {
+      const lessonTarget = lessonsNeedTarget && lessonsTo ? { lessonsTo: Number(lessonsTo) } : {}
+
+      return def.remove(
         item.id,
-        mode === 'delete'
-          ? { deleteRecords: true }
-          : mode === 'reassign' && moveTo
+        mode === 'delete' && count > 0
+          ? { deleteRecords: true, ...lessonTarget }
+          : mode === 'reassign' && moveTo && count > 0
             ? { moveTo: Number(moveTo) }
             // ⚠️ ცხადი ფლაგი და არა `moveTo: null`
-            : { clearRecords: true },
-      ),
-    onSuccess: ({ moved, deleted }) => {
+            : { clearRecords: true, ...lessonTarget },
+      )
+    },
+    onSuccess: ({ moved, deleted, lessons: kept }) => {
       qc.invalidateQueries({ queryKey: def.queryKey })
       qc.invalidateQueries({ queryKey: [def.recordsQueryKey] })
 
@@ -649,6 +659,7 @@ function DeleteDictionaryEntry({
           : moved
             ? t('dictionaries.moved', { count: moved })
             : t('dictionaries.deleted'),
+        description: kept ? t('dictionaries.lessonsMoved', { count: kept }) : undefined,
         variant: 'success',
       })
       onClose()
@@ -662,14 +673,47 @@ function DeleteDictionaryEntry({
   const confirmDisabled =
     remove.isPending ||
     (count > 0 && mode === 'reassign' && (!others.length || !moveTo)) ||
-    (count > 0 && mode === 'delete' && confirmWord.trim() !== CONFIRM_WORD)
+    (count > 0 && mode === 'delete' && confirmWord.trim() !== CONFIRM_WORD) ||
+    // კურსის ვიდეოებს სამიზნე სჭირდება — მის გარეშე სერვერი 422-ს აბრუნებს
+    (lessonsNeedTarget && !lessonsTo)
+
+  const lessonsBlock = lessons > 0 && (
+    <div className="mt-3 space-y-2 rounded-lg border border-border p-3">
+      <p className="text-sm text-muted-foreground">
+        {lessonsFollow ? t('dictionaries.lessonsFollow', { count: lessons }) : t('dictionaries.lessonsInUse', { count: lessons })}
+      </p>
+      {lessonsNeedTarget &&
+        (others.length ? (
+          <>
+            <Label className="sr-only">{t('dictionaries.lessonsPick')}</Label>
+            <Select value={lessonsTo} onValueChange={setLessonsTo}>
+              <SelectTrigger>
+                <SelectValue placeholder={t('dictionaries.lessonsPick')} />
+              </SelectTrigger>
+              <SelectContent>
+                {others.map((o) => (
+                  <SelectItem key={o.id} value={String(o.id)}>
+                    {dictionaryName(o, lang)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
+        ) : (
+          <p className="text-sm text-destructive">{t('dictionaries.lessonsNoTarget')}</p>
+        ))}
+    </div>
+  )
 
   return (
     <ModalShell title={t('dictionaries.deleteTitle')} onClose={onClose} destructive>
       {count === 0 ? (
-        <p className="mt-2 text-sm text-muted-foreground">
-          {t('dictionaries.deleteSimple', { name: dictionaryName(item, lang) })}
-        </p>
+        <>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t(lessons > 0 ? 'dictionaries.deleteNotListed' : 'dictionaries.deleteSimple', { name: dictionaryName(item, lang) })}
+          </p>
+          {lessonsBlock}
+        </>
       ) : (
         <div className="mt-3 space-y-3">
           <p className="text-sm text-muted-foreground">
@@ -755,6 +799,8 @@ function DeleteDictionaryEntry({
               )}
             </div>
           </RadioGroup>
+
+          {lessonsBlock}
         </div>
       )}
 

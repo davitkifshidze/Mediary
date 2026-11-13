@@ -23,4 +23,18 @@ final class ModuleList
     {
         return $query->getModel() instanceof Video ? $query->listed() : $query;
     }
+
+    /**
+     * **იგივე მოთხოვნის ის რიგები, რომლებიც მოდულის სიაში არ ჩანს** — კურსში
+     * მცხოვრები ვიდეო. `null` — ამ მოდელს ასეთი რიგი არ ჰყავს.
+     *
+     * ⚠️ ლექსიკონის წაშლას სჭირდება: ტიპი და სტატუსი კურსის ვიდეოსაც აქვს, ე.ი.
+     * „ამ ტიპის ჩანაწერები" ორ ნაწილად იყოფა — სიაში მყოფი (`narrow()`) და ეს.
+     */
+    public static function outside(Builder $query): ?Builder
+    {
+        $model = $query->getModel();
+
+        return $model instanceof Video ? (clone $query)->where($model->qualifyColumn('listed'), false) : null;
+    }
 }

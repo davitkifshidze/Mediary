@@ -31,6 +31,8 @@ export interface Status {
   sort_order: number
   /** მხოლოდ ლექსიკონის სიაში მოდის (ჩანაწერის შიგნით — არა) */
   records_count?: number
+  /** კურსში მცხოვრები ვიდეოები ამ სტატუსით (მხოლოდ ვიდეოს დომენზე) */
+  lessons_count?: number
 }
 
 export interface Genre {

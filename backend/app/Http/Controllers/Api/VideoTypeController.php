@@ -9,6 +9,7 @@ use App\Models\VideoType;
 use App\Support\DictionaryColor;
 use App\Support\DictionaryRecords;
 use App\Support\DictionaryTrash;
+use App\Support\ModuleList;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -66,21 +67,35 @@ class VideoTypeController extends Controller
      */
     public function destroy(Request $request, VideoType $videoType)
     {
+        /* ⚠️ **ამ ტიპის ვიდეოები ორ ნაწილად იყოფა** — სიაში მყოფი და კურსში
+           მცხოვრები. ფანჯარა პირველს ითვლის და არჩევანიც მას ეხება; მეორე
+           არასდროს იშლება და ყოველთვის სხვა ტიპზე გადადის (`DictionaryRecords::rules()`).
+           შიშველი `Video::where('type_id', …)` ორივეს ერთად იღებდა: „ჩანაწერებიანად"
+           წაშლა კურსის ვიდეოებსაც ურნაში აგზავნიდა, ფანჯარა კი მათ არ ითვლიდა. */
+        $owned = Video::where('type_id', $videoType->id);
+        $lessons = ModuleList::outside($owned);
+        $lessonIds = (clone $lessons)->pluck('id')->all();
+
         $data = $request->validate(
             DictionaryRecords::rules(
                 $request,
                 Rule::exists('video_types', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
                 $videoType->id,
+                count($lessonIds),
             ),
             DictionaryRecords::messages(),
         );
 
+        $lessonsTo = DictionaryRecords::lessonTarget($data);
+        $records = ModuleList::narrow(clone $owned);
+
         // ჩანაწერებიც „იშლება“ — **მფლობელის ურნაში**, მოდელის გავლით
         if ($request->boolean('delete_records')) {
-            $deleted = DictionaryRecords::trash(Video::where('type_id', $videoType->id));
-            DictionaryTrash::trash($videoType, 'video_type');
+            $deleted = DictionaryRecords::trash($records);
+            $kept = DictionaryRecords::move($lessons, fn ($video) => $video->type_id = $lessonsTo);
+            DictionaryTrash::trash($videoType, 'video_type', [], null, $lessonIds, $lessonsTo);
 
-            return response()->json(['moved' => 0, 'deleted' => $deleted]);
+            return response()->json(['moved' => 0, 'deleted' => $deleted, 'lessons' => $kept]);
         }
 
         $moveTo = DictionaryRecords::moveTarget($data);
@@ -88,14 +103,14 @@ class VideoTypeController extends Controller
         /* ⚠️ **ურნა** — რიგი ურნაში გადადის და იმახსოვრებს,
            რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
            შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
-        $records = Video::where('type_id', $videoType->id);
         $ids = (clone $records)->pluck('id')->all();
 
         $moved = DictionaryRecords::move($records, fn ($video) => $video->type_id = $moveTo);
+        $kept = DictionaryRecords::move($lessons, fn ($video) => $video->type_id = $lessonsTo);
 
-        DictionaryTrash::trash($videoType, 'video_type', $ids, $moveTo);
+        DictionaryTrash::trash($videoType, 'video_type', $ids, $moveTo, $lessonIds, $lessonsTo);
 
-        return response()->json(['moved' => $moved, 'deleted' => 0]);
+        return response()->json(['moved' => $moved, 'deleted' => 0, 'lessons' => $kept]);
     }
 
     /** გადალაგება — მოწოდებული id-ების რიგი ხდება `sort_order` */
@@ -120,9 +135,13 @@ class VideoTypeController extends Controller
 
     private function ordered()
     {
-        // რიცხვი — მხოლოდ ვიდეოების სიაში მყოფი (კურსში მცხოვრები ფილტრში არ გამოჩნდება)
+        // რიცხვი — მხოლოდ ვიდეოების სიაში მყოფი (კურსში მცხოვრები ფილტრში არ გამოჩნდება);
+        // კურსის ვიდეოები ცალკე ითვლება — წაშლის ფანჯარა მათ ცალკე ხაზად აჩვენებს
         return VideoType::query()
-            ->withCount(['videos' => fn ($q) => $q->listed()])
+            ->withCount([
+                'videos' => fn ($q) => $q->listed(),
+                'videos as lessons_count' => fn ($q) => $q->where('listed', false),
+            ])
             ->orderBy('sort_order')
             ->orderBy('id');
     }

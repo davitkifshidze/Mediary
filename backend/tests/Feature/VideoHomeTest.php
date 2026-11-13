@@ -9,6 +9,8 @@ use App\Models\Status;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoType;
+use App\Services\Share\ShareScope;
+use App\Support\DictionaryTrash;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -196,6 +198,150 @@ class VideoHomeTest extends TestCase
         $groups = collect($this->getJson('/api/search?q=harness')->assertOk()->json('groups'))->keyBy('key');
         $this->assertSame(0, (int) ($groups['video']['total'] ?? 0));
         $this->assertSame([$course->id], array_column($groups['course']['items'] ?? [], 'id'));
+    }
+
+    /* ---------- ლექსიკონის წაშლა და მასობრივი ცვლილება: კურსის ვიდეო მოდულის ჩანაწერი არ არის ---------- */
+
+    /** მეორე ტიპი — გადასატანი ადგილი */
+    private function otherType(): int
+    {
+        return (int) VideoType::where('user_id', $this->user->id)->where('id', '!=', $this->type)->value('id');
+    }
+
+    /**
+     * ⚠️ **„ჩანაწერებიანად" წაშლა კურსის ვიდეოს ურნაში არ აგზავნის.** ფანჯარა
+     * სიაში მყოფ ვიდეოებს ითვლის (`videos_count`), წაშლა კი ტიპის ყველა ვიდეოს
+     * ეხებოდა — კურსის ფანჯარა ცარიელდებოდა. კურსის ვიდეო ყოველთვის სხვა ტიპზე
+     * გადადის და ამისთვის სამიზნე სავალდებულოა.
+     */
+    public function test_deleting_a_type_with_its_records_never_trashes_a_course_lesson(): void
+    {
+        $course = $this->course();
+        $mine = $this->video('Hand added');
+        $lesson = $this->lesson($course, 'Lesson one');
+
+        $row = collect($this->getJson('/api/video-types')->assertOk()->json('data'))->firstWhere('id', $this->type);
+        $this->assertSame([1, 1], [$row['videos_count'], $row['lessons_count']]);
+
+        // სამიზნის გარეშე — 422: გაკვეთილს სადმე წასვლა სჭირდება
+        $this->deleteJson("/api/video-types/{$this->type}", ['delete_records' => true])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'lesson_target_required');
+        $this->assertNull(Video::find($lesson->id)->trashed_at);
+
+        $this->deleteJson("/api/video-types/{$this->type}", ['delete_records' => true, 'lessons_to' => $this->otherType()])
+            ->assertOk()
+            ->assertExactJson(['moved' => 0, 'deleted' => 1, 'lessons' => 1]);
+
+        // სიაში მყოფი — ურნაში; კურსის ვიდეო — ადგილზე, ახალი ტიპით
+        $this->assertNull(Video::find($mine->id));
+        $kept = Video::findOrFail($lesson->id);
+        $this->assertSame($this->otherType(), (int) $kept->type_id);
+        $this->assertFalse($kept->listed);
+    }
+
+    /** გადატანისას კურსის ვიდეო `move_to`-ს მიჰყვება; ცარიელად დატოვება მას მაინც სხვა ტიპზე აგზავნის */
+    public function test_moving_or_clearing_a_type_always_gives_a_lesson_another_type(): void
+    {
+        $course = $this->course();
+        $mine = $this->video('Hand added');
+        $lesson = $this->lesson($course, 'Lesson one');
+        $target = $this->otherType();
+
+        $this->deleteJson("/api/video-types/{$this->type}", ['clear_records' => true])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'lesson_target_required');
+
+        $this->deleteJson("/api/video-types/{$this->type}", ['clear_records' => true, 'lessons_to' => $target])
+            ->assertOk()
+            ->assertExactJson(['moved' => 1, 'deleted' => 0, 'lessons' => 1]);
+
+        $this->assertNull(Video::findOrFail($mine->id)->type_id);
+        $this->assertSame($target, (int) Video::findOrFail($lesson->id)->type_id);
+
+        // ურნიდან „ჩანაწერებიანად" აღდგენა ორივე ჯგუფს უკან აბრუნებს — თითოს იქიდან, სადაც წაშლამ დატოვა
+        $trashed = VideoType::withoutGlobalScope('trash')->findOrFail($this->type);
+        $this->assertSame(2, DictionaryTrash::remembered($trashed));
+        $trashed->restoreFromTrash();
+        $this->assertSame(2, DictionaryTrash::restoreRecords($trashed, 'video_type'));
+        $this->assertSame([$this->type, $this->type], [(int) Video::findOrFail($mine->id)->type_id, (int) Video::findOrFail($lesson->id)->type_id]);
+
+        // გადატანა: ერთი სამიზნე ორივესთვის
+        $this->deleteJson("/api/video-types/{$this->type}", ['move_to' => $target])
+            ->assertOk()
+            ->assertExactJson(['moved' => 1, 'deleted' => 0, 'lessons' => 1]);
+        $this->assertSame([$target, $target], [(int) Video::findOrFail($mine->id)->type_id, (int) Video::findOrFail($lesson->id)->type_id]);
+    }
+
+    /** სტატუსის წაშლა ვიდეოს დომენზე — იგივე წესი */
+    public function test_deleting_a_status_with_its_records_never_trashes_a_course_lesson(): void
+    {
+        $course = $this->course();
+        $mine = $this->video('Hand added');
+        $lesson = $this->lesson($course, 'Lesson one');
+
+        $statuses = Status::where('user_id', $this->user->id)->where('module', 'video')->orderBy('sort_order')->pluck('id')->all();
+        [$doomed, $target] = [(int) $mine->status_id, (int) collect($statuses)->first(fn ($id) => (int) $id !== (int) $mine->status_id)];
+
+        $row = collect($this->getJson('/api/statuses/video')->assertOk()->json('data'))->firstWhere('id', $doomed);
+        $this->assertSame([1, 1], [$row['records_count'], $row['lessons_count']]);
+
+        $this->deleteJson("/api/statuses/video/{$doomed}", ['delete_records' => true])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'lesson_target_required');
+
+        $this->deleteJson("/api/statuses/video/{$doomed}", ['delete_records' => true, 'lessons_to' => $target])
+            ->assertOk()
+            ->assertExactJson(['moved' => 0, 'deleted' => 1, 'lessons' => 1]);
+
+        $this->assertNull(Video::find($mine->id));
+        $this->assertSame($target, (int) Video::findOrFail($lesson->id)->status_id);
+    }
+
+    /** მასობრივი ცვლილება — ყველა სკოუპი, `ids`-ის ჩათვლით, მხოლოდ სიაში მყოფ ვიდეოს ეხება */
+    public function test_bulk_changes_never_touch_a_course_lesson(): void
+    {
+        $course = $this->course();
+        $mine = $this->video('Hand added');
+        $lesson = $this->lesson($course, 'Lesson one');
+        $target = $this->otherType();
+
+        foreach ([['scope' => 'all'], ['scope' => 'ids', 'scope_ids' => [$mine->id, $lesson->id]], ['scope' => 'type', 'scope_type_id' => $this->type]] as $scope) {
+            $this->getJson('/api/videos/bulk-preview?'.http_build_query($scope))->assertOk()->assertJsonPath('count', 1);
+        }
+
+        $this->postJson('/api/videos/bulk', ['scope' => 'ids', 'scope_ids' => [$mine->id, $lesson->id], 'action' => 'type', 'type_id' => $target])
+            ->assertOk()
+            ->assertJsonPath('updated', 1);
+
+        $this->assertSame($target, (int) Video::findOrFail($mine->id)->type_id);
+        $this->assertSame($this->type, (int) Video::findOrFail($lesson->id)->type_id);
+
+        // სტატუსის მასობრივი შეცვლა „ამ სტატუსის ყველა"-ზე
+        $from = Status::findOrFail($lesson->status_id)->key;
+        $to = Status::where('user_id', $this->user->id)->where('module', 'video')->where('id', '!=', $lesson->status_id)->value('key');
+        $this->postJson('/api/videos/bulk-status', ['from_status' => $from, 'status' => $to])->assertOk()->assertJsonPath('updated', 1);
+        $this->assertSame($from, Status::findOrFail(Video::findOrFail($lesson->id)->status_id)->key);
+    }
+
+    /** გაზიარების ბმული ვიდეოს დომენზე — მხოლოდ სიაში მყოფი; კურსის ვიდეოს id-ით ბმული ვერ აეწყობა */
+    public function test_a_share_link_never_carries_a_course_lesson(): void
+    {
+        $course = $this->course();
+        $mine = $this->video('Hand added');
+        $lesson = $this->lesson($course, 'Lesson one');
+
+        $this->assertSame(
+            [$mine->id],
+            ShareScope::query($this->user, 'video', ['scope' => 'all'])->pluck('videos.id')->all(),
+        );
+        $this->assertSame(
+            [$mine->id],
+            ShareScope::query($this->user, 'video', ['scope' => 'ids', 'ids' => [$mine->id, $lesson->id]])->pluck('videos.id')->all(),
+        );
+
+        $this->postJson('/api/share-links', ['domains' => ['video' => ['scope' => 'ids', 'ids' => [$lesson->id]]]])
+            ->assertStatus(422);
     }
 
     public function test_deleting_a_course_for_good_takes_its_own_videos_and_frees_the_listed_ones(): void

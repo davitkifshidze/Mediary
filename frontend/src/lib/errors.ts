@@ -201,6 +201,8 @@ export const CODES = [
      „თავის თავზე გადატანა" სხვადასხვა შეცდომაა და სხვადასხვა ქმედება სჭირდება. */
   'move_target_required',
   'move_target_is_self',
+  // კურსში მცხოვრებ ვიდეოს ლექსიკონის წაშლა არ შლის — სამიზნე სავალდებულოა
+  'lesson_target_required',
   // მოთხოვნის ფორმა
   'not_found',
   'invalid_type',

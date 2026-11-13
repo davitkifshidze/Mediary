@@ -65,6 +65,8 @@ const mocks = vi.hoisted(() => ({
   modules: [] as ModuleInfo[],
   list: vi.fn(async (): Promise<Status[]> => []),
   restore: vi.fn(async (): Promise<RestoredDefaults> => ({ data: [], restored: [], from_trash: [], skipped: [] })),
+  types: vi.fn(async (): Promise<unknown[]> => []),
+  removeType: vi.fn(async () => ({ moved: 0, deleted: 0, lessons: 0 })),
   // ⚠️ ერთი და იგივე ობიექტი ყოველ რენდერზე — კონტექსტის ჰუკის მოკის წესი
   auth: { user: { id: 1, is_super_admin: false }, isAdmin: false },
 }))
@@ -83,7 +85,8 @@ vi.mock('@/api/statuses', async (original) => ({
 
 vi.mock('@/api/videos', async (original) => ({
   ...(await original<typeof import('@/api/videos')>()),
-  fetchVideoTypes: async () => [],
+  fetchVideoTypes: mocks.types,
+  deleteVideoType: mocks.removeType,
 }))
 
 vi.mock('@/lib/auth', () => ({ useAuth: () => mocks.auth }))
@@ -243,5 +246,75 @@ describe('ნაგულისხმევი სტატუსების �
     await mount('/dictionaries/c1-plain-statuses')
     expect(text()).toContain(i18n.t('dictionaries.add'))
     expect(restoreButton()).toBeUndefined()
+  })
+})
+
+/* ============================================================
+   **წაშლის ფანჯარა და კურსში მცხოვრები ვიდეოები.**
+
+   ⚠️ ტიპის რიცხვი (`videos_count`) მხოლოდ სიაში მყოფ ვიდეოს ითვლის. კურსის
+   ვიდეოები ცალკე მოდის (`lessons_count`): ისინი წაშლით არასდროს იშლება და
+   სამიზნე სჭირდება — ამიტომ „0 ვიდეოს" ტიპიც ვერ იშლება ერთი დაჭერით,
+   სანამ არ ითქვა, სად გადავიდეს ისინი.
+   ============================================================ */
+describe('წაშლის ფანჯარა კურსის ვიდეოებით', () => {
+  const type = (id: number, name: string, over: Record<string, unknown> = {}) => ({
+    id,
+    key: `t${id}`,
+    name_ka: name,
+    name_en: name,
+    icon: null,
+    color: null,
+    sort_order: id,
+    videos_count: 0,
+    lessons_count: 0,
+    ...over,
+  })
+
+  const buttons = (label: string) => [...document.querySelectorAll('button')].filter((b) => b.textContent?.trim() === label)
+
+  async function openDelete(rowIndex: number) {
+    mocks.modules = [moduleRow({ id: 4, key: 'video', name_ka: 'ვიდეოები', route_base: '/videos', morph_alias: 'video' })]
+    await mount('/dictionaries/video-types')
+
+    await act(async () => buttons(i18n.t('actions.delete'))[rowIndex].click())
+    await flush()
+  }
+
+  /** ფანჯრის საკუთარი „წაშლა" — ბოლო ღილაკია (რიგების ღილაკები მის წინაა) */
+  const confirm = () => buttons(i18n.t('actions.delete')).at(-1)!
+
+  it('სიაში არაფერია, კურსში კი ორი ვიდეოა — სამიზნის გარეშე ღილაკი გამორთულია', async () => {
+    mocks.types.mockResolvedValue([type(1, 'Tutorial', { lessons_count: 2 }), type(2, 'Review')])
+
+    await openDelete(0)
+
+    expect(text()).toContain(i18n.t('dictionaries.lessonsInUse', { count: 2 }))
+    expect(text()).not.toContain(i18n.t('dictionaries.deleteSimple', { name: 'Tutorial' }))
+    expect(confirm().disabled).toBe(true)
+    expect(mocks.removeType).not.toHaveBeenCalled()
+  })
+
+  it('სხვა ტიპი არ არსებობს — ფანჯარა ამბობს, რომ ჯერ ერთი უნდა დაემატოს', async () => {
+    mocks.types.mockResolvedValue([type(1, 'Tutorial', { lessons_count: 2 })])
+
+    await openDelete(0)
+
+    expect(text()).toContain(i18n.t('dictionaries.lessonsNoTarget'))
+    expect(confirm().disabled).toBe(true)
+  })
+
+  it('კურსის ვიდეოების გარეშე — ჩვეულებრივი ერთდაჭერიანი წაშლა', async () => {
+    mocks.types.mockResolvedValue([type(1, 'Tutorial'), type(2, 'Review')])
+
+    await openDelete(0)
+
+    expect(text()).toContain(i18n.t('dictionaries.deleteSimple', { name: 'Tutorial' }))
+    expect(confirm().disabled).toBe(false)
+
+    await act(async () => confirm().click())
+    await flush()
+
+    expect(mocks.removeType).toHaveBeenCalledWith(1, { clearRecords: true })
   })
 })

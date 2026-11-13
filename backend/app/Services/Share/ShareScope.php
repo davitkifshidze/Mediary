@@ -7,6 +7,7 @@ use App\Models\ShareLink;
 use App\Models\User;
 use App\Services\Gallery\GalleryScope;
 use App\Support\MediaDomain;
+use App\Support\ModuleList;
 use App\Support\ShareDomain;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -182,7 +183,8 @@ final class ShareScope
     public static function query(User $owner, string $domain, array $spec): Builder
     {
         $model = ShareDomain::model($domain);
-        $base = $model::withoutGlobalScope('owner');
+        // ⚠️ გაზიარება მოდულის ჩანაწერებს ეხება (`ModuleList`): კურსში მცხოვრები ვიდეო ბმულით არ გადის
+        $base = ModuleList::narrow($model::withoutGlobalScope('owner'));
         $table = $base->getModel()->getTable();
         $base->where($table.'.user_id', $owner->id);
 
@@ -348,7 +350,8 @@ final class ShareScope
         }
 
         $model = ShareDomain::model($domain);
-        $base = $model::withoutGlobalScope('owner');
+        // ⚠️ გაზიარება მოდულის ჩანაწერებს ეხება (`ModuleList`): კურსში მცხოვრები ვიდეო ბმულით არ გადის
+        $base = ModuleList::narrow($model::withoutGlobalScope('owner'));
         $table = $base->getModel()->getTable();
 
         $own = $base->where($table.'.user_id', $owner->id)

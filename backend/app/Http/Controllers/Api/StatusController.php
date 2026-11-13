@@ -135,6 +135,15 @@ class StatusController extends Controller
 
         $status = $this->find($domain, $id);
 
+        $model = StatusDomain::model($domain);
+
+        /* ⚠️ **ამ სტატუსის ჩანაწერები ორ ნაწილად იყოფა** (ვიდეოს დომენზე): სიაში
+           მყოფი და კურსში მცხოვრები. არჩევანი პირველს ეხება; მეორე არასდროს
+           იშლება და ყოველთვის სხვა სტატუსზე გადადის (`DictionaryRecords::rules()`). */
+        $owned = $model::query()->where('status_id', $status->id);
+        $lessons = ModuleList::outside($owned);
+        $lessonIds = $lessons ? (clone $lessons)->pluck('id')->all() : [];
+
         $data = $request->validate(
             DictionaryRecords::rules(
                 $request,
@@ -142,15 +151,21 @@ class StatusController extends Controller
                     ->where('user_id', $request->user()->id)
                     ->where('module', $domain),
                 $status->id,
+                count($lessonIds),
             ),
             DictionaryRecords::messages(),
         );
 
-        $model = StatusDomain::model($domain);
-        $records = $model::query()->where('status_id', $status->id);
+        $records = ModuleList::narrow(clone $owned);
         // ვინ გადავა, **გადატანამდე**: აღდგენა მათ დაბრუნებას შემოგთავაზებს
         $ids = [];
         $targetId = null;
+        $lessonsTo = DictionaryRecords::lessonTarget($data);
+
+        if ($lessonIds) {
+            $lessonStatus = $lessonsTo ? Status::find($lessonsTo) : null;
+            DictionaryRecords::move($lessons, fn ($record) => $record->applyStatus($lessonStatus));
+        }
 
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::trash($records);
@@ -179,7 +194,7 @@ class StatusController extends Controller
 
         $wasDefault = $status->is_default;
         // ⚠️ ურნა — `DictionaryTrash` ნაგულისხმევის ნიშანსაც ხსნის
-        DictionaryTrash::trash($status, 'status', $ids, $targetId);
+        DictionaryTrash::trash($status, 'status', $ids, $targetId, $lessonIds, $lessonsTo);
 
         // ნაგულისხმევი წაიშალა → პირველივე დარჩენილი იკავებს მის ადგილს,
         // თორემ ახალი ჩანაწერი ჩუმად სტატუსის გარეშე დარჩებოდა
@@ -189,7 +204,7 @@ class StatusController extends Controller
 
         $this->forgetInLayout($request->user(), $domain, $status->key, $previousKey ?? 'start');
 
-        return response()->json(['moved' => $moved, 'deleted' => $deleted]);
+        return response()->json(['moved' => $moved, 'deleted' => $deleted, 'lessons' => count($lessonIds)]);
     }
 
     /**
@@ -375,8 +390,20 @@ class StatusController extends Controller
             ->groupBy('status_id')
             ->pluck('aggregate', 'status_id');
 
+        // კურსში მცხოვრები ვიდეოები — სიაში არ ჩანს, წაშლის ფანჯარა კი ცალკე ითვლის
+        $outside = ModuleList::outside($model::withoutGlobalScope('owner'))
+            ?->where('user_id', $userId)
+            ->whereNotNull('status_id')
+            ->selectRaw('status_id, count(*) as aggregate')
+            ->groupBy('status_id')
+            ->pluck('aggregate', 'status_id');
+
         foreach ($statuses as $status) {
             $status->records_count = (int) ($counts[$status->id] ?? 0);
+
+            if ($outside !== null) {
+                $status->lessons_count = (int) ($outside[$status->id] ?? 0);
+            }
         }
 
         return $statuses;

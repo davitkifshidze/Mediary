@@ -176,6 +176,8 @@ export interface VideoType {
   color: string | null
   sort_order: number
   videos_count?: number
+  /** კურსში მცხოვრები ვიდეოები ამ ტიპით — სიაში არ ჩანს, წაშლის ფანჯარა ცალკე ითვლის */
+  lessons_count?: number
 }
 
 export interface VideoTypeInput {

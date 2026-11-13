@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Status;
+use App\Support\ModuleList;
 use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -72,7 +73,8 @@ abstract class RecordStatusController extends Controller
 
         /** @var class-string<Model> $model */
         $model = StatusDomain::model($domain);
-        $query = $model::query();
+        // ⚠️ მოდულის მასობრივი ცვლილება მოდულის ჩანაწერებს ეხება (`ModuleList`) — კურსში მცხოვრებ ვიდეოს არა
+        $query = ModuleList::narrow($model::query());
 
         if (! empty($data['ids'])) {
             $query->whereIn('id', $data['ids']);

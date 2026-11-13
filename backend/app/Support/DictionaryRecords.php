@@ -48,10 +48,18 @@ final class DictionaryRecords
      * ე.ი. ფორმა, რომელმაც განზრახვა არ თქვა, 422-ს იღებს და არა ჩუმად
      * „დატოვე ცარიელი"-ს.
      *
+     * ⚠️ **კურსში მცხოვრები ვიდეო ლექსიკონის წაშლით არასდროს იშლება** — მისი
+     * სახლი კურსია და ვიდეოების მოდულის ტიპის ან სტატუსის წაშლა მას ურნაში არ
+     * აგზავნის. ის ყოველთვის სხვა ერთეულზე გადადის: გადატანისას `move_to`-ს
+     * მიჰყვება, დანარჩენ ორ რეჟიმში კი საკუთარ სამიზნეს ითხოვს (`lessons_to`,
+     * 422 `lesson_target_required`) — `delete_records`/`clear_records` მხოლოდ
+     * სიაში მყოფ ვიდეოს ეხება.
+     *
      * @param  Exists  $target  სამიზნე ერთეული — **ჩემი** ლექსიკონიდან (და, სტატუსზე, იმავე დომენიდან)
      * @param  int  $selfId  წაშლადი ერთეული — თავის თავზე გადატანა უაზროა
+     * @param  int  $lessons  რამდენ კურსის ვიდეოს აქვს ეს ერთეული (`ModuleList::outside()`)
      */
-    public static function rules(Request $request, Exists $target, int $selfId): array
+    public static function rules(Request $request, Exists $target, int $selfId, int $lessons = 0): array
     {
         // „ჩანაწერებს რაღაც სხვა მოუვა" — ორივე შემთხვევაში `move_to` ზედმეტია
         $explicit = fn (): bool => $request->boolean('delete_records') || $request->boolean('clear_records');
@@ -63,6 +71,13 @@ final class DictionaryRecords
                 'integer',
                 Rule::notIn([$selfId]),
                 $target,
+            ],
+            'lessons_to' => [
+                Rule::requiredIf(fn (): bool => $lessons > 0 && $explicit()),
+                'nullable',
+                'integer',
+                Rule::notIn([$selfId]),
+                clone $target,
             ],
             'delete_records' => ['nullable', 'boolean'],
             // ⚠️ ორი ურთიერთგამომრიცხავი განზრახვა ერთად — 422, არასდროს ჩუმი არჩევანი
@@ -89,7 +104,15 @@ final class DictionaryRecords
         return [
             'move_to.required' => 'move_target_required',
             'move_to.not_in' => 'move_target_is_self',
+            'lessons_to.required' => 'lesson_target_required',
+            'lessons_to.not_in' => 'move_target_is_self',
         ];
+    }
+
+    /** კურსის ვიდეოების სამიზნე — საკუთარი (`lessons_to`), ან გადატანის რეჟიმში იგივე `move_to` */
+    public static function lessonTarget(array $data): ?int
+    {
+        return isset($data['lessons_to']) ? (int) $data['lessons_to'] : self::moveTarget($data);
     }
 
     /** გადატანის სამიზნე — `null` მხოლოდ ცხადი `clear_records`-ის შემთხვევაშია */

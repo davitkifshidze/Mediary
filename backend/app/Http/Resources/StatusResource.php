@@ -36,6 +36,11 @@ class StatusResource extends JsonResource
                 isset($this->resource->records_count),
                 fn () => (int) $this->resource->records_count,
             ),
+            // კურსში მცხოვრები ვიდეოები ამ სტატუსით (მხოლოდ ვიდეოს დომენზე)
+            'lessons_count' => $this->when(
+                isset($this->resource->lessons_count),
+                fn () => (int) $this->resource->lessons_count,
+            ),
         ];
     }
 

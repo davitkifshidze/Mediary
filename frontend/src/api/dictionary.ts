@@ -16,11 +16,19 @@ export interface DictionaryRemoval {
   clearRecords?: boolean
   /** ⚠️ ჩანაწერებიც სამუდამოდ იშლება (ფაილებით, მოდელის გავლით) */
   deleteRecords?: boolean
+  /**
+   * კურსში მცხოვრები ვიდეოები სად გადავიდეს — ისინი ლექსიკონის წაშლით არასდროს
+   * იშლება. გადატანისას `moveTo`-ს მიჰყვება; დანარჩენ ორ რეჟიმში სავალდებულოა
+   * (422 `lesson_target_required`).
+   */
+  lessonsTo?: number | null
 }
 
 export interface DictionaryRemoved {
   moved: number
   deleted: number
+  /** რამდენი კურსის ვიდეო გადავიდა სხვა ერთეულზე */
+  lessons: number
 }
 
 /**
@@ -30,12 +38,14 @@ export interface DictionaryRemoved {
  * განზრახვის გარეშე მოთხოვნა 422 `move_target_required`-ია.
  */
 export function removalBody(removal: DictionaryRemoval = {}) {
-  if (removal.deleteRecords) return { delete_records: true }
-  if (removal.clearRecords || removal.moveTo == null) return { clear_records: true }
+  const lessons = removal.lessonsTo != null ? { lessons_to: removal.lessonsTo } : {}
+
+  if (removal.deleteRecords) return { delete_records: true, ...lessons }
+  if (removal.clearRecords || removal.moveTo == null) return { clear_records: true, ...lessons }
 
   return { move_to: removal.moveTo }
 }
 
-export function readRemoved(data: { moved?: number; deleted?: number }): DictionaryRemoved {
-  return { moved: data.moved ?? 0, deleted: data.deleted ?? 0 }
+export function readRemoved(data: { moved?: number; deleted?: number; lessons?: number }): DictionaryRemoved {
+  return { moved: data.moved ?? 0, deleted: data.deleted ?? 0, lessons: data.lessons ?? 0 }
 }

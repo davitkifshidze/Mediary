@@ -120,6 +120,12 @@ export interface DictionaryDef {
   remove: (id: number, removal: DictionaryRemoval) => Promise<DictionaryRemoved>
   count: (item: DictionaryItem) => number
   /**
+   * **კურსში მცხოვრები ვიდეოები ამ ერთეულით** — მხოლოდ ვიდეოს ტიპსა და ვიდეოს
+   * სტატუსზე. ისინი `count()`-ში არ შედის (სიაში არ ჩანს) და წაშლით არასდროს
+   * იშლება: ფანჯარა მათ ცალკე ხაზად აჩვენებს და სამიზნეს ითხოვს.
+   */
+  lessons?: (item: DictionaryItem) => number
+  /**
    * დამატების/რედაქტირების ფანჯარა. `onSaved` შენახულ ერთეულს აბრუნებს —
    * ფორმის „+" მას მაშინვე ირჩევს (`useDictionaryAdd`).
    */
@@ -181,6 +187,7 @@ export const DICTIONARIES: DictionaryDef[] = [
     reorder: reorderVideoTypes as never,
     remove: deleteVideoType,
     count: (item) => num(item.videos_count),
+    lessons: (item) => num(item.lessons_count),
     dialog: (item, onClose, onSaved) => <VideoTypeDialog type={item as never} onClose={onClose} onSaved={onSaved as never} />,
   },
   {
@@ -394,6 +401,8 @@ for (const domain of STATUS_DOMAINS) {
     restoreDefaults: () => restoreDefaultStatuses(domain),
     remove: (id, removal) => deleteStatus(domain, id, removal),
     count: (item) => num(item.records_count),
+    // სერვერი ამ ველს მხოლოდ ვიდეოს დომენზე აგზავნის — დანარჩენზე 0-ია
+    lessons: (item) => num(item.lessons_count),
     dialog: (item, onClose, onSaved) => (
       <StatusDialog domain={domain} status={item as unknown as Status | null} onClose={onClose} onSaved={onSaved as never} />
     ),
