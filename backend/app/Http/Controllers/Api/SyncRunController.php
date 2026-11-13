@@ -10,6 +10,7 @@ use App\Models\SyncRunItem;
 use App\Services\Cast\CastPool;
 use App\Services\Sync\SyncFacts;
 use App\Services\Sync\SyncHistory;
+use App\Services\Sync\SyncOverview;
 use App\Support\MediaDomain;
 use App\Support\RecordLocks;
 use App\Support\RichText;
@@ -41,6 +42,9 @@ class SyncRunController extends Controller
 
     private const PER_PAGE_MAX = 100;
 
+    /** სინქრონიზაციის გვერდის ბარათები: მონაცემები · სეზონები და სერიები · მსახიობები */
+    private const OVERVIEW_KINDS = [SyncHistory::KIND_SYNC, SyncHistory::KIND_EPISODES, SyncHistory::KIND_CAST];
+
     public function index(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -60,6 +64,45 @@ class SyncRunController extends Controller
         return response()->json([
             'data' => $runs->getCollection()->map(fn (SyncRun $run) => $this->payload($run, $stats))->values(),
             'meta' => ['current_page' => $runs->currentPage(), 'last_page' => $runs->lastPage(), 'per_page' => $runs->perPage(), 'total' => $runs->total()],
+        ]);
+    }
+
+    /**
+     * **სინქრონიზაციის გვერდების ბარათები**: თითო სახეობაზე რამდენია გასაშვები
+     * (`SyncOverview`) და რა დააბრუნა მისმა ბოლო გაშვებამ; თან — ისტორიაში სულ რამდენი
+     * გაშვებაა და რომელია ბოლო.
+     *
+     * `type` — მოდულის გვერდი (`/series/sync`): რიცხვები და ბოლო გაშვებები მხოლოდ ამ
+     * მოდულზე. ⚠️ მსახიობების ბოლო გაშვება მოდულით არ იფილტრება — მისი ერთეული
+     * მსახიობია და არა ჩანაწერი; ისტორიის ჯამი და ბოლო გაშვებაც ყოველთვის მთლიანია.
+     */
+    public function overview(Request $request, SyncOverview $overview): JsonResponse
+    {
+        $data = $request->validate(['type' => ['sometimes', MediaDomain::rule()]]);
+        $type = $data['type'] ?? null;
+
+        $recent = fn () => SyncRun::query()->orderByDesc('updated_at')->orderByDesc('id');
+        $last = [];
+
+        foreach (self::OVERVIEW_KINDS as $kind) {
+            $last[$kind] = $recent()
+                ->where('kind', $kind)
+                ->when(
+                    $type !== null && $kind !== SyncHistory::KIND_CAST,
+                    fn (Builder $q) => $q->whereHas('items', fn (Builder $item) => $item->visible()->where('type', $type)),
+                )
+                ->first();
+        }
+
+        $latest = $recent()->first();
+        $stats = $this->stats(collect($last)->push($latest)->filter()->map->getKey()->unique()->values()->all());
+        $shape = fn (?SyncRun $run) => $run ? $this->payload($run, $stats) : null;
+
+        return response()->json([
+            'pending' => $overview->pending($request->user(), $type),
+            'last' => array_map($shape, $last),
+            'runs' => SyncRun::query()->count(),
+            'latest' => $shape($latest),
         ]);
     }
 

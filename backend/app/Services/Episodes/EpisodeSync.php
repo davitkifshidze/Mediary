@@ -4,6 +4,8 @@ namespace App\Services\Episodes;
 
 use App\Models\TvEpisode;
 use App\Services\Tmdb\TmdbClient;
+use App\Support\MediaDomain;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -34,7 +36,45 @@ class EpisodeSync
     /** უსაზღვრო ციკლის ჭერი — სერიალს რეალურად ამდენი სეზონი არ აქვს */
     private const MAX_SEASONS = 60;
 
+    /** ამ ხნის განმავლობაში უკვე ჩამოტვირთული სერიალი გეგმაში აღარ ხვდება — შეწყვეტილი გაშვება გრძელდება */
+    public const RESUME_HOURS = 6;
+
+    /** TMDB-ის მდგომარეობები, რომლის შემდეგაც ახალი სერია აღარ ემატება */
+    public const ENDED = ['Ended', 'Canceled'];
+
     public function __construct(private readonly TmdbClient $tmdb) {}
+
+    /**
+     * ყველაფერი, რასაც სეზონების ჩამოტვირთვა შეუძლია: TMDB id აქვს და „აღარ განაახლო"
+     * არ არის. ⚠️ დამალული (ჩაკეტილი) ჩანაწერი აქ არ ხვდება — `record_lock` სკოუპი.
+     */
+    public static function syncable(string $type): Builder
+    {
+        return MediaDomain::query($type)->whereNotNull('tmdb_id')->where('sync_paused', false);
+    }
+
+    /** მათგან დაუსრულებელი: TMDB-ის მდგომარეობა უცნობია ან „დასრულდა / გაუქმდა" არ არის */
+    public static function unfinished(string $type): Builder
+    {
+        return self::syncable($type)->where(fn ($q) => $q->whereNull('tmdb_status')->orWhereNotIn('tmdb_status', self::ENDED));
+    }
+
+    /**
+     * **რა გაეშვება „ყველა სერიალზე"** — გეგმაც და სინქრონიზაციის გვერდის ბარათის რიცხვიც
+     * ამ ერთ query-ს კითხულობს. ნაგულისხმევად მხოლოდ დაუსრულებელი (`$all` — ყველა); ბოლო
+     * საათებში უკვე ჩამოტვირთული გამოიტოვება (`$force` — მაინც ყველა).
+     */
+    public static function due(string $type, bool $all = false, bool $force = false): Builder
+    {
+        $query = $all ? self::syncable($type) : self::unfinished($type);
+
+        if (! $force) {
+            $since = now()->subHours(self::RESUME_HOURS);
+            $query->where(fn ($q) => $q->whereNull('episodes_synced_at')->orWhere('episodes_synced_at', '<', $since));
+        }
+
+        return $query;
+    }
 
     public function configured(): bool
     {

@@ -1,29 +1,30 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, DownloadCloud, History } from 'lucide-react'
+import { ArrowLeft, Timer } from 'lucide-react'
 import { SYNC_DELAY_OPTIONS, useSettings } from '@/lib/settings'
-import { SyncDialog } from '@/components/SyncDialog'
-import { NumberSelect, SettingRow } from '@/components/SettingRow'
+import { NumberSelect } from '@/components/SettingRow'
 import { SettingsSaveBar } from '@/components/SettingsSaveBar'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { SyncCards } from '@/components/SyncCards'
 import { InfoHint } from '@/components/ui/info-hint'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { TaskCard } from '@/components/ui/task-card'
 
 /* ============================================================
-   მონაცემების სინქრონიზაცია — ცალკე გვერდი.
+   მონაცემების სინქრონიზაცია — ცალკე გვერდი, ბარათებად.
 
-   ადრე პარამეტრების გვერდიდან იხსნებოდა. სინქრონი ქმედებაა, ამიტომ
-   გვერდზე გამოვიდა — და მასთან ერთად **„პაუზა ჩანაწერებს შორის"**:
-   ის სინქრონის ნაწილია, პარამეტრებში ცალკე აზრი არ ჰქონდა.
-   ციკლს queue ატარებს, ე.ი. გვერდიდან გასვლაც უსაფრთხოა.
+   რა რას აკეთებს და რა მდგომარეობაშია ბიბლიოთეკა, ერთი შეხედვით ჩანს: თითო
+   სახეობას (მონაცემები TMDB-დან · სეზონები და სერიები · მსახიობები · შედეგები)
+   თავისი ბარათი აქვს — აიქონი და ფერი, ერთი წინადადება, რამდენია გასაშვები და
+   მთავარი ღილაკი (`SyncCards`; მოდულის გვერდი იმავე ბარათებს ხატავს თავის მოდულზე).
+
+   **„პაუზა ჩანაწერებს შორის"** სინქრონის პარამეტრია, ამიტომ აქვეა — ცალკე ბარათად
+   ქვემოთ — და არა პარამეტრების გვერდზე. ცხადად ინახება, როგორც იქ (`SettingsSaveBar`).
    ============================================================ */
 
 export function SyncPage() {
   const { t } = useTranslation()
   const { settings, set, isDirty } = useSettings()
-  const [open, setOpen] = useState(false)
 
   return (
     <PageContainer>
@@ -41,48 +42,33 @@ export function SyncPage() {
         hint={<InfoHint info={t('settings.syncHint')} />}
       />
 
-      <section className="rounded-xl border border-border bg-card p-5">
-        <p className="text-sm text-muted-foreground">{t('settings.syncDesc')}</p>
+      <SyncCards />
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={() => setOpen(true)}>
-            <DownloadCloud className="size-4" />
-            {t('sync.open')}
-          </Button>
-          {/* გაშვებების ისტორია: რაზე გაეშვა, რა დაბრუნდა და რა შეიცვალა */}
-          <Link to="/sync/results" className={buttonVariants({ variant: 'outline' })} data-testid="sync-results-link">
-            <History className="size-4" />
-            {t('syncResults.open')}
-          </Link>
-        </div>
+      <TaskCard
+        className="mt-3"
+        color="var(--gold)"
+        icon={Timer}
+        title={t('settings.syncDelay')}
+        text={t('settings.syncDelayHint')}
+        count={null}
+        actions={
+          <div className="flex items-center gap-2">
+            <div className="w-40">
+              <NumberSelect
+                value={settings.syncDelayMs}
+                options={SYNC_DELAY_OPTIONS}
+                onChange={(v) => set('syncDelayMs', v)}
+                labelOf={(v) => (v === 0 ? t('settings.noDelay') : `${v} ms`)}
+              />
+            </div>
+            {/* შეცვლილია და ჯერ არ შენახულა */}
+            {isDirty('syncDelayMs') && <span className="size-1.5 shrink-0 rounded-md bg-primary" title={t('settings.syncDelay')} data-testid="pause-dirty" />}
+          </div>
+        }
+        data-testid="pause-block"
+      />
 
-        <p className="mt-4 text-xs text-muted-foreground">{t('sync.runsInQueue')}</p>
-      </section>
-
-      {/* პაუზა — სინქრონის პარამეტრია, ამიტომ აქვეა და არა პარამეტრების გვერდზე */}
-      <section className="mt-3 rounded-xl border border-border bg-card p-5">
-        <SettingRow
-          label={t('settings.syncDelay')}
-          hint={t('settings.syncDelayHint')}
-          dirty={isDirty('syncDelayMs')}
-        >
-          <NumberSelect
-            value={settings.syncDelayMs}
-            options={SYNC_DELAY_OPTIONS}
-            onChange={(v) => set('syncDelayMs', v)}
-            labelOf={(v) => (v === 0 ? t('settings.noDelay') : `${v} ms`)}
-          />
-        </SettingRow>
-      </section>
-
-      {/* 3 — პაუზაც ცხადად ინახება, როგორც პარამეტრების გვერდზე */}
       <SettingsSaveBar />
-
-      {/* CLI-ის შენიშვნა (`media:redownload --missing`) აქედან მოიხსნა:
-          ჩვეულებრივ მომხმარებელს artisan-ის ბრძანება არ ეხება. ტექსტი
-          `CLAUDE.md`-შია, სადაც დანარჩენი bootstrap-ის ნაბიჯებია. */}
-
-      <SyncDialog open={open} onOpenChange={setOpen} />
     </PageContainer>
   )
 }

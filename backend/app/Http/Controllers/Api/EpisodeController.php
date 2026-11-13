@@ -33,12 +33,6 @@ class EpisodeController extends Controller
         private readonly EpisodeProgress $progress,
     ) {}
 
-    /** ამ ხნის განმავლობაში უკვე ჩამოტვირთული სერიალი გეგმაში აღარ ხვდება — შეწყვეტილი გაშვება გრძელდება */
-    public const RESUME_HOURS = 6;
-
-    /** TMDB-ის მდგომარეობები, რომლის შემდეგაც ახალი სერია აღარ ემატება */
-    public const ENDED = ['Ended', 'Canceled'];
-
     /**
      * **„სეზონები და სერიები — ყველა სერიალზე": რა გაეშვება.**
      *
@@ -54,21 +48,12 @@ class EpisodeController extends Controller
     {
         abort_unless(in_array($type, MediaDomain::TV_TYPES, true), 404);
 
-        $base = fn () => MediaDomain::query($type)->whereNotNull('tmdb_id')->where('sync_paused', false);
-        // დაუსრულებელი: TMDB-ის მდგომარეობა უცნობია ან „დასრულდა / გაუქმდა" არ არის
-        $unfinished = fn () => $base()->where(fn ($q) => $q->whereNull('tmdb_status')->orWhereNotIn('tmdb_status', self::ENDED));
-
-        $total = $base()->count();
-        $open = $unfinished()->count();
+        // გეგმის query-ები `EpisodeSync`-შია — სინქრონიზაციის გვერდის ბარათი იმავეს ითვლის
+        $total = EpisodeSync::syncable($type)->count();
+        $open = EpisodeSync::unfinished($type)->count();
         $all = $request->boolean('all');
-        $scope = $all ? $base() : $unfinished();
 
-        if (! $request->boolean('force')) {
-            $since = now()->subHours(self::RESUME_HOURS);
-            $scope->where(fn ($q) => $q->whereNull('episodes_synced_at')->orWhere('episodes_synced_at', '<', $since));
-        }
-
-        $records = $scope->orderBy('id')->get();
+        $records = EpisodeSync::due($type, $all, $request->boolean('force'))->orderBy('id')->get();
         $inScope = $all ? $total : $open;
 
         return response()->json([
@@ -82,7 +67,7 @@ class EpisodeController extends Controller
             'ended' => $total - $open,
             'in_scope' => $inScope,
             'fresh' => $inScope - $records->count(),
-            'resume_hours' => self::RESUME_HOURS,
+            'resume_hours' => EpisodeSync::RESUME_HOURS,
         ]);
     }
 

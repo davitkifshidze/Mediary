@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -34,6 +35,18 @@ final class SyncOutcome
         'sync' => ['last_synced_at', 'last_sync_result'],
         'translate' => ['last_translated_at', 'last_translate_result'],
     ];
+
+    /**
+     * **„ჯერ დაუმუშავებელი"** — არასდროს გაშვებული, ან ბოლოს ცარიელი/ჩავარდნილი: სწორედ
+     * ამას ტოვებს გეგმა „დამუშავებულების დამალვაზე" და ამასვე ითვლის სინქრონიზაციის
+     * გვერდის ბარათი. ერთი განმარტება ორივესთვის.
+     */
+    public static function pending(Builder $query, string $kind = 'sync'): Builder
+    {
+        [$at, $column] = self::COLUMNS[$kind];
+
+        return $query->where(fn (Builder $w) => $w->whereNull($at)->orWhereIn($column, self::RETRY));
+    }
 
     /**
      * კვალის ჩაწერა **ობსერვერის გარეშე**: ეს მანქანის ფაქტია და არა

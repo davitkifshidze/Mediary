@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useContentLang } from '@/lib/settings'
 import { statusName, useMergedStatuses } from '@/lib/statuses'
 import { useQuery } from '@tanstack/react-query'
@@ -44,13 +44,18 @@ import { useToast } from '@/components/ui/feedback'
    ============================================================ */
 
 type Scope = 'all' | 'status' | 'favorite' | 'genre' | 'specific'
-type Flow = 'records' | 'cast'
+
+/** ფანჯრის ნაკადი: ჩანაწერები (TMDB-ის მონაცემები) · მსახიობები */
+export type SyncFlow = 'records' | 'cast'
 
 export function SyncDialog({
   open,
   onOpenChange,
   only,
+  flow: startFlow = 'records',
 }: {
+  /** რომელი ნაკადით გაიხსნას — სინქრონიზაციის გვერდის ბარათი თავის ნაკადს ხსნის */
+  flow?: SyncFlow
   open: boolean
   onOpenChange: (o: boolean) => void
   /** მხოლოდ ეს მოდული — მოდულის საკუთარი „სინქრონიზაციის" გვერდიდან გახსნილი ფანჯარა */
@@ -75,8 +80,13 @@ export function SyncDialog({
   const toggleType = (v: MediaType) =>
     setPicked(types.includes(v) ? types.filter((x) => x !== v) : [...types, v])
 
-  const [flow, setFlow] = useState<Flow>('records')
+  const [flow, setFlow] = useState<SyncFlow>(startFlow)
   const close = () => onOpenChange(false)
+
+  // ყოველ გახსნაზე გამომძახებლის ნაკადი დგება; ფორმების არჩევანი ორივე ნაკადში რჩება
+  useEffect(() => {
+    if (open) setFlow(startFlow)
+  }, [open, startFlow])
 
   /* ⚠️ **ნაკადი ბარათია და არა მეოთხე დომენი**: დომენების რიგში
      „მსახიობები" „ფილმები + მსახიობები"-ად წაიკითხებოდა, ანუ „ორივე
@@ -89,7 +99,7 @@ export function SyncDialog({
           { key: 'cast', label: t('sync.flow.cast'), hint: t('sync.flow.castHint') },
         ]}
         value={flow}
-        onChange={(key) => setFlow(key as Flow)}
+        onChange={(key) => setFlow(key as SyncFlow)}
         layout="inline"
       />
 

@@ -363,6 +363,8 @@ Route::middleware('auth:sanctum')->group(function () {
        გაშვებები (ფონური პარტია ან ბრაუზერის რიგი) და მათი ერთეულები. ⚠️ ისიც მოდულის
        ჯგუფის გარეთაა, პარტიის იმავე მიზეზით; `{run}` გაშვების გასაღებია (UUID) და
        ყოველთვის ჩემია. „აღარ გაეშვას" უფლებას კონტროლერი თითო ტიპზე ამოწმებს. */
+    // სინქრონიზაციის გვერდების ბარათები: რამდენია გასაშვები და რა დააბრუნა ბოლო გაშვებამ
+    Route::get('/sync/overview', [SyncRunController::class, 'overview']);
     Route::get('/sync/runs', [SyncRunController::class, 'index']);
     Route::get('/sync/runs/{run}', [SyncRunController::class, 'show']);
     Route::get('/sync/runs/{run}/items', [SyncRunController::class, 'items']);

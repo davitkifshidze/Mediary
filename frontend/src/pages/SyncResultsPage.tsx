@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, CircleAlert, CircleCheck, CircleMinus, CirclePause, CirclePlay, FileImage, Minus, Plus, RefreshCw, Search, SkipForward } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, CircleAlert, CirclePause, CirclePlay, FileImage, Minus, Plus, RefreshCw, Search } from 'lucide-react'
 import {
   fetchSyncRun,
   fetchSyncRunItems,
@@ -18,9 +17,11 @@ import {
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage, translateCode } from '@/lib/errors'
 import { MEDIA, MEDIA_NAV_KEY } from '@/lib/media'
-import { isMediaKey } from '@/lib/modules'
+import { isMediaKey, modAccent } from '@/lib/modules'
 import { usePagedList, usePages } from '@/lib/paged'
+import { SYNC_KIND_LOOK, SYNC_RESULT_LOOK } from '@/lib/syncLook'
 import { cn } from '@/lib/utils'
+import { RunCounts, RunProgress } from '@/components/SyncRunBits'
 import { Badge, CountBadge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -40,7 +41,9 @@ import { QueryErrorState } from '@/components/ui/query-error-state'
 
    გაშვება აქამდე მხოლოდ მანამ ჩანდა, სანამ ფანჯარა ღია იყო. აქ ჩანს: როდის, რა
    სახის (მონაცემები · სეზონები · მსახიობები · თარგმანი), რომელ მოდულებზე, რამდენი
-   ერთეული და რა შედეგით; შიგნით — თითო ერთეული: რა დაბრუნდა, რატომ და **რა რით
+   ერთეული და რა შედეგით. გაშვება **ბარათია**: სახეობის აიქონი თავისი ფერით, მოდულები
+   ნიშნებად, დრო, შედეგის ჯამები ფერადი ნიშნებით და დაუსრულებელზე — ზოლი (რამდენს
+   აქვს შედეგი დაგეგმილიდან). შიგნით ერთეულიც ბარათია: რა დაბრუნდა, რატომ და **რა რით
    შეიცვალა**: ერთეული იშლება და ყოველ ველზე ჩანს „იყო → გახდა" (ცარიელიდან
    შევსებულზე — „ახალი"), ჟანრებსა და მსახიობებზე — რა დაემატა და რა მოაკლდა,
    პოსტერსა და ფოტოზე — მხოლოდ ფაქტი, თარგმანზე — რომელმა წყარომ შეავსო. ძველ
@@ -51,13 +54,6 @@ import { QueryErrorState } from '@/components/ui/query-error-state'
    ბრუნდება („ისევ გაეშვას").
    ⚠️ ისტორია 90 დღე ინახება; ჩაკეტილი ჩანაწერის ერთეული აქ არ ჩანს.
    ============================================================ */
-
-const RESULT_LOOK: Record<SyncRunResult, { icon: LucideIcon; tone: string }> = {
-  updated: { icon: CircleCheck, tone: 'text-[var(--icon-ok)]' },
-  unchanged: { icon: CircleMinus, tone: 'text-muted-foreground' },
-  skipped: { icon: SkipForward, tone: 'text-[var(--icon-warn)]' },
-  failed: { icon: CircleAlert, tone: 'text-destructive' },
-}
 
 export function SyncResultsPage() {
   const { key } = useParams()
@@ -72,42 +68,38 @@ function useTypeName() {
   return (type: string) => (isMediaKey(type) ? t(MEDIA_NAV_KEY[type]) : type === 'actor' ? t('sync.changed.cast') : type)
 }
 
-/** გაშვების ერთი ხაზი — სიაშიც და გაშვების გვერდის თავშიც */
+/**
+ * გაშვების ბარათის შიგთავსი — სიაშიც და გაშვების გვერდის თავშიც. ფერს (`--mod`) გარსი
+ * აყენებს: სიაში ბარათი ბმულია, გაშვების გვერდზე — უბრალო ყუთი.
+ */
 function RunSummary({ run }: { run: SyncRun }) {
   const { t } = useTranslation()
   const { dateTime } = useDateFormat()
   const typeName = useTypeName()
+  const Icon = SYNC_KIND_LOOK[run.kind].icon
 
   return (
-    <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <span className="flex flex-wrap items-center gap-x-4 gap-y-3">
+      <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)] text-[var(--mod)]">
+        <Icon className="size-5" />
+      </span>
       <span className="min-w-0 flex-1 basis-56">
-        <span className="block text-sm font-semibold">
+        <span className="flex flex-wrap items-center gap-1.5 text-sm font-semibold">
           {t(`syncResults.kind.${run.kind}`)}
-          {run.types.length > 0 && <span className="font-normal text-muted-foreground"> · {run.types.map(typeName).join(', ')}</span>}
+          {run.types.map((type) => (
+            <Badge key={type} className="bg-secondary font-normal" data-testid="run-module">
+              {typeName(type)}
+            </Badge>
+          ))}
         </span>
-        <span className="mt-0.5 block text-xs text-muted-foreground">
+        <span className="mt-1 block text-xs text-muted-foreground">
           {[dateTime(run.started_at), t(`syncResults.source.${run.source}`), run.done < run.total ? t('syncResults.partial', { done: run.done, total: run.total }) : t('syncResults.units', { count: run.total })]
             .filter(Boolean)
             .join(' · ')}
         </span>
+        <RunProgress run={run} className="mt-2" />
       </span>
-      <span className="flex flex-wrap items-center gap-3" data-testid="run-counts">
-        {SYNC_RUN_RESULTS.map((result) => {
-          const { icon: Icon, tone } = RESULT_LOOK[result]
-          const count = run.counts[result] ?? 0
-
-          return (
-            <span
-              key={result}
-              title={t(`syncResults.result.${result}`)}
-              className={cn('inline-flex items-center gap-1 text-sm tabular-nums', count === 0 && 'opacity-40')}
-            >
-              <Icon className={cn('size-4', tone)} aria-label={t(`syncResults.result.${result}`)} />
-              {count}
-            </span>
-          )
-        })}
-      </span>
+      <RunCounts counts={run.counts} />
     </span>
   )
 }
@@ -145,7 +137,8 @@ function RunList() {
                 <Link
                   to={`/sync/results/${run.key}`}
                   data-testid="sync-run"
-                  className="block rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted"
+                  style={modAccent(SYNC_KIND_LOOK[run.kind].color)}
+                  className="block rounded-lg border border-border bg-card p-3 transition-colors hover:border-[var(--mod)]"
                 >
                   <RunSummary run={run} />
                 </Link>
@@ -239,7 +232,11 @@ function RunDetail({ runKey }: { runKey: string }) {
         <QueryErrorState error={run.error} onRetry={() => void run.refetch()} retrying={run.isFetching} />
       ) : !run.data ? null : (
         <>
-          <div className="mb-4 rounded-lg border border-border bg-card p-3" data-testid="sync-run-head">
+          <div
+            className="mb-4 rounded-lg border border-border bg-card p-3"
+            style={modAccent(SYNC_KIND_LOOK[run.data.kind].color)}
+            data-testid="sync-run-head"
+          >
             <RunSummary run={run.data} />
           </div>
 
@@ -318,9 +315,9 @@ function RunDetail({ runKey }: { runKey: string }) {
                   </Button>
                 )}
               </div>
-              <ul className="space-y-1.5">
+              <ul className="space-y-2">
                 {items.items.map((item) => (
-                  <ItemRow
+                  <ItemCard
                     key={item.id}
                     item={item}
                     picked={picked.has(item.id)}
@@ -379,7 +376,7 @@ function ChangeDetails({ details }: { details: SyncRunDetail[] }) {
   const fieldName = useFieldName()
 
   return (
-    <dl className="w-full space-y-2.5 border-t border-border pt-2.5 text-sm" data-testid="sync-run-item-details">
+    <dl className="mt-3 space-y-2.5 border-t border-border pt-3 text-sm" data-testid="sync-run-item-details">
       {details.map((detail) => (
         <div key={detail.field} className="grid gap-x-4 gap-y-1 sm:grid-cols-[12rem_minmax(0,1fr)]" data-testid="sync-run-detail" data-field={detail.field}>
           <dt className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -430,7 +427,8 @@ function ChangeDetails({ details }: { details: SyncRunDetail[] }) {
   )
 }
 
-function ItemRow({
+/** ერთეულის ბარათი: შედეგი თავისი ფერით, ჩანაწერი და მოდული, რა შეიცვალა ან რატომ არა — და ჩაშლა */
+function ItemCard({
   item,
   picked,
   onPick,
@@ -446,7 +444,7 @@ function ItemRow({
 }) {
   const { t } = useTranslation()
   const typeName = useTypeName()
-  const { icon: Icon, tone } = RESULT_LOOK[item.result]
+  const { icon: Icon, tone, soft } = SYNC_RESULT_LOOK[item.result]
   const path = recordPath(item)
   const title = item.title || `#${item.record_id}`
 
@@ -464,48 +462,50 @@ function ItemRow({
   const reason = item.reason ? t(`syncResults.reason.${item.reason}`, { defaultValue: translateCode(item.reason) ?? item.reason }) : null
 
   return (
-    <li
-      data-testid="sync-run-item"
-      data-result={item.result}
-      className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card p-2.5"
-    >
-      <Checkbox checked={picked} onCheckedChange={(on) => onPick(on === true)} aria-label={title} />
-      <Icon className={cn('size-4 shrink-0', tone)} aria-label={t(`syncResults.result.${item.result}`)} />
-      <span className="min-w-0 flex-1 basis-56">
-        <span className="block truncate text-sm font-medium">
-          {path ? (
-            <Link to={path} className="hover:text-primary" data-testid="sync-run-item-link">
-              {title}
-            </Link>
-          ) : (
-            title
-          )}
-          <span className="font-normal text-muted-foreground"> · {typeName(item.type)}</span>
+    <li data-testid="sync-run-item" data-result={item.result} className="rounded-lg border border-border bg-card p-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <Checkbox checked={picked} onCheckedChange={(on) => onPick(on === true)} aria-label={title} />
+        <span className={cn('grid size-9 shrink-0 place-items-center rounded-md', soft)}>
+          <Icon className={cn('size-4', tone)} aria-label={t(`syncResults.result.${item.result}`)} />
         </span>
-        <span className="mt-0.5 block text-xs text-muted-foreground">
-          {[
-            t(`syncResults.result.${item.result}`),
-            changes ? t('syncResults.changed', { fields: changes }) : null,
-            reason,
-            !item.exists ? t('syncResults.gone') : null,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
+        <span className="min-w-0 flex-1 basis-56">
+          <span className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+            <span className="min-w-0 truncate">
+              {path ? (
+                <Link to={path} className="hover:text-primary" data-testid="sync-run-item-link">
+                  {title}
+                </Link>
+              ) : (
+                title
+              )}
+            </span>
+            <Badge className="bg-secondary font-normal">{typeName(item.type)}</Badge>
+          </span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            {[
+              t(`syncResults.result.${item.result}`),
+              changes ? t('syncResults.changed', { fields: changes }) : null,
+              reason,
+              !item.exists ? t('syncResults.gone') : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
         </span>
-      </span>
-      {item.paused && (
-        <Badge className="bg-secondary" data-testid="sync-run-item-paused">
-          <CirclePause className="size-3.5" />
-          {t('syncResults.paused')}
-        </Badge>
-      )}
-      {item.details.length > 0 && (
-        <Button variant="outline" size="sm" aria-expanded={open} onClick={() => onOpen(!open)} data-testid="sync-run-item-toggle">
-          {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-          {t('syncResults.detail.show')}
-          <CountBadge count={item.details.length} />
-        </Button>
-      )}
+        {item.paused && (
+          <Badge size="row" className="bg-secondary" data-testid="sync-run-item-paused">
+            <CirclePause className="size-3.5" />
+            {t('syncResults.paused')}
+          </Badge>
+        )}
+        {item.details.length > 0 && (
+          <Button variant="outline" size="sm" aria-expanded={open} onClick={() => onOpen(!open)} data-testid="sync-run-item-toggle">
+            {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+            {t('syncResults.detail.show')}
+            <CountBadge count={item.details.length} />
+          </Button>
+        )}
+      </div>
       {open && item.details.length > 0 && <ChangeDetails details={item.details} />}
     </li>
   )

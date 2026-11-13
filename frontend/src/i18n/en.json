@@ -762,7 +762,6 @@
     "discoverPerPage": "Records per page",
     "discoverPerPageHint": "A multiple of 20 — several TMDB pages are merged into one.",
     "syncHint": "The data comes from TMDB — for records and for actors' biographies alike. Bulk operations over the whole collection.",
-    "syncDesc": "Pick a scope, see how many records it touches, then watch the progress in the queue — it can be stopped at any time.",
     "syncDelay": "Pause between records",
     "syncDelayHint": "Gives TMDB some air on long runs.",
     "noDelay": "No pause",
@@ -5588,7 +5587,6 @@
     "episodesTitleAnime": "Seasons and episodes — every anime",
     "episodesHint": "Each season is a separate TMDB request, so normally only unfinished series are refreshed — a finished one gets no new episodes. The run happens on the server: closing the page does not stop it. Anything fetched in the last {{hours}} hours is skipped, so an interrupted run continues instead of starting over.",
     "all": "All — finished ones too",
-    "planLine": "To run: {{count}}",
     "planFresh": "already fresh: {{count}}",
     "planEnded": "finished, skipped: {{count}}",
     "start": "Start",
@@ -5606,7 +5604,6 @@
     },
     "nothingRan": "Nothing ran",
     "tmdbTitle": "Data from TMDB",
-    "tmdbDesc": "Title, description, genres, cast and poster — for the records of this module. In the window you choose what to refresh and for which records.",
     "hideWarning": "Without sync, new seasons and episodes will not be fetched — hide it anyway?"
   },
   "recordShare": {
@@ -5733,6 +5730,22 @@
       "profile_links": "Social links",
       "photo": "Profile photo"
     }
+  },
+  "syncCards": {
+    "dataText": "Poster, description, genres, cast and other fields — in the window you choose what to refresh and for which records.",
+    "dataCount": "records not processed yet",
+    "dataInfo": "The number counts records that have never been synced, or whose last attempt came back empty or failed. Records without a TMDB id, paused ones (“Do not update”) and locked ones are not counted. The loop runs in the browser queue: leaving this page is safe, closing the tab stops it.",
+    "episodesText": "Fetches new seasons and episodes in one go — on the server, in the background.",
+    "episodesCount": "to run",
+    "castText": "Biography, birth date, links and photo — for the actors of this library.",
+    "castCount": "never updated",
+    "castInfo": "The number counts the actors of this library whose data has never been updated. Actors without a TMDB id, paused ones (“Do not update”) and locked ones are not counted.",
+    "castOpen": "Update actors…",
+    "resultsTitle": "Results",
+    "resultsText": "The history of every run — what came back, why, and what changed to what.",
+    "resultsCount": "runs in the history",
+    "lastRun": "Last run: {{date}}",
+    "neverRan": "Never run yet"
   },
   "locks": {
     "title": "Locked",

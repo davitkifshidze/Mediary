@@ -63,6 +63,25 @@ export interface SyncRunItem {
   paused: boolean
 }
 
+/** სინქრონიზაციის გვერდის ბარათების სახეობები — თარგმანს თავისი გვერდი აქვს */
+export type SyncCardKind = Exclude<SyncRunKind, 'translate'>
+
+/** სინქრონიზაციის გვერდების ბარათები — `GET /sync/overview` */
+export interface SyncOverview {
+  /** რამდენია გასაშვები (გეგმის იგივე რიცხვი); `null` — ეს ბარათი ამ ანგარიშს ან მოდულს არ აქვს */
+  pending: Record<SyncCardKind, number | null>
+  /** სახეობის ბოლო გაშვება — მოდულის გვერდზე ამ მოდულისა */
+  last: Record<SyncCardKind, SyncRun | null>
+  /** ისტორიაში სულ რამდენი გაშვებაა და რომელია ბოლო — ყველა სახეობა ერთად */
+  runs: number
+  latest: SyncRun | null
+}
+
+export async function fetchSyncOverview(type?: string): Promise<SyncOverview> {
+  const { data } = await api.get<SyncOverview>('/sync/overview', { params: type ? { type } : undefined })
+  return data
+}
+
 export async function fetchSyncRuns(page = 1, perPage = 10): Promise<Page<SyncRun>> {
   const { data } = await api.get('/sync/runs', { params: { page, per_page: perPage } })
   return readPage<SyncRun>(data)

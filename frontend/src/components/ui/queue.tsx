@@ -775,6 +775,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           ...(next.kind === 'import' ? [...importListKeys(next.mediaType), 'dashboard', 'export', 'storage-files'] : []),
           // მსახიობის გვერდი (`actor`) ზემოთაა; გეგმის რიცხვები კი იცვლება
           ...(next.kind === 'cast' ? ['cast-sync-plan'] : []),
+          // ისტორიაში ჩაწერილი ერთეული: სინქრონიზაციის ბარათების რიცხვები და გაშვებების სია
+          ...(next.run ? ['sync-overview', 'sync-runs'] : []),
           /* ახალი ჩანაწერი: დეშბორდის მთვლელი და ბმულის გვერდის „უკვე გაქვს ✓";
              და იმ მოდულის სია, სადაც დაემატა (თამაშები, წიგნები…) */
           ...(next.kind === 'share'

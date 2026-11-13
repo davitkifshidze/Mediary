@@ -81,7 +81,7 @@ class MediaSyncController extends Controller
             $query->where('sync_paused', false);
             if ($hideProcessed) {
                 $processed += (clone $query)->whereNotNull('last_synced_at')->whereNotIn('last_sync_result', SyncOutcome::RETRY)->count();
-                $query->where(fn ($w) => $w->whereNull('last_synced_at')->orWhereIn('last_sync_result', SyncOutcome::RETRY));
+                SyncOutcome::pending($query);
             }
             $rows = $query->with(['translations', 'cast'])->orderBy('id')->get();
 

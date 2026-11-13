@@ -11,8 +11,9 @@ import i18n from '@/i18n'
 /* ============================================================
    **„სინქრონიზაციის შედეგები"** — გაშვებების სია და ერთი გაშვების ერთეულები.
 
-   ⚠️ მოწმდება: გაშვება ბმულია თავის გვერდზე და ოთხივე შედეგის რიცხვს აჩვენებს;
-   ერთეული ამბობს, რა შეიცვალა (ველების სახელებით) ან რატომ გამოტოვდა, არსებულ
+   ⚠️ მოწმდება: გაშვება ბარათია — ბმული თავის გვერდზე, სახეობის ფერით, მოდულები
+   ნიშნებად, ოთხივე შედეგის რიცხვი ფერადი ნიშნებით და დაუსრულებელზე პროგრესის ზოლი;
+   ერთეულიც ბარათია — შედეგი თავისი ფერით და მოდულის ნიშანი; ერთეული ამბობს, რა შეიცვალა (ველების სახელებით) ან რატომ გამოტოვდა, არსებულ
    ჩანაწერზე ბმულია, წაშლილზე — არა; ჩიპი შედეგით ფილტრავს, ძებნა სათაურით;
    „აღარ გაეშვას" მონიშნულ ერთეულებს ან ყველა ჩავარდნილს აგზავნის და მერე სიას
    თავიდან კითხულობს; გასაღების ფორმა UUID-ია.
@@ -169,6 +170,39 @@ describe('SyncResultsPage: the list of runs', () => {
     expect(runs[1].textContent).toContain(i18n.t('syncResults.source.batch'))
   })
 
+  it('draws a run as a card: kind colour, modules, coloured counts and a bar while incomplete', async () => {
+    mocks.fetchSyncRuns.mockResolvedValue({
+      items: [
+        run({ types: ['movie', 'series'], counts: { updated: 3, unchanged: 0, skipped: 0, failed: 1 } }),
+        run({ key: 'aaaa1111-2222-4333-8444-555566667777', kind: 'cast', source: 'batch', types: ['actor'], total: 8, done: 2 }),
+      ],
+      total: 2,
+      lastPage: 1,
+    })
+    await mount('/sync/results')
+
+    const [full, partial] = all<HTMLAnchorElement>('[data-testid="sync-run"]')
+    // სახეობას თავისი ფერი აქვს — ბარათი მას აქცენტად იღებს
+    expect(full.style.getPropertyValue('--mod')).toBe('var(--tool-sync)')
+    expect(partial.style.getPropertyValue('--mod')).toBe('var(--tool-actors)')
+    // მოდულები ნიშნებად
+    expect([...full.querySelectorAll('[data-testid="run-module"]')].map((badge) => badge.textContent)).toEqual([i18n.t('nav.movies'), i18n.t('nav.series')])
+    expect(partial.querySelector('[data-testid="run-module"]')!.textContent).toBe(i18n.t('sync.changed.cast'))
+
+    // შედეგის ნიშნები: ოთხივე იხატება, ნულიანი გაუფერულებულია
+    const badge = (card: Element, result: string) => card.querySelector<HTMLElement>(`[data-testid="run-counts"] [data-result="${result}"]`)!
+    expect(badge(full, 'updated').textContent).toBe('3')
+    expect(badge(full, 'updated').className).not.toContain('opacity-40')
+    expect(badge(full, 'skipped').className).toContain('opacity-40')
+    expect(badge(full, 'failed').getAttribute('title')).toBe(i18n.t('syncResults.result.failed'))
+
+    // ზოლი მხოლოდ დაუსრულებელ გაშვებაზეა
+    expect(full.querySelector('[data-testid="run-progress"]')).toBeNull()
+    const bar = partial.querySelector('[data-testid="run-progress"]')!
+    expect(bar.getAttribute('aria-valuenow')).toBe('25')
+    expect((bar.firstElementChild as HTMLElement).style.width).toBe('25%')
+  })
+
   it('says so when nothing has been run', async () => {
     mocks.fetchSyncRuns.mockResolvedValue({ items: [], total: 0, lastPage: 1 })
     await mount('/sync/results')
@@ -205,6 +239,12 @@ describe('SyncResultsPage: one run', () => {
     expect(rows[3].textContent).toContain(i18n.t('syncResults.gone'))
     expect(rows[3].querySelector('[data-testid="sync-run-item-paused"]')).not.toBeNull()
     expect(rows[0].querySelector('[data-testid="sync-run-item-paused"]')).toBeNull()
+
+    // ერთეული ბარათია: მოდულის ნიშანი; გაშვების თავიც ბარათია თავისი სახეობის ფერით
+    expect(rows[0].textContent).toContain(i18n.t('nav.movies'))
+    const head = document.querySelector<HTMLElement>('[data-testid="sync-run-head"]')!
+    expect(head.style.getPropertyValue('--mod')).toBe('var(--tool-sync)')
+    expect(head.querySelector('[data-testid="run-counts"]')!.textContent).toBe('1111')
   })
 
   it('unfolds an item into what changed to what', async () => {
