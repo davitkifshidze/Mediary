@@ -4,12 +4,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, Trash2, X } from 'lucide-react'
 import { bulkUpdateDutyShifts, deleteDutyShifts, type DutyShift, type DutyShiftType, type DutyWorkplace } from '@/api/duty'
 import { errorMessage } from '@/lib/errors'
-import { invalidateDuty, typeName, workplaceColor } from '@/lib/duty'
+import { invalidateDuty, typeName } from '@/lib/duty'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { useToast } from '@/components/ui/feedback'
 import { FormField, FormSection } from '@/components/ui/form-layout'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { WorkplaceDot } from '@/components/duty/DutyBits'
 
 /* ============================================================
    **მონიშნული დღეების მორიგეობები — მასობრივი შეცვლა და წაშლა.**
@@ -82,7 +83,7 @@ export function DutyBulkDialog({
                 key={w.id}
                 active={workplace === String(w.id)}
                 onClick={() => setWorkplace(String(w.id))}
-                icon={<span className="size-2.5 rounded-sm" style={{ background: workplaceColor(w) }} />}
+                icon={<WorkplaceDot workplace={w} className="size-2.5" />}
               >
                 {w.name}
               </Chip>

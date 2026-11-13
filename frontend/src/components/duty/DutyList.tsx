@@ -1,13 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import { CalendarClock, SquarePen } from 'lucide-react'
 import type { DutySettingsData, DutyShift } from '@/api/duty'
-import { useDateFormat } from '@/lib/dates'
-import { parseDay, todayIso } from '@/lib/duty'
-import { cn } from '@/lib/utils'
+import { parseDay } from '@/lib/duty'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { DutyShiftCard } from '@/components/duty/DutyBits'
+import { DutyDayTile, DutyShiftCard } from '@/components/duty/DutyBits'
 import { useDutyShiftActions } from '@/components/duty/useDutyShiftActions'
 
 /* ============================================================
@@ -36,12 +34,9 @@ export function DutyList({
   emptyTitle?: string
 }) {
   const { t, i18n } = useTranslation()
-  const { date } = useDateFormat()
-  const { actionsFor, favorite, moveDialog } = useDutyShiftActions(onEdit)
   const lang = i18n.language
   const currency = settings?.currency ?? '₾'
-  const today = todayIso()
-  const weekday = new Intl.DateTimeFormat(lang, { weekday: 'short' })
+  const { actionsFor, favorite, moveDialog } = useDutyShiftActions(onEdit, currency)
   const monthFormat = new Intl.DateTimeFormat(lang, { month: 'long', year: 'numeric' })
   const monthOf = (iso: string) => {
     const text = monthFormat.format(parseDay(iso))
@@ -82,14 +77,7 @@ export function DutyList({
                 currency={currency}
                 menu={actionsFor(shift)}
                 dimmed={shift.workplace_id != null && dimmed?.has(shift.workplace_id)}
-                lead={
-                  <span className="w-11 shrink-0 text-center" aria-label={date(shift.date)}>
-                    <span className={cn('block text-lg font-semibold leading-none tabular-nums', shift.date === today && 'text-[var(--mod)]')}>
-                      {parseDay(shift.date).getDate()}
-                    </span>
-                    <span className="block text-[11px] uppercase text-muted-foreground">{weekday.format(parseDay(shift.date))}</span>
-                  </span>
-                }
+                lead={<DutyDayTile day={shift.date} />}
                 data-testid="duty-row"
               >
                 <FavoriteButton active={shift.is_favorite} onToggle={() => favorite.mutate(shift.id)} pending={favorite.isPending} />

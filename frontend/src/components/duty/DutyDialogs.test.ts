@@ -161,7 +161,11 @@ describe('DutyPatternDialog', () => {
       }),
     )
 
-    expect(document.querySelector('[data-testid="duty-pattern-preview"]')?.textContent).toContain('2099')
+    // შემდეგი დღეები — მომავალი მორიგეობების ბლოკებად, სამსახურის ფერით
+    const preview = document.querySelector<HTMLElement>('[data-testid="duty-pattern-preview"]')!
+    expect(preview.textContent).toContain('2099')
+    expect(preview.querySelectorAll('li').length).toBeGreaterThan(1)
+    expect(preview.style.getPropertyValue('--wp')).toBe('var(--duty-1)')
 
     await act(async () => (document.getElementById('duty-pattern-form') as HTMLFormElement).requestSubmit())
     await flush()
@@ -192,6 +196,13 @@ describe('DutyWorkplaceDialog — per shift or per hour', () => {
       }),
     )
 
+    // ნიმუში: ასე გამოჩნდება ამ სამსახურის მორიგეობა კალენდარზე — ფერი არჩევანს მიჰყვება
+    const preview = document.querySelector<HTMLElement>('[data-testid="duty-wp-preview"]')!
+    expect(preview.textContent).toBe(`112${i18n.t('duty.hoursValue', { hours: '24' })}`)
+    expect(preview.style.getPropertyValue('--wp')).toBe('var(--duty-1)')
+    await act(async () => document.querySelector<HTMLButtonElement>('button[aria-label="#eb6834"]')!.click())
+    expect(preview.style.getPropertyValue('--wp')).toBe('var(--duty-2)')
+
     const hourly = () => document.getElementById('duty-wp-hourly')!.closest('.min-w-0')!
     expect(card(i18n.t('duty.workplace.perShift')).getAttribute('aria-pressed')).toBe('true')
     expect(hourly().className).toContain('hidden')
@@ -204,7 +215,7 @@ describe('DutyWorkplaceDialog — per shift or per hour', () => {
     await flush()
     expect(mocks.updateDutyWorkplace).toHaveBeenCalledWith(
       1,
-      expect.objectContaining({ hourly_rate: 15, rates: [], default_type_id: null, default_start_time: null }),
+      expect.objectContaining({ color: '#eb6834', hourly_rate: 15, rates: [], default_type_id: null, default_start_time: null }),
     )
   })
 
@@ -264,9 +275,19 @@ describe('DutyShiftDialog — status', () => {
     const pay = () => document.getElementById('duty-pay') as HTMLInputElement
     expect(pay().value).toBe('250')
 
+    // წინასწარი ხედი — მორიგეობა ისე, როგორც კალენდარსა და სიაში გამოჩნდება
+    const preview = () => document.querySelector<HTMLElement>('[data-testid="duty-shift-preview"] [data-testid="duty-shift"]')!
+    expect(preview().style.getPropertyValue('--wp')).toBe('var(--duty-1)')
+    expect(preview().querySelector('[data-testid="duty-day-tile"]')!.textContent).toContain('5')
+    expect(preview().textContent).toContain('112')
+    expect(preview().textContent).toContain('250 ₾')
+
     await act(async () => pick(i18n.t('duty.status.cancelled')).click())
     expect(pay().disabled).toBe(true)
     expect(pay().value).toBe('0')
+    expect(preview().style.getPropertyValue('--wp')).toBe('var(--destructive)')
+    expect(preview().textContent).toContain(i18n.t('duty.status.cancelled'))
+    expect(preview().textContent).toContain('0 ₾')
 
     await act(async () => (document.getElementById('duty-shift-form') as HTMLFormElement).requestSubmit())
     await flush()
@@ -307,6 +328,10 @@ describe('DutyShiftDialog — workplace defaults', () => {
 
     expect(document.querySelector('[data-testid="duty-shift-range"]')?.textContent).toBe('09:00 → 09:00 (+1)')
     expect((document.getElementById('duty-pay') as HTMLInputElement).value).toBe('250')
+    // იგივე — წინასწარ ბლოკზე: სამსახური, დრო და ტარიფიდან შევსებული თანხა
+    const preview = document.querySelector('[data-testid="duty-shift-preview"]')!
+    expect(preview.textContent).toContain('09:00 → 09:00 (+1)')
+    expect(preview.textContent).toContain('250 ₾')
 
     await act(async () => (document.getElementById('duty-shift-form') as HTMLFormElement).requestSubmit())
     await flush()

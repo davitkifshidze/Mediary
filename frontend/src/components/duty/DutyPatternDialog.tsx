@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Trash2 } from 'lucide-react'
@@ -13,7 +13,8 @@ import {
 } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
-import { invalidateDuty, patternDates, todayIso, typeName } from '@/lib/duty'
+import { invalidateDuty, patternDates, SHIFT_BLOCK, todayIso, typeName, workplaceColor } from '@/lib/duty'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -169,11 +170,16 @@ export function DutyPatternDialog({
             <TimePicker id="duty-pattern-start" value={startTime} onChange={setStartTime} clearable />
           </FormField>
 
+          {/* შემდეგი დღეები — მომავალი მორიგეობების ბლოკებად, სამსახურის ფერით */}
           {upcoming.length > 0 && (
-            <FormField>
-              <p className="text-sm text-muted-foreground" data-testid="duty-pattern-preview">
-                {t('duty.pattern.preview', { dates: upcoming.map((d) => date(d)).join(' · ') })}
-              </p>
+            <FormField label={t('duty.pattern.preview')}>
+              <ul className="flex flex-wrap gap-1.5" style={{ '--wp': workplaceColor(workplace) } as CSSProperties} data-testid="duty-pattern-preview">
+                {upcoming.map((d) => (
+                  <li key={d} className={cn(SHIFT_BLOCK, 'px-2 py-1 text-xs font-medium tabular-nums')}>
+                    {date(d)}
+                  </li>
+                ))}
+              </ul>
             </FormField>
           )}
 

@@ -36,7 +36,7 @@ import {
 } from '@/api/duty'
 import { errorMessage } from '@/lib/errors'
 import { formatHours, invalidateDuty, parseDay, patternFromShifts, payMode, periodLabel, shiftRange, sumMoney, sumShifts, todayIso, upcomingShift } from '@/lib/duty'
-import { MODULE_ACCENT_FALLBACK, modAccent, useModules } from '@/lib/modules'
+import { useModuleAccent } from '@/lib/modules'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useToast } from '@/components/ui/feedback'
 import { Button } from '@/components/ui/button'
@@ -94,7 +94,7 @@ export function DutyPage() {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
   const [params, setParams] = useSearchParams()
-  const { all } = useModules()
+  const accent = useModuleAccent('duty')
   const wide = useMediaQuery(WIDE)
 
   const anchor = params.get('date') ?? undefined
@@ -149,7 +149,7 @@ export function DutyPage() {
   const { actionsFor, moveDialog } = useDutyShiftActions((shift) => {
     setDayOpen(null)
     setEditing({ shift })
-  })
+  }, settings?.currency)
   // „მუქი / ღია" სამსახური — კალენდარსა და სიაში
   const [dimmed, toggleDim] = useDutyDim()
   const qc = useQueryClient()
@@ -299,7 +299,7 @@ export function DutyPage() {
   const unpriced = totals.count - totals.paid
 
   return (
-    <PageContainer style={modAccent(all.find((m) => m.key === 'duty')?.color) ?? MODULE_ACCENT_FALLBACK}>
+    <PageContainer style={accent}>
       <PageHeader
         module="duty"
         title={t('duty.title')}

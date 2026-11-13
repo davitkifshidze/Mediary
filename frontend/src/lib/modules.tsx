@@ -126,6 +126,16 @@ export const MODULE_ACCENT_FALLBACK = {
   '--mod-fill': 'color-mix(in oklab, var(--gold) 28%, transparent)',
 } as React.CSSProperties
 
+/**
+ * ერთი მოდულის აქცენტი გასაღებით — გვერდისა და მისი ფანჯრებისთვის.
+ * ⚠️ ფანჯარა `body`-ში იხატება (portal) და გვერდის `style`-ს ვერ იმემკვიდრებს —
+ * ვისაც იქ `--mod` სჭირდება, იმავე ჰუკს თვითონ იძახებს.
+ */
+export function useModuleAccent(key: string): React.CSSProperties {
+  const { all } = useModules()
+  return modAccent(all.find((m) => m.key === key)?.color) ?? MODULE_ACCENT_FALLBACK
+}
+
 /** მოდულის სახელი მიმდინარე ენაზე */
 export function moduleName(m: ModuleInfo, lang: string): string {
   return (lang === 'ka' ? m.name_ka : m.name_en) || m.name_en || m.name_ka

@@ -429,6 +429,10 @@ describe('DutyPage', () => {
     await act(async () => move.click())
     await flush()
     expect(document.getElementById('duty-move-form')).toBeTruthy()
+    // ფანჯარა ამბობს, რომელი მორიგეობა გადადის — იმავე ბლოკით
+    const moved = document.querySelector('[data-testid="duty-move-shift"]')!
+    expect(moved.textContent).toContain('კლინიკა')
+    expect(moved.textContent).toContain('220 ₾')
   })
 
   it('reads the period of the filtered workplace and shows income by period and workplace', async () => {
@@ -516,6 +520,19 @@ describe('DutyPage', () => {
     expect(container!.querySelector('[data-testid="duty-calc-whatif"]')!.textContent).toBe(
       i18n.t('duty.calc.whatIfResult', { hours: '24', add: '220 ₾', total: '440 ₾' }),
     )
+  })
+
+  it('lists the workplaces in the settings as blocks in their own colour', async () => {
+    defaults()
+    await render()
+
+    await act(async () => button(i18n.t('duty.settings.open')).click())
+    await flush()
+
+    const lines = [...document.querySelectorAll<HTMLElement>('[data-testid="duty-workplace-line"]')]
+    expect(lines).toHaveLength(2)
+    expect(lines.map((line) => line.closest('li')!.style.getPropertyValue('--wp'))).toEqual(['var(--duty-1)', 'var(--duty-2)'])
+    expect(lines[0].textContent).toContain('220 ₾')
   })
 
   it('fades a light workplace and remembers it on the module', async () => {

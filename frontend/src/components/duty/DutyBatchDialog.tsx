@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { CalendarPlus, X } from 'lucide-react'
+import { CalendarDays, CalendarPlus, Clock, Wallet, X } from 'lucide-react'
 import { batchDutyShifts, type DutySettingsData, type DutyShiftType, type DutyWorkplace } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
-import { dutyPay, formatHours, formatMoney, invalidateDuty, typeName, workplaceColor } from '@/lib/duty'
+import { dutyPay, formatHours, formatMoney, invalidateDuty, SHIFT_BLOCK, typeName, workplaceColor } from '@/lib/duty'
+import { useModuleAccent } from '@/lib/modules'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { useToast } from '@/components/ui/feedback'
@@ -14,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { TimePicker } from '@/components/ui/time-picker'
+import { DutyStatCard, WorkplaceDot } from '@/components/duty/DutyBits'
 
 /* ============================================================
    **ერთიანი მონიშვნა → N მორიგეობა.**
@@ -61,6 +64,7 @@ export function DutyBatchDialog({
   const { date } = useDateFormat()
   const lang = i18n.language
   const currency = settings?.currency ?? '₾'
+  const accent = useModuleAccent('duty')
 
   const active = workplaces.filter((w) => w.is_active)
   const firstWorkplace = settings?.default_workplace_id ?? active[0]?.id ?? null
@@ -150,7 +154,7 @@ export function DutyBatchDialog({
                 key={w.id}
                 active={workplaceId === w.id}
                 onClick={() => pickWorkplace(w)}
-                icon={<span className="size-2.5 rounded-sm" style={{ background: workplaceColor(w) }} />}
+                icon={<WorkplaceDot workplace={w} className="size-2.5" />}
               >
                 {w.name}
               </Chip>
@@ -188,12 +192,13 @@ export function DutyBatchDialog({
         </FormField>
       </FormSection>
 
-      <ul className="mt-4 divide-y divide-border rounded-md border border-border" data-testid="duty-batch-rows">
+      {/* თითო დღე — მომავალი მორიგეობის ბლოკი არჩეული სამსახურის ფერით */}
+      <ul className="mt-4 space-y-2" style={{ '--wp': workplaceColor(workplace) } as CSSProperties} data-testid="duty-batch-rows">
         {rows.map((row, index) => {
           const r = resolved[index]
 
           return (
-            <li key={row.day} className="flex flex-wrap items-center gap-2 p-2.5">
+            <li key={row.day} className={cn(SHIFT_BLOCK, 'flex flex-wrap items-center gap-2 p-2.5')}>
               <span className="w-36 shrink-0 text-sm font-medium">{date(row.day)}</span>
               <Select value={row.type} onValueChange={(type) => update(index, { type, hours: type === CUSTOM ? row.hours || '12' : row.hours })}>
                 <SelectTrigger className="w-40">
@@ -232,13 +237,11 @@ export function DutyBatchDialog({
         })}
       </ul>
 
-      <p className="mt-3 text-right text-sm" data-testid="duty-batch-total">
-        {t('duty.batch.total', {
-          count: rows.length,
-          hours: formatHours(total.hours),
-          pay: formatMoney(total.pay, currency, lang),
-        })}
-      </p>
+      <div className="mt-3 grid grid-cols-3 gap-3" style={accent} data-testid="duty-batch-total">
+        <DutyStatCard icon={CalendarDays} label={t('duty.summary.shifts')} value={rows.length} />
+        <DutyStatCard icon={Clock} label={t('duty.summary.hours')} value={formatHours(total.hours)} />
+        <DutyStatCard icon={Wallet} label={t('duty.summary.pay')} value={formatMoney(total.pay, currency, lang)} />
+      </div>
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>

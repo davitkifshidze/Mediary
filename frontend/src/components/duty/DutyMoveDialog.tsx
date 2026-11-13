@@ -9,6 +9,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { useToast } from '@/components/ui/feedback'
 import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { DutyDayTile, DutyShiftCard } from '@/components/duty/DutyBits'
 
 /* ============================================================
    **მორიგეობის გაცვლა — სხვა დღეზე გადატანა.**
@@ -21,7 +22,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 
 const FORM_ID = 'duty-move-form'
 
-export function DutyMoveDialog({ shift, onClose }: { shift: DutyShift; onClose: () => void }) {
+export function DutyMoveDialog({ shift, currency, onClose }: { shift: DutyShift; currency: string; onClose: () => void }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
@@ -47,6 +48,11 @@ export function DutyMoveDialog({ shift, onClose }: { shift: DutyShift; onClose: 
           if (day && day !== shift.date) save.mutate()
         }}
       >
+        {/* რომელი მორიგეობა გადადის — იმავე ბლოკით, რაც კალენდარსა და სიაშია */}
+        <ul className="mb-4" data-testid="duty-move-shift">
+          <DutyShiftCard shift={shift} currency={currency} lead={<DutyDayTile day={shift.date} />} />
+        </ul>
+
         <FormSection>
           <FormField label={t('duty.shift.newDay')} htmlFor="duty-move-day" required>
             <DatePicker id="duty-move-day" value={day} onChange={(v) => setDay(v ?? shift.date)} />

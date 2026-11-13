@@ -5211,7 +5211,6 @@
       "hint": "The workplace and type above apply to every day; below, change a single day’s type, hours or pay. Everything is saved together.",
       "defaultType": "Default type",
       "inherit": "Default",
-      "total": "Total: {{count}} shifts · {{hours}} h · {{pay}}",
       "save": "Save ({{count}})",
       "done": "Added {{count}} shifts"
     },
@@ -5331,7 +5330,7 @@
       "interval": "Every how many days",
       "anchor": "First day",
       "active": "Active — “Continue” uses it",
-      "preview": "Next: {{dates}}",
+      "preview": "Next shifts",
       "summary": "every {{count}} days",
       "saved": "Rhythm saved",
       "removed": "Rhythm moved to the trash — its shifts stay",

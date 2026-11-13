@@ -3,7 +3,8 @@ import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Ban, Repeat, SquarePen } from 'lucide-react'
 import type { DutyShift, DutyShiftStatus } from '@/api/duty'
-import { formatMoney, hoursLabel, SHIFT_BLOCK, shiftRange, shiftTint, typeName, workplaceColor } from '@/lib/duty'
+import { useDateFormat } from '@/lib/dates'
+import { formatMoney, hoursLabel, parseDay, SHIFT_BLOCK, shiftRange, shiftTint, todayIso, typeName, workplaceColor } from '@/lib/duty'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -70,6 +71,25 @@ export function DutyStatCard({
     <div className={box} data-testid={testId}>
       {body}
     </div>
+  )
+}
+
+/**
+ * რიცხვი და კვირის დღე — მორიგეობის ბლოკის თავში (სია, ფანჯრის წინასწარი ხედი).
+ * დღევანდელი დღე მოდულის ფერითაა; თვე და წელი აქ არ წერია — მას გარემო ამბობს
+ * (თვის სათაური, თარიღის ველი).
+ */
+export function DutyDayTile({ day }: { day: string }) {
+  const { i18n } = useTranslation()
+  const { date } = useDateFormat()
+
+  return (
+    <span className="w-11 shrink-0 text-center" aria-label={date(day)} data-testid="duty-day-tile">
+      <span className={cn('block text-lg font-semibold leading-none tabular-nums', day === todayIso() && 'text-[var(--mod)]')}>{parseDay(day).getDate()}</span>
+      <span className="block text-[11px] uppercase text-muted-foreground">
+        {new Intl.DateTimeFormat(i18n.language, { weekday: 'short' }).format(parseDay(day))}
+      </span>
+    </span>
   )
 }
 

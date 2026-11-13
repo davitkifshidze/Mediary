@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -13,7 +13,8 @@ import {
   type DutyWorkplace,
 } from '@/api/duty'
 import { errorMessage } from '@/lib/errors'
-import { DUTY_COLORS, formatMoney, invalidateDuty, payMode, typeName, workplaceColor } from '@/lib/duty'
+import { DUTY_COLORS, formatMoney, invalidateDuty, payMode, SHIFT_BLOCK, typeName, workplaceColor } from '@/lib/duty'
+import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { useToast } from '@/components/ui/feedback'
@@ -185,9 +186,14 @@ export function DutySettingsDialog({
         <ul className="space-y-2">
           <Sortable ids={workplaces.map((w) => w.id)} onReorder={(ids) => reorder.mutate(ids.map(Number))}>
             {workplaces.map((w) => (
-              <SortableItem key={w.id} id={w.id} className="flex items-center gap-3 rounded-md border border-border bg-card p-3">
-                <span className="size-4 shrink-0 rounded-sm" style={{ background: workplaceColor(w) }} />
-                <div className="min-w-0 flex-1">
+              <SortableItem
+                key={w.id}
+                id={w.id}
+                // სამსახური — იმავე ბლოკით, რითაც მისი მორიგეობაა დახატული კალენდარზე
+                className={cn(SHIFT_BLOCK, 'flex flex-wrap items-center gap-x-3 gap-y-2 p-3', !w.is_active && 'opacity-60')}
+                style={{ '--wp': workplaceColor(w) } as CSSProperties}
+              >
+                <div className="min-w-[12rem] flex-1">
                   <p className="truncate text-sm font-medium">
                     {w.name}
                     {w.short && <span className="text-muted-foreground"> · {w.short}</span>}
@@ -212,18 +218,20 @@ export function DutySettingsDialog({
                       .join(' · ')}
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setRhythm(w)}>
-                  <Repeat className="size-3.5" />
-                  {t('duty.pattern.title')}
-                </Button>
-                <Button variant="edit" size="sm" onClick={() => setEditing({ workplace: w })}>
-                  <SquarePen className="size-3.5" />
-                  {t('actions.edit')}
-                </Button>
-                <Button variant="destructiveOutline" size="sm" onClick={() => setDeleting(w)}>
-                  <Trash2 className="size-3.5" />
-                  {t('confirm.delete')}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setRhythm(w)}>
+                    <Repeat className="size-3.5" />
+                    {t('duty.pattern.title')}
+                  </Button>
+                  <Button variant="edit" size="sm" onClick={() => setEditing({ workplace: w })}>
+                    <SquarePen className="size-3.5" />
+                    {t('actions.edit')}
+                  </Button>
+                  <Button variant="destructiveOutline" size="sm" onClick={() => setDeleting(w)}>
+                    <Trash2 className="size-3.5" />
+                    {t('confirm.delete')}
+                  </Button>
+                </div>
               </SortableItem>
             ))}
           </Sortable>

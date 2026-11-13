@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CalendarCheck, Clock } from 'lucide-react'
@@ -10,7 +10,7 @@ import {
 } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
-import { DUTY_COLORS, invalidateDuty, payMode, typeName } from '@/lib/duty'
+import { DUTY_COLORS, invalidateDuty, payMode, SHIFT_BLOCK, typeName, workplaceColor } from '@/lib/duty'
 import { cn } from '@/lib/utils'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { useToast } from '@/components/ui/feedback'
@@ -141,7 +141,7 @@ export function DutyWorkplaceDialog({
           </FormField>
 
           <FormField label={t('duty.workplace.color')}>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {DUTY_COLORS.map((c, i) => (
                 <button
                   key={c}
@@ -154,6 +154,15 @@ export function DutyWorkplaceDialog({
                   style={{ background: `var(--duty-${i + 1})` }}
                 />
               ))}
+              {/* ასე გამოჩნდება ამ სამსახურის მორიგეობა კალენდარზე — ფერი და ასო (ან სახელი) */}
+              <span
+                style={{ '--wp': workplaceColor({ color }) } as CSSProperties}
+                className={cn(SHIFT_BLOCK, 'ml-auto flex w-36 items-center justify-between gap-2 px-2 py-1.5 text-xs font-semibold')}
+                data-testid="duty-wp-preview"
+              >
+                <span className="min-w-0 truncate">{short.trim() || name.trim() || t('duty.workplace.name')}</span>
+                <span className="shrink-0 tabular-nums">{t('duty.hoursValue', { hours: '24' })}</span>
+              </span>
             </div>
           </FormField>
 

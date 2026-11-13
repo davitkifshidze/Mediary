@@ -14,9 +14,10 @@ import {
   type DutyWorkplace,
 } from '@/api/duty'
 import { errorMessage } from '@/lib/errors'
-import { DUTY_COLORS, dutyPay, formatHours, invalidateDuty, shiftEnd, timeRange, typeName, workplaceColor } from '@/lib/duty'
+import { DUTY_COLORS, dutyPay, formatHours, invalidateDuty, shiftEnd, timeRange, typeName } from '@/lib/duty'
 import { useDictionaryAdd } from '@/lib/dictionaries'
 import { AddChip, useInlineAdd } from '@/components/ui/inline-add'
+import { DutyDayTile, DutyShiftCard, WorkplaceDot } from '@/components/duty/DutyBits'
 import { DutyWorkplaceDialog } from '@/components/duty/DutyWorkplaceDialog'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
@@ -149,7 +150,30 @@ export function DutyShiftDialog({
   )
   const typeAdd = useInlineAdd(useDictionaryAdd('duty-types'), (id) => pickType(id))
 
-  const range = timeRange(startTime, shiftEnd(startTime, hours))
+  const end = shiftEnd(startTime, hours)
+  const range = timeRange(startTime, end)
+
+  /* **წინასწარი ხედი** — მორიგეობა ისე, როგორც შენახვის შემდეგ კალენდარსა და
+     სიაში გამოჩნდება: სამსახურის ფერი, ტიპი, დრო, საათები და თანხა (ტარიფიდანაც) */
+  const pickedType = types.find((x) => x.id === typeId)
+  const preview: DutyShift = {
+    id: shift?.id ?? 0,
+    date: day,
+    start_time: startTime,
+    end_time: end?.time ?? null,
+    end_day: end?.day ?? null,
+    status,
+    hours,
+    pay: payValue.trim() === '' ? (status === 'partial' ? 0 : null) : Number(payValue),
+    note: note.trim() || null,
+    is_favorite: shift?.is_favorite ?? false,
+    workplace_id: workplaceId,
+    type_id: typeId,
+    pattern_id: shift?.pattern_id ?? null,
+    workplace: workplace && { id: workplace.id, name: workplace.name, short: workplace.short, color: workplace.color },
+    type: pickedType ? { id: pickedType.id, name_ka: pickedType.name_ka, name_en: pickedType.name_en, hours: pickedType.hours, icon: pickedType.icon } : null,
+    created_at: shift?.created_at ?? null,
+  }
 
   const save = useMutation({
     mutationFn: () => {
@@ -159,10 +183,10 @@ export function DutyShiftDialog({
         type_id: typeId,
         hours,
         start_time: startTime,
-        note: note.trim() || null,
+        note: preview.note,
         status,
         // ცარიელი: დაგეგმილზე — თანხა უცნობია (`null`), ნაწილობრივზე — 0
-        pay: payValue.trim() === '' ? (status === 'partial' ? 0 : null) : Number(payValue),
+        pay: preview.pay,
       }
 
       return shift ? updateDutyShift(shift.id, input) : createDutyShift(input)
@@ -196,6 +220,10 @@ export function DutyShiftDialog({
           if (day && hours > 0) save.mutate()
         }}
       >
+        <ul className="mb-4" data-testid="duty-shift-preview">
+          <DutyShiftCard shift={preview} currency={currency} lead={day ? <DutyDayTile day={day} /> : undefined} />
+        </ul>
+
         <FormSection>
           <FormField label={t('fields.name.duty.date')} htmlFor="duty-date" required>
             <DatePicker id="duty-date" value={day || null} onChange={(v) => setDay(v ?? '')} />
@@ -221,7 +249,7 @@ export function DutyShiftDialog({
                   key={w.id}
                   active={workplaceId === w.id}
                   onClick={() => pickWorkplace(w)}
-                  icon={<span className="size-2.5 rounded-sm" style={{ background: workplaceColor(w) }} />}
+                  icon={<WorkplaceDot workplace={w} className="size-2.5" />}
                 >
                   {w.name}
                 </Chip>

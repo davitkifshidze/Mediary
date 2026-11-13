@@ -15,7 +15,8 @@ import { DutyMoveDialog } from '@/components/duty/DutyMoveDialog'
    მოხსნა) · სხვა დღეზე გადატანა · — · რედაქტირება · წაშლა.
 
    ⚠️ გადატანის ფანჯარა (`moveDialog`) ჰუკთან ერთად ბრუნდება — გამომძახებელი
-   მას თავის ხეში ხატავს (სია და კალენდარი).
+   მას თავის ხეში ხატავს (სია და კალენდარი); `currency` მხოლოდ მისთვისაა
+   (ფანჯარა გადასატან მორიგეობას თანხიანად აჩვენებს).
 
    ⚠️ **გაუქმება წაშლა არ არის**: დღე რჩება წითლად და თანხა 0-ია (სერვერი
    ტარიფს აღარ კითხულობს); მოხსნაზე თანხა ისევ ტარიფიდან ითვლება.
@@ -25,7 +26,7 @@ import { DutyMoveDialog } from '@/components/duty/DutyMoveDialog'
    ფანჯრის „წაშლა“ დადასტურების გარეშეა, რადგან იქ ჩანაწერი უკვე გახსნილია.
    ============================================================ */
 
-export function useDutyShiftActions(onEdit: (shift: DutyShift) => void) {
+export function useDutyShiftActions(onEdit: (shift: DutyShift) => void, currency = '₾') {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
@@ -82,7 +83,7 @@ export function useDutyShiftActions(onEdit: (shift: DutyShift) => void) {
     },
   ]
 
-  const moveDialog = moving ? createElement(DutyMoveDialog, { shift: moving, onClose: () => setMoving(null) }) : null
+  const moveDialog = moving ? createElement(DutyMoveDialog, { shift: moving, currency, onClose: () => setMoving(null) }) : null
 
   return { actionsFor, favorite, moveDialog }
 }
