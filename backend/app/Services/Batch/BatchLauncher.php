@@ -78,12 +78,15 @@ class BatchLauncher
      */
     public function denies(User $user, string $kind, array $items, array $options): ?JsonResponse
     {
-        if ($kind === RunBatchItem::KIND_CAST) {
-            if (! CastPool::typesFor($user)) {
-                return response()->json(['message' => 'module_disabled'], 403);
-            }
-        } else {
-            foreach (array_unique(array_column($items, 'type')) as $type) {
+        $types = array_unique(array_column($items, 'type'));
+
+        // მსახიობი თარგმანის პარტიაშიც ერთეულია (ქართული სახელი და ბიოგრაფია)
+        if (in_array(RunBatchItem::ACTOR, $types, true) && ! CastPool::typesFor($user)) {
+            return response()->json(['message' => 'module_disabled'], 403);
+        }
+
+        if ($kind !== RunBatchItem::KIND_CAST) {
+            foreach (array_diff($types, [RunBatchItem::ACTOR]) as $type) {
                 if (! $user->hasModule($type) || ! $user->hasPermission($type, 'update')) {
                     return response()->json([
                         'message' => 'forbidden_permission',

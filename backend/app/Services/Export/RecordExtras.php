@@ -187,6 +187,9 @@ class RecordExtras
             ->map(fn (CastMember $member) => [
                 'name' => $member->name,
                 'name_ka' => $member->translations->firstWhere('locale', 'ka')?->name,
+                'biography_ka' => $member->translations->firstWhere('locale', 'ka')?->biography,
+                // მანქანური თარგმანი, რომელიც ჯერ არავის დაუდასტურებია — ნიშანი იმპორტსაც მიჰყვება
+                'biography_ka_unverified' => $member->georgianUnverified('biography'),
                 'name_en' => $member->translations->firstWhere('locale', 'en')?->name,
                 'tmdb_person_id' => $member->tmdb_person_id,
                 'imdb_id' => $member->imdb_id,

@@ -625,7 +625,19 @@
     "homepage": "Official site",
     "noTmdbId": "This actor has no TMDB id — there is nothing to refresh from",
     "opensInfo": "You have opened this page {{count}} time(s). The number only drives the order of the actors list and is shown nowhere else.",
-    "opensReset": "Opens reset"
+    "opensReset": "Opens reset",
+    "georgian": {
+      "unverified": {
+        "name": "Name to verify",
+        "biography": "Translation to verify"
+      },
+      "hint": "The Georgian text was written by a machine. If it is right, confirm it; if not, correct it. An actor is a shared record: what you confirm is visible to every account.",
+      "confirm": "It's right",
+      "fix": "Correct",
+      "settled": "The Georgian text is confirmed",
+      "name": "Georgian name",
+      "biography": "Georgian biography"
+    }
   },
   "franchise": {
     "continue": "Continue franchise",
@@ -1377,7 +1389,8 @@
     "goal_classifier_unknown": "This condition does not belong to that module.",
     "sync_run_running": "The run is in progress — wait for it or stop it.",
     "sync_run_not_resumable": "This run did not keep what it ran on and with what settings — it cannot be continued.",
-    "sync_run_nothing_left": "Nothing is left to run."
+    "sync_run_nothing_left": "Nothing is left to run.",
+    "cast_text_not_pending": "This text is no longer waiting to be verified."
   },
   "fields": {
     "title": "Fields",
@@ -1829,7 +1842,6 @@
     },
     "quotaTitle": "Gemini usage",
     "quotaUsed": "Used today: {{used}} / {{limit}}",
-    "quotaLeft": "{{count}} left",
     "quotaOff": "The limit is off — the daily ceiling is 0 under “Credentials”.",
     "quotaHint": "This counter is ours: Google exposes no usage API, so calls made by other programs do not show here. The limit resets once a day, at midnight Pacific time.",
     "quotaRpm": "In the last minute: {{used}} / {{limit}}",
@@ -1845,12 +1857,13 @@
       "title_ka": "Title (ka)",
       "title_en": "Title (en)",
       "description_ka": "Synopsis (ka)",
-      "description_en": "Synopsis (en)"
+      "description_en": "Synopsis (en)",
+      "name_ka": "Georgian name",
+      "biography_ka": "Georgian biography"
     },
     "title": "Translations",
     "open": "Translate…",
     "run": "Run",
-    "desc": "Fills in text that exists in one language but not the other.",
     "pageHint": "TMDB first, then Gemini. Existing text is never overwritten.",
     "howItWorks": "How it works",
     "sources": "Sources",
@@ -1858,19 +1871,69 @@
     "sourceGemini": "Gemini — only for what TMDB doesn't have (free tier, ~1500 requests a day).",
     "sourceNever": "⚠️ A description empty in *both* languages is a sync problem, not a translation one.",
     "pending": "{{count}} to translate",
-    "genresPending": "Genres: {{count}}",
-    "withGenres": "The genre classifier too",
-    "withGenresHint": "One request for the whole classifier.",
-    "allDone": "Everything is translated.",
     "nothingToDo": "Nothing to translate.",
     "started": "{{count}} record(s) queued",
     "noKey": "There is no Gemini key — only TMDB’s text will come through. Add one under “Credentials”; a free key: aistudio.google.com/apikey",
     "noTmdbKey": "There is no TMDB key — add one under “Credentials”.",
-    "review": "Check TMDB's Georgian synopsis",
-    "reviewHint": "Gemini compares it with the English original and corrects it if needed.",
     "reviewWarn": "⚠️ This is the one mode that overwrites existing text. It never touches a hand-written or already machine-translated synopsis.",
-    "reviewablePending": "To review (TMDB's Georgian synopsis): {{count}}",
-    "sourceReview": "Review — only on an explicit choice; it rewrites TMDB's Georgian synopsis."
+    "sourceReview": "Review — only on an explicit choice; it rewrites TMDB's Georgian synopsis.",
+    "section": "Translation",
+    "moduleHint": "The missing translations of your movies in parts — title, description, their actors — and a run on this module only. Cost, sources and the pause live on the shared page.",
+    "moduleHintSeries": "The missing translations of your series in parts — title, description, their actors — and a run on this module only. Cost, sources and the pause live on the shared page.",
+    "moduleHintAnime": "The missing translations of your anime in parts — title, description, their actors — and a run on this module only. Cost, sources and the pause live on the shared page.",
+    "allModules": "All modules",
+    "runAll": "Everything",
+    "partsTitle": "What should be translated?",
+    "partsHint": "Each part runs on its own and touches nothing else: “Title in Georgian” does not fill descriptions. The number is how much there is to translate in that part.",
+    "partsRequired": "Pick at least one part.",
+    "castAffected": "{{count}} actors",
+    "geminiRequests": "Gemini — at most {{count}} requests",
+    "geminiDays": "Gemini — at most {{requests}} requests; with the daily limit ({{limit}}) ≈ {{count}} days",
+    "resultsText": "The history of translation runs — what was translated, by what, and the text written.",
+    "sourcesText": "TMDB's official text first; what it lacks is translated by Gemini.",
+    "quotaLeftLabel": "left today",
+    "part": {
+      "title_ka": {
+        "title": "Title in Georgian",
+        "text": "Has an English title but no Georgian one.",
+        "info": "TMDB's official Georgian title first; where there is none, Gemini translates. An existing title is never touched."
+      },
+      "title_en": {
+        "title": "Title in English",
+        "text": "Has a Georgian title but no English one.",
+        "info": "TMDB's English title first; where there is none, Gemini translates from Georgian. An existing title is never touched."
+      },
+      "description_ka": {
+        "title": "Description in Georgian",
+        "text": "Has an English description but no Georgian one.",
+        "info": "TMDB's Georgian description first; where there is none, Gemini translates from English and the record says “machine translation”. An existing description is never touched."
+      },
+      "description_en": {
+        "title": "Description in English",
+        "text": "Has a Georgian description but no English one.",
+        "info": "TMDB's English description first; where there is none, Gemini translates from Georgian. An existing description is never touched."
+      },
+      "review": {
+        "title": "Descriptions to review",
+        "text": "TMDB's Georgian description, which Gemini checks against the English original.",
+        "info": "This is the only part that writes over existing text: a wrong translation is fixed, a correct one stays as it is. It is not part of “Everything” — it runs only from here or when ticked explicitly."
+      },
+      "genres": {
+        "title": "Genres",
+        "text": "Genre names that lack one language.",
+        "info": "The genre dictionary is shared by every module and is handled in one request — it is not split by module."
+      },
+      "cast_names": {
+        "title": "Georgian names of actors",
+        "text": "Actors of this library without a Georgian name.",
+        "info": "TMDB's Georgian name first; where there is none, Gemini writes the name in Georgian letters and it is marked “to verify”: the mark shows on the actor's page and is removed by confirming or correcting it. An existing Georgian name is never touched. An actor is a shared record — the name is visible to every account, and the cost goes to your Gemini key. Locked actors and those set to “Don't update” are not counted."
+      },
+      "cast_bios": {
+        "title": "Georgian biographies of actors",
+        "text": "They have an English biography but no Georgian one.",
+        "info": "Gemini translates from English; the translation stays “to verify” until you confirm it on the actor's page. This is the costliest part — one request per actor: before the run the window says how many days the daily limit will last. When the limit runs out the run stops, and “Continue” picks up the rest the next day."
+      }
+    }
   },
   "bookGenres": {
     "title": "Book genres",
@@ -5729,6 +5792,7 @@
       "place_of_birth": "Place of birth",
       "known_for": "Known for",
       "biography": "Biography",
+      "biography_ka": "Georgian biography",
       "homepage": "Official site",
       "profile_links": "Social links",
       "photo": "Profile photo"
@@ -5746,7 +5810,8 @@
       "title": "Ran with:",
       "media": "Poster and photos",
       "mediaMissing": "Missing files only"
-    }
+    },
+    "noneOfKind": "No run of this kind yet"
   },
   "syncCards": {
     "dataText": "Poster, description, genres, cast and other fields — in the window you choose what to refresh and for which records.",

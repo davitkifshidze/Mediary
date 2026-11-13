@@ -48,6 +48,7 @@ import {
   Inbox,
   Joystick,
   Key,
+  Languages,
   Layers,
   LayoutGrid,
   Leaf,
@@ -170,8 +171,8 @@ const GROUPS = [
   },
   {
     key: 'files',
-    // `RefreshCw`: მედიის ქვემენიუს „სინქრონიზაცია"
-    icons: { Folder, FolderOpen, FolderHeart, Paperclip, LinkIcon, Download, HardDriveDownload, Upload, RefreshCw, Layers, LayoutGrid, List, ListChecks, Boxes },
+    // `RefreshCw`: მედიის ქვემენიუს „სინქრონიზაცია"; `Languages`: ქვემენიუს „თარგმანი"
+    icons: { Folder, FolderOpen, FolderHeart, Paperclip, LinkIcon, Download, HardDriveDownload, Upload, RefreshCw, Languages, Layers, LayoutGrid, List, ListChecks, Boxes },
   },
   {
     key: 'people',

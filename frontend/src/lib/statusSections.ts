@@ -28,7 +28,7 @@ import type { Status } from '@/api/types'
    ამიტომ განლაგება `modules.user_settings`-იდან პირდაპირ იკითხება.
    ============================================================ */
 
-export type PseudoSectionId = 'all' | 'favorite' | 'downloaded' | 'locked' | 'soon' | 'franchises' | 'suggestions' | 'sync'
+export type PseudoSectionId = 'all' | 'favorite' | 'downloaded' | 'locked' | 'soon' | 'franchises' | 'suggestions' | 'sync' | 'translations'
 
 export interface PseudoSection {
   id: PseudoSectionId
@@ -134,11 +134,26 @@ const SYNC: PseudoSection = {
   hideWarningKey: 'mediaSync.hideWarning',
 }
 
+/**
+ * „თარგმანი" — ბმული მოდულის საკუთარ თარგმანის გვერდზე: ამ მოდულის ნაკლული თარგმანები
+ * ნაწილებად (სათაური, აღწერა, მსახიობები…) და გაშვება მხოლოდ მასზე. გლობალური გვერდი
+ * ინსტრუმენტებშია და ყველა მოდულს ერთად ხედავს — ზუსტად ისე, როგორც სინქრონიზაცია.
+ * ⚠️ სამივე მოდულს ერთი და იგივე პუნქტი აქვს.
+ */
+const TRANSLATIONS: PseudoSection = {
+  id: 'translations',
+  labelKey: 'translate.section',
+  icon: 'Languages',
+  color: 'var(--tool-translations)',
+  defaultAt: 'end',
+  path: '/translations',
+}
+
 /** ⚠️ სარკე: `App\Support\StatusDomain::RESERVED_KEYS` (სტატუსი ამ გასაღებებს არ იღებს) */
 export const PSEUDO_SECTIONS: Record<StatusDomain, PseudoSection[]> = {
-  movie: [ALL, FAVORITE, SOON, FRANCHISES, SUGGESTIONS, LOCKED, SYNC],
-  series: [ALL, FAVORITE, SOON, SUGGESTIONS, LOCKED, SYNC],
-  anime: [ALL, FAVORITE, SOON, SUGGESTIONS, LOCKED, SYNC],
+  movie: [ALL, FAVORITE, SOON, FRANCHISES, SUGGESTIONS, LOCKED, SYNC, TRANSLATIONS],
+  series: [ALL, FAVORITE, SOON, SUGGESTIONS, LOCKED, SYNC, TRANSLATIONS],
+  anime: [ALL, FAVORITE, SOON, SUGGESTIONS, LOCKED, SYNC, TRANSLATIONS],
   video: [ALL, DOWNLOADED, FAVORITE],
   note: [ALL, FAVORITE],
   bookmark: [ALL, FAVORITE],

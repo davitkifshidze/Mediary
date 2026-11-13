@@ -11,6 +11,10 @@ import i18n from '@/i18n'
 /* ============================================================
    **მსახიობის გვერდის თავი — ჩემი ნიშნები.**
 
+   ⚠️ **ქართული ტექსტი**: ბიოგრაფია ენის მიხედვით ჩანს — ქართულ შიგთავსზე ქართული, თუ არის,
+   თორემ ინგლისური; მანქანურ ქართულ სახელსა და ბიოგრაფიას „გადასამოწმებელია" ნიშანი აქვს,
+   რომელიც დადასტურებით ან ხელით გასწორებით იხსნება; დადასტურებულ ტექსტს ნიშანი არ აქვს.
+
    ⚠️ მოწმდება: რჩეულის ღილაკი ჩემს ნიშანს ცვლის; გახსნების რიცხვი ბარათად არ იხატება —
    მხოლოდ `i`-ს მინიშნებაშია; „გახსნების განულება" მხოლოდ მაშინ ჩანს, როცა გასანულებელი
    არსებობს, და ერთ მსახიობს ეხება.
@@ -19,6 +23,14 @@ import i18n from '@/i18n'
 const mocks = vi.hoisted(() => ({
   setActorFavorite: vi.fn(),
   resetActorOpens: vi.fn(),
+  settleActorGeorgian: vi.fn(),
+}))
+
+// შიგთავსის ენა — ტესტი ცვლის
+const lang = vi.hoisted(() => ({ value: 'ka' as 'ka' | 'en' }))
+vi.mock('@/lib/settings', async (original) => ({
+  ...(await original<typeof import('@/lib/settings')>()),
+  useContentLang: () => lang.value,
 }))
 
 vi.mock('@/api/actors', async (original) => ({
@@ -115,5 +127,64 @@ describe('ActorHero', () => {
 
     expect(mocks.resetActorOpens).toHaveBeenCalledWith(7)
     expect(document.body.textContent).toContain(i18n.t('actor.opensReset'))
+  })
+})
+
+describe('ActorHero: Georgian text', () => {
+  const BIO_EN = 'Born in Beirut.'
+  const BIO_KA = 'დაიბადა ბეირუთში.'
+
+  it('shows the biography in the content language and falls back to English', async () => {
+    lang.value = 'ka'
+    let box = await mount(actor({ biography: BIO_EN, biography_ka: BIO_KA }))
+    expect(box.querySelector('[data-testid="actor-bio"]')!.textContent).toBe(BIO_KA)
+
+    // ქართული არ არის — ინგლისური
+    act(() => root?.unmount())
+    box = await mount(actor({ biography: BIO_EN, biography_ka: null }))
+    expect(box.querySelector('[data-testid="actor-bio"]')!.textContent).toBe(BIO_EN)
+
+    // ინგლისურ შიგთავსზე ქართული ბიოგრაფია არ ფარავს ორიგინალს და ნიშანიც არ ჩანს
+    act(() => root?.unmount())
+    lang.value = 'en'
+    box = await mount(actor({ biography: BIO_EN, biography_ka: BIO_KA, biography_ka_unverified: true }))
+    expect(box.querySelector('[data-testid="actor-bio"]')!.textContent).toBe(BIO_EN)
+    expect(box.querySelector('[data-testid="georgian-check-biography"]')).toBeNull()
+    lang.value = 'ka'
+  })
+
+  it('marks machine-written Georgian text and lifts the mark by confirming or correcting', async () => {
+    mocks.settleActorGeorgian.mockResolvedValue(undefined)
+    const box = await mount(actor({ name_ka: 'ლიამ ნისონი', name_ka_unverified: true, biography: BIO_EN, biography_ka: BIO_KA, biography_ka_unverified: true }))
+
+    const name = box.querySelector<HTMLElement>('[data-testid="georgian-check-name"]')!
+    const bio = box.querySelector<HTMLElement>('[data-testid="georgian-check-biography"]')!
+    expect(name.textContent).toContain(i18n.t('actor.georgian.unverified.name'))
+    expect(bio.textContent).toContain(i18n.t('actor.georgian.unverified.biography'))
+
+    // დადასტურება — ტექსტის გარეშე
+    await act(async () => bio.querySelector<HTMLButtonElement>('[data-testid="georgian-confirm-biography"]')!.click())
+    await flush()
+    expect(mocks.settleActorGeorgian).toHaveBeenLastCalledWith(7, 'biography', undefined)
+
+    // გასწორება — ტექსტი იქვე იცვლება და ინახება
+    await act(async () => name.querySelector<HTMLButtonElement>('[data-testid="georgian-fix-name"]')!.click())
+    const input = box.querySelector<HTMLInputElement>('[data-testid="georgian-edit-name"] input')!
+    expect(input.value).toBe('ლიამ ნისონი')
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+    await act(async () => {
+      setValue.call(input, ' ლაიამ ნისონი ')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => box.querySelector<HTMLButtonElement>('[data-testid="georgian-save-name"]')!.click())
+    await flush()
+    expect(mocks.settleActorGeorgian).toHaveBeenLastCalledWith(7, 'name', 'ლაიამ ნისონი')
+  })
+
+  it('shows no mark on confirmed or official text', async () => {
+    const box = await mount(actor({ name_ka: 'ლიამ ნისონი', name_ka_unverified: false, biography: BIO_EN, biography_ka: BIO_KA, biography_ka_unverified: false }))
+
+    expect(box.querySelector('[data-testid="georgian-check-name"]')).toBeNull()
+    expect(box.querySelector('[data-testid="georgian-check-biography"]')).toBeNull()
   })
 })

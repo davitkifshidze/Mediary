@@ -220,6 +220,23 @@ describe('SyncResultsPage: the list of runs', () => {
     expect((bar.firstElementChild as HTMLElement).style.width).toBe('25%')
   })
 
+  it('filters the list by kind, from the address and from the chips', async () => {
+    mocks.fetchSyncRuns.mockResolvedValue({ items: [run({ kind: 'translate', types: ['actor'] })], total: 1, lastPage: 1 })
+    // თარგმანის გვერდების „შედეგები" ისტორიას თარგმანზე გაფილტრულს ხსნის
+    await mount('/sync/results?kind=translate')
+
+    expect(mocks.fetchSyncRuns).toHaveBeenLastCalledWith(1, expect.any(Number), 'translate')
+    expect(document.querySelector('[data-testid="kind-translate"]')!.getAttribute('aria-pressed')).toBe('true')
+    expect(all('[data-testid="sync-run"]')[0].textContent).toContain(i18n.t('syncResults.kind.translate'))
+
+    await click(document.querySelector('[data-testid="kind-cast"]'))
+    expect(mocks.fetchSyncRuns).toHaveBeenLastCalledWith(1, expect.any(Number), 'cast')
+
+    // „ყველა" ფილტრს ხსნის; უცნობი სახეობა მისამართში — ყველა
+    await click(document.querySelector('[data-testid="kind-all"]'))
+    expect(mocks.fetchSyncRuns).toHaveBeenLastCalledWith(1, expect.any(Number), null)
+  })
+
   it('says so when nothing has been run', async () => {
     mocks.fetchSyncRuns.mockResolvedValue({ items: [], total: 0, lastPage: 1 })
     await mount('/sync/results')

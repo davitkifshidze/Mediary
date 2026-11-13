@@ -164,6 +164,28 @@ class Translator
     }
 
     /**
+     * **ადამიანის სახელი ქართული ასოებით** — იქ, სადაც TMDB-ს ქართული სახელი არ აქვს.
+     *
+     * ⚠️ ეს თარგმანი არ არის — სახელი ისე იწერება, როგორც ქართულად გამოითქმის და როგორც
+     * ქართული მედია წერს. მანქანა აქ ცდება (უცნობი გვარი, არაინგლისური წარმოშობა), ამიტომ
+     * გამომძახებელი შედეგს „გადასამოწმებლად" ნიშნავს (`CastTranslator`).
+     */
+    public function transliterate(?string $name): ?string
+    {
+        $this->lastError = null;
+        $name = trim((string) $name);
+
+        if ($name === '') {
+            return null;
+        }
+
+        $prompt = "Write the following person's name in Georgian script, the way Georgian media spells it. "
+            ."Output ONLY the name in Georgian letters, with no notes, quotes or explanations:\n\n".$name;
+
+        return $this->ask($prompt, 'ka', 'person name', mb_strlen($name));
+    }
+
+    /**
      * **არსებული თარგმანის გადამოწმება** — `review` რეჟიმი (2026-09-14).
      *
      * აბრუნებს **შესწორებულ ტექსტს**, ან `null`-ს — როცა შესწორება არ დასჭირდა

@@ -9,12 +9,15 @@ use App\Http\Resources\SeriesListResource;
 use App\Models\ActorMark;
 use App\Models\CastMember;
 use App\Models\CastMemberTag;
+use App\Models\CastMemberTranslation;
 use App\Models\Genre;
 use App\Models\Video;
 use App\Services\Cast\CastEnricher;
+use App\Services\Cast\CastPool;
 use App\Services\Cast\CastResolver;
 use App\Services\Storage\StorageMeter;
 use App\Services\Tmdb\TmdbClient;
+use App\Services\Translation\CastTranslator;
 use App\Support\CastMemberTrash;
 use App\Support\CastSync;
 use App\Support\CredentialProviders;
@@ -251,8 +254,8 @@ class CastController extends Controller
         if (array_key_exists('name_ka', $data)) {
             $nameKa = trim((string) $data['name_ka']);
             $nameKa !== ''
-                ? $castMember->setTranslation('ka', $nameKa)
-                : $castMember->translations()->where('locale', 'ka')->delete();
+                ? $castMember->setTranslation('ka', $nameKa, CastMemberTranslation::SOURCE_MANUAL)
+                : $castMember->clearGeorgianName();
         }
 
         return response()->json(['actor' => $this->actorPayload($castMember->refresh())]);
@@ -386,6 +389,37 @@ class CastController extends Controller
         $mark = ActorMark::forActor((int) auth()->id(), (int) $member->id);
 
         return ['favorite' => (bool) $mark->is_favorite, 'opens' => (int) $mark->opens];
+    }
+
+    /**
+     * **მანქანური ქართული ტექსტის დადასტურება ან გასწორება** — სახელი ან ბიოგრაფია.
+     *
+     * თარგმანი იქ, სადაც TMDB-ს ქართული სახელი არ აქვს, სახელს ქართული ასოებით წერს და
+     * ბიოგრაფიას თარგმნის; ორივე „გადასამოწმებლად" ინიშნება. ნიშანი აქ იხსნება: `text`-ის
+     * გარეშე — ტექსტი დადასტურებულია, `text`-ით — ხელით გასწორებულია.
+     *
+     * ⚠️ **მხოლოდ გადასამოწმებელ ტექსტზე**: TMDB-ის სახელი და უკვე დადასტურებული ტექსტი
+     * ერთი ანგარიშის ხელით არ იცვლება — მსახიობი საერთო ჩანაწერია (`update()`-ის წესი).
+     * ⚠️ „ვის შეუძლია" ჩართული მედია-მოდული წყვეტს, როგორც მსახიობების სინქრონიზაციაზე.
+     */
+    public function georgian(Request $request, CastMember $castMember): JsonResponse
+    {
+        abort_unless(CastPool::typesFor($request->user()) !== [], 403, 'module_disabled');
+
+        $field = $request->validate(['field' => ['required', Rule::in(CastTranslator::FIELDS)]])['field'];
+        $data = $request->validate([
+            'text' => ['sometimes', 'required', 'string', 'max:'.($field === CastTranslator::NAME ? 200 : 10000)],
+        ]);
+
+        abort_unless($castMember->georgianUnverified($field), 409, 'cast_text_not_pending');
+
+        $castMember->setGeorgian(
+            $field,
+            array_key_exists('text', $data) ? trim($data['text']) : null,
+            CastMemberTranslation::SOURCE_MANUAL,
+        );
+
+        return response()->json(['actor' => $this->actorPayload($castMember->refresh())]);
     }
 
     /** @return array<string, mixed> ხელით შექმნილის დეტალების წესები */

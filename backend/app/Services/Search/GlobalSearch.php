@@ -429,7 +429,8 @@ class GlobalSearch
                     'birthplace' => ['place_of_birth'],
                 ],
                 'relations' => [
-                    ['relation' => 'translations', 'fields' => ['name' => ['name']], 'eager' => false],
+                    // ქართული სახელი და ქართული ბიოგრაფია — ძებნა ორივე ენაში ეძებს
+                    ['relation' => 'translations', 'fields' => ['name' => ['name'], 'biography' => ['biography']], 'eager' => false],
                 ],
                 'image' => 'photo_path',
                 'scope' => fn (Builder $q) => $this->ownCastOnly($q, $user),

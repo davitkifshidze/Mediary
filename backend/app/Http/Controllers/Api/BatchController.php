@@ -48,6 +48,8 @@ class BatchController extends Controller
                 $castKind => [RunBatchItem::ACTOR],
                 // სეზონი მხოლოდ სერიალსა და ანიმეს აქვს
                 $request->input('kind') === RunBatchItem::KIND_EPISODES => MediaDomain::TV_TYPES,
+                // თარგმანში მსახიობიც ერთეულია — ქართული სახელი და ბიოგრაფია
+                $request->input('kind') === 'translate' => [...MediaDomain::TYPES, RunBatchItem::ACTOR],
                 default => MediaDomain::TYPES,
             })],
             'items.*.id' => ['required', 'integer', 'min:1'],

@@ -2,16 +2,20 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Cake, ChevronDown, ChevronUp, ExternalLink, Globe, Link2, Loader2, Lock, MapPin, RefreshCw, RotateCcw, SquarePen, Star, Trash2 } from 'lucide-react'
+import { Cake, Check, ChevronDown, ChevronUp, ExternalLink, Globe, Link2, Loader2, Lock, MapPin, RefreshCw, RotateCcw, Save, Sparkles, SquarePen, Star, Trash2, X } from 'lucide-react'
 import { resyncActor, type Actor } from '@/api/media'
 import { deptKey } from '@/lib/actors'
 import { errorMessage } from '@/lib/errors'
 import { useDateFormat } from '@/lib/dates'
+import { useContentLang } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 import { PosterImage } from '@/components/PosterImage'
 import { Button } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { ACTORS_KEY, resetActorOpens, setActorFavorite, trashActor } from '@/api/actors'
+import { ACTORS_KEY, resetActorOpens, setActorFavorite, settleActorGeorgian, trashActor } from '@/api/actors'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { InfoHint } from '@/components/ui/info-hint'
 import { ActorAttachDialog } from '@/components/actors/ActorAttachDialog'
@@ -38,9 +42,11 @@ import { actorLockBase } from '@/lib/locks'
    მსახიობი სიაში თავშია; გახსნების რიცხვი მხოლოდ აქ, სახელთან მდგარ `i`-ში ჩანს —
    ის დალაგებას ემსახურება, ამიტომ იქვეა „გახსნების განულებაც".
 
-   ⚠️ **ბიოგრაფია ინგლისურია და თარგმანის ცხრილი არ ემატება** — TMDB მას
-   ქართულად პრაქტიკულად არ იძლევა, ე.ი. ცარიელი ცხრილი დარჩებოდა
-   (წიგნების ზუსტი პრეცედენტი).
+   ⚠️ **ბიოგრაფია ენის მიხედვით ჩანს**: ქართულ შიგთავსზე — ქართული ბიოგრაფია, თუ არის
+   (თარგმანის გვერდი მას ინგლისურიდან თარგმნის), თორემ ინგლისური.
+   ⚠️ **მანქანური ქართული სახელი და ბიოგრაფია „გადასამოწმებელია"** — ნიშანი ტექსტთან ჩანს და
+   იხსნება დადასტურებით ან ხელით გასწორებით (`GeorgianCheck`). მსახიობი საერთო ჩანაწერია:
+   დადასტურებული ტექსტი ყველა ანგარიშს უჩანს.
    ============================================================ */
 
 /** ცნობილი ქსელები — რაც არ იცნობა, უბრალოდ არ იხატება */
@@ -54,8 +60,69 @@ const LINKS: { key: string; label: string; href: (id: string) => string }[] = [
   { key: 'wikidata_id', label: 'Wikidata', href: (id) => `https://www.wikidata.org/wiki/${id}` },
 ]
 
-export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
+/**
+ * **„გადასამოწმებელია"** — მანქანური ქართული სახელის ან ბიოგრაფიის ნიშანი თავისი ორი
+ * გასასვლელით: „სწორია" (დადასტურება) და „გასწორება" (ტექსტი იქვე იცვლება და ინახება).
+ */
+function GeorgianCheck({ actor, field, text }: { actor: Actor; field: 'name' | 'biography'; text: string }) {
   const { t } = useTranslation()
+  const qc = useQueryClient()
+  const { toast } = useToast()
+  const [draft, setDraft] = useState<string | null>(null)
+
+  const settle = useMutation({
+    mutationFn: (value?: string) => settleActorGeorgian(actor.id, field, value),
+    onSuccess: () => {
+      setDraft(null)
+      qc.invalidateQueries({ queryKey: ['actor', String(actor.id)] })
+      qc.invalidateQueries({ queryKey: [ACTORS_KEY] })
+      toast({ title: t('actor.georgian.settled'), variant: 'success' })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  if (draft !== null) {
+    return (
+      <div className="mt-2 flex flex-wrap items-start gap-2" data-testid={`georgian-edit-${field}`}>
+        {field === 'name' ? (
+          <Input value={draft} onChange={(e) => setDraft(e.target.value)} aria-label={t('actor.georgian.name')} className="h-9 min-w-48 flex-1" />
+        ) : (
+          <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} aria-label={t('actor.georgian.biography')} rows={6} className="min-w-64 flex-1" />
+        )}
+        <Button size="sm" disabled={settle.isPending || draft.trim() === ''} onClick={() => settle.mutate(draft.trim())} data-testid={`georgian-save-${field}`}>
+          {settle.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+          {t('actions.save')}
+        </Button>
+        <Button size="sm" variant="outline" disabled={settle.isPending} onClick={() => setDraft(null)}>
+          <X className="size-4" />
+          {t('confirm.cancel')}
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <span className="mt-1.5 flex flex-wrap items-center gap-2" data-testid={`georgian-check-${field}`}>
+      <Badge size="row" className="bg-[color-mix(in_oklab,var(--icon-warn)_14%,transparent)]">
+        <Sparkles className="size-3.5" />
+        {t(`actor.georgian.unverified.${field}`)}
+        <InfoHint info={t('actor.georgian.hint')} />
+      </Badge>
+      <Button size="sm" variant="outline" disabled={settle.isPending} onClick={() => settle.mutate(undefined)} data-testid={`georgian-confirm-${field}`}>
+        {settle.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+        {t('actor.georgian.confirm')}
+      </Button>
+      <Button size="sm" variant="edit" disabled={settle.isPending} onClick={() => setDraft(text)} data-testid={`georgian-fix-${field}`}>
+        <SquarePen className="size-4" />
+        {t('actor.georgian.fix')}
+      </Button>
+    </span>
+  )
+}
+
+export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
+  const { t, i18n } = useTranslation()
+  const contentLang = useContentLang(i18n.language)
   const qc = useQueryClient()
   const { toast } = useToast()
   const { date: formatDate } = useDateFormat()
@@ -129,7 +196,9 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
     return value ? [{ ...link, value }] : []
   })
 
-  const bio = actor.biography ?? ''
+  // ბიოგრაფია ენის მიხედვით: ქართულ შიგთავსზე ქართული, თუ არის; თორემ ინგლისური
+  const georgianBio = contentLang === 'ka' && !!actor.biography_ka
+  const bio = (georgianBio ? actor.biography_ka : actor.biography) ?? ''
   const longBio = bio.length > 420
 
   return (
@@ -171,6 +240,9 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
           {actor.name_ka && actor.name_ka !== name && (
             <p className="text-sm text-muted-foreground">{actor.name}</p>
           )}
+
+          {/* მანქანამ დაწერილი ქართული სახელი — სანამ არავის დაუდასტურებია */}
+          {actor.name_ka && actor.name_ka_unverified && <GeorgianCheck actor={actor} field="name" text={actor.name_ka} />}
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {actor.birthday && (
@@ -220,7 +292,7 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
           {/* ---------- ბიოგრაფია ---------- */}
           {bio && (
             <div className="mt-3">
-              <p className={cn('text-sm leading-relaxed text-muted-foreground', !expanded && 'line-clamp-4')}>
+              <p className={cn('text-sm leading-relaxed text-muted-foreground', !expanded && 'line-clamp-4')} data-testid="actor-bio">
                 {bio}
               </p>
               {longBio && (
@@ -229,6 +301,8 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
                   {t(expanded ? 'actions.less' : 'actions.more')}
                 </Button>
               )}
+              {/* ქართული ბიოგრაფია მანქანური თარგმანია — სანამ არავის დაუდასტურებია */}
+              {georgianBio && actor.biography_ka_unverified && <GeorgianCheck actor={actor} field="biography" text={bio} />}
             </div>
           )}
 

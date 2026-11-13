@@ -54,13 +54,20 @@ class ItemTranslator
     /**
      * @param  array<int, string>  $sources  `tmdb` · `gemini` (ქვესიმრავლე)
      * @param  bool  $review  TMDB-ის ქართული აღწერა Gemini-მ გადაამოწმოს თუ არა
+     * @param  array<int, string>|null  $fields  მხოლოდ ეს ნაწილები (`TranslationScanner::FIELDS`);
+     *                                           `null` — ყველაფერი, რაც აკლია
      * @return array{ok:bool, skipped:bool, changed:array<int, string>, providers:array<string, string>, error:?string}
      */
-    public function translate(Model $item, array $sources = self::SOURCES, bool $review = false): array
+    public function translate(Model $item, array $sources = self::SOURCES, bool $review = false, ?array $fields = null): array
     {
         $sources = $this->normalizeSources($sources);
 
         $missing = TranslationScanner::missing($item);
+
+        // ერთი ნაწილის გაშვება სხვას არ ეხება: „სათაური ქართულად" აღწერას არ ავსებს
+        if ($fields !== null) {
+            $missing = array_values(array_intersect($missing, $fields));
+        }
 
         /* ⚠️ **`review`-ზე ცარიელი `missing` „გამოტოვებას" აღარ ნიშნავს.**
            გადამოწმების საგანი სწორედ **არსებული** ტექსტია, ე.ი. სრულად

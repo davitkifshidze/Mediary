@@ -197,7 +197,39 @@ class CastMember extends Model
 
     public function getNameKaAttribute(): ?string
     {
-        return $this->translations->firstWhere('locale', 'ka')?->name;
+        return $this->georgian()?->name ?: null;
+    }
+
+    /** ქართული ბიოგრაფია — `cast_member_translations`-ში; ინგლისური `biography` სვეტია */
+    public function getBiographyKaAttribute(): ?string
+    {
+        return $this->georgian()?->biography ?: null;
+    }
+
+    /** ქართული ტექსტის რიგი (სახელი, ბიოგრაფია და რამ დაწერა ისინი) */
+    public function georgian(): ?CastMemberTranslation
+    {
+        return $this->translations->firstWhere('locale', 'ka');
+    }
+
+    /** ქართული ტექსტი მანქანამ დაწერა და ჯერ არავის დაუდასტურებია — `name` · `biography` */
+    public function georgianUnverified(string $field): bool
+    {
+        return $this->georgian()?->{$field.'_source'} === CastMemberTranslation::SOURCE_TRANSLATION
+            && filled($this->georgian()?->{$field});
+    }
+
+    /**
+     * ქართული ტექსტის ჩაწერა წყაროსთან ერთად (`tmdb` · `translation` · `manual`).
+     * `$text` `null` — ტექსტი უცვლელია, იცვლება მხოლოდ წყარო (დადასტურება).
+     */
+    public function setGeorgian(string $field, ?string $text, ?string $source): void
+    {
+        $this->translations()->updateOrCreate(
+            ['locale' => 'ka'],
+            [...($text === null ? [] : [$field => $text]), $field.'_source' => $source],
+        );
+        $this->load('translations');
     }
 
     /**
@@ -229,6 +261,11 @@ class CastMember extends Model
             'deathday' => $this->deathday?->toDateString(),
             'place_of_birth' => $this->place_of_birth,
             'biography' => $this->biography,
+            // ქართული ბიოგრაფია; გვერდი ენის მიხედვით აჩვენებს (ქართული არ არის — ინგლისური)
+            'biography_ka' => $this->biography_ka,
+            // მანქანამ დაწერა და ჯერ არავის დაუდასტურებია — გვერდზე „გადასამოწმებელია"
+            'name_ka_unverified' => $this->georgianUnverified('name'),
+            'biography_ka_unverified' => $this->georgianUnverified('biography'),
             'known_for' => $this->known_for,
             'popularity' => $this->popularity,
             'homepage' => $this->homepage,
@@ -238,13 +275,38 @@ class CastMember extends Model
         ];
     }
 
-    /** ლოკალიზებული სახელის ჩაწერა/განახლება (მაგ. ka ტრანსლიტერაცია). */
-    public function setTranslation(string $locale, ?string $name): void
+    /**
+     * ლოკალიზებული სახელის ჩაწერა/განახლება. `$source` — რამ დაწერა (`tmdb` · `manual`);
+     * მის გარეშე წყარო უცვლელი რჩება.
+     */
+    public function setTranslation(string $locale, ?string $name, ?string $source = null): void
     {
         if ($name === null || $name === '') {
             return;
         }
-        $this->translations()->updateOrCreate(['locale' => $locale], ['name' => $name]);
+        $this->translations()->updateOrCreate(
+            ['locale' => $locale],
+            ['name' => $name, ...($source === null ? [] : ['name_source' => $source])],
+        );
+        $this->load('translations');
+    }
+
+    /**
+     * ქართული სახელის მოხსნა. ⚠️ რიგი მხოლოდ მაშინ იშლება, როცა მასში სხვა არაფერია —
+     * ქართული ბიოგრაფია სახელთან ერთად არ უნდა გაქრეს.
+     */
+    public function clearGeorgianName(): void
+    {
+        $row = $this->georgian();
+
+        if (! $row) {
+            return;
+        }
+
+        filled($row->biography)
+            ? $row->update(['name' => null, 'name_source' => null])
+            : $row->delete();
+
         $this->load('translations');
     }
 }

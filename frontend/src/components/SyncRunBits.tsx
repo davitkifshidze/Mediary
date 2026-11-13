@@ -1,16 +1,17 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { CircleCheck, Loader2, Play, RotateCw, Square, Unplug } from 'lucide-react'
+import { CircleCheck, History, Loader2, Play, RotateCw, Square, Unplug } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { resumeSyncRun, stopSyncRun, SYNC_RUN_RESULTS, type SyncRun, type SyncRunResult, type SyncRunState } from '@/api/syncRuns'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
+import { modAccent } from '@/lib/modules'
 import { useSettings } from '@/lib/settings'
-import { SYNC_RESULT_LOOK } from '@/lib/syncLook'
+import { SYNC_KIND_LOOK, SYNC_RESULT_LOOK } from '@/lib/syncLook'
 import { cn } from '@/lib/utils'
 import { Badge, CountBadge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { useToast } from '@/components/ui/feedback'
 import { InfoHint } from '@/components/ui/info-hint'
 
@@ -203,5 +204,43 @@ export function RunActions({ run, one = false }: { run: SyncRun; one?: boolean }
         </Button>
       )}
     </span>
+  )
+}
+
+/**
+ * **დაუსრულებელი გაშვება** — სინქრონიზაციისა და თარგმანის გვერდები მას ბარათების ზემოთ
+ * თვითონ აჩვენებენ: რა სახის იყო, რამდენი გაკეთდა და მისი შედეგების გვერდი. გაწყვეტილზე —
+ * „გაგრძელება", სერვერზე მიმდინარეზე — „შეჩერება".
+ */
+export function UnfinishedRun({ run }: { run: SyncRun }) {
+  const { t } = useTranslation()
+  const { dateTime } = useDateFormat()
+  const { icon: Icon, color } = SYNC_KIND_LOOK[run.kind]
+
+  return (
+    <li
+      style={modAccent(color)}
+      className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--mod)] bg-card p-3"
+      data-testid="unfinished-run"
+      data-state={run.state}
+    >
+      <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)] text-[var(--mod)]">
+        <Icon className="size-5" />
+      </span>
+      <span className="min-w-0 flex-1 basis-56">
+        <span className="block text-sm font-semibold">
+          {t(run.state === 'running' ? 'syncCards.running' : 'syncCards.interrupted', { kind: t(`syncResults.kind.${run.kind}`) })}
+        </span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">
+          {dateTime(run.last_at ?? run.started_at)} · {t('syncResults.partial', { done: run.done, total: run.total })}
+        </span>
+        <RunProgress run={run} className="mt-2" />
+      </span>
+      <RunActions run={run} one />
+      <Link to={`/sync/results/${run.key}`} className={buttonVariants({ variant: 'outline', size: 'sm' })} data-testid="unfinished-run-link">
+        <History className="size-4" />
+        {t('syncResults.open')}
+      </Link>
+    </li>
   )
 }

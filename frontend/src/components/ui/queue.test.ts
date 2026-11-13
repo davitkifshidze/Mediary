@@ -455,3 +455,102 @@ describe('queue: a run that can be continued', () => {
     expect(runMocks.startBatch).toHaveBeenCalledWith('sync', [{ type: 'movie', id: 2 }], OPTS, key)
   })
 })
+
+/* ============================================================
+   **თარგმანი ნაწილებად და მსახიობის ერთეული**.
+
+   ⚠️ ერთი ნაწილის გაშვება სხვას არ ეხება — ჩანაწერის მოთხოვნას არჩეული ველები მიჰყვება;
+   მსახიობის ერთეული (ქართული სახელი და ბიოგრაფია) თავის endpoint-ზე მიდის და არა ჩანაწერის
+   თარგმანზე; გაშვების დასაწყისი სერვერს ორივეს ეუბნება. Gemini-ს დღიური ლიმიტის
+   ამოწურვაზე რიგი ჩერდება და გაშვება სერვერზეც „გაწყვეტილი" ხდება — მეორე დღეს იქიდან
+   გრძელდება.
+   ============================================================ */
+
+const translateMocks = vi.hoisted(() => ({ translateItem: vi.fn(), translateActor: vi.fn() }))
+
+// ერთეულებს შორის პაუზა (თარგმანზე ნაგულისხმევად 4 წამი) ტესტს არ სჭირდება — რიგი მაშინვე გრძელდება
+vi.mock('@/lib/settings', async (original) => {
+  const actual = await original<typeof import('@/lib/settings')>()
+  // ⚠️ კონტექსტის ჰუკი ყოველ გამოძახებაზე ერთსა და იმავე ობიექტს აბრუნებს
+  const fast = { settings: { syncDelayMs: 0, translateDelayMs: 0 }, set: () => {}, isDirty: () => false }
+
+  return { ...actual, useSettings: () => fast }
+})
+
+vi.mock('@/api/translations', async (original) => ({
+  ...(await original<typeof import('@/api/translations')>()),
+  translateItem: translateMocks.translateItem,
+  translateActor: translateMocks.translateActor,
+}))
+
+/** ერთი ჩანაწერი და ორი მსახიობი — ნაწილებად გაშვებული თარგმანი */
+async function runTranslation() {
+  const { QueueProvider, useQueue } = await import('@/components/ui/queue')
+
+  function Starter() {
+    const { enqueueTranslate } = useQueue()
+
+    useEffect(() => {
+      enqueueTranslate(
+        [{ type: 'movie', id: 1, title: 'The Matrix', year: 1999, missing: ['title_ka'], review: false }],
+        false,
+        ['gemini'],
+        false,
+        {
+          fields: ['title_ka'],
+          cast: [
+            { type: 'actor', id: 7, title: 'Keanu Reeves', missing: ['name', 'biography'] },
+            { type: 'actor', id: 8, title: 'Carrie-Anne Moss', missing: ['biography'] },
+          ],
+        },
+      )
+    }, [enqueueTranslate])
+
+    return null
+  }
+
+  return render(h(QueueProvider, null, h(Starter)))
+}
+
+describe('queue: translation in parts', () => {
+  it('sends the chosen fields with a record and an actor to its own endpoint', async () => {
+    translateMocks.translateItem.mockResolvedValue({ ok: true, skipped: false, changed: ['title_ka'], result: 'updated', error: null })
+    translateMocks.translateActor.mockResolvedValue({ ok: true, skipped: false, changed: ['biography_ka'], result: 'updated', error: null })
+
+    await runTranslation()
+    for (let i = 0; i < 8; i++) await flush()
+
+    // გაშვების დასაწყისი: ჩანაწერიც და მსახიობებიც გეგმაშია, პარამეტრებში — რა ნაწილები გაეშვა
+    const [key, kind, planned, params] = runMocks.openSyncRun.mock.calls[0]
+    expect(kind).toBe('translate')
+    expect(planned).toEqual([
+      { type: 'movie', id: 1 },
+      { type: 'actor', id: 7 },
+      { type: 'actor', id: 8 },
+    ])
+    expect(params).toEqual({ sources: ['gemini'], review: false, fields: ['title_ka'], cast: ['name', 'biography'] })
+
+    // ჩანაწერს მხოლოდ არჩეული ველი მიჰყვება
+    expect(translateMocks.translateItem).toHaveBeenCalledTimes(1)
+    expect(translateMocks.translateItem).toHaveBeenCalledWith('movie', 1, ['gemini'], false, expect.any(AbortSignal), { run: key, run_total: 3 }, ['title_ka'])
+    // მსახიობი — თავის endpoint-ზე, იმით, რაც მას აკლია
+    expect(translateMocks.translateActor.mock.calls.map((call) => [call[0], call[1], call[3]])).toEqual([
+      [7, { fields: ['name', 'biography'], sources: ['gemini'] }, { run: key, run_total: 3 }],
+      [8, { fields: ['biography'], sources: ['gemini'] }, { run: key, run_total: 3 }],
+    ])
+  })
+
+  it('stops the run when the daily limit runs out, without trying the rest', async () => {
+    translateMocks.translateItem.mockResolvedValue({ ok: true, skipped: false, changed: ['title_ka'], result: 'updated', error: null })
+    translateMocks.translateActor.mockResolvedValue({ ok: false, skipped: false, changed: [], result: null, error: 'gemini_quota_exceeded' })
+
+    await runTranslation()
+    for (let i = 0; i < 8; i++) await flush()
+
+    // პირველივე მსახიობზე ლიმიტი ამოიწურა — მეორეს რიგი აღარ ცდის
+    expect(translateMocks.translateActor).toHaveBeenCalledTimes(1)
+    // გაშვება სერვერზეც ჩერდება: ისტორიაში „გაწყვეტილია" და იქიდან გრძელდება
+    expect(runMocks.stopSyncRun).toHaveBeenCalledTimes(1)
+    expect(runMocks.stopSyncRun).toHaveBeenCalledWith(runMocks.openSyncRun.mock.calls[0][0])
+  })
+})

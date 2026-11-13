@@ -121,17 +121,7 @@ class SyncRunController extends Controller
         }
 
         $latest = $recent()->first();
-
-        // გაგრძელებაც და ფონური გაშვებაც მხოლოდ იმას აქვს, რასაც დაგეგმილი სია აქვს; მოდულის გვერდზე — გეგმაში ეს მოდულია
-        $candidates = SyncRun::query()
-            ->whereNotNull('plan')
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
-            ->limit(self::OFFERED_AMONG)
-            ->get()
-            ->filter(fn (SyncRun $run) => $type === null || $run->kind === SyncHistory::KIND_CAST || array_key_exists($type, $run->plan ?? []));
-
-        $stats = $this->stats(collect($last)->push($latest)->concat($candidates)->filter());
+        $stats = $this->stats(collect($last)->push($latest)->filter());
         $shape = fn (?SyncRun $run) => $run ? $this->payload($run, $stats) : null;
 
         return response()->json([
@@ -139,12 +129,61 @@ class SyncRunController extends Controller
             'last' => array_map($shape, $last),
             'runs' => SyncRun::query()->count(),
             'latest' => $shape($latest),
-            'unfinished' => $candidates
-                ->map($shape)
-                ->filter(fn (array $run) => $run['resumable'] || $run['stoppable'])
-                ->take(self::OFFERED)
-                ->values(),
+            // თარგმანის გაშვებები თარგმანის გვერდებისაა — აქ მხოლოდ ამ გვერდის სახეობები
+            'unfinished' => $this->unfinishedRuns(self::OVERVIEW_KINDS, $type),
         ]);
+    }
+
+    /**
+     * **ერთი სახეობის დაუსრულებელი გაშვებები და მისი ისტორიის ჯამი** — თარგმანის გვერდების
+     * ბარათებისთვის (`kind=translate`): რამდენი გაშვებაა, რომელია ბოლო და რომელი ელის
+     * გაგრძელებას. `type` — მოდულის გვერდი.
+     */
+    public function unfinished(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'kind' => ['required', Rule::in(SyncHistory::KINDS)],
+            'type' => ['sometimes', MediaDomain::rule()],
+        ]);
+
+        $runs = fn () => SyncRun::query()->forList()->where('kind', $data['kind']);
+        $latest = $runs()->orderByDesc('updated_at')->orderByDesc('id')->first();
+
+        return response()->json([
+            'runs' => $runs()->count(),
+            'latest' => $latest ? $this->payload($latest, $this->stats([$latest])) : null,
+            'unfinished' => $this->unfinishedRuns([$data['kind']], $data['type'] ?? null),
+        ]);
+    }
+
+    /**
+     * დაუსრულებელი გაშვებები ბოლო გაშვებებიდან: გაწყვეტილი, რომლის გაგრძელებაც შეიძლება, და
+     * სერვერზე ფონურად მიმდინარე. ⚠️ ორივე მხოლოდ იმას აქვს, რასაც დაგეგმილი სია აქვს;
+     * მოდულის გვერდზე — რომლის გეგმაშიც ეს მოდულია (მსახიობის ერთეული ყველა მოდულისაა).
+     *
+     * @param  list<string>  $kinds
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function unfinishedRuns(array $kinds, ?string $type): Collection
+    {
+        $candidates = SyncRun::query()
+            ->whereIn('kind', $kinds)
+            ->whereNotNull('plan')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->limit(self::OFFERED_AMONG)
+            ->get()
+            ->filter(fn (SyncRun $run) => $type === null
+                || array_key_exists($type, $run->plan ?? [])
+                || array_key_exists(SyncHistory::ACTOR, $run->plan ?? []));
+
+        $stats = $this->stats($candidates);
+
+        return $candidates
+            ->map(fn (SyncRun $run) => $this->payload($run, $stats))
+            ->filter(fn (array $run) => $run['resumable'] || $run['stoppable'])
+            ->take(self::OFFERED)
+            ->values();
     }
 
     /**

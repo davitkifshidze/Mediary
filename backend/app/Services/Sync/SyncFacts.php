@@ -322,6 +322,7 @@ final class SyncFacts
             'known_for' => self::value($member->known_for),
             'imdb' => self::value($member->imdb_id),
             'biography' => self::value($member->biography),
+            'biography_ka' => self::value($member->biography_ka),
             'homepage' => self::value($member->homepage),
             'profile_links' => [self::LIST, $links],
             'photo' => [self::FILE, self::blank($member->photo_path)],

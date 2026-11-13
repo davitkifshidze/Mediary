@@ -607,6 +607,11 @@ export interface Actor {
   deathday?: string | null
   place_of_birth?: string | null
   biography?: string | null
+  /** ქართული ბიოგრაფია (თარგმანი); გვერდი ენის მიხედვით აჩვენებს — ქართული არ არის, ინგლისური */
+  biography_ka?: string | null
+  /** ქართული სახელი / ბიოგრაფია მანქანამ დაწერა და ჯერ არავის დაუდასტურებია */
+  name_ka_unverified?: boolean
+  biography_ka_unverified?: boolean
   known_for?: string | null
   popularity?: number | null
   /** ჩემი რჩეული და რამდენჯერ გავხსენი (`ActorMark`) — რიცხვი მხოლოდ გვერდის `i`-ში ჩანს */

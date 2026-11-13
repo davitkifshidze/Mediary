@@ -8,12 +8,39 @@ import type { MediaType } from '@/lib/media'
    იმავე per-item მოდელით, რაც სინქრონსა და გალერეაზეა: `plan` აბრუნებს რიგს,
    შემდეგ თითო ჩანაწერზე ერთი მოკლე რექვესთი მიდის (ციკლს queue ატარებს).
    ჟანრები გამონაკლისია — გლობალური ლექსიკონია და ერთ რექვესთში მუშავდება.
+
+   **თარგმანი ნაწილებად იშლება** (`TRANSLATION_PARTS`): სათაური და აღწერა ორივე
+   მიმართულებით, გადასამოწმებელი აღწერები, ჟანრები და მსახიობების ქართული სახელები და
+   ბიოგრაფიები. თითო ნაწილს თავისი რიცხვი აქვს (`fetchTranslationParts`) და ცალკე
+   ეშვება: გეგმა და ერთეულის მოთხოვნა მხოლოდ არჩეულ ნაწილს ეხება.
    ============================================================ */
+
+/** ჩანაწერის ნაწილები — ველი და მიმართულება (`TranslationScanner::FIELDS`-ის სარკე) */
+export const TRANSLATION_FIELDS = ['title_ka', 'title_en', 'description_ka', 'description_en'] as const
+export type TranslationField = (typeof TRANSLATION_FIELDS)[number]
+
+/** თარგმანის ყველა ნაწილი (`TranslationScanner::PARTS`-ის სარკე) */
+export const TRANSLATION_PARTS = [...TRANSLATION_FIELDS, 'review', 'genres', 'cast_names', 'cast_bios'] as const
+export type TranslationPart = (typeof TRANSLATION_PARTS)[number]
+
+/** მსახიობზე რა ითარგმნება (`CastTranslator::FIELDS`-ის სარკე) */
+export type CastTranslationField = 'name' | 'biography'
+
+/** ჩაშლილი რიცხვები — თარგმანის გვერდების ბარათები */
+export interface TranslationParts {
+  /** რომელ მოდულებზეა დათვლილი (მოდულის გვერდზე — ერთი) */
+  types: MediaType[]
+  /** ნაწილი → რამდენია სათარგმნი; ჩანაწერის ნაწილებზე — მოდულებადაც */
+  parts: Record<TranslationPart, { count: number; by_type?: Partial<Record<MediaType, number>> }>
+  translator_configured: boolean
+  tmdb_configured: boolean
+}
 
 /** ჰედერის badge-ის მონაცემი */
 export interface TranslationSummary {
   movie: number
   series: number
+  anime: number
   genres: number
   total: number
   /**
@@ -49,13 +76,31 @@ export interface TranslationPlanFilters {
   include_genres?: boolean
   /** TMDB-ის ქართული აღწერის გადამოწმება Gemini-თ (2026-09-14) */
   review?: boolean
+  /** რომელი ნაწილები გაეშვას — ველებს, გადამოწმებას, ჟანრებსა და მსახიობებს ერთად წყვეტს */
+  parts?: TranslationPart[]
   /** ბოლო გაშვებაზე ნათარგმნი აღარ ჩანს; ცარიელი და ჩავარდნილი რჩება */
   hide_processed?: boolean
+}
+
+/** გეგმის მსახიობი — რა გაეშვება მასზე (ქართული სახელი და/ან ბიოგრაფია) */
+export interface TranslationCastItem {
+  type: 'actor'
+  id: number
+  title: string
+  missing: CastTranslationField[]
 }
 
 export interface TranslationPlan {
   items: TranslationPlanItem[]
   count: number
+  /** მსახიობები — ცალკე ერთეულები, ჩანაწერების შემდეგ */
+  cast: TranslationCastItem[]
+  cast_count: number
+  /**
+   * Gemini-ს ხარჯი გაშვებამდე: მაქსიმუმ რამდენი მოთხოვნაა (რასაც TMDB შეავსებს, Gemini-მდე
+   * არ მიდის) და რამდენ დღეს გაწვდება დღიური ლიმიტი (`null` — ლიმიტი ან გასაღები არ არის).
+   */
+  gemini: { requests: number; limit: number; remaining: number | null; days: number | null }
   /** ჟანრები რიგში შედის თუ არა (0 ან სათარგმნების რაოდენობა) */
   genres: number
   /** სათარგმნი ჟანრები საერთოდ — არჩევანის მიუხედავად */
@@ -141,6 +186,11 @@ export async function fetchTranslationSummary(): Promise<TranslationSummary> {
   return data
 }
 
+export async function fetchTranslationParts(type?: MediaType): Promise<TranslationParts> {
+  const { data } = await api.get('/translations/parts', { params: type ? { type } : undefined })
+  return data
+}
+
 export async function fetchTranslationPlan(filters: TranslationPlanFilters): Promise<TranslationPlan> {
   const { data } = await api.post('/translations/plan', filters)
   return data
@@ -154,8 +204,32 @@ export async function translateItem(
   signal?: AbortSignal,
   /** რიგის გაშვების გასაღები და დაგეგმილი რიცხვი — ერთეული სინქრონიზაციის ისტორიაში იწერება */
   run?: { run?: string; run_total?: number },
+  /** მხოლოდ ეს ველები; მის გარეშე — ყველაფერი, რაც აკლია (ცარიელი სია — მხოლოდ გადამოწმება) */
+  fields?: TranslationField[],
 ): Promise<TranslateResult> {
-  const { data } = await api.post(`/translations/${type}/${id}`, { ...sourceBody(sources, review), ...run }, { signal })
+  const { data } = await api.post(
+    `/translations/${type}/${id}`,
+    { ...sourceBody(sources, review), ...(fields ? { fields } : {}), ...run },
+    { signal },
+  )
+  return data
+}
+
+/**
+ * ერთი მსახიობის ქართული სახელი და/ან ბიოგრაფია. ⚠️ `gemini_quota_exceeded` — დღიური
+ * ლიმიტი ამოიწურა: რიგი ჩერდება და ერთეული ისტორიაში ჩავარდნილად არ იწერება.
+ */
+export async function translateActor(
+  id: number,
+  opts: { fields?: CastTranslationField[]; sources?: TranslationSource[] },
+  signal?: AbortSignal,
+  run?: { run?: string; run_total?: number },
+): Promise<TranslateResult> {
+  const { data } = await api.post(
+    `/translations/actor/${id}`,
+    { ...sourceBody(opts.sources), ...(opts.fields?.length ? { fields: opts.fields } : {}), ...run },
+    { signal },
+  )
   return data
 }
 

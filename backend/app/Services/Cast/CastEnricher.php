@@ -3,6 +3,7 @@
 namespace App\Services\Cast;
 
 use App\Models\CastMember;
+use App\Models\CastMemberTranslation;
 use App\Services\Media\MediaDownloader;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\AppTime;
@@ -333,11 +334,10 @@ class CastEnricher
     /**
      * ქართული **სახელი** — ცალკე გამოძახება და ცალკე ცხრილი.
      *
-     * ⚠️ **ქართული ბიოგრაფია არ ინახება და ეს არჩევანია, არა გამოტოვება**:
-     * `cast_member_translations` მხოლოდ `name`-ს ინახავს, TMDB კი ქართულ
-     * ბიოგრაფიას პრაქტიკულად არასდროს აბრუნებს (წიგნების იგივე
-     * გადაწყვეტილება). ამ მეთოდს ადრე `syncGeorgianBiography` ერქვა — და
-     * სწორედ ეს სახელი ქმნიდა შთაბეჭდილებას, თითქოს ბიოგრაფიაც ინახებოდა.
+     * ⚠️ **სინქრონიზაცია მხოლოდ სახელს ავსებს და მხოლოდ TMDB-ის ქართული სახელით**:
+     * იქ, სადაც TMDB-ს ქართული სახელი არ აქვს, და ქართულ ბიოგრაფიას (TMDB მას
+     * პრაქტიკულად არასდროს აბრუნებს) თარგმანი წერს — `CastTranslator`, თარგმანის
+     * გვერდიდან, მანქანური ტექსტის „გადასამოწმებელია" ნიშნით.
      *
      * @return bool ახალი სახელი ჩაიწერა თუ არა
      */
@@ -359,7 +359,7 @@ class CastEnricher
             return false;
         }
 
-        $member->setTranslation('ka', $name);
+        $member->setTranslation('ka', $name, CastMemberTranslation::SOURCE_TMDB);
 
         return true;
     }

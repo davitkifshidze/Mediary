@@ -279,6 +279,8 @@ export const CODES = [
   'sync_run_running',
   'sync_run_not_resumable',
   'sync_run_nothing_left',
+  // მსახიობის ქართული ტექსტი გადასამოწმებელი აღარ არის — დადასტურება/გასწორება მხოლოდ მანქანურ ტექსტზეა
+  'cast_text_not_pending',
   // დანარჩენი
   'custom_field_file_limit',
   'not_the_author',

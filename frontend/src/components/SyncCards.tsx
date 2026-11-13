@@ -6,16 +6,15 @@ import { ChartColumn, CircleAlert, CircleCheck, DownloadCloud, Drama, History, L
 import { cancelBatch, fetchBatch, startBatch, type BatchItemResult, type BatchStatus } from '@/api/batches'
 import { fetchEpisodePlan, type EpisodePlan, type TvType } from '@/api/episodes'
 import { fetchSyncOverview, type SyncRun } from '@/api/syncRuns'
-import { useDateFormat } from '@/lib/dates'
 import { errorMessage, translateCode } from '@/lib/errors'
 import { mediaKey, type MediaType } from '@/lib/media'
-import { modAccent, useModules } from '@/lib/modules'
+import { useModules } from '@/lib/modules'
 import { useSettings } from '@/lib/settings'
 import { safeGet, safeRemove, safeSet } from '@/lib/storage'
 import { SYNC_KIND_LOOK } from '@/lib/syncLook'
 import { cn } from '@/lib/utils'
 import { SyncDialog, type SyncFlow } from '@/components/SyncDialog'
-import { LastRun, RunActions, RunProgress } from '@/components/SyncRunBits'
+import { LastRun, UnfinishedRun } from '@/components/SyncRunBits'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/components/ui/feedback'
@@ -157,43 +156,6 @@ export function SyncCards({ type }: { type?: MediaType }) {
       {/* ერთი ფანჯარა ორი ნაკადით; მოდულის გვერდზე — ამ მოდულზე გაფილტრული */}
       <SyncDialog open={flow !== null} onOpenChange={(open) => !open && setFlow(null)} only={type} flow={flow ?? 'records'} />
     </>
-  )
-}
-
-/**
- * დაუსრულებელი გაშვება: რა სახის, რამდენი გაკეთდა და მისი შედეგების გვერდი. გაწყვეტილზე —
- * „გაგრძელება", სერვერზე მიმდინარეზე — „შეჩერება".
- */
-function UnfinishedRun({ run }: { run: SyncRun }) {
-  const { t } = useTranslation()
-  const { dateTime } = useDateFormat()
-  const { icon: Icon, color } = SYNC_KIND_LOOK[run.kind]
-
-  return (
-    <li
-      style={modAccent(color)}
-      className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--mod)] bg-card p-3"
-      data-testid="unfinished-run"
-      data-state={run.state}
-    >
-      <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)] text-[var(--mod)]">
-        <Icon className="size-5" />
-      </span>
-      <span className="min-w-0 flex-1 basis-56">
-        <span className="block text-sm font-semibold">
-          {t(run.state === 'running' ? 'syncCards.running' : 'syncCards.interrupted', { kind: t(`syncResults.kind.${run.kind}`) })}
-        </span>
-        <span className="mt-0.5 block text-xs text-muted-foreground">
-          {dateTime(run.last_at ?? run.started_at)} · {t('syncResults.partial', { done: run.done, total: run.total })}
-        </span>
-        <RunProgress run={run} className="mt-2" />
-      </span>
-      <RunActions run={run} one />
-      <Link to={`/sync/results/${run.key}`} className={buttonVariants({ variant: 'outline', size: 'sm' })} data-testid="unfinished-run-link">
-        <History className="size-4" />
-        {t('syncResults.open')}
-      </Link>
-    </li>
   )
 }
 

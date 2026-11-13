@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, CircleAlert, CirclePause, CirclePlay, FileImage, Minus, Plus, RefreshCw, Search } from 'lucide-react'
@@ -12,6 +12,7 @@ import {
   type SyncRun,
   type SyncRunDetail,
   type SyncRunItem,
+  type SyncRunKind,
   type SyncRunResult,
 } from '@/api/syncRuns'
 import { useDateFormat } from '@/lib/dates'
@@ -114,11 +115,20 @@ function RunSummary({ run }: { run: SyncRun }) {
   )
 }
 
+/** გაშვების სახეობები — სიის ფილტრის ჩიპები იმავე რიგით, რაც სინქრონიზაციის ბარათებია */
+const KINDS: SyncRunKind[] = ['sync', 'episodes', 'cast', 'translate']
+
 function RunList() {
   const { t } = useTranslation()
+  /* სახეობის ფილტრი მისამართშია (`?kind=translate`) — თარგმანის გვერდების „შედეგები" ისტორიას
+     თარგმანზე გაფილტრულს ხსნის; უცნობი მნიშვნელობა — „ყველა" */
+  const [params, setParams] = useSearchParams()
+  const kind = KINDS.find((value) => value === params.get('kind')) ?? null
+  const pickKind = (value: SyncRunKind | null) => setParams(value ? { kind: value } : {}, { replace: true })
+
   const list = usePagedList({
-    queryKey: ['sync-runs'],
-    fetchPage: (page, perPage) => fetchSyncRuns(page, perPage),
+    queryKey: ['sync-runs', kind],
+    fetchPage: (page, perPage) => fetchSyncRuns(page, perPage, kind),
   })
 
   return (
@@ -135,10 +145,25 @@ function RunList() {
         }
       />
 
+      <ChipRow className="mb-3">
+        <Chip active={kind === null} onClick={() => pickKind(null)} data-testid="kind-all">
+          {t('filter.all')}
+        </Chip>
+        {KINDS.map((value) => (
+          <Chip key={value} active={kind === value} onClick={() => pickKind(value)} data-testid={`kind-${value}`}>
+            {t(`syncResults.kind.${value}`)}
+          </Chip>
+        ))}
+      </ChipRow>
+
       {list.isError ? (
         <QueryErrorState error={list.error} onRetry={list.refetch} retrying={list.isFetching} />
       ) : list.isLoading ? null : list.items.length === 0 ? (
-        <EmptyState title={t('syncResults.none')} hint={t('syncResults.noneHint')} />
+        kind ? (
+          <EmptyState size="compact" kind="search" title={t('syncResults.noneOfKind')} />
+        ) : (
+          <EmptyState title={t('syncResults.none')} hint={t('syncResults.noneHint')} />
+        )
       ) : (
         <>
           <ul className="space-y-2">

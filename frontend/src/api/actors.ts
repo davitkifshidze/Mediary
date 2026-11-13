@@ -10,6 +10,14 @@ import type { StackPreview } from '@/components/ui/photo-stack'
    ფილმოგრაფიის. ფილტრი, დახარისხება და გვერდები სერვერზეა — ავზი ათასობითაა.
    ============================================================ */
 
+/**
+ * მანქანური ქართული სახელის ან ბიოგრაფიის დადასტურება (`text`-ის გარეშე) ან ხელით
+ * გასწორება — „გადასამოწმებელია" ნიშანი იხსნება.
+ */
+export async function settleActorGeorgian(id: number, field: 'name' | 'biography', text?: string): Promise<void> {
+  await api.patch(`/cast/${id}/georgian`, { field, ...(text === undefined ? {} : { text }) })
+}
+
 export const ACTORS_KEY = 'actors'
 
 /**

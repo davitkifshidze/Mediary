@@ -5,7 +5,9 @@ namespace App\Services\Sync;
 use App\Models\SyncRun;
 use App\Models\SyncRunItem;
 use App\Services\Cast\CastEnricher;
+use App\Services\Translation\CastTranslator;
 use App\Services\Translation\ItemTranslator;
+use App\Services\Translation\TranslationScanner;
 use App\Support\AppTime;
 use App\Support\SyncOutcome;
 use Illuminate\Http\Request;
@@ -130,6 +132,9 @@ class SyncHistory
             self::KIND_TRANSLATE => [
                 'sources' => $list('sources', ItemTranslator::SOURCES) ?: ItemTranslator::SOURCES,
                 'review' => (bool) ($options['review'] ?? false),
+                // რომელი ნაწილი გაეშვა: ჩანაწერის ველები და მსახიობის ველები; გასაღების გარეშე — ყველა
+                ...(array_key_exists('fields', $options) ? ['fields' => $list('fields', TranslationScanner::FIELDS)] : []),
+                ...(array_key_exists('cast', $options) ? ['cast' => $list('cast', CastTranslator::FIELDS)] : []),
             ],
             self::KIND_CAST => [
                 'fields' => $list('fields', CastEnricher::FIELDS) ?: CastEnricher::FIELDS,

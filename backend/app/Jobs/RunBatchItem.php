@@ -17,6 +17,7 @@ use App\Services\Gallery\GalleryFetcher;
 use App\Services\Sync\ItemSyncer;
 use App\Services\Sync\SyncFacts;
 use App\Services\Sync\SyncHistory;
+use App\Services\Translation\CastTranslator;
 use App\Services\Translation\ItemTranslator;
 use App\Support\MediaDomain;
 use App\Support\Redact;
@@ -100,6 +101,12 @@ class RunBatchItem implements ShouldQueue
      */
     private array $details = [];
 
+    /**
+     * Gemini-ს დღიური ლიმიტი ამოიწურა: ერთეული ისტორიაში **არ იწერება** (ჩავარდნა არ არის) და
+     * პარტია წყდება — გაშვება „გაწყვეტილი" ხდება და მეორე დღეს დარჩენილზე გრძელდება.
+     */
+    private bool $outOfQuota = false;
+
     public function __construct(
         public readonly int $userId,
         public readonly string $kind,
@@ -161,12 +168,23 @@ class RunBatchItem implements ShouldQueue
                გამოტოვებაზე ნორმალურად ბრუნდება, ე.ი. უპირობო `OK` ახლახან
                დაწერილ `skipped`-ს **გადააწერდა** — და სია იტყოდა, რომ
                წაშლილი ჩანაწერი დამუშავდა. */
-            $done = $this->kind === self::KIND_CAST
-                ? $this->runCast($enricher ?? app(CastEnricher::class), $item)
-                : $this->run($user, $syncer, $translator, $gallery, $item);
+            $done = match (true) {
+                $this->kind === self::KIND_CAST => $this->runCast($enricher ?? app(CastEnricher::class), $item),
+                // თარგმანის პარტიაში მსახიობი — ქართული სახელი და ბიოგრაფია
+                $this->kind === 'translate' && $this->type === self::ACTOR => $this->runCastTranslation($item),
+                default => $this->run($user, $syncer, $translator, $gallery, $item),
+            };
 
             if ($done) {
                 $item?->update(['status' => BatchItem::OK]);
+            }
+
+            if ($this->outOfQuota) {
+                // დარჩენილი ერთეულები აღარ გაეშვება — ყოველი მათგანი იმავე ლიმიტს დაეჯახებოდა
+                $item?->update(['status' => BatchItem::SKIPPED, 'error' => 'gemini_quota_exceeded']);
+                $this->batch()?->cancel();
+
+                return;
             }
 
             $this->remember($item);
@@ -336,6 +354,8 @@ class RunBatchItem implements ShouldQueue
                 $record,
                 $this->options['sources'] ?? ItemTranslator::SOURCES,
                 (bool) ($this->options['review'] ?? false),
+                // ერთი ნაწილის გაშვება სხვას არ ეხება; გასაღების გარეშე — ყველაფერი, რაც აკლია
+                array_key_exists('fields', $this->options) ? (array) $this->options['fields'] : null,
             ),
             // ⚠️ `options()` ნედლ შესატანს ნაგულისხმევებით ავსებს — იგივე გზა,
             // რასაც `GalleryController::fetch()` გადის
@@ -352,6 +372,13 @@ class RunBatchItem implements ShouldQueue
            რომ `sync()`-ს ისროლებდა. `ok:false` → გადასროლა (ზემოთა `catch` `failed`-ს
            წერს, ლოგავს და პარტიის მრიცხველს ზრდის); `skipped` → `skipped` მიზეზით
            („ვერაფერი შეივსო", `no_tmdb_id`), თორემ ის „განახლებულად" ჩაითვლებოდა. */
+        // ამოწურული ლიმიტი ჩავარდნა არ არის — ერთეული შედეგის გარეშე რჩება (იხ. `$outOfQuota`)
+        if (is_array($result) && ($result['error'] ?? null) === 'gemini_quota_exceeded') {
+            $this->outOfQuota = true;
+
+            return false;
+        }
+
         if (is_array($result)) {
             // ისტორიისთვის: სეზონებს თავისი პასუხის ფორმა აქვს, დანარჩენს — საერთო
             // ⚠️ ისტორიის შედეგს ნამდვილი ცვლილება აზუსტებს; თარგმანზე ველი → წყარო (`providers`) — რით ითარგმნა
@@ -429,6 +456,61 @@ class RunBatchItem implements ShouldQueue
 
         if ($result !== CastEnricher::UPDATED) {
             $item?->update(['status' => BatchItem::SKIPPED, 'error' => $result]);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * **მსახიობის ქართული სახელი და ბიოგრაფია** — `TranslationController::actor()`-ის იგივე
+     * `CastTranslator`, ოღონდ worker-ში. ⚠️ ჩემი „აღარ განაახლო" მსახიობზე თარგმანსაც აჩერებს;
+     * ჩავარდნა გადაისვრის (პარტიის მრიცხველი ამით ითვლის), ამოწურული ლიმიტი კი — არა.
+     */
+    private function runCastTranslation(?BatchItem $item): bool
+    {
+        $member = CastMember::find($this->recordId);
+
+        if (! $member) {
+            $item?->update(['status' => BatchItem::SKIPPED, 'error' => 'record_not_found']);
+            $this->outcome = [SyncHistory::SKIPPED, [], 'record_not_found'];
+
+            return false;
+        }
+
+        $item?->update(['title' => mb_substr($member->name_ka ?: (string) $member->name, 0, 200)]);
+
+        if (CastMemberSyncPref::withoutGlobalScope('owner')->where('user_id', $this->userId)->where('cast_member_id', $member->getKey())->exists()) {
+            $item?->update(['status' => BatchItem::SKIPPED, 'error' => 'sync_paused']);
+            $this->outcome = [SyncHistory::SKIPPED, [], 'sync_paused'];
+
+            return false;
+        }
+
+        $facts = SyncFacts::watch($member, $this->kind, $this->tracked());
+
+        $result = app(CastTranslator::class)->translate(
+            $member,
+            array_key_exists('cast', $this->options) ? (array) $this->options['cast'] : CastTranslator::FIELDS,
+            $this->options['sources'] ?? ItemTranslator::SOURCES,
+        );
+
+        if ($result['quota']) {
+            $this->outOfQuota = true;
+
+            return false;
+        }
+
+        [$this->outcome, $this->details] = $facts->settle(SyncHistory::outcome($result), $result['providers']);
+        $item?->update(['title' => mb_substr($member->name_ka ?: (string) $member->name, 0, 200)]);
+
+        if (! $result['ok']) {
+            throw new RuntimeException((string) ($result['error'] ?? 'failed'));
+        }
+
+        if ($result['skipped'] || $result['result'] === SyncOutcome::EMPTY) {
+            $item?->update(['status' => BatchItem::SKIPPED, 'error' => $result['result']]);
 
             return false;
         }

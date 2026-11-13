@@ -365,6 +365,8 @@ Route::middleware('auth:sanctum')->group(function () {
        ყოველთვის ჩემია. „აღარ გაეშვას" უფლებას კონტროლერი თითო ტიპზე ამოწმებს. */
     // სინქრონიზაციის გვერდების ბარათები: რამდენია გასაშვები და რა დააბრუნა ბოლო გაშვებამ
     Route::get('/sync/overview', [SyncRunController::class, 'overview']);
+    // ერთი სახეობის დაუსრულებელი გაშვებები და ისტორიის ჯამი — თარგმანის გვერდების ბარათები
+    Route::get('/sync/unfinished', [SyncRunController::class, 'unfinished']);
     Route::get('/sync/runs', [SyncRunController::class, 'index']);
     // ბრაუზერის რიგის გაშვების დასაწყისი: რაზე და რით ეშვება — გაწყვეტილი გაშვება ამით გრძელდება
     Route::post('/sync/runs', [SyncRunController::class, 'store']);
@@ -1415,6 +1417,13 @@ Route::middleware('auth:sanctum')->group(function () {
        მხოლოდ მქონე მომხმარებელს „რამდენი დარჩა" არ უნდა არქვებდეს. */
     Route::get('/translations/usage', [TranslationController::class, 'usage']);
     Route::post('/translations/plan', [TranslationController::class, 'plan']);
+    // ჩაშლილი რიცხვები — თითო ნაწილზე რამდენია სათარგმნი (მთელ ბიბლიოთეკაზე ან ერთ მოდულზე)
+    Route::get('/translations/parts', [TranslationController::class, 'parts']);
+    /* მსახიობის ქართული სახელი და ბიოგრაფია — რიგის ერთი ნაბიჯი. ⚠️ `module:`/`permission:`
+       აქ ვერ დგას (მსახიობს მოდული არ აქვს) — ჩართულ მედია-მოდულს კონტროლერი ამოწმებს. */
+    Route::post('/translations/actor/{castMember}', [TranslationController::class, 'actor'])
+        ->whereNumber('castMember')
+        ->middleware('throttle:translate');
     // ერთი ჩანაწერის თარგმნა — ჯგუფის გარეთ, რადგან POST-ია, მაგრამ **არსებულს ცვლის**:
     // მოქმედება ცხადად `update`-ია (მისამართის ბოლო სეგმენტი id-ია, ე.ი.
     // `UPDATE_ENDPOINTS`-ის ავტომატური ცნობა აქ არ მუშაობს და `create` გამოვიდოდა).
@@ -1573,6 +1582,8 @@ Route::middleware('auth:sanctum')->group(function () {
        ლექსიკონია, ტეგები კი **ჩემია** (`cast_member_tags`, user-ზე).
        ⚠️ `PUT`-ია: მთელი ნაკრების ჩანაცვლებაა და POST `create`-ად იკითხებოდა. */
     Route::put('/cast/{castMember}/tags', [CastController::class, 'updateTags']);
+    // მანქანური ქართული სახელის ან ბიოგრაფიის დადასტურება / გასწორება — „გადასამოწმებელია" ნიშანი იხსნება
+    Route::patch('/cast/{castMember}/georgian', [CastController::class, 'georgian'])->whereNumber('castMember');
     /* პიროვნების მონაცემები TMDB-დან (ბიოგრაფია, IMDb, ბმულები).
        ⚠️ **`resync` და არა `sync`**: `EnsureModulePermission::UPDATE_ENDPOINTS`
        სწორედ ამ სიტყვას იცნობს, ე.ი. მარშრუტის მოდულის ჯგუფში გადატანა

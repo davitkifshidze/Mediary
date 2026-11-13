@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\CastMember;
+use App\Models\CastMemberSyncPref;
 use App\Services\Audit\AuditLogger;
+use App\Services\Cast\CastPool;
 use App\Services\Sync\SyncFacts;
 use App\Services\Sync\SyncHistory;
 use App\Services\Tmdb\TmdbClient;
+use App\Services\Translation\CastTranslator;
 use App\Services\Translation\ItemTranslator;
 use App\Services\Translation\TranslationScanner;
 use App\Services\Translation\Translator;
@@ -16,8 +20,10 @@ use App\Support\MediaDomain;
 use App\Support\MissingCredential;
 use App\Support\Redact;
 use App\Support\SyncOutcome;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 /**
  * თარგმანები.
@@ -28,9 +34,18 @@ use Illuminate\Support\Facades\Log;
  *
  * ჟანრები გამონაკლისია: ისინი ათეულებია და გლობალური ლექსიკონია, ამიტომ ერთ
  * რექვესთში მუშავდება (`genres`).
+ *
+ * ⚠️ **თარგმანი ნაწილებად იშლება** (`TranslationScanner::PARTS`): `parts` თითო ნაწილის
+ * რიცხვს აბრუნებს (მთელ ბიბლიოთეკაზე ან ერთ მოდულზე — `type`), `plan` კი მხოლოდ არჩეულ
+ * ნაწილებს გეგმავს. მსახიობის ქართული სახელი და ბიოგრაფია ცალკე ერთეულია (`actor`).
+ * ⚠️ **ამოწურული დღიური ლიმიტი ისტორიაში ჩავარდნად არ იწერება**: ერთეული შედეგის გარეშე
+ * რჩება, გაშვება ჩერდება და მეორე დღეს დარჩენილზე გრძელდება.
  */
 class TranslationController extends Controller
 {
+    /** Gemini-ს დღიური ლიმიტი ამოიწურა (`Translator::lastError()`) */
+    private const QUOTA = 'gemini_quota_exceeded';
+
     /**
      * ჰედერის badge — „გაქვს N სათარგმნი".
      * აბრუნებს იმასაც, თარჯიმანი და TMDB საერთოდ კონფიგურირებულია თუ არა,
@@ -46,12 +61,36 @@ class TranslationController extends Controller
         ]);
     }
 
+    /**
+     * **ჩაშლილი რიცხვები** — თარგმანის გვერდების ბარათები: თითო ნაწილზე რამდენია სათარგმნი.
+     * `type` — მოდულის გვერდი (`/series/translations`): მხოლოდ ამ მოდულის ჩანაწერები და
+     * მათი მსახიობები; ჟანრები გლობალურია და ორივეგან ერთია.
+     */
+    public function parts(Request $request, TranslationScanner $scanner, Translator $translator, TmdbClient $tmdb): JsonResponse
+    {
+        $data = $request->validate(['type' => ['sometimes', Rule::in(TranslationScanner::TYPES)]]);
+        $requested = isset($data['type']) ? [$data['type']] : null;
+        $user = $request->user();
+
+        $types = array_values(array_intersect($requested ?? TranslationScanner::TYPES, $this->enabledTypes($request)));
+
+        return response()->json([
+            'types' => $types,
+            'parts' => $scanner->parts($types, CastPool::typesFor($user, $requested), (int) $user->getKey()),
+            'translator_configured' => $translator->configured(),
+            'tmdb_configured' => $tmdb->configured(),
+        ]);
+    }
+
     /** ფილტრები → დასამუშავებელი ჩანაწერების რიგი */
-    public function plan(Request $request, TranslationScanner $scanner)
+    public function plan(Request $request, TranslationScanner $scanner, Translator $translator)
     {
         $data = $request->validate([
             'types' => ['nullable', 'array'],
             'types.*' => ['in:'.implode(',', TranslationScanner::TYPES)],
+            // რომელი ნაწილები გაეშვას; გასაღების გარეშე — ყველა ველი (ძველი ქცევა), მსახიობების გარეშე
+            'parts' => ['sometimes', 'array'],
+            'parts.*' => [Rule::in(TranslationScanner::PARTS)],
             /* სტატუსი per-user ლექსიკონია, ე.ი. მისი სია კოდში აღარ დგას.
                ფილტრი **გასაღებით** მოდის; უცნობი გასაღები უბრალოდ ცარიელ
                შედეგს იძლევა (ეს ფილტრია და არა წაშლის სკოუპი). */
@@ -74,25 +113,78 @@ class TranslationController extends Controller
             $this->enabledTypes($request),
         ));
 
+        /* ნაწილები: `parts`-ით მოსული არჩევანი ველებს, გადამოწმებას, ჟანრებსა და მსახიობებს
+           ერთად წყვეტს; მის გარეშე მოქმედებს ძველი გასაღებები (`review`, `include_genres`). */
+        $parts = $request->has('parts') ? array_values(array_unique($data['parts'] ?? [])) : null;
+        $fields = $parts === null ? null : array_values(array_intersect(TranslationScanner::FIELDS, $parts));
+        $review = $parts === null ? $request->boolean('review') : in_array(TranslationScanner::PART_REVIEW, $parts, true);
+        $withGenres = $parts === null ? $request->boolean('include_genres') : in_array(TranslationScanner::PART_GENRES, $parts, true);
+
         $plan = $scanner->plan($types, [
             'status' => $data['status'] ?? null,
             'favorite' => $request->boolean('favorite'),
             'genres' => $data['genres'] ?? [],
             'ids' => $data['ids'] ?? [],
             'hide_processed' => $request->boolean('hide_processed'),
-        ], $request->boolean('review'));
+        ], $review, $fields);
 
-        $genres = $request->boolean('include_genres') ? $plan['genres'] : 0;
+        // მსახიობები — იმავე მოდულების ბიბლიოთეკიდან; ჩანაწერების ფილტრი (სტატუსი, ჟანრი…) მათ არ ეხება
+        $user = $request->user();
+        $cast = $scanner->castPlan(CastPool::typesFor($user, $types), (int) $user->getKey(), $parts ?? []);
+
+        $genres = $withGenres ? $plan['genres'] : 0;
         $count = count($plan['items']);
 
         return response()->json([
             'items' => $plan['items'],
             'count' => $count,
+            // მსახიობები ცალკე ერთეულებია (`type: actor`) — რიგში ჩანაწერების შემდეგ დგება
+            'cast' => $cast,
+            'cast_count' => count($cast),
             // ჟანრები ერთი რექვესთია, ე.ი. რიგში ერთ ერთეულად ჯდება
             'genres' => $genres,
             'genres_pending' => $plan['genres'],
-            'eta_seconds' => (int) ceil(($count + ($genres ? 1 : 0)) * 60 / TranslationScanner::ITEMS_PER_MINUTE),
+            'eta_seconds' => (int) ceil(($count + count($cast) + ($genres ? 1 : 0)) * 60 / TranslationScanner::ITEMS_PER_MINUTE),
+            'gemini' => $this->geminiCost($plan['items'], $cast, $review, $translator),
         ]);
+    }
+
+    /**
+     * **რამდენ დღეს გაწვდება Gemini-ს დღიური ლიმიტი** — გაშვებამდე.
+     *
+     * ⚠️ რიცხვი **ზედა ზღვარია**: თითო ნაკლულ ველზე, გადასამოწმებელ აღწერაზე და მსახიობის
+     * სახელსა თუ ბიოგრაფიაზე ერთი მოთხოვნა; რასაც TMDB თვითონ შეავსებს, Gemini-მდე არ მიდის.
+     * `days` — `null`, როცა ლიმიტი გამორთულია ან გასაღები არ არის.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @param  list<array<string, mixed>>  $cast
+     * @return array{requests: int, limit: int, remaining: ?int, days: ?int}
+     */
+    private function geminiCost(array $items, array $cast, bool $review, Translator $translator): array
+    {
+        $requests = 0;
+
+        foreach ($items as $item) {
+            $requests += count($item['missing']) + ($review && $item['review'] ? 1 : 0);
+        }
+
+        foreach ($cast as $actor) {
+            $requests += count($actor['missing']);
+        }
+
+        $usage = $translator->usage();
+        $limit = (int) $usage['limit'];
+        $remaining = $usage['remaining'];
+
+        return [
+            'requests' => $requests,
+            'limit' => $limit,
+            'remaining' => $remaining,
+            // დღეს — რაც დარჩა; შემდეგ დღეებში — სრული ლიმიტი
+            'days' => ! $usage['configured'] || $limit <= 0 || $requests === 0
+                ? null
+                : ($requests <= (int) $remaining ? 1 : 1 + (int) ceil(($requests - (int) $remaining) / $limit)),
+        ];
     }
 
     /**
@@ -107,6 +199,8 @@ class TranslationController extends Controller
         }
 
         $sources = $this->sources($request);
+        // ერთი ნაწილის გაშვება სხვას არ ეხება: `fields` — მხოლოდ ეს ველები (მის გარეშე — რაც აკლია)
+        $fields = $this->fields($request);
         /* ⚠️ **`review` ცალკე დროშაა და არა მესამე „წყარო".** ის სხვა ღერძია:
            წყაროები *ცარიელ* ველს ავსებენ, გადამოწმება კი **არსებულ** ტექსტს
            ეხება. სიაში ჩადებული ის „მარტო TMDB + გადამოწმება"-ს შეუძლებელს
@@ -121,7 +215,7 @@ class TranslationController extends Controller
         // ისტორიისთვის: ჩანაწერი თარგმნამდე — რა ტექსტი ჩაიწერა, სხვაობიდან მოდის
         $facts = SyncFacts::watch($item, SyncHistory::KIND_TRANSLATE, $history->tracks($request));
 
-        $result = $translator->translate($item, $sources, $review);
+        $result = $translator->translate($item, $sources, $review, $fields);
 
         if (! $result['ok']) {
             Log::warning('translate failed', ['type' => $type, 'id' => $id, 'error' => $result['error']]);
@@ -147,10 +241,13 @@ class TranslationController extends Controller
 
         $title = $item->title_ka ?: ($item->title_en ?: '#'.$item->id);
 
-        // რიგის გაშვება (`run`) სინქრონიზაციის ისტორიაში იწერება — რომელი ველი ითარგმნა
-        // ველი → წყარო: ისტორია ამბობს, რით ითარგმნა
-        [$outcome, $details] = $facts->settle(SyncHistory::outcome($result), $result['providers'] ?? []);
-        $history->fromRequest($request, SyncHistory::KIND_TRANSLATE, $type, $id, $title, $outcome, $details);
+        /* რიგის გაშვება (`run`) სინქრონიზაციის ისტორიაში იწერება — რომელი ველი ითარგმნა და რით.
+           ⚠️ ამოწურული ლიმიტი ჩავარდნად არ იწერება: ერთეული შედეგის გარეშე რჩება და გაშვების
+           გაგრძელებას ელის. */
+        if ($result['error'] !== self::QUOTA) {
+            [$outcome, $details] = $facts->settle(SyncHistory::outcome($result), $result['providers'] ?? []);
+            $history->fromRequest($request, SyncHistory::KIND_TRANSLATE, $type, $id, $title, $outcome, $details);
+        }
 
         return response()->json([
             'ok' => $result['ok'],
@@ -162,6 +259,90 @@ class TranslationController extends Controller
             'error' => $result['error'],
             'title' => $title,
         ]);
+    }
+
+    /**
+     * **ერთი მსახიობის ქართული სახელი და/ან ბიოგრაფია** — რიგის ერთი ნაბიჯი.
+     *
+     * ⚠️ **`module:`/`permission:` middleware აქ ვერ დგას** — მსახიობს მოდული არ აქვს;
+     * „ვის შეუძლია" ჩართული მედია-მოდული წყვეტს (`CastPool::typesFor()` — მსახიობების
+     * სინქრონიზაციის წესი). ⚠️ ჩემი „აღარ განაახლო" მსახიობზე თარგმანსაც აჩერებს.
+     * ⚠️ per-item შეცდომა 200-ით ბრუნდება, რომ რიგი არ გაწყდეს; ამოწურულ ლიმიტზე
+     * (`gemini_quota_exceeded`) რიგი თვითონ ჩერდება და ერთეული ისტორიაში არ იწერება.
+     */
+    public function actor(Request $request, CastMember $castMember, CastTranslator $translator, AuditLogger $audit, SyncHistory $history): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! CastPool::typesFor($user)) {
+            return response()->json(['message' => 'module_disabled'], 403);
+        }
+
+        $data = $request->validate([
+            'fields' => ['sometimes', 'array', 'min:1'],
+            'fields.*' => [Rule::in(CastTranslator::FIELDS)],
+        ]);
+        $sources = $this->sources($request);
+        $title = $castMember->name_ka ?: $castMember->name;
+
+        if (CastMemberSyncPref::withoutGlobalScope('owner')->where('user_id', $user->getKey())->where('cast_member_id', $castMember->getKey())->exists()) {
+            $history->fromRequest($request, SyncHistory::KIND_TRANSLATE, SyncHistory::ACTOR, (int) $castMember->getKey(), $title, [SyncHistory::SKIPPED, [], 'sync_paused']);
+
+            return response()->json(['ok' => true, 'skipped' => true, 'changed' => [], 'providers' => [], 'result' => null, 'error' => null, 'title' => $title]);
+        }
+
+        // ისტორიისთვის: მსახიობი თარგმნამდე — რა ტექსტი ჩაიწერა, სხვაობიდან მოდის
+        $facts = SyncFacts::watch($castMember, SyncHistory::KIND_TRANSLATE, $history->tracks($request));
+
+        $result = $translator->translate($castMember, $data['fields'] ?? CastTranslator::FIELDS, $sources);
+
+        if (! $result['ok']) {
+            Log::warning('translate actor failed', ['id' => $castMember->getKey(), 'error' => $result['error']]);
+        }
+
+        $title = $castMember->name_ka ?: $castMember->name;
+
+        // „რა რითი ითარგმნა" — ლოგში, როგორც ჩანაწერზე; გამოტოვებული არ იწერება
+        if ($result['changed']) {
+            $audit->log(AuditLog::ACTION_TRANSLATE, [
+                'module' => 'cast',
+                'subject_id' => $castMember->getKey(),
+                'subject_label' => $title,
+                'new_values' => $result['providers'],
+                'old_values' => ['sources' => implode(',', $sources)],
+            ]);
+        }
+
+        if (! $result['quota']) {
+            [$outcome, $details] = $facts->settle(SyncHistory::outcome($result), $result['providers']);
+            $history->fromRequest($request, SyncHistory::KIND_TRANSLATE, SyncHistory::ACTOR, (int) $castMember->getKey(), $title, $outcome, $details);
+        }
+
+        return response()->json([
+            'ok' => $result['ok'] && ! $result['quota'],
+            'skipped' => $result['skipped'],
+            'changed' => $result['changed'],
+            'providers' => $result['providers'],
+            'result' => $result['result'],
+            'error' => $result['error'],
+            'title' => $title,
+        ]);
+    }
+
+    /**
+     * რომელი ველები ითარგმნოს (`TranslationScanner::FIELDS`); გასაღების გარეშე — `null`,
+     * ე.ი. ყველაფერი, რაც აკლია. ⚠️ ცარიელი სია ნიშნავს „არცერთი ველი" — მხოლოდ გადამოწმება.
+     *
+     * @return array<int, string>|null
+     */
+    private function fields(Request $request): ?array
+    {
+        $data = $request->validate([
+            'fields' => ['sometimes', 'array'],
+            'fields.*' => [Rule::in(TranslationScanner::FIELDS)],
+        ]);
+
+        return $request->has('fields') ? array_values(array_unique($data['fields'] ?? [])) : null;
     }
 
     /**

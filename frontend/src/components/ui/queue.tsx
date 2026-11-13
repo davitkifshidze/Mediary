@@ -31,8 +31,12 @@ import {
   type SyncPlanItem,
 } from '@/api/media'
 import {
+  translateActor,
   translateGenres,
   translateItem,
+  type CastTranslationField,
+  type TranslationCastItem,
+  type TranslationField,
   type TranslationPlanItem,
   type TranslationSource,
 } from '@/api/translations'
@@ -148,6 +152,18 @@ interface QItem {
    * ჩართვაც" და „ჩუმად ჩაქრობაც" ერთნაირად ცუდია.
    */
   review?: boolean
+  /**
+   * translate — მხოლოდ ეს ველები (ერთი ნაწილის გაშვება სხვას არ ეხება); მის გარეშე —
+   * ყველაფერი, რაც აკლია. ⚠️ ერთეულზეა იმავე მიზეზით, რაც `sources`.
+   */
+  fields?: TranslationField[]
+  /**
+   * translate — ერთეული **მსახიობია** (ქართული სახელი და/ან ბიოგრაფია) და არა ჩანაწერი;
+   * `castFields` — რა ითარგმნოს მასზე. ⚠️ ცალკე დროშა და არა `mediaType`
+   * (`galleryActor`-ის მიზეზი): მსახიობის id-ს და ფილმის id-ს ერთი რიცხვი შეიძლება ჰქონდეს.
+   */
+  translateActor?: boolean
+  castFields?: CastTranslationField[]
   /** purge — რა სამიზნეზე და ვისთან იშლება */
   purgeOpts?: PurgeQueueOptions
   /**
@@ -231,12 +247,16 @@ interface QueueApi {
   enqueueSync: (items: SyncPlanItem[], opts: SyncOptions) => void
   /** გალერეის ჩამოტვირთვა — იგივე მოდელი, რაც სინქრონზე */
   enqueueGallery: (items: GalleryPlanItem[], opts: GalleryOptions) => void
-  /** თარგმანების შევსება; `genres` — ლექსიკონიც ერთ ერთეულად */
+  /**
+   * თარგმანების შევსება; `genres` — ლექსიკონიც ერთ ერთეულად. `parts` — ნაწილებად გაშვება:
+   * `fields` ჩანაწერის ველებს ავიწროებს, `cast` — გეგმის მსახიობები (ჩანაწერების შემდეგ).
+   */
   enqueueTranslate: (
     items: TranslationPlanItem[],
     genres?: boolean,
     sources?: TranslationSource[],
     review?: boolean,
+    parts?: { fields?: TranslationField[]; cast?: TranslationCastItem[] },
   ) => void
   /** ⚠️ მასობრივი წაშლა — მხოლოდ დადასტურებული სკოუპით */
   enqueuePurge: (items: PurgePlanItem[], opts: PurgeQueueOptions) => void
@@ -476,19 +496,31 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     genres = false,
     sources?: TranslationSource[],
     review = false,
+    parts?: { fields?: TranslationField[]; cast?: TranslationCastItem[] },
   ) => {
     setExpanded(true) // თარგმანი გრძელია — პროგრესი მაშინვე ჩანს
     const run = newRunKey()
-    // ჟანრების ლექსიკონი ისტორიის ერთეული არ არის — გეგმაში მხოლოდ ჩანაწერებია
-    const taken = busyKeys('translate', (i) => (i.genresDict ? 'genres' : `${i.mediaType}:${i.itemId}`))
+    /** რიგის გასაღები: ჟანრები · მსახიობი · ჩანაწერი — მსახიობისა და ფილმის id შეიძლება დაემთხვეს */
+    const keyOf = (i: QItem) => (i.genresDict ? 'genres' : i.translateActor ? `actor:${i.itemId}` : `${i.mediaType}:${i.itemId}`)
+    // ჟანრების ლექსიკონი ისტორიის ერთეული არ არის — გეგმაში ჩანაწერები და მსახიობებია
+    const taken = busyKeys('translate', keyOf)
     const planned = toRun.filter((r) => !taken.has(`${r.type}:${r.id}`))
-    announceRun(run, 'translate', planned.map((r) => ({ type: r.type, id: r.id })), { sources, review })
+    const actors = (parts?.cast ?? []).filter((a) => !taken.has(`actor:${a.id}`))
+    const total = planned.length + actors.length
+    // მსახიობებზე რა ითარგმნება — გაშვების პარამეტრი (გაგრძელება იმავეს უშვებს)
+    const castFields = [...new Set(actors.flatMap((a) => a.missing))]
+    announceRun(
+      run,
+      'translate',
+      [...planned.map((r) => ({ type: r.type as string, id: r.id })), ...actors.map((a) => ({ type: 'actor', id: a.id }))],
+      { sources, review, ...(parts?.fields ? { fields: parts.fields } : {}), ...(actors.length ? { cast: castFields } : {}) },
+    )
     setItems((cur) => {
       const base = freshBase(cur)
       const busy = new Set(
         cur
           .filter((i) => i.kind === 'translate' && (i.status === 'pending' || i.status === 'running'))
-          .map((i) => (i.genresDict ? 'genres' : `${i.mediaType}:${i.itemId}`)),
+          .map(keyOf),
       )
       const fresh: QItem[] = planned
         .filter((r) => !busy.has(`${r.type}:${r.id}`))
@@ -501,9 +533,28 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           status: 'pending' as QStatus,
           sources,
           review,
+          fields: parts?.fields,
           run,
-          runTotal: planned.length,
+          runTotal: total,
         }))
+      // მსახიობები — ჩანაწერების შემდეგ: ქართული სახელი და ბიოგრაფია
+      for (const actor of actors) {
+        if (busy.has(`actor:${actor.id}`)) continue
+        fresh.push({
+          id: nextId++,
+          kind: 'translate' as QKind,
+          itemId: actor.id,
+          title: actor.title,
+          // ⚠️ მსახიობი მედია-დომენი არ არის — `mediaType` მხოლოდ ქეშის გასუფთავებაა
+          mediaType: 'movie',
+          status: 'pending' as QStatus,
+          translateActor: true,
+          castFields: actor.missing,
+          sources,
+          run,
+          runTotal: total,
+        })
+      }
       // ჟანრები ბოლოს — ერთი რექვესთი მთელ ლექსიკონზე
       if (genres && !busy.has('genres')) {
         fresh.push({
@@ -747,7 +798,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           : next.kind === 'translate'
             ? (next.genresDict
                 ? translateGenres(next.sources, ctrl.signal)
-                : translateItem(next.mediaType, next.itemId!, next.sources, next.review, ctrl.signal, runParams(next))
+                : next.translateActor
+                  ? // მსახიობის ქართული სახელი და ბიოგრაფია — ჩანაწერის თარგმანზე არ გადის
+                    translateActor(next.itemId!, { fields: next.castFields, sources: next.sources }, ctrl.signal, runParams(next))
+                  : translateItem(next.mediaType, next.itemId!, next.sources, next.review, ctrl.signal, runParams(next), next.fields)
               ).then((r) => ({ ok: r.ok, error: r.error ?? undefined, skipped: r.skipped, result: r.result ?? null, changed: r.changed }))
             : next.kind === 'import'
               ? importItem(next.importToken!, next.importSource!, next.importIndex!, ctrl.signal).then((r) => ({
@@ -818,6 +872,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           ...(next.kind === 'import' ? [...importListKeys(next.mediaType), 'dashboard', 'export', 'storage-files'] : []),
           // მსახიობის გვერდი (`actor`) ზემოთაა; გეგმის რიცხვები კი იცვლება
           ...(next.kind === 'cast' ? ['cast-sync-plan'] : []),
+          // თარგმანის ბარათების ჩაშლილი რიცხვები
+          ...(next.kind === 'translate' ? ['translation-parts', 'sync-kind-runs'] : []),
           // ისტორიაში ჩაწერილი ერთეული: სინქრონიზაციის ბარათების რიცხვები და გაშვებების სია
           ...(next.run ? ['sync-overview', 'sync-runs'] : []),
           /* ახალი ჩანაწერი: დეშბორდის მთვლელი და ბმულის გვერდის „უკვე გაქვს ✓";
@@ -839,9 +895,18 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
            იმპორტი) შეიძლება თქვას, და მაშინ იგივე სახეობის დანარჩენი ერთეულიც
            ზუსტად ასე ჩავარდებოდა — ამიტომ ისინი რიგიდან იშლება (413-ის წესი). */
         const noKey = !ok && error === 'credential_missing'
+        /* ⚠️ **Gemini-ს დღიური ლიმიტი ამოიწურა** — დარჩენილი თარგმანის ერთეულიც ზუსტად ასე
+           დაბრუნდებოდა, ამიტომ რიგიდან იშლება და გაშვება ისტორიაში „გაწყვეტილი" ხდება:
+           მეორე დღეს იქიდან გრძელდება (ერთეული ჩავარდნილად არ იწერება). */
+        const outOfQuota = !ok && error === 'gemini_quota_exceeded'
+        if (outOfQuota && next.run) {
+          void stopSyncRun(next.run)
+            .then(() => ['sync-overview', 'sync-runs', 'sync-run', 'sync-kind-runs'].forEach((key) => qc.invalidateQueries({ queryKey: [key] })))
+            .catch(() => {})
+        }
         setItems((cur) =>
           cur
-            .filter((i) => !(noKey && i.status === 'pending' && i.kind === next.kind))
+            .filter((i) => !((noKey || outOfQuota) && i.status === 'pending' && i.kind === next.kind))
             .map((i) =>
               i.id === next.id
                 ? {
@@ -988,7 +1053,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const pauseOne = React.useCallback(
     async (it: QItem) => {
       try {
-        if (it.kind === 'cast') await setActorSyncPaused(it.itemId!, true)
+        if (it.kind === 'cast' || it.translateActor) await setActorSyncPaused(it.itemId!, true)
         else await setSyncPaused(it.mediaType, it.itemId!, true)
         setItems((cur) => cur.map((i) => (i.id === it.id ? { ...i, paused: true } : i)))
         qc.invalidateQueries({ queryKey: [it.mediaType] })
@@ -1056,8 +1121,11 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       const first = pendingItems[0]
       const batch = await startBatch(
         handoffKind,
-        // ⚠️ მსახიობის ერთეულს დომენი არ აქვს — სერვერი `type: 'actor'`-ს ელის
-        pendingItems.map((i) => ({ type: i.kind === 'cast' ? 'actor' : i.mediaType, id: i.itemId! })),
+        // ⚠️ მსახიობის ერთეულს დომენი არ აქვს — სერვერი `type: 'actor'`-ს ელის;
+        // ჟანრების ლექსიკონს id არ აქვს და პარტიაში არ გადადის
+        pendingItems
+          .filter((i) => i.itemId != null)
+          .map((i) => ({ type: i.kind === 'cast' || i.translateActor ? 'actor' : i.mediaType, id: i.itemId! })),
         /* ⚠️ პარამეტრები **პირველი ერთეულიდან** მოდის: რიგი ერთი დიალოგიდან
            იბადება, ე.ი. ისინი მთელ პარტიაზე ერთი და იგივეა. */
         handoffKind === 'sync'
@@ -1066,7 +1134,15 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             ? { ...(first.galleryOpts ?? {}) }
             : handoffKind === 'cast'
               ? { ...(first.castOpts ?? {}) }
-              : { sources: first.sources, review: first.review },
+              : {
+                  sources: first.sources,
+                  review: pendingItems.some((i) => i.review),
+                  // ნაწილებად გაშვებული თარგმანი სერვერზეც ნაწილებად რჩება
+                  ...(pendingItems.some((i) => i.fields) ? { fields: pendingItems.find((i) => i.fields)?.fields } : {}),
+                  ...(pendingItems.some((i) => i.translateActor)
+                    ? { cast: [...new Set(pendingItems.flatMap((i) => i.castFields ?? []))] }
+                    : {}),
+                },
         /* ერთი გაშვების დარჩენილი ნაწილი იმავე გაშვებაში გრძელდება — ისტორიაში ორი
            ნახევარი არ ჩნდება; რამდენიმე გაშვების ნარევი კი ახალი გაშვებაა */
         pendingItems.every((i) => i.run && i.run === first.run) ? first.run : undefined,

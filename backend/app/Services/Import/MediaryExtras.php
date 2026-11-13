@@ -4,6 +4,7 @@ namespace App\Services\Import;
 
 use App\Models\BookmarkOwnField;
 use App\Models\CastMember;
+use App\Models\CastMemberTranslation;
 use App\Models\EpisodeWatch;
 use App\Models\TvEpisode;
 use App\Models\User;
@@ -279,6 +280,16 @@ class MediaryExtras
 
             if (! $member) {
                 $member = $this->newMember($user, $item, $name, $tmdb, $files);
+            }
+
+            // ქართული ბიოგრაფია: მსახიობი საერთო ჩანაწერია — იწერება მხოლოდ მაშინ, როცა ჯერ არ აქვს
+            $biography = is_string($item['biography_ka'] ?? null) ? mb_substr(trim($item['biography_ka']), 0, 10000) : '';
+            if ($biography !== '' && ! $member->biography_ka) {
+                $member->setGeorgian(
+                    'biography',
+                    $biography,
+                    ($item['biography_ka_unverified'] ?? false) ? CastMemberTranslation::SOURCE_TRANSLATION : null,
+                );
             }
 
             $attach[$member->getKey()] = [

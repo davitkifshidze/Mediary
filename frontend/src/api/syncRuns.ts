@@ -38,6 +38,8 @@ export interface SyncRunParams {
   overwrite_photo?: boolean
   sources?: string[]
   review?: boolean
+  /** თარგმანი: მსახიობის რომელი ველები (`name` · `biography`) */
+  cast?: string[]
 }
 
 export interface SyncRun {
@@ -116,13 +118,25 @@ export interface SyncOverview {
   unfinished: SyncRun[]
 }
 
+/** ერთი სახეობის ისტორიის ჯამი და დაუსრულებელი გაშვებები — თარგმანის გვერდების ბარათები */
+export interface SyncKindRuns {
+  runs: number
+  latest: SyncRun | null
+  unfinished: SyncRun[]
+}
+
+export async function fetchSyncKindRuns(kind: SyncRunKind, type?: string): Promise<SyncKindRuns> {
+  const { data } = await api.get<SyncKindRuns>('/sync/unfinished', { params: { kind, ...(type ? { type } : {}) } })
+  return data
+}
+
 export async function fetchSyncOverview(type?: string): Promise<SyncOverview> {
   const { data } = await api.get<SyncOverview>('/sync/overview', { params: type ? { type } : undefined })
   return data
 }
 
-export async function fetchSyncRuns(page = 1, perPage = 10): Promise<Page<SyncRun>> {
-  const { data } = await api.get('/sync/runs', { params: { page, per_page: perPage } })
+export async function fetchSyncRuns(page = 1, perPage = 10, kind?: SyncRunKind | null): Promise<Page<SyncRun>> {
+  const { data } = await api.get('/sync/runs', { params: { page, per_page: perPage, kind: kind ?? undefined } })
   return readPage<SyncRun>(data)
 }
 

@@ -1,26 +1,30 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Languages, Sparkles } from 'lucide-react'
+import { ArrowLeft, Gauge, Languages, Sparkles, Timer } from 'lucide-react'
 import { fetchTranslationSummary, fetchTranslationUsage } from '@/api/translations'
 import { TRANSLATE_DELAY_OPTIONS, useSettings } from '@/lib/settings'
 import { useDateFormat } from '@/lib/dates'
 import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
-import { TranslateDialog } from '@/components/TranslateDialog'
-import { NumberSelect, SettingRow } from '@/components/SettingRow'
+import { NumberSelect } from '@/components/SettingRow'
 import { SettingsSaveBar } from '@/components/SettingsSaveBar'
-import { Button } from '@/components/ui/button'
+import { TranslationCards } from '@/components/TranslationCards'
 import { InfoHint } from '@/components/ui/info-hint'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { TaskCard } from '@/components/ui/task-card'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   თარგმანები — ცალკე გვერდი, სინქრონის ანალოგიით.
+   თარგმანები — ცალკე გვერდი, ბარათებად (სინქრონის ანალოგიით).
 
-   რიცხვები „რამდენი ჩანაწერია ნაკლული თარგმანით" და არა „რამდენი ჩანაწერია".
-   ⚠️ ჩანაწერი მხოლოდ მაშინ ითვლება, თუ ტექსტი **ერთ ენაზე მაინც არის** —
+   ზემოთ — **ნაწილები** (`TranslationCards`): თითო ნაწილს თავისი რიცხვი და გაშვება აქვს,
+   „ყველაფერი" ერთი ღილაკია; მოდულის გვერდი (`/movies/translations`…) იმავე ბარათებს
+   ხატავს თავის მოდულზე. ქვემოთ — ცალკე ბარათებად ის, რაც მთელ თარგმანს ეხება: **წყაროები**
+   (რითი ითარგმნება და რომელი გასაღები აკლია), **ხარჯი** (Gemini-ს დღიური ლიმიტი) და
+   **პაუზა** ერთეულებს შორის. ბოლოს — რა რითი ითარგმნა და რა ვერ შეივსო.
+
+   ⚠️ ჩანაწერი მხოლოდ მაშინ ითვლება სათარგმნად, თუ ტექსტი **ერთ ენაზე მაინც არის** —
    თარგმანს წყარო სჭირდება; სრულიად ცარიელი აღწერა `/sync`-ის საქმეა.
    ============================================================ */
 
@@ -28,9 +32,9 @@ export function TranslationsPage() {
   const { t } = useTranslation()
   const { dateTime } = useDateFormat()
   const { settings, set, isDirty } = useSettings()
-  const [open, setOpen] = useState(false)
 
-  const { data, isLoading } = useQuery({
+  // რომელი გასაღები მაქვს — წყაროების ბარათისთვის
+  const { data } = useQuery({
     queryKey: ['translations', 'summary'],
     queryFn: fetchTranslationSummary,
   })
@@ -43,12 +47,6 @@ export function TranslationsPage() {
   const recent = usageQ.data?.recent ?? []
   // ბოლო გაშვებებზე ვერაფერი შეივსო (ცარიელი · ჩავარდნილი)
   const unfilled = usageQ.data?.unfilled ?? []
-
-  const rows: { key: string; label: string; count: number }[] = [
-    { key: 'movie', label: t('nav.movies'), count: data?.movie ?? 0 },
-    { key: 'series', label: t('nav.series'), count: data?.series ?? 0 },
-    { key: 'genres', label: t('genres.title'), count: data?.genres ?? 0 },
-  ]
 
   return (
     <PageContainer>
@@ -66,113 +64,94 @@ export function TranslationsPage() {
         hint={<InfoHint info={t('translate.pageHint')} />}
       />
 
-      <section className="rounded-xl border border-border bg-card p-5">
-        <dl className="grid gap-3 sm:grid-cols-3">
-          {rows.map((r) => (
-            <div key={r.key} className="rounded-lg border border-border p-3">
-              <dt className="text-sm text-muted-foreground">{r.label}</dt>
-              <dd className="mt-1 text-2xl font-semibold tabular-nums">{isLoading ? '—' : r.count}</dd>
-            </div>
-          ))}
-        </dl>
+      <TranslationCards />
 
-        <p className="mt-4 text-sm text-muted-foreground">
-          {data?.total === 0 ? t('translate.allDone') : t('translate.desc')}
-        </p>
-
-        {/* ⚠️ **გადასამოწმებელი ჯამში არ შედის** (ის ნაკლული თარგმანი არაა),
-            ამიტომ აქ ცალკე ითქმება — თორემ „ყველაფერი ნათარგმნია" ერთადერთი
-            წარწერა იქნებოდა და რეჟიმამდე მისვლა შეუძლებელი. */}
-        {(data?.reviewable ?? 0) > 0 && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t('translate.reviewablePending', { count: data?.reviewable ?? 0 })}
-          </p>
-        )}
-
-        {/* ღილაკი გადამოწმებაზეც უნდა იხსნებოდეს — თორემ სრულად ნათარგმნ
-            ბიბლიოთეკაზე დიალოგი საერთოდ აღარ გაიხსნებოდა */}
-        <Button
-          className="mt-4"
-          onClick={() => setOpen(true)}
-          disabled={!data?.total && !data?.reviewable}
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        {/* რითი ითარგმნება — პატიოსნად, რომ „რატომ არ ითარგმნა" კითხვა არ დარჩეს */}
+        <TaskCard
+          color="var(--tool-translations)"
+          icon={Languages}
+          title={t('translate.sources')}
+          info={[t('translate.sourceTmdb'), t('translate.sourceGemini'), t('translate.sourceNever'), t('translate.sourceReview')].join(' ')}
+          text={t('translate.sourcesText')}
+          count={null}
+          data-testid="sources-block"
         >
-          <Languages className="size-4" />
-          {t('translate.open')}
-        </Button>
+          {/* გასაღები ანგარიშისაა: შეტყობინებას „მონაცემების" ბმულიც ახლავს */}
+          {data && !data.translator_configured && (
+            <CredentialMissingNotice provider="gemini" className="mt-3">
+              {t('translate.noKey')}
+            </CredentialMissingNotice>
+          )}
+          {data && !data.tmdb_configured && (
+            <CredentialMissingNotice provider="tmdb" className="mt-3">
+              {t('translate.noTmdbKey')}
+            </CredentialMissingNotice>
+          )}
+        </TaskCard>
 
-        <p className="mt-4 text-xs text-muted-foreground">{t('sync.runsInQueue')}</p>
-      </section>
+        {/* ---------- Gemini-ის ხარჯი (შენი მითითება, 2026-09-14) ----------
 
-      {/* რითი ითარგმნება — პატიოსნად, რომ „რატომ არ ითარგმნა" კითხვა არ დარჩეს */}
-      <section className="mt-3 rounded-xl border border-border bg-card p-5 text-sm">
-        <h2 className="font-medium">{t('translate.sources')}</h2>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-          <li>{t('translate.sourceTmdb')}</li>
-          <li>{t('translate.sourceGemini')}</li>
-          <li>{t('translate.sourceNever')}</li>
-          <li>{t('translate.sourceReview')}</li>
-        </ul>
-        {/* გასაღები ანგარიშისაა: შეტყობინებას „მონაცემების" ბმულიც ახლავს */}
-        {data && !data.translator_configured && (
-          <CredentialMissingNotice provider="gemini" className="mt-3">
-            {t('translate.noKey')}
-          </CredentialMissingNotice>
-        )}
-        {data && !data.tmdb_configured && (
-          <CredentialMissingNotice provider="tmdb" className="mt-3">
-            {t('translate.noTmdbKey')}
-          </CredentialMissingNotice>
-        )}
-      </section>
-
-      {/* ---------- Gemini-ის ხარჯი (შენი მითითება, 2026-09-14) ----------
-
-          ⚠️ **რიცხვი ჩვენია და არა Google-ის, და ეს ცხადად წერია.** Gemini-ს
-          ხარჯის API არ აქვს (SerpApi-სგან განსხვავებით, სადაც ნამდვილ
-          მრიცხველს ვეკითხებით), ე.ი. ეს `translation_usages`-ის აღრიცხვაა —
-          სხვა პროგრამიდან დახარჯულს ვერ დაინახავს. ავტორიტეტულად
-          წაკითხული რიცხვი ამ შემთხვევაში ტყუილი იქნებოდა. */}
-      {gemini?.configured && (
-        <section className="mt-3 rounded-xl border border-border bg-card p-5">
-          <h2 className="flex items-center gap-2 text-sm font-medium">
-            <Sparkles className="size-4 text-muted-foreground" />
-            {t('translate.quotaTitle')}
-            {gemini.model && (
-              <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
-                {gemini.model}
-              </span>
-            )}
-          </h2>
-
-          {gemini.limit > 0 ? (
-            <>
-              <div className="mt-3 flex items-baseline justify-between gap-2 text-sm">
-                <span className={gemini.exhausted ? 'text-destructive' : 'text-muted-foreground'}>
-                  {t('translate.quotaUsed', { used: gemini.used, limit: gemini.limit })}
-                </span>
-                <span className="shrink-0 font-medium tabular-nums">
-                  {t('translate.quotaLeft', { count: gemini.remaining ?? 0 })}
-                </span>
-              </div>
-              <div className="mt-1.5 h-2 w-full overflow-hidden rounded-md bg-muted">
+            ⚠️ **რიცხვი ჩვენია და არა Google-ის, და ეს ცხადად წერია.** Gemini-ს
+            ხარჯის API არ აქვს (SerpApi-სგან განსხვავებით, სადაც ნამდვილ
+            მრიცხველს ვეკითხებით), ე.ი. ეს `translation_usages`-ის აღრიცხვაა —
+            სხვა პროგრამიდან დახარჯულს ვერ დაინახავს. */}
+        {gemini?.configured && (
+          <TaskCard
+            color="var(--gold)"
+            icon={Gauge}
+            title={t('translate.quotaTitle')}
+            info={t('translate.quotaHint')}
+            text={gemini.limit > 0 ? t('translate.quotaUsed', { used: gemini.used, limit: gemini.limit }) : t('translate.quotaOff')}
+            count={gemini.limit > 0 ? (gemini.remaining ?? 0) : null}
+            countLabel={t('translate.quotaLeftLabel')}
+            data-testid="quota-block"
+          >
+            {gemini.limit > 0 && (
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-md bg-muted">
                 <div
-                  className={cn('h-full rounded-md', gemini.exhausted ? 'bg-destructive' : 'bg-primary')}
+                  className={cn('h-full rounded-md', gemini.exhausted ? 'bg-destructive' : 'bg-[var(--mod)]')}
                   style={{ width: `${Math.min(100, Math.round((gemini.used / gemini.limit) * 100))}%` }}
                 />
               </div>
-            </>
-          ) : (
-            <p className="mt-3 text-sm text-muted-foreground">{t('translate.quotaOff')}</p>
-          )}
-
-          <p className="mt-3 text-xs text-muted-foreground">{t('translate.quotaHint')}</p>
-          {gemini.rpm_limit > 0 && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t('translate.quotaRpm', { used: gemini.rpm_used, limit: gemini.rpm_limit })}
+            )}
+            <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {gemini.model && (
+                <span className="inline-flex items-center gap-1">
+                  <Sparkles className="size-3.5" />
+                  <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px]">{gemini.model}</span>
+                </span>
+              )}
+              {gemini.rpm_limit > 0 && <span>{t('translate.quotaRpm', { used: gemini.rpm_used, limit: gemini.rpm_limit })}</span>}
             </p>
-          )}
-        </section>
-      )}
+          </TaskCard>
+        )}
+
+        {/* პაუზა — თარგმანის პარამეტრია, ამიტომ აქვეა (როგორც `/sync`-ზე).
+            `syncDelayMs`-ისგან ცალკეა: Gemini-ის ლიმიტი TMDB-ისას არ ემთხვევა. */}
+        <TaskCard
+          color="var(--gold)"
+          icon={Timer}
+          title={t('settings.translateDelay')}
+          text={t('settings.translateDelayHint')}
+          count={null}
+          actions={
+            <div className="flex items-center gap-2">
+              <div className="w-40">
+                <NumberSelect
+                  value={settings.translateDelayMs}
+                  options={TRANSLATE_DELAY_OPTIONS}
+                  onChange={(v) => set('translateDelayMs', v)}
+                  labelOf={(v) => (v === 0 ? t('settings.noDelay') : `${v} ms`)}
+                />
+              </div>
+              {/* შეცვლილია და ჯერ არ შენახულა */}
+              {isDirty('translateDelayMs') && <span className="size-1.5 shrink-0 rounded-md bg-primary" title={t('settings.translateDelay')} data-testid="pause-dirty" />}
+            </div>
+          }
+          data-testid="pause-block"
+        />
+      </div>
 
       {/* ---------- „რა რითი ითარგმნა" (შენი მითითება, 2026-09-14) ----------
 
@@ -204,7 +183,7 @@ export function TranslationsPage() {
       )}
 
       {/* **ცარიელი და ჩავარდნილი გაშვებებიც ჩანს**: ზემოთა სია ლოგიდან მხოლოდ
-          შეცვლილს აჩვენებს, ეს კი ჩანაწერის კვალიდან მოდის — რაც ვერ შეივსო, ქარვისფერია,
+          შეცვლილს აჩვენებს, ეს კი ჩანაწერის კვალიდან მოდის — რაც ვერ შეივსო, ყვითელია,
           რაც ჩავარდა — წითელი; ორივე გეგმაში ისევ ზის. */}
       {unfilled.length > 0 && (
         <section className="mt-3 rounded-xl border border-border bg-card p-5" data-testid="unfilled">
@@ -231,26 +210,7 @@ export function TranslationsPage() {
         </section>
       )}
 
-      {/* პაუზა — თარგმანის პარამეტრია, ამიტომ აქვეა (როგორც `/sync`-ზე).
-          `syncDelayMs`-ისგან ცალკეა: Gemini-ის ლიმიტი TMDB-ისას არ ემთხვევა. */}
-      <section className="mt-3 rounded-xl border border-border bg-card p-5">
-        <SettingRow
-          label={t('settings.translateDelay')}
-          hint={t('settings.translateDelayHint')}
-          dirty={isDirty('translateDelayMs')}
-        >
-          <NumberSelect
-            value={settings.translateDelayMs}
-            options={TRANSLATE_DELAY_OPTIONS}
-            onChange={(v) => set('translateDelayMs', v)}
-            labelOf={(v) => (v === 0 ? t('settings.noDelay') : `${v} ms`)}
-          />
-        </SettingRow>
-      </section>
-
       <SettingsSaveBar />
-
-      <TranslateDialog open={open} onOpenChange={setOpen} />
     </PageContainer>
   )
 }
