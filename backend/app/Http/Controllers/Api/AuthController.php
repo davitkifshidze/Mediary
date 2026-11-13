@@ -17,8 +17,10 @@ use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -313,12 +315,20 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['current_password' => 'current_password_wrong']);
         }
 
-        $request->user()->forceFill(['password' => Hash::make($data['password'])])->save();
+        $user = $request->user();
+
+        /* ⚠️ **`remember_token`-იც იცვლება** (`PasswordResetController`-ის წესი):
+           „დამიმახსოვრე" შესვლა მხოლოდ ამ სვეტზე დგას, ე.ი. ძველი ტოკენით
+           სხვა მოწყობილობა სესიის გაწყვეტის შემდეგაც თავიდან შევიდოდა. */
+        $user->forceFill([
+            'password' => Hash::make($data['password']),
+            'remember_token' => Str::random(60),
+        ])->save();
 
         /* ⚠️ **გაცემული აღდგენის ბმული აქვე კვდება**: ის 24 საათს
            ცოცხლობს, ე.ი. პაროლის შეცვლის შემდეგაც მოქმედი დარჩებოდა — და
            სწორედ ის ადამიანი, ვისგანაც პაროლი იცვლება, ბმულს უკვე ფლობს. */
-        ResetLink::forget($request->user());
+        ResetLink::forget($user);
 
         /* ⚠️ **სხვა სესიებიც უქმდება**. პაროლი სწორედ
            იმიტომ იცვლება, რომ ძველი კომპრომეტირებულია — ძველი სესია კი
@@ -326,10 +336,47 @@ class AuthController extends Controller
            ⚠️ მხოლოდ სესიის არსებობისას: `/api/*`-ს ის მხოლოდ stateful
            დომენიდან აქვს (იგივე წესი, რაც `regenerateSession()`-ს). */
         if ($request->hasSession()) {
-            Auth::logoutOtherDevices($data['password']);
+            $this->endOtherSessions($request, $user);
         }
 
         return response()->noContent();
+    }
+
+    /**
+     * **ამ ანგარიშის სხვა სესიები წყდება; მიმდინარე — რჩება.**
+     *
+     * ⚠️ `Auth::logoutOtherDevices()` აქ არ გამოდგება და სწორედ ის ტეხავდა ამ
+     * მარშრუტს: `auth:sanctum`-ის შიგნით ნაგულისხმევი guard `sanctum`-ია
+     * (`RequestGuard`), რომელსაც ეს მეთოდი არ აქვს — SPA-დან პაროლის შეცვლა
+     * 500-ით მთავრდებოდა **მას შემდეგ**, რაც ახალი პაროლი უკვე შენახული იყო.
+     * სესიის guard-ზე გამოძახებაც ვერაფერს გათიშავდა: ის სხვა სესიებს მხოლოდ
+     * `AuthenticateSession` შუამავლით წყვეტს, რომელიც აქ არ დგას.
+     *
+     * ამიტომ ნაბიჯები ცხადია: `sessions` ცხრილიდან ამ ანგარიშის სხვა რიგები
+     * იშლება (`SESSION_DRIVER=database`; სხვა დრაივერზე სესიებს ვერ ჩამოვთვლით
+     * და ისინი ვადის ბოლომდე რჩება), ხოლო ამ მოწყობილობის „დამიმახსოვრე" ქუქი
+     * ახალი ტოკენით თავიდან იწერება — ძველი ზემოთ შეიცვალა.
+     */
+    private function endOtherSessions(Request $request, User $user): void
+    {
+        if (config('session.driver') === 'database') {
+            DB::connection(config('session.connection'))
+                ->table((string) config('session.table', 'sessions'))
+                ->where('user_id', $user->getKey())
+                ->where('id', '!=', $request->session()->getId())
+                ->delete();
+        }
+
+        $recaller = Auth::guard('web')->getRecallerName();
+
+        if ($request->cookies->has($recaller)) {
+            // იგივე ფორმა და ვადა, რასაც `SessionGuard` წერს შესვლისას
+            Cookie::queue(Cookie::make(
+                $recaller,
+                $user->getAuthIdentifier().'|'.$user->getRememberToken().'|'.$user->getAuthPassword(),
+                576000,
+            ));
+        }
     }
 
     /** per-user პარამეტრები (localStorage-ის ნაცვლად ბაზაში) */

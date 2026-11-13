@@ -376,6 +376,47 @@ class AuthTest extends TestCase
         $this->assertTrue(Hash::check('brand-new-password', $user->refresh()->password));
     }
 
+    /**
+     * ⚠️ **SPA-დან (სესიით) პაროლის შეცვლა 500-ს აბრუნებდა** — პაროლის
+     * შენახვის შემდეგ: სხვა სესიების გათიშვა `sanctum` guard-ის არარსებულ
+     * მეთოდს იძახებდა. ზემოთა ტესტები სესიის გარეშე მიდის და ამ შტოს ვერ
+     * აღწევდა. აქ მოთხოვნა stateful დომენიდანაა, სესია კი ბაზაშია — როგორც
+     * ნამდვილ ინსტალაციაზე: სხვა მოწყობილობის სესია იშლება, სხვა ანგარიშისა
+     * და მიმდინარე — რჩება, „დამიმახსოვრე" ტოკენი კი იცვლება.
+     */
+    public function test_changing_the_password_from_the_spa_ends_the_other_sessions(): void
+    {
+        config(['session.driver' => 'database']);
+
+        $user = $this->makeUser('alice');
+        $bob = $this->makeUser('bob');
+        $user->forceFill(['remember_token' => 'old-remember-token'])->save();
+
+        foreach (['other-device' => $user->id, 'bobs-device' => $bob->id] as $id => $owner) {
+            DB::table('sessions')->insert([
+                'id' => $id, 'user_id' => $owner, 'ip_address' => '127.0.0.1', 'user_agent' => 'test',
+                'payload' => '', 'last_activity' => time(),
+            ]);
+        }
+
+        $this->actingAs($user)
+            ->withHeaders(['Referer' => 'http://localhost:5173'])
+            ->patchJson('/api/auth/password', [
+                'current_password' => self::PASSWORD,
+                'password' => 'brand-new-password',
+                'password_confirmation' => 'brand-new-password',
+            ])
+            ->assertNoContent();
+
+        $this->assertTrue(Hash::check('brand-new-password', $user->refresh()->password));
+        $this->assertNotSame('old-remember-token', $user->remember_token);
+
+        $this->assertDatabaseMissing('sessions', ['id' => 'other-device']);
+        $this->assertDatabaseHas('sessions', ['id' => 'bobs-device']);
+        // მიმდინარე სესია ცოცხალია: ალისის ერთადერთი დარჩენილი რიგი ამ მოთხოვნისაა
+        $this->assertSame(1, DB::table('sessions')->where('user_id', $user->id)->count());
+    }
+
     /* ================= პარამეტრები ================= */
 
     /**
