@@ -19,6 +19,7 @@ use App\Support\GalleryParent;
 use App\Support\GallerySort;
 use App\Support\MediaDomain;
 use App\Support\PublicDomain;
+use App\Support\SafeMime;
 use App\Support\ShareDomain;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
@@ -542,11 +543,18 @@ class PublicProfileController extends Controller
            აღარ გაიგზავნებოდა. */
         $locked = $galleryImage->album_id !== null && $galleryImage->album?->isLocked();
 
-        return $disk->response(
-            $galleryImage->path,
-            null,
-            $locked ? ['Cache-Control' => 'private, no-store, max-age=0'] : [],
-        );
+        /* ⚠️ **`SafeMime`-ით და არა `$disk->response()`-ით.** ნედლი პასუხი ტიპს
+           შიგთავსიდან ადგენს და `inline` აბრუნებს: ფოტოს სახელით შენახული HTML
+           (ვებიდან ჩამოტვირთული „სურათი") ამ მისამართზე გვერდად გაიხსნებოდა —
+           აპის origin-ზე, ანონიმისთვისაც. `SafeMime` სახიფათო ტიპს
+           `application/octet-stream`-ად და ჩამოტვირთვად აქცევს. */
+        $response = SafeMime::response($disk, (string) $galleryImage->path);
+
+        if ($locked) {
+            $response->headers->set('Cache-Control', 'private, no-store, max-age=0');
+        }
+
+        return $response;
     }
 
     /**

@@ -175,7 +175,11 @@ class WebImageImporter
             return null;
         }
 
-        $mime = (string) $res['mime'];
+        /* ⚠️ **ტიპს ბაიტები წყვეტს და არა `Content-Type` ჰედერი.** ჰედერი უცხო
+           სერვერისაა: `image/png`-ად გამოცხადებული HTML „ფოტოდ" შეინახებოდა
+           (`gallery/images/….png`) და საჯარო გალერეიდან გვერდად გაიხსნებოდა.
+           გამოცხადებული ტიპი აღარ მონაწილეობს — არც სვეტში, არც გაფართოებაში. */
+        $mime = $res['body'] === '' ? '' : (string) (new \finfo(FILEINFO_MIME_TYPE))->buffer($res['body']);
         $extension = $this->extension($mime);
 
         // ⚠️ არა-სურათი არ ინახება: 403-ის HTML გვერდი „ფოტოდ" შეინახებოდა

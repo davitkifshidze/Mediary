@@ -370,6 +370,34 @@ class PublicGalleryTest extends TestCase
     }
 
     /**
+     * ⚠️ **ფოტოს სახელით შენახული HTML ამ მისამართზე გვერდად არ იხსნება.**
+     * მარშრუტი ანონიმისთვისაც ღიაა და აპის origin-ზეა: `text/html` `inline`
+     * სკრიპტს სწორედ იქ შეასრულებდა. სახიფათო ტიპი ჩამოტვირთვად ბრუნდება,
+     * ნამდვილი სურათი კი ისევ `inline`-ია.
+     */
+    public function test_a_page_stored_as_a_photo_is_never_served_as_html(): void
+    {
+        Storage::fake('public');
+
+        $page = $this->photo($this->movie('public'), 'gallery/images/page.png');
+        Storage::disk('public')->put('gallery/images/page.png', '<!DOCTYPE html><html><body><script>alert(document.cookie)</script></body></html>');
+
+        $response = $this->get("/api/public/profiles/alice/gallery-photos/{$page->id}/file")->assertOk();
+
+        $this->assertSame('application/octet-stream', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('attachment', (string) $response->headers->get('Content-Disposition'));
+        $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
+
+        $real = $this->photo($this->movie('public'), 'gallery/images/real.png');
+        Storage::disk('public')->put('gallery/images/real.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='));
+
+        $response = $this->get("/api/public/profiles/alice/gallery-photos/{$real->id}/file")->assertOk();
+
+        $this->assertSame('image/png', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('inline', (string) $response->headers->get('Content-Disposition'));
+    }
+
+    /**
      * **ჩაკეტილი ალბომის ფაილი პაროლამდე 404-ია, შემდეგ — 200.**
      *
      * ⚠️ ფაილი **პირად დისკზეა** (`gallery/locked`) — სწორედ ამიტომ

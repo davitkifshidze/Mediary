@@ -146,6 +146,44 @@ class WebImportTest extends TestCase
         $this->assertSame(0, GalleryImage::withoutGlobalScope('owner')->count());
     }
 
+    /**
+     * ⚠️ **ტიპს ბაიტები წყვეტს და არა ჰედერი.** ჰედერი უცხო სერვერისაა:
+     * `image/png`-ად გამოცხადებული HTML „ფოტოდ" ინახებოდა და საჯარო
+     * გალერეიდან გვერდად იხსნებოდა.
+     */
+    public function test_a_page_declared_as_an_image_is_never_stored(): void
+    {
+        Http::fake(['203.0.113.10/*' => Http::response('<html><script>alert(1)</script></html>', 200, ['Content-Type' => 'image/png'])]);
+
+        $res = $this->actingAs($this->user)->postJson('/api/web/import', [
+            'target' => 'cast_member',
+            'id' => $this->actor()->id,
+            'images' => [['original' => 'https://203.0.113.10/a.png', 'engine' => 'google_images_light']],
+        ])->assertOk();
+
+        $this->assertSame(0, $res->json('added'));
+        $this->assertSame(1, $res->json('failed'));
+        $this->assertSame(0, GalleryImage::withoutGlobalScope('owner')->count());
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    /** გაფართოება და `mime` სვეტიც შიგთავსიდანაა: PNG-ად გამოცხადებული JPEG `.jpg`-ად ინახება */
+    public function test_the_stored_type_is_the_one_the_bytes_have(): void
+    {
+        Http::fake(['203.0.113.10/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/png'])]);
+
+        $this->actingAs($this->user)->postJson('/api/web/import', [
+            'target' => 'cast_member',
+            'id' => $this->actor()->id,
+            'images' => [['original' => 'https://203.0.113.10/a.png', 'engine' => 'google_images_light']],
+        ])->assertOk()->assertJsonPath('added', 1);
+
+        $image = GalleryImage::withoutGlobalScope('owner')->firstOrFail();
+
+        $this->assertSame('image/jpeg', $image->mime);
+        $this->assertStringEndsWith('.jpg', $image->path);
+    }
+
     /** ხელახლა გაშვება იმავე ფოტოს არ ამატებს */
     public function test_the_same_original_is_not_imported_twice(): void
     {
