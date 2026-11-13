@@ -29,9 +29,10 @@ import { EmptyState } from '@/components/ui/empty-state'
    გახსნაზე ავტომატური გაშვება ბიუჯეტს იმ ჩანაწერებზეც დახარჯავდა,
    რომლებსაც ეპიზოდები არასდროს დასჭირდებოდათ.
 
-   ⚠️ **სეზონები დაკეცილია, გარდა იმისა, სადაც გავჩერდი.** ათსეზონიანი
-   სერიალი გაშლილი მთელ გვერდს იკავებს; „შემდეგი ეპიზოდი" კი სწორედ ის
-   ერთადერთი ადგილია, რომელსაც ეძებ.
+   ⚠️ **ყველა სეზონი დაკეცილია — არც ერთი არ იშლება თავისით.**
+   ათსეზონიანი სერიალი გაშლილი მთელ გვერდს იკავებს. დაკეცილ ბლოკზე ჩანს
+   ყველაფერი, რაც გაუშლელად გჭირდება: სათაურთან — რამდენი სეზონი და ჯამში
+   რამდენი ეპიზოდია, „შემდეგი" ხაზზე — სად გავჩერდი.
    ============================================================ */
 
 export function EpisodeTracker({ type, id }: { type: TvType; id: number }) {
@@ -82,18 +83,25 @@ export function EpisodeTracker({ type, id }: { type: TvType; id: number }) {
      ღილაკი, რომელიც ეპიზოდებს ჩამოიტანს; დამალვა მას მიუწვდომელს ხდიდა. */
   const empty = !overview || overview.total === 0
 
-  // ⚠️ გაშლილია ის სეზონი, სადაც გავჩერდი; თუ ყველაფერი ნანახია — პირველი
-  const defaultOpen = overview?.next?.season ?? overview?.seasons[0]?.season ?? null
-  const expanded = open ?? defaultOpen
-
   return (
     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-mono text-sm uppercase tracking-wider text-muted-foreground">
-          <ListVideo className="size-4" />
-          {t('episodes.title')}
-          <InfoHint info={t('episodes.hint')} />
-        </h2>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h2 className="flex items-center gap-2 font-mono text-sm uppercase tracking-wider text-muted-foreground">
+            <ListVideo className="size-4" />
+            {t('episodes.title')}
+            <InfoHint info={t('episodes.hint')} />
+          </h2>
+          {/* ჯამი ქვემოთ ჩამოთვლილი სიიდან ითვლება — რიცხვი ყოველთვის ემთხვევა იმას,
+              რასაც სეზონების გაშლისას ნახავ */}
+          {!empty && (
+            <span data-testid="episodes-summary" className="text-sm font-medium tabular-nums">
+              {t('detail.seasons', { count: overview.seasons.length })}
+              {' · '}
+              {t('detail.episodes', { count: overview.total })}
+            </span>
+          )}
+        </div>
         {editable && (
           <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => pull.mutate()}>
             <DownloadCloud className="size-4" />
@@ -132,10 +140,10 @@ export function EpisodeTracker({ type, id }: { type: TvType; id: number }) {
               <SeasonRow
                 key={season.season}
                 season={season}
-                open={expanded === season.season}
+                open={open === season.season}
                 editable={editable}
                 busy={busy}
-                onToggle={() => setOpen(expanded === season.season ? -1 : season.season)}
+                onToggle={() => setOpen(open === season.season ? null : season.season)}
                 onSeason={(watched) => mark.mutate({ watched, season: season.season })}
                 onEpisode={(episodeId, watched) => mark.mutate({ watched, episode_ids: [episodeId] })}
                 formatDate={date}
