@@ -86,8 +86,6 @@ const PlacesPage = lazy(() => import('@/pages/PlacesPage').then((m) => ({ defaul
 // პირადი გალერეა: ჭრილები, ადამიანის და ალბომის გვერდი
 const PersonalPage = lazy(() => import('@/pages/PersonalPage').then((m) => ({ default: m.PersonalPage })))
 const DutyPage = lazy(() => import('@/pages/DutyPage').then((m) => ({ default: m.DutyPage })))
-// ⚠️ დროებითი: მორიგეობის მოდულის მაკეტები — მიმართულების არჩევის შემდეგ იშლება
-const DutyMockupsPage = lazy(() => import('@/pages/DutyMockupsPage').then((m) => ({ default: m.DutyMockupsPage })))
 const PersonalPersonPage = lazy(() =>
   import('@/pages/PersonalPersonPage').then((m) => ({ default: m.PersonalPersonPage })),
 )
@@ -265,9 +263,6 @@ function AppShell() {
           {pageModules.map((m) => (
             <Route key={m.key} path={m.route_base.replace(/^\//, '')} element={MODULE_PAGES[m.key]} />
           ))}
-
-          {/* ⚠️ დროებითი: მორიგეობის მაკეტები — სამი ვარიანტი ნამდვილი მონაცემებით */}
-          {has('duty') && <Route path="duty/mockups" element={<DutyMockupsPage />} />}
 
           {/* პირადი მოდულები: **ერთი** მარშრუტი ყველასთვის, `/c/{key}`.
               ⚠️ ჩართულობას გვერდი თვითონ ამოწმებს (`useModules().customModules`) —

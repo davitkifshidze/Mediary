@@ -3,14 +3,14 @@ import { act, createElement as h, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { DutyShift, DutyWorkplace } from '@/api/duty'
 import { DutyCalendar } from '@/components/duty/DutyCalendar'
-import { TooltipProvider } from '@/components/ui/tooltip'
-import { dutyPay, eachDay, periodLabel, weekdayIndex } from '@/lib/duty'
+import { dutyPay, eachDay, periodLabel, sumMoney, sumShifts, upcomingShift, weekdayIndex } from '@/lib/duty'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **მორიგეობის კალენდარი** — ბადე პერიოდით, ჩიპები, და მონიშვნის
-   რეჟიმი: დაჭერა რთავს/თიშავს, Shift შუალედს ავსებს, გადათრევა გზად ღებავს
-   (მონიშნულზე დაწყებული — ხსნის). ჩვეულებრივ რეჟიმში დაჭერა დღეს ხსნის.
+   **მორიგეობის კალენდარი** — პერიოდი დღის ბარათებად: ბლოკზე სამსახური და
+   საათები, ერთ მორიგეობიან დღეს დროც და თანხაც; და მონიშვნის რეჟიმი: დაჭერა
+   რთავს/თიშავს, Shift შუალედს ავსებს, გადათრევა გზად ღებავს (მონიშნულზე
+   დაწყებული — ხსნის). ჩვეულებრივ რეჟიმში დაჭერა დღეს ხსნის.
    ============================================================ */
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -23,6 +23,7 @@ afterEach(() => {
   container?.remove()
   root = null
   container = null
+  vi.useRealTimers()
 })
 
 function shift(id: number, date: string, over: Partial<DutyShift> = {}): DutyShift {
@@ -53,23 +54,25 @@ function Harness({
   onOpenDay,
   shifts = [],
   dimmed,
+  picked,
 }: {
   selecting: boolean
   onOpenDay: (day: string) => void
   shifts?: DutyShift[]
   dimmed?: ReadonlySet<number>
+  picked?: string
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   return h(
-    TooltipProvider,
+    'div',
     null,
     h('output', { 'data-testid': 'selected' }, [...selected].sort().join(',')),
-    h(DutyCalendar, { from: '2026-10-01', to: '2026-10-31', shifts, selecting, selected, onSelectionChange: setSelected, onOpenDay, dimmed, currency: '₾' }),
+    h(DutyCalendar, { from: '2026-10-01', to: '2026-10-31', shifts, selecting, selected, onSelectionChange: setSelected, onOpenDay, picked, dimmed, currency: '₾' }),
   )
 }
 
-async function render(props: { selecting: boolean; onOpenDay?: (day: string) => void; shifts?: DutyShift[]; dimmed?: ReadonlySet<number> }) {
+async function render(props: { selecting: boolean; onOpenDay?: (day: string) => void; shifts?: DutyShift[]; dimmed?: ReadonlySet<number>; picked?: string }) {
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -78,6 +81,8 @@ async function render(props: { selecting: boolean; onOpenDay?: (day: string) => 
 
 const day = (iso: string) => container!.querySelector(`[data-day="${iso}"]`) as HTMLButtonElement
 const selected = () => container!.querySelector('[data-testid="selected"]')!.textContent
+const chipsOf = (iso: string) => [...day(iso).querySelectorAll<HTMLElement>('[data-testid="duty-chip"]')]
+const hours = (value: string) => i18n.t('duty.hoursValue', { hours: value })
 
 function pointer(el: Element, type: string, init: MouseEventInit = {}) {
   el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init }))
@@ -93,15 +98,15 @@ function move(from: Element, to: Element) {
 }
 
 describe('DutyCalendar', () => {
-  it('lays the period out from Monday and draws a chip per shift', async () => {
+  it('lays the period out from Monday and draws a block per shift', async () => {
     await render({ selecting: false, shifts: [shift(1, '2026-10-02'), shift(2, '2026-10-02', { workplace: { id: 2, name: 'B', short: 'B', color: null }, hours: 12 })] })
 
-    // 2026-10-01 ხუთშაბათია — წინ ოთხი ცარიელი უჯრა
+    // 2026-10-01 ხუთშაბათია — წინ სამი გარე დღე
     expect(weekdayIndex('2026-10-01')).toBe(3)
     expect(container!.querySelectorAll('[data-day]').length).toBe(31)
 
-    const chips = [...day('2026-10-02').querySelectorAll('[data-testid="duty-chip"]')].map((c) => c.textContent)
-    expect(chips).toEqual(['A · 24', 'B · 12'])
+    // ბლოკზე — სამსახურის ასო და საათები
+    expect(chipsOf('2026-10-02').map((c) => c.textContent)).toEqual([`A${hours('24')}`, `B${hours('12')}`])
   })
 
   it('crosses out a cancelled shift and shows a partial one as worked / planned hours', async () => {
@@ -111,51 +116,83 @@ describe('DutyCalendar', () => {
     })
 
     // გაუქმებული — დღე რჩება: წითლად, გადახაზული, ნიშნით
-    const cancelled = day('2026-10-03').querySelector<HTMLElement>('[data-testid="duty-chip"]')!
+    const cancelled = chipsOf('2026-10-03')[0]
     expect(cancelled.dataset.status).toBe('cancelled')
     expect(cancelled.className).toContain('line-through')
     expect(cancelled.querySelector('svg')).not.toBeNull()
+    expect(cancelled.style.getPropertyValue('--wp')).toBe('var(--destructive)')
 
-    expect(day('2026-10-04').querySelector('[data-testid="duty-chip"]')!.textContent).toBe('A · 10 / 24')
+    expect(chipsOf('2026-10-04')[0].textContent).toContain(hours('10 / 24'))
   })
 
-  it('shows the start on the chip and every shift of the day on hover, and fades a light workplace', async () => {
+  it('writes the time and the pay on a day with one shift and keeps two shifts to a line each', async () => {
     await render({
       selecting: false,
       dimmed: new Set([2]),
       shifts: [
-        shift(1, '2026-10-05', { start_time: '09:00', end_time: '09:00', end_day: 1, note: 'ღამე' }),
-        shift(2, '2026-10-05', { workplace_id: 2, workplace: { id: 2, name: 'B', short: 'B', color: null }, status: 'cancelled', pay: 0, hours: 12 }),
+        shift(1, '2026-10-05', { start_time: '09:00', end_time: '09:00', end_day: 1 }),
+        shift(2, '2026-10-06', { start_time: '09:00', end_time: '09:00', end_day: 1 }),
+        shift(3, '2026-10-06', { workplace_id: 2, workplace: { id: 2, name: 'საავადმყოფო', short: null, color: '#eb6834' }, hours: 12, pay: null }),
+        // არც დრო, არც თანხა — მეორე ხაზი საერთოდ არ იხატება
+        shift(4, '2026-10-07', { pay: null }),
       ],
     })
 
-    const chips = [...day('2026-10-05').querySelectorAll<HTMLElement>('[data-testid="duty-chip"]')]
-    expect(chips[0].textContent).toBe('A 09:00 · 24')
-    expect(chips[0].title).toBe('')
-    expect(chips[1].className).toContain('opacity-45')
+    // ერთი მორიგეობა — ყველაფერი ბარათზეა, ჰოვერის გარეშე
+    const single = chipsOf('2026-10-05')[0]
+    expect(single.textContent).toContain('09:00 → 09:00 (+1)')
+    expect(single.textContent).toContain('220 ₾')
+    expect(single.title).toBe('')
+    expect(single.style.getPropertyValue('--wp')).toBe('#16a34a')
 
-    // ჰოვერი/ფოკუსი — დღის ყველა მორიგეობა
-    await act(async () => day('2026-10-05').focus())
-    const summary = document.querySelector('[data-testid="duty-day-summary"]')!
-    expect(summary.textContent).toContain('კლინიკა')
-    expect(summary.textContent).toContain('09:00 → 09:00 (+1)')
-    expect(summary.textContent).toContain('220 ₾')
-    expect(summary.textContent).toContain('ღამე')
-    expect(summary.textContent).toContain(i18n.t('duty.status.cancelled'))
-    expect(summary.querySelectorAll('li')).toHaveLength(2)
+    // ორი მორიგეობა — თითო ერთ ხაზად; ასოს გარეშე სამსახური სახელით, „ღია" — ბაცად
+    const pair = chipsOf('2026-10-06')
+    expect(pair.map((c) => c.textContent)).toEqual([`A${hours('24')}`, `საავადმყოფო${hours('12')}`])
+    expect(pair[0].className).not.toContain('opacity-45')
+    expect(pair[1].className).toContain('opacity-45')
+
+    expect(chipsOf('2026-10-07')[0].textContent).toBe(`A${hours('24')}`)
   })
 
-  it('fills whole weeks with faded outside days and lists only shift days on the phone agenda', async () => {
-    await render({ selecting: false, shifts: [shift(1, '2026-10-02'), shift(2, '2026-10-02', { hours: 12 })] })
+  it('fills whole weeks with dashed outside days and lists only shift days on the phone agenda', async () => {
+    await render({ selecting: false, shifts: [shift(1, '2026-10-02', { start_time: '09:00', end_time: '21:00', end_day: 0, hours: 12 }), shift(2, '2026-10-02', { hours: 12 })] })
 
     // 2026-10-01 ხუთშაბათია (სამი დღე წინ), 31 — შაბათი (ერთი მერე); გარეთ მყოფი დღე არ იჭერს
     const outside = [...container!.querySelectorAll<HTMLElement>('[data-outside]')].map((c) => c.dataset.outside)
     expect(outside).toEqual(['2026-09-28', '2026-09-29', '2026-09-30', '2026-11-01'])
+    expect(container!.querySelector('[data-outside]')!.tagName).toBe('DIV')
     expect(container!.querySelectorAll('[data-day]').length).toBe(31)
 
+    // ტელეფონის სია: სრული სახელი და დრო — ორ მორიგეობიან დღესაც
     const agenda = container!.querySelectorAll('[data-testid="duty-agenda-day"]')
     expect(agenda).toHaveLength(1)
-    expect(agenda[0].textContent).toContain('A · 24')
+    expect(agenda[0].textContent).toContain('კლინიკა')
+    expect(agenda[0].textContent).toContain('09:00 → 21:00')
+  })
+
+  it('marks today and the first day of a month', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 14, 12))
+    await render({ selecting: false })
+
+    const marks = container!.querySelectorAll('[data-testid="duty-today"]')
+    expect(marks).toHaveLength(1)
+    expect(day('2026-10-14').contains(marks[0])).toBe(true)
+    expect(marks[0].textContent).toBe(i18n.t('duty.day.today'))
+
+    // თვის სახელი — პერიოდის პირველ დღეზე
+    expect(day('2026-10-01').textContent).toContain(new Intl.DateTimeFormat(i18n.language, { month: 'short' }).format(new Date(2026, 9, 1, 12)))
+    expect(day('2026-10-02').textContent).toBe('2')
+  })
+
+  it('frames the day that is open beside the calendar', async () => {
+    await render({ selecting: false, picked: '2026-10-09' })
+
+    expect(day('2026-10-09').getAttribute('aria-pressed')).toBe('true')
+    expect(day('2026-10-09').className).toContain('border-[var(--mod)]')
+    expect(day('2026-10-10').getAttribute('aria-pressed')).toBe('false')
+    // არჩეული დღე მხოლოდ ჩარჩოა — შევსება მონიშვნისაა
+    expect(day('2026-10-09').className).not.toContain('bg-[var(--mod-fill)]')
   })
 
   it('opens a day on a click outside the selection mode', async () => {
@@ -164,6 +201,8 @@ describe('DutyCalendar', () => {
 
     await act(async () => day('2026-10-07').click())
     expect(onOpenDay).toHaveBeenCalledWith('2026-10-07')
+    // პანელის გარეშე (ვიწრო ეკრანი) „არჩეული დღე" არ არსებობს
+    expect(day('2026-10-07').hasAttribute('aria-pressed')).toBe(false)
   })
 
   it('toggles, fills a Shift range and paints a drag', async () => {
@@ -173,6 +212,8 @@ describe('DutyCalendar', () => {
     await act(async () => pointer(day('2026-10-05'), 'pointerdown'))
     await act(async () => pointer(window as unknown as Element, 'pointerup'))
     expect(selected()).toBe('2026-10-05')
+    expect(day('2026-10-05').getAttribute('aria-pressed')).toBe('true')
+    expect(day('2026-10-05').className).toContain('bg-[var(--mod-fill)]')
 
     // Shift — შუალედი ბოლო დაჭერილიდან
     await act(async () => pointer(day('2026-10-08'), 'pointerdown', { shiftKey: true }))
@@ -224,6 +265,30 @@ describe('duty helpers', () => {
     expect(dutyPay(workplace, null, 10)).toBe(150)
     expect(dutyPay({ ...workplace, hourly_rate: null }, null, 10)).toBeNull()
     expect(dutyPay(null, 3, 24)).toBeNull()
+  })
+
+  it('sums the loaded shifts without the cancelled ones and writes a dash when nothing is priced', () => {
+    const shifts = [shift(1, '2026-10-02'), shift(2, '2026-10-03', { status: 'cancelled', pay: 0 }), shift(3, '2026-10-04', { hours: 12, pay: null })]
+
+    expect(sumShifts(shifts)).toEqual({ count: 2, hours: 36, pay: 220, paid: 1 })
+    expect(sumMoney(sumShifts(shifts), '₾', 'ka')).toBe('220 ₾')
+    // თანხა არცერთს არ აქვს — „0 ₾" ტყუილი იქნებოდა
+    expect(sumMoney(sumShifts([shifts[2]]), '₾', 'ka')).toBe('—')
+    // ნაწილობრივის ნული ნამდვილი თანხაა
+    expect(sumMoney(sumShifts([shift(4, '2026-10-05', { status: 'partial', pay: 0 })]), '₾', 'ka')).toBe('0 ₾')
+  })
+
+  it('finds the nearest shift from today on, skipping the cancelled and the past ones', () => {
+    const shifts = [
+      shift(1, '2026-10-02'),
+      shift(2, '2026-10-10', { status: 'cancelled' }),
+      shift(3, '2026-10-12', { start_time: '20:00' }),
+      shift(4, '2026-10-12', { start_time: '08:00' }),
+    ]
+
+    expect(upcomingShift(shifts, '2026-10-05')?.id).toBe(4)
+    expect(upcomingShift(shifts, '2026-10-02')?.id).toBe(1)
+    expect(upcomingShift(shifts, '2026-10-13')).toBeNull()
   })
 
   it('walks the days and names a period across two months', () => {

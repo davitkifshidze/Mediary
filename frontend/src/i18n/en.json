@@ -5163,7 +5163,7 @@
   },
   "duty": {
     "title": "Duty shifts",
-    "hint": "Shifts by workplace: tap a day in the calendar to add or edit, “Select” adds many days at once. Pay fills in from the workplace rates, totals follow your own period (“Settings”).",
+    "hint": "Shifts by workplace: tap an empty day in the calendar to add one, a day with shifts opens beside the calendar — edit it there; “Select” adds many days at once. Pay fills in from the workplace rates, totals follow your own period (“Settings”).",
     "count": "{{count}} shifts",
     "hoursValue": "{{hours}} h",
     "noWorkplace": "No workplace",
@@ -5373,12 +5373,19 @@
       "emptyPeriod": "No shifts in this period yet."
     },
     "side": {
+      "byWorkplace": "Workplaces"
+    },
+    "summary": {
       "shifts": "Shifts",
       "hours": "Hours",
       "pay": "Pay",
+      "unpriced": "{{count}} without pay",
       "next": "Next shift",
-      "today": "On duty today",
-      "byWorkplace": "Workplaces"
+      "today": "On duty today"
+    },
+    "day": {
+      "today": "Today",
+      "free": "Day off"
     }
   },
   "actors": {

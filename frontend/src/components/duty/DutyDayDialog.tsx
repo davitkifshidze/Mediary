@@ -1,22 +1,27 @@
 import { useTranslation } from 'react-i18next'
-import { Plus, SquarePen, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import type { DutySettingsData, DutyShift } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
-import { formatMoney, hoursLabel, shiftRange, typeName, workplaceColor } from '@/lib/duty'
-import { cn } from '@/lib/utils'
+import { formatHours, sumMoney, sumShifts } from '@/lib/duty'
 import { Button } from '@/components/ui/button'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import type { MenuAction } from '@/components/ui/record-menu'
+import { DutyDayShifts } from '@/components/duty/DutyBits'
 
 /* ============================================================
-   **ერთი დღე კალენდარზე** — ამ დღის მორიგეობები (ორი სამსახური ან
-   ორი მორიგეობაც შეიძლება) და „დამატება“. ⚠️ ცარიელ დღეზე ეს ფანჯარა არ
-   იხსნება — გვერდი პირდაპირ დამატების ფორმას აჩვენებს.
+   **ერთი დღე ფანჯარაში** — ამ დღის მორიგეობები (ორი სამსახური ან ორი
+   მორიგეობაც შეიძლება) და „დამატება“. იგივე სიაა, რაც ფართო ეკრანზე კალენდრის
+   გვერდით პანელში დგას; ფანჯარა იქ იხსნება, სადაც პანელი კალენდრის გვერდით
+   ვერ ეტევა. ⚠️ ცარიელ დღეზე ეს ფანჯარა არ იხსნება — გვერდი პირდაპირ დამატების
+   ფორმას აჩვენებს.
    ============================================================ */
 
 export function DutyDayDialog({
   day,
   shifts,
   settings,
+  shiftActions,
+  dimmed,
   onEdit,
   onAdd,
   onClose,
@@ -24,6 +29,8 @@ export function DutyDayDialog({
   day: string
   shifts: DutyShift[]
   settings: DutySettingsData | undefined
+  shiftActions?: (shift: DutyShift) => MenuAction[]
+  dimmed?: ReadonlySet<number>
   onEdit: (shift: DutyShift) => void
   onAdd: () => void
   onClose: () => void
@@ -31,37 +38,17 @@ export function DutyDayDialog({
   const { t, i18n } = useTranslation()
   const { date } = useDateFormat()
   const currency = settings?.currency ?? '₾'
+  const sum = sumShifts(shifts)
 
   return (
     <ModalShell title={date(day)} onClose={onClose}>
-      <ul className="space-y-2">
-        {shifts.map((shift) => (
-          <li key={shift.id} className="flex items-center gap-3 rounded-md border border-border p-3">
-            <span className="h-9 w-1.5 shrink-0 rounded-sm" style={{ background: workplaceColor(shift.workplace) }} />
-            <div className="min-w-0 flex-1">
-              <p className={cn('truncate text-sm font-medium', shift.status === 'cancelled' && 'text-destructive line-through')}>
-                {shift.workplace?.name ?? t('duty.noWorkplace')}
-                <span className="text-muted-foreground"> · {shift.type ? typeName(shift.type, i18n.language) : t('duty.shift.custom')}</span>
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {[
-                  shift.status !== 'scheduled' ? t(`duty.status.${shift.status}`) : null,
-                  shiftRange(shift),
-                  t('duty.hoursValue', { hours: hoursLabel(shift) }),
-                  shift.pay != null ? formatMoney(shift.pay, currency, i18n.language) : null,
-                  shift.note,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </p>
-            </div>
-            <Button variant="edit" size="sm" onClick={() => onEdit(shift)}>
-              <SquarePen className="size-3.5" />
-              {t('actions.edit')}
-            </Button>
-          </li>
-        ))}
-      </ul>
+      {shifts.length > 1 && (
+        <p className="mb-3 text-sm tabular-nums text-muted-foreground" data-testid="duty-day-totals">
+          {t('duty.period.totals', { count: sum.count, hours: formatHours(sum.hours), pay: sumMoney(sum, currency, i18n.language) })}
+        </p>
+      )}
+
+      <DutyDayShifts shifts={shifts} currency={currency} onEdit={onEdit} shiftActions={shiftActions} dimmed={dimmed} />
 
       <ModalFooter>
         <Button variant="outline" onClick={onClose}>

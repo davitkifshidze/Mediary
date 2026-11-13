@@ -9,9 +9,13 @@ import type { DutySettingsData, DutyShift, DutyShiftType, DutySummary, DutyWorkp
 import i18n from '@/i18n'
 
 /* ============================================================
-   **მორიგეობის გვერდი** — პერიოდის სათაური და ჯამი, მონიშვნა →
+   **მორიგეობის გვერდი** — პერიოდის სათაური და შემაჯამებელი ბარათები, არჩეული
+   დღე გვერდით პანელში (ფართო ეკრანი) ან ფანჯარაში (ვიწრო), მონიშვნა →
    „დამატება“ თითო დღეზე ტარიფით და ჯამით, ჯამების ხედი, სიის მარჯვენა ღილაკის
    მენიუ.
+
+   ⚠️ jsdom-ს `matchMedia` არ აქვს, ე.ი. ტესტი ნაგულისხმევად **ვიწრო** ეკრანია;
+   ფართოს `wideScreen()` რთავს.
    ============================================================ */
 
 const workplaces: DutyWorkplace[] = [
@@ -113,7 +117,21 @@ afterEach(() => {
   root = null
   container = null
   vi.clearAllMocks()
+  vi.useRealTimers()
+  delete (window as { matchMedia?: unknown }).matchMedia
 })
+
+/** `xl`-დან ზემოთ — გვერდითი პანელი კალენდრის გვერდით დგას */
+function wideScreen() {
+  ;(window as { matchMedia?: unknown }).matchMedia = (query: string) => ({ matches: true, media: query, addEventListener() {}, removeEventListener() {} })
+}
+
+/** „დღეს" პერიოდის შიგნით — ტესტი ნამდვილ თარიღზე არ უნდა იყოს დამოკიდებული */
+function today(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(y, m - 1, d, 12))
+}
 
 async function flush(times = 4) {
   for (let i = 0; i < times; i++) {
@@ -158,23 +176,111 @@ async function render(path = '/duty') {
 const button = (text: string, scope: ParentNode = document) =>
   [...scope.querySelectorAll('button')].find((b) => b.textContent?.includes(text)) as HTMLButtonElement
 
+const stat = (name: string) => container!.querySelector(`[data-testid="duty-stat-${name}"]`)!
+const cell = (iso: string) => container!.querySelector<HTMLButtonElement>(`[data-day="${iso}"]`)!
+
 describe('DutyPage', () => {
-  it('shows the period and its totals with the shift chip', async () => {
+  it('shows the period, its summary cards and the shift on its day card', async () => {
     defaults()
+    mocks.fetchDutyShifts.mockResolvedValue({
+      items: [shift, { ...shift, id: 8, date: '2026-10-09', hours: 12, pay: null }],
+      range: { from: '2026-10-01', to: '2026-10-31' },
+    })
     await render()
 
     expect(container!.querySelector('[data-testid="duty-period-label"]')!.textContent).toContain('2026')
-    expect(container!.querySelector('[data-testid="duty-period-totals"]')!.textContent).toContain('220')
-    expect(container!.querySelector('[data-day="2026-10-02"] [data-testid="duty-chip"]')!.textContent).toBe('A · 24')
+    expect(stat('shifts').textContent).toContain('2')
+    expect(stat('hours').textContent).toContain('36')
+    // თანხა — რაც არის; უთანხო მორიგეობა ცალკე ხაზად
+    expect(stat('pay').textContent).toContain('220 ₾')
+    expect(stat('pay').textContent).toContain(i18n.t('duty.summary.unpriced', { count: 1 }))
+    // იგივე ჯამი ტექსტად აღარ მეორდება
+    expect(container!.querySelector('[data-testid="duty-period-totals"]')).toBeNull()
+
+    const chip = container!.querySelector('[data-day="2026-10-02"] [data-testid="duty-chip"]')!
+    expect(chip.textContent).toBe(`A${i18n.t('duty.hoursValue', { hours: '24' })}220 ₾`)
   })
 
-  it('puts the period totals and the workplaces beside the calendar', async () => {
+  it('names the nearest shift on its card and opens that day', async () => {
+    defaults()
+    today('2026-10-01')
+    await render()
+
+    expect(stat('next').textContent).toContain(i18n.t('duty.summary.next'))
+    expect(stat('next').textContent).toContain('კლინიკა')
+
+    // ვიწრო ეკრანი — დღე ფანჯარაში იხსნება
+    await act(async () => (stat('next') as HTMLButtonElement).click())
+    expect(document.querySelector('[data-testid="duty-day-shifts"]')!.textContent).toContain('კლინიკა')
+  })
+
+  it('opens a day with shifts in a dialog on a narrow screen and an empty day straight in the form', async () => {
     defaults()
     await render()
 
-    const side = container!.querySelector('[data-testid="duty-side"]')!
-    expect(side.textContent).toContain('220')
-    expect(side.querySelector('[data-testid="duty-side-workplaces"]')!.textContent).toContain('კლინიკა')
+    // პანელი კალენდრის ქვეშაა — იქ მხოლოდ სამსახურებია
+    expect(container!.querySelector('[data-testid="duty-side-day"]')).toBeNull()
+    expect(container!.querySelector('[data-testid="duty-side-workplaces"]')!.textContent).toContain('კლინიკა')
+
+    await act(async () => cell('2026-10-02').click())
+    const list = document.querySelector('[data-testid="duty-day-shifts"]')!
+    expect(list.textContent).toContain('220 ₾')
+
+    // „რედაქტირება" დღის ფანჯარას ხურავს და მორიგეობისას ხსნის
+    await act(async () => button(i18n.t('actions.edit'), list).click())
+    await flush()
+    expect(document.querySelector('[data-testid="duty-day-shifts"]')).toBeNull()
+    expect(document.body.textContent).toContain(i18n.t('duty.shift.edit'))
+  })
+
+  it('adds a shift from a click on an empty day', async () => {
+    defaults()
+    await render()
+
+    await act(async () => cell('2026-10-07').click())
+    await flush()
+    expect(document.querySelector('[data-testid="duty-day-shifts"]')).toBeNull()
+    expect(document.body.textContent).toContain(i18n.t('duty.shift.add'))
+    expect(document.getElementById('duty-shift-form')).toBeTruthy()
+  })
+
+  it('shows the picked day beside the calendar on a wide screen', async () => {
+    defaults()
+    wideScreen()
+    today('2026-10-14')
+    await render()
+
+    // ნაგულისხმევად — დღევანდელი დღე, ცარიელი
+    const side = () => container!.querySelector<HTMLElement>('[data-testid="duty-side-day"]')!
+    expect(side().dataset.dayOpen).toBe('2026-10-14')
+    expect(side().textContent).toContain(i18n.t('duty.day.today'))
+    expect(side().textContent).toContain(i18n.t('duty.day.free'))
+    expect(cell('2026-10-14').getAttribute('aria-pressed')).toBe('true')
+
+    // მორიგეობიანი დღე პანელში იხსნება — ფანჯარა არ ჩნდება
+    await act(async () => cell('2026-10-02').click())
+    expect(side().dataset.dayOpen).toBe('2026-10-02')
+    expect(side().querySelector('[data-testid="duty-shift"]')!.textContent).toContain('კლინიკა')
+    expect(side().textContent).toContain('220 ₾')
+    expect(cell('2026-10-02').getAttribute('aria-pressed')).toBe('true')
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+
+    // პანელის „რედაქტირება" პირდაპირ მორიგეობას ხსნის
+    await act(async () => button(i18n.t('actions.edit'), side()).click())
+    await flush()
+    expect(document.body.textContent).toContain(i18n.t('duty.shift.edit'))
+  })
+
+  it('hides the picked day while days are being selected', async () => {
+    defaults()
+    wideScreen()
+    await render()
+
+    expect(container!.querySelector('[data-testid="duty-side-day"]')).not.toBeNull()
+    await act(async () => button(i18n.t('duty.select.start')).click())
+    expect(container!.querySelector('[data-testid="duty-side-day"]')).toBeNull()
+    expect(container!.querySelector('[data-testid="duty-side-workplaces"]')).not.toBeNull()
+    expect(container!.querySelector('[data-day][aria-pressed="true"]')).toBeNull()
   })
 
   it('selects days and prices each one in the batch dialog', async () => {
@@ -220,6 +326,11 @@ describe('DutyPage', () => {
     await render('/duty?view=totals')
 
     expect(mocks.fetchDutySummary).toHaveBeenCalledWith({ from: '2026-10-01', to: '2026-10-31', workplaceIds: undefined })
+    // კალენდრის გარეთ ხედებში პერიოდის ჯამი ტექსტად რჩება, შემაჯამებელი ბარათები კი კალენდრისაა
+    expect(container!.querySelector('[data-testid="duty-period-totals"]')!.textContent).toBe(
+      i18n.t('duty.period.totals', { count: 1, hours: '24', pay: '220 ₾' }),
+    )
+    expect(container!.querySelector('[data-testid="duty-stats"]')).toBeNull()
     const totals = container!.querySelector('[data-testid="duty-totals"]')!
     expect(totals.textContent).toContain(i18n.t('duty.totals.more', { value: '1' }))
     expect(container!.querySelector('[data-testid="duty-totals-workplaces"]')!.textContent).toContain('კლინიკა')
@@ -254,7 +365,10 @@ describe('DutyPage', () => {
 
     // გაუქმებული კალენდარზე რჩება, ჯამში — არა
     expect(container!.querySelector('[data-day="2026-10-03"] [data-status="cancelled"]')).not.toBeNull()
-    expect(container!.querySelector('[data-testid="duty-period-totals"]')!.textContent).toBe(
+    expect(stat('shifts').textContent).toBe(`${i18n.t('duty.summary.shifts')}1`)
+    expect(stat('hours').textContent).toBe(`${i18n.t('duty.summary.hours')}24`)
+    expect(stat('pay').textContent).toBe(`${i18n.t('duty.summary.pay')}220 ₾`)
+    expect(container!.querySelector('[data-testid="duty-side-workplaces"]')!.textContent).toContain(
       i18n.t('duty.period.totals', { count: 1, hours: '24', pay: '220 ₾' }),
     )
 

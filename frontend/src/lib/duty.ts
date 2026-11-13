@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type { QueryClient } from '@tanstack/react-query'
 import { DUTY_KEY, type DutyShift, type DutyShiftType, type DutyWorkplace } from '@/api/duty'
 
@@ -159,6 +160,14 @@ export function shiftRange(shift: Pick<DutyShift, 'start_time' | 'end_time' | 'e
   return timeRange(shift.start_time, shift.end_time ? { time: shift.end_time, day: shift.end_day ?? 0 } : null)
 }
 
+/** მორიგეობის ბლოკის ფერი (`--wp`) — სამსახურისა, გაუქმებულზე წითელი */
+export function shiftTint(shift: Pick<DutyShift, 'status' | 'workplace'>): CSSProperties {
+  return { '--wp': shift.status === 'cancelled' ? 'var(--destructive)' : workplaceColor(shift.workplace) } as CSSProperties
+}
+
+/** ბლოკის კლასი: ფერადი ზოლი მარცხნივ და იმავე ფერის ღია ფონი — `shiftTint()`-ის `--wp`-დან */
+export const SHIFT_BLOCK = 'rounded-md border-l-4 border-[var(--wp)] bg-[color-mix(in_oklab,var(--wp)_14%,transparent)]'
+
 /**
  * **ანაზღაურების რეჟიმი** — „მორიგეობაზე“ (ტარიფები ტიპებზე) ან „საათზე“
  * (მხოლოდ საათობრივი). ⚠️ რეჟიმი სქემაში არ ინახება: ტარიფი თუ აქვს —
@@ -243,11 +252,46 @@ export function patternFromShifts(shifts: DutyShift[]):
   }
 }
 
+/* ---------- ჯამი ჩატვირთული მორიგეობებიდან ---------- */
+
+export interface DutySum {
+  count: number
+  hours: number
+  pay: number
+  /** რამდენ მორიგეობას აქვს თანხა — ნულზე თანხის ადგილას ტირეა და არა „0 ₾" */
+  paid: number
+}
+
 /**
- * კალენდრის ჩიპი — „112 09:00 · 24“ (დაწყების გარეშე „112 · 24“), ნაწილობრივზე
- * „112 · 10 / 24“; სამსახურის გარეშე — დაწყება და საათები.
+ * **პერიოდის (დღის, სამსახურის) ჯამი** — კალენდრის იმავე მორიგეობებიდან, რომ
+ * ბარათი, გვერდითი პანელი და ბადე ერთსა და იმავე რიცხვს აჩვენებდეს.
+ * ⚠️ გაუქმებული არც მორიგეობებში ითვლება, არც საათებში, არც თანხაში — სერვერის წესი.
  */
-export function chipLabel(shift: Pick<DutyShift, 'hours' | 'workplace' | 'status' | 'type' | 'start_time'>): string {
-  const head = [shift.workplace?.short || shift.workplace?.name?.slice(0, 1), shift.start_time].filter(Boolean).join(' ')
-  return head ? `${head} · ${hoursLabel(shift)}` : hoursLabel(shift)
+export function sumShifts(shifts: DutyShift[]): DutySum {
+  return shifts.reduce<DutySum>(
+    (sum, shift) =>
+      shift.status === 'cancelled'
+        ? sum
+        : {
+            count: sum.count + 1,
+            hours: sum.hours + shift.hours,
+            pay: sum.pay + (shift.pay ?? 0),
+            paid: sum.paid + (shift.pay != null ? 1 : 0),
+          },
+    { count: 0, hours: 0, pay: 0, paid: 0 },
+  )
+}
+
+/** ჯამის თანხა; როცა არცერთ მორიგეობას არ აქვს თანხა — ტირე („0 ₾" ტყუილი იქნებოდა) */
+export function sumMoney(sum: Pick<DutySum, 'pay' | 'paid'>, currency: string, locale: string): string {
+  return sum.paid > 0 ? formatMoney(sum.pay, currency, locale) : '—'
+}
+
+/** უახლოესი მორიგეობა — დღეს ან მერე, გაუქმებულის გარეშე; ერთ დღეს ადრე დაწყებული იმარჯვებს */
+export function upcomingShift(shifts: DutyShift[], today: string = todayIso()): DutyShift | null {
+  return (
+    shifts
+      .filter((shift) => shift.status !== 'cancelled' && shift.date >= today)
+      .sort((a, b) => (a.date + (a.start_time ?? '')).localeCompare(b.date + (b.start_time ?? '')))[0] ?? null
+  )
 }

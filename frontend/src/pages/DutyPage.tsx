@@ -2,7 +2,25 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart3, Calculator, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, List, Loader2, Pencil, Plus, Repeat, Settings, TriangleAlert, Wallet, X } from 'lucide-react'
+import {
+  BarChart3,
+  Calculator,
+  CalendarCheck,
+  CalendarClock,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  List,
+  Loader2,
+  Pencil,
+  Plus,
+  Repeat,
+  Settings,
+  TriangleAlert,
+  Wallet,
+  X,
+} from 'lucide-react'
 import {
   continueDutyPattern,
   DUTY_KEY,
@@ -17,14 +35,16 @@ import {
   type DutyWorkplace,
 } from '@/api/duty'
 import { errorMessage } from '@/lib/errors'
-import { formatHours, formatMoney, invalidateDuty, patternFromShifts, payMode, periodLabel, todayIso } from '@/lib/duty'
+import { formatHours, invalidateDuty, parseDay, patternFromShifts, payMode, periodLabel, shiftRange, sumMoney, sumShifts, todayIso, upcomingShift } from '@/lib/duty'
+import { MODULE_ACCENT_FALLBACK, modAccent, useModules } from '@/lib/modules'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useToast } from '@/components/ui/feedback'
 import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
-import { cn } from '@/lib/utils'
 import { DutyBatchDialog } from '@/components/duty/DutyBatchDialog'
+import { DutyStatCard } from '@/components/duty/DutyBits'
 import { DutyBulkDialog } from '@/components/duty/DutyBulkDialog'
 import { DutyCalculator } from '@/components/duty/DutyCalculator'
 import { DutyCalendar } from '@/components/duty/DutyCalendar'
@@ -44,9 +64,15 @@ import { DutyTotals } from '@/components/duty/DutyTotals'
    **მორიგეობა — `/duty`.**
 
    ზემოთ ხედები (**კალენდარი · სია · ჯამები · შემოსავალი · კალკულატორი**) და
-   სამსახურის ფილტრი (ფერებით). კალენდარი ბარათშია თავისი ნავიგაციით
-   (← პერიოდი →, „დღეს“, რიტმის გაგრძელება), გვერდით კი პანელი — ჯამი,
-   სამსახურები („მუქი / ღია") და უახლოესი მორიგეობა (`DutyCalendarSide`).
+   სამსახურის ფილტრი (ფერებით). კალენდრის ხედი სამი ნაწილია: ოთხი შემაჯამებელი
+   ბარათი (მორიგეობა · საათი · ანაზღაურება · უახლოესი), პერიოდი დღის ბარათებად
+   თავისი ნავიგაციით (← პერიოდი →, „დღეს“, რიტმის გაგრძელება) და გვერდითი
+   პანელი — არჩეული დღე სრულად და სამსახურები (`DutyCalendarSide`).
+
+   ⚠️ **დღეზე დაჭერა**: ცარიელი დღე პირდაპირ დამატების ფორმას ხსნის; მორიგეობიანი
+   — ფართო ეკრანზე გვერდით პანელში ირჩევა, ვიწროზე (პანელი კალენდრის ქვეშ ჩადის)
+   ფანჯარაში იხსნება. ⚠️ სიგანის ზღვარი ერთია — `WIDE`: იგივე `xl`, რომელზეც
+   ბადე ორ სვეტად იშლება.
 
    ⚠️ **მდგომარეობა მისამართშია** (`?date=` — ნებისმიერი დღე პერიოდში, `?view=`,
    `?w=` — სამსახური): „უკან“ და ბმული იმავე პერიოდს და ხედს აბრუნებს.
@@ -61,10 +87,15 @@ type View = (typeof VIEWS)[number]
 
 const ALL = 'all'
 
+/** Tailwind-ის `xl` — აქედან გვერდითი პანელი კალენდრის გვერდით დგას */
+const WIDE = '(min-width: 1280px)'
+
 export function DutyPage() {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
   const [params, setParams] = useSearchParams()
+  const { all } = useModules()
+  const wide = useMediaQuery(WIDE)
 
   const anchor = params.get('date') ?? undefined
   const view: View = (VIEWS as readonly string[]).includes(params.get('view') ?? '') ? (params.get('view') as View) : 'calendar'
@@ -108,12 +139,17 @@ export function DutyPage() {
   const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [dayOpen, setDayOpen] = useState<string | null>(null)
+  // გვერდით პანელში გახსნილი დღე; პერიოდის გარეთ დარჩენილი აღარ ითვლება (`shownDay`)
+  const [picked, setPicked] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ shift: DutyShift | null; date?: string } | null>(null)
   const [batching, setBatching] = useState(false)
   const [bulking, setBulking] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // კალენდრის ჩიპის მენიუ (სიის სტრიქონი თავის თავს თვითონ აწყობს)
-  const { actionsFor, moveDialog } = useDutyShiftActions((shift) => setEditing({ shift }))
+  // კალენდრის ბლოკისა და დღის მორიგეობების მენიუ (სიის სტრიქონი თავის თავს თვითონ აწყობს)
+  const { actionsFor, moveDialog } = useDutyShiftActions((shift) => {
+    setDayOpen(null)
+    setEditing({ shift })
+  })
   // „მუქი / ღია" სამსახური — კალენდარსა და სიაში
   const [dimmed, toggleDim] = useDutyDim()
   const qc = useQueryClient()
@@ -191,23 +227,23 @@ export function DutyPage() {
     if (workplace) setRhythm({ workplace, preset })
   }
 
-  const totals = useMemo(
-    () =>
-      // გაუქმებული არც საათებში ითვლება, არც თანხაში, არც რიცხვში
-      shifts.reduce(
-        (sum, s) =>
-          s.status === 'cancelled'
-            ? sum
-            : { count: sum.count + 1, hours: sum.hours + s.hours, pay: sum.pay + (s.pay ?? 0) },
-        { count: 0, hours: 0, pay: 0 },
-      ),
-    [shifts],
-  )
+  const totals = useMemo(() => sumShifts(shifts), [shifts])
+  const next = useMemo(() => upcomingShift(shifts), [shifts])
+
+  /* არჩეული დღე: დაჭერილი (თუ ამ პერიოდშია), თორემ დღევანდელი, თორემ პირველი
+     მორიგეობა, თორემ პერიოდის დასაწყისი — პანელი ცარიელი არასდროს რჩება */
+  const shownDay = useMemo(() => {
+    if (!period) return null
+    const inside = (day: string) => day >= period.from && day <= period.to
+    if (picked && inside(picked)) return picked
+    const today = todayIso()
+    return inside(today) ? today : (shifts[0]?.date ?? period.from)
+  }, [period, picked, shifts])
 
   const openDay = (day: string) => {
-    const list = shifts.filter((s) => s.date === day)
-    if (list.length) setDayOpen(day)
-    else setEditing({ shift: null, date: day })
+    setPicked(day)
+    if (!shifts.some((s) => s.date === day)) setEditing({ shift: null, date: day })
+    else if (!wide) setDayOpen(day)
   }
 
   const stopSelecting = () => {
@@ -216,7 +252,9 @@ export function DutyPage() {
   }
 
   const loading = periodQ.isLoading || settingsQ.isLoading || workplacesQ.isLoading || typesQ.isLoading
+  const calendarReady = !loading && !!period && !shiftsQ.isLoading
   const currency = settings?.currency ?? '₾'
+  const dayName = useMemo(() => new Intl.DateTimeFormat(lang, { weekday: 'short', day: 'numeric', month: 'short' }), [lang])
   /* აქტიური სამსახური ტარიფისა და საათობრივის გარეშე — თანხა არ ითვლება;
      ეს პირველი ნაბიჯია და გვერდი ამას პირდაპირ ამბობს (ბმულით პარამეტრებზე) */
   const unpaid = workplaces.filter((w) => w.is_active && payMode(w) === null)
@@ -228,7 +266,7 @@ export function DutyPage() {
         <ChevronLeft className="size-4" />
         {t('duty.period.previous')}
       </Button>
-      <h2 className="min-w-0 px-1 text-lg font-semibold first-letter:uppercase" data-testid="duty-period-label">
+      <h2 className="min-w-0 px-1 font-display text-lg font-semibold first-letter:uppercase" data-testid="duty-period-label">
         {period ? periodLabel(period.from, period.to, lang) : '…'}
       </h2>
       <Button variant="outline" size="sm" disabled={!period} onClick={() => period && setParam('date', period.next.from)}>
@@ -251,19 +289,17 @@ export function DutyPage() {
     </>
   )
 
-  // კალენდარში ფართო ეკრანზე იგივე ჯამი გვერდით პანელშია — აქ მაშინ აღარ მეორდება
+  // კალენდრის ხედში იგივე ჯამი შემაჯამებელ ბარათებშია — იქ ეს ხაზი არ იხატება
   const periodTotals = shifts.length ? (
-    <p className={cn('ml-auto text-sm text-muted-foreground', view === 'calendar' && 'xl:hidden')} data-testid="duty-period-totals">
-      {t('duty.period.totals', {
-        count: totals.count,
-        hours: formatHours(totals.hours),
-        pay: formatMoney(totals.pay, currency, lang),
-      })}
+    <p className="ml-auto text-sm text-muted-foreground" data-testid="duty-period-totals">
+      {t('duty.period.totals', { count: totals.count, hours: formatHours(totals.hours), pay: sumMoney(totals, currency, lang) })}
     </p>
   ) : null
 
+  const unpriced = totals.count - totals.paid
+
   return (
-    <PageContainer>
+    <PageContainer style={modAccent(all.find((m) => m.key === 'duty')?.color) ?? MODULE_ACCENT_FALLBACK}>
       <PageHeader
         module="duty"
         title={t('duty.title')}
@@ -289,7 +325,7 @@ export function DutyPage() {
       />
 
       {unpaid.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3 text-sm" data-testid="duty-no-rate">
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3 text-sm" data-testid="duty-no-rate">
           <TriangleAlert className="size-4 shrink-0 text-[var(--icon-warn)]" />
           <span className="min-w-0 flex-1">{t('duty.workplace.noRateBanner', { names: unpaid.map((w) => w.name).join(', ') })}</span>
           <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)} disabled={!settings}>
@@ -331,15 +367,39 @@ export function DutyPage() {
 
       {/* ---------- პერიოდი ---------- (სრულ სიას თავისი თარიღის ფილტრი აქვს; კალენდარს — თავის ბარათში) */}
       {view !== 'list' && view !== 'calendar' && (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3">
           {periodNav}
           {periodTotals}
         </div>
       )}
 
+      {/* ---------- შემაჯამებელი ბარათები ---------- (ჩატვირთვამდე ტირე, რომ გვერდი არ ხტოდეს) */}
+      {view === 'calendar' && (
+        <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4" data-testid="duty-stats">
+          <DutyStatCard icon={CalendarDays} label={t('duty.summary.shifts')} value={calendarReady ? totals.count : '—'} data-testid="duty-stat-shifts" />
+          <DutyStatCard icon={Clock} label={t('duty.summary.hours')} value={calendarReady ? formatHours(totals.hours) : '—'} data-testid="duty-stat-hours" />
+          <DutyStatCard
+            icon={Wallet}
+            label={t('duty.summary.pay')}
+            value={calendarReady ? sumMoney(totals, currency, lang) : '—'}
+            // თანხის გარეშე მორიგეობები ჯამს ამცირებს — ბარათი ამას პირდაპირ ამბობს
+            note={calendarReady && unpriced > 0 ? t('duty.summary.unpriced', { count: unpriced }) : undefined}
+            data-testid="duty-stat-pay"
+          />
+          <DutyStatCard
+            icon={CalendarClock}
+            label={t(next?.date === todayIso() ? 'duty.summary.today' : 'duty.summary.next')}
+            value={calendarReady && next ? dayName.format(parseDay(next.date)) : '—'}
+            note={calendarReady && next ? [next.workplace?.name, shiftRange(next)].filter(Boolean).join(' · ') || undefined : undefined}
+            onClick={calendarReady && next ? () => openDay(next.date) : undefined}
+            data-testid="duty-stat-next"
+          />
+        </div>
+      )}
+
       {/* ---------- მონიშვნის ზოლი ---------- */}
       {selecting && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/5 p-2.5 text-sm" data-testid="duty-selection-bar">
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--mod)] bg-[var(--mod-soft)] p-2.5 text-sm" data-testid="duty-selection-bar">
           <span className="font-medium">
             {selected.size
               ? t('duty.select.count', { days: selected.size, shifts: selectedShifts.length })
@@ -371,13 +431,10 @@ export function DutyPage() {
       {view === 'list' ? (
         <DutyHistory workplaces={workplaces} types={types} settings={settings} dimmed={dimmed} onEdit={(shift) => setEditing({ shift })} />
       ) : view === 'calendar' ? (
-        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]">
-          <section className="overflow-hidden rounded-xl border border-border bg-card">
-            <div className="flex flex-wrap items-center gap-2 border-b border-border p-3">
-              {periodNav}
-              {periodTotals}
-            </div>
-            {loading || !period || shiftsQ.isLoading ? (
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <section className="rounded-lg border border-border bg-card p-3">
+            <div className="mb-3 flex flex-wrap items-center gap-2">{periodNav}</div>
+            {!calendarReady ? (
               <div className="grid place-items-center py-24">
                 <Loader2 className="size-5 animate-spin text-muted-foreground" />
               </div>
@@ -390,22 +447,29 @@ export function DutyPage() {
                 selected={selected}
                 onSelectionChange={setSelected}
                 onOpenDay={openDay}
+                picked={wide ? shownDay : null}
                 shiftActions={actionsFor}
                 dimmed={dimmed}
                 currency={currency}
               />
             )}
           </section>
-          <DutyCalendarSide
-            shifts={shifts}
-            workplaces={workplaceFilter == null ? workplaces : workplaces.filter((w) => w.id === workplaceFilter)}
-            dimmed={dimmed}
-            onToggleDim={toggleDim}
-            onOpenShift={(shift) => setEditing({ shift })}
-            currency={currency}
-          />
+          {calendarReady && (
+            <DutyCalendarSide
+              // ვიწრო ეკრანზე დღე ფანჯარაში იხსნება, მონიშვნისას კი „არჩეული დღე" არ არსებობს
+              day={wide && !selecting ? shownDay : null}
+              shifts={shifts}
+              workplaces={workplaceFilter == null ? workplaces : workplaces.filter((w) => w.id === workplaceFilter)}
+              dimmed={dimmed}
+              onToggleDim={toggleDim}
+              onEditShift={(shift) => setEditing({ shift })}
+              onAddShift={(day) => setEditing({ shift: null, date: day })}
+              shiftActions={actionsFor}
+              currency={currency}
+            />
+          )}
         </div>
-      ) : loading || !period || shiftsQ.isLoading ? (
+      ) : !calendarReady ? (
         <div className="grid place-items-center py-16">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
@@ -423,6 +487,8 @@ export function DutyPage() {
           day={dayOpen}
           shifts={shifts.filter((s) => s.date === dayOpen)}
           settings={settings}
+          shiftActions={actionsFor}
+          dimmed={dimmed}
           onEdit={(shift) => {
             setDayOpen(null)
             setEditing({ shift })
