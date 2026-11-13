@@ -267,6 +267,8 @@ export const CODES = [
      ხელს არ აცდის — დიაგნოსტიკა სწორედ იმ ტექსტშია. */
   'download_timed_out',
   'download_no_file',
+  // შიდა ქსელის მისამართზე yt-dlp არ ეშვება (422 ღილაკზე, `download_error` ფონურ გაშვებაზე)
+  'video_url_not_allowed',
   'no_tmdb_id',
   'no_translation_source',
   'worker_unavailable',

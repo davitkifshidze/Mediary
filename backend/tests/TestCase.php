@@ -9,6 +9,7 @@ use App\Support\AlbumLock;
 use App\Support\AppSettings;
 use App\Support\CredentialProviders;
 use App\Support\CustomModules;
+use App\Support\SafeHttp;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
@@ -38,6 +39,8 @@ abstract class TestCase extends BaseTestCase
         AppSettings::flush();
         // ⚠️ მეხუთე: პირადი მოდულების სია — იგივე მოთხოვნის ქეში
         CustomModules::flush();
+        // ⚠️ ტესტი DNS-ს არ ეკითხება: კონტეინერიდან აღებული `SafeHttp` ჰოსტის სახელს ქსელის გარეშე ხსნის
+        $this->app->bind(SafeHttp::class, OfflineSafeHttp::class);
     }
 
     /**

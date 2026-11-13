@@ -1140,6 +1140,8 @@ class RegistryConsistencyTest extends TestCase
         $fetchers = [
             'app/Services/Bookmarks/LinkMetadata.php',
             'app/Services/Serp/WebImageImporter.php',
+            // თამაშის ყდა და სამაგიდოს ფოტო — მისამართს ფორმა აგზავნის
+            'app/Support/SourceImage.php',
         ];
 
         foreach ($fetchers as $file) {

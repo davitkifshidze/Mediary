@@ -528,14 +528,21 @@ class GameController extends Controller
             return;
         }
 
-        $body = $game->rawg_id ? $this->rawg->image($url) : $this->igdb->image($url);
-
-        if (! $body) {
-            return;
-        }
-
         $path = StorageFolder::GAME_COVERS."/{$name}.jpg";
-        Storage::disk(StorageFolder::diskFor($path))->put($path, $body);
+        $disk = Storage::disk(StorageFolder::diskFor($path));
+
+        /* ⚠️ **საერთო ფაილი ერთხელ იწერება.** სახელი წყაროს id-ია, ე.ი. იმავე
+           თამაშის მეორე ჩანაწერი (სხვა ანგარიშისაც) იმავე ფაილს იყენებს —
+           გადაწერა კი ნიშნავდა, რომ ერთი ანგარიშის მოთხოვნა სხვის ყდას ცვლის. */
+        if (! $disk->exists($path)) {
+            $body = $game->rawg_id ? $this->rawg->image($url) : $this->igdb->image($url);
+
+            if (! $body) {
+                return;
+            }
+
+            $disk->put($path, $body);
+        }
 
         $game->forceFill(['cover_path' => $path, 'cover_source' => 'rawg'])->save();
     }

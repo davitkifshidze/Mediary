@@ -36,7 +36,7 @@ class VideoDownloader
     /**
      * HTTP-ის მხარე: შემოწმება + ფონური გაშვება.
      *
-     * @throws HttpResponseException 503 (პროგრამა არ არის) / 409 (უკვე მიმდინარეობს) / 413 (კვოტა)
+     * @throws HttpResponseException 503 (პროგრამა არ არის) / 422 (შიდა მისამართი) / 409 (უკვე მიმდინარეობს) / 413 (კვოტა)
      */
     public function start(Video $video): void
     {
@@ -44,6 +44,13 @@ class VideoDownloader
             throw new HttpResponseException(response()->json([
                 'message' => 'ytdlp_unavailable',
             ], 503));
+        }
+
+        // ⚠️ შიდა ქსელის მისამართზე `yt-dlp` არ ეშვება (`YtDlp::permits()`) — და ეს ცხადი პასუხია, არა ჩუმი „ვერ ჩამოვიდა"
+        if (! $this->ytdlp->permits((string) $video->url)) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'video_url_not_allowed',
+            ], 422));
         }
 
         /* ⚠️ „უკვე მიმდინარეობს" **ცალკე პასუხია** და არა ჩუმი მეორე გაშვება:

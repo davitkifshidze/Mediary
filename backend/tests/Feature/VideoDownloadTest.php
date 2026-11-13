@@ -140,6 +140,34 @@ class VideoDownloadTest extends TestCase
         $this->assertNull($video->fresh()->download_status);
     }
 
+    /**
+     * ⚠️ **შიდა ქსელის მისამართზე `yt-dlp` არ ეშვება.** ის ნებისმიერ მისამართს
+     * ხსნის და პასუხს ჩამოწერილ „ვიდეოდ" აბრუნებს — `http://127.0.0.1:…`
+     * სერვერს საკუთარი შიდა სერვისების წამკითხველად აქცევდა. ღილაკზე ეს
+     * ცხადი 422-ია, ფონურ გაშვებაზე — `download_error`.
+     */
+    public function test_an_internal_address_is_never_handed_to_ytdlp(): void
+    {
+        $this->fakeYtDlp();
+
+        foreach (['http://127.0.0.1:8000/secret.mp4', 'http://192.168.1.10/cam.mp4', 'http://localhost/a.mp4', 'file:///etc/passwd'] as $url) {
+            $video = $this->makeVideo($this->user);
+            $video->forceFill(['url' => $url, 'platform' => 'other'])->save();
+
+            $this->actingAs($this->user)
+                ->postJson("/api/videos/{$video->id}/download")
+                ->assertStatus(422)
+                ->assertJson(['message' => 'video_url_not_allowed']);
+
+            $this->assertNull($video->fresh()->download_status, $url);
+        }
+
+        // ნამდვილი `YtDlp` (პროგრამის გარეშეც) იმავე პასუხს იძლევა — ფილტრი პროგრამამდეა
+        $real = new YtDlp;
+        $this->assertFalse($real->permits('http://169.254.169.254/latest/meta-data/'));
+        $this->assertTrue($real->permits('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
+    }
+
     public function test_status_endpoint_reports_availability(): void
     {
         $this->fakeYtDlp();

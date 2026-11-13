@@ -2,6 +2,7 @@
 
 namespace App\Services\BoardGames;
 
+use App\Support\SourceImage;
 use App\Support\SourceLog;
 use SimpleXMLElement;
 use Throwable;
@@ -97,23 +98,7 @@ class BggClient
     /** ფოტოს ბაიტები — ჩაწერის გარეშე (`MediaDownloader::contents()`-ის ანალოგი) */
     public function image(string $url): ?string
     {
-        if (! preg_match('#^https?://#i', $url)) {
-            return null;
-        }
-
-        try {
-            $res = SourceLog::request(20)->get($url);
-        } catch (Throwable $e) {
-            return SourceLog::threw('bgg', $e, ['url' => $url]);
-        }
-
-        if (! $res->successful()) {
-            return SourceLog::status('bgg', $res->status(), $res->body(), ['url' => $url]);
-        }
-
-        return strlen($res->body()) > 1000
-            ? $res->body()
-            : SourceLog::failed('bgg', 'image too small', ['url' => $url, 'bytes' => strlen($res->body())]);
+        return app(SourceImage::class)->fetch('bgg', $url);
     }
 
     /* ---------- დამხმარეები ---------- */

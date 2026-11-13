@@ -1303,6 +1303,7 @@
     "title_required_either": "A title is required — Georgian or English.",
     "download_timed_out": "The download ran out of time.",
     "download_no_file": "yt-dlp finished but produced no file.",
+    "video_url_not_allowed": "This address can't be downloaded from — it points at an internal network.",
     "no_tmdb_id": "There is no TMDB id — it can't be refreshed from the source.",
     "no_translation_source": "Pick at least one source — TMDB or Gemini.",
     "worker_unavailable": "The server's background worker could not be started — the queue keeps running in the browser.",

@@ -339,14 +339,19 @@ class BoardGameController extends Controller
             return;
         }
 
-        $body = $this->bgg->image($url);
-
-        if (! $body) {
-            return;
-        }
-
         $path = StorageFolder::BOARD_GAME_IMAGES."/bgg-{$game->bgg_id}.jpg";
-        Storage::disk(StorageFolder::diskFor($path))->put($path, $body);
+        $disk = Storage::disk(StorageFolder::diskFor($path));
+
+        // ⚠️ საერთო ფაილი ერთხელ იწერება (`GameController::fetchCover()`-ის წესი) — სხვის ფოტოს მოთხოვნა ვერ გადაწერს
+        if (! $disk->exists($path)) {
+            $body = $this->bgg->image($url);
+
+            if (! $body) {
+                return;
+            }
+
+            $disk->put($path, $body);
+        }
 
         $game->forceFill(['image_path' => $path, 'image_source' => 'bgg'])->save();
     }

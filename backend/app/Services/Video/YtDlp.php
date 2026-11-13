@@ -3,6 +3,7 @@
 namespace App\Services\Video;
 
 use App\Support\ProcessEnv;
+use App\Support\SafeHttp;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\ExecutableFinder;
@@ -28,6 +29,25 @@ use Symfony\Component\Process\Process;
  */
 class YtDlp
 {
+    /**
+     * **ამ მისამართზე `yt-dlp`-ის გაშვება შეიძლება?**
+     *
+     * ⚠️ `yt-dlp` ნებისმიერ მისამართს ხსნის (generic extractor) და პასუხს
+     * ფაილად აბრუნებს: შიდა ქსელის მისამართი (`127.0.0.1`, `192.168.x.x`,
+     * cloud-ის მეტამონაცემები) სერვერს SSRF-ის იარაღად აქცევდა — ნაპოვნი
+     * „ვიდეო" მომხმარებელს ჩამოწერილ ფაილად დაუბრუნდებოდა. ფილტრი იგივეა,
+     * რაც `SafeHttp`-ს აქვს (სქემა, `user@`, ყველა DNS-პასუხი).
+     *
+     * ⚠️ **ეს მხოლოდ პირველი მისამართის შემოწმებაა.** გადამისამართებას
+     * `yt-dlp` თვითონ მიჰყვება და DNS-ს თავიდან ხსნის, ე.ი. საჯარო ჰოსტი,
+     * რომელიც შიდა მისამართზე ამისამართებს (ან DNS-ს ცვლის), აქ არ იჭრება —
+     * ამას პროგრამის გარედან ვერ ვაკონტროლებთ.
+     */
+    public function permits(string $url): bool
+    {
+        return app(SafeHttp::class)->allowed($url);
+    }
+
     /** ⚠️ არგუმენტები **მასივია** და არა სტრიქონი — shell-ის escaping საერთოდ არ ერევა */
     public function available(): bool
     {
@@ -98,7 +118,7 @@ class YtDlp
     public function info(string $url): ?array
     {
         $binary = $this->binary();
-        if (! $binary) {
+        if (! $binary || ! $this->permits($url)) {
             return null;
         }
 
@@ -163,7 +183,7 @@ class YtDlp
     public function playlist(string $url): ?array
     {
         $binary = $this->binary();
-        if (! $binary) {
+        if (! $binary || ! $this->permits($url)) {
             return null;
         }
 
@@ -221,7 +241,7 @@ class YtDlp
     public function probe(string $url): array
     {
         $binary = $this->binary();
-        if (! $binary) {
+        if (! $binary || ! $this->permits($url)) {
             return ['title' => null, 'duration' => null, 'filesize' => null];
         }
 
@@ -281,6 +301,10 @@ class YtDlp
         $binary = $this->binary();
         if (! $binary) {
             throw new \RuntimeException('ytdlp_unavailable');
+        }
+
+        if (! $this->permits($url)) {
+            throw new \RuntimeException('video_url_not_allowed');
         }
 
         File::ensureDirectoryExists($targetDir);

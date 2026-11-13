@@ -4,6 +4,7 @@ namespace App\Services\Games;
 
 use App\Services\Credentials\CredentialStore;
 use App\Support\CredentialProviders;
+use App\Support\SourceImage;
 use App\Support\SourceLog;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
@@ -158,23 +159,7 @@ class IgdbClient
     /** სურათის ბაიტები — ჩაწერის გარეშე (`RawgClient::image()`-ის ანალოგი) */
     public function image(string $url): ?string
     {
-        if (! preg_match('#^https?://#i', $url)) {
-            return null;
-        }
-
-        try {
-            $res = SourceLog::request(20)->get($url);
-        } catch (Throwable $e) {
-            return SourceLog::threw('igdb', $e, ['url' => $url]);
-        }
-
-        if (! $res->successful()) {
-            return SourceLog::status('igdb', $res->status(), $res->body(), ['url' => $url]);
-        }
-
-        return strlen($res->body()) > 1000
-            ? $res->body()
-            : SourceLog::failed('igdb', 'cover too small', ['url' => $url, 'bytes' => strlen($res->body())]);
+        return app(SourceImage::class)->fetch('igdb', $url);
     }
 
     /* ---------- დამხმარეები ---------- */
