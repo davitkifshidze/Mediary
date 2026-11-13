@@ -20,7 +20,8 @@ import { EmptyState } from '@/components/ui/empty-state'
    (ორშაბათი → კვირა) და გარეთ მყოფი დღე წყვეტილი ჩარჩოთი ჩანს, არ იჭერს. თვის
    სახელი ჩნდება პირველ ბარათზე და ყოველი თვის 1-ში; შაბათ-კვირა შეფერილია,
    წარსულის რიცხვი — ბაცი. ⚠️ ტელეფონზე ბადის ნაცვლად მხოლოდ მორიგეობიანი
-   დღეების სიაა, იმავე ბლოკებით — შვიდსვეტიან ბადეში იქ არაფერი იკითხება.
+   დღეების სიაა, იმავე ბლოკებით — შვიდსვეტიან ბადეში იქ არაფერი იკითხება;
+   მონიშვნის რეჟიმში სიაში **ყველა** დღეა, თორემ ცარიელ დღეებს ვერ მონიშნავდი.
 
    ⚠️ **ორი რეჟიმი, ერთი ბარათი.** ჩვეულებრივ დაჭერა დღეს ხსნის (`onOpenDay`) და
    `picked` დღე ჩარჩოთია გამოკვეთილი; მონიშვნის რეჟიმში (`PhotoGrid`-ის ჩვევა) —
@@ -273,40 +274,50 @@ export function DutyCalendar({
         </div>
       </div>
 
-      {/* ---------- ტელეფონი: მხოლოდ მორიგეობიანი დღეები, სრული ბლოკებით; დაჭერა იგივეა, რაც ბარათზე ---------- */}
+      {/* ---------- ტელეფონი: მორიგეობიანი დღეები სრული ბლოკებით; დაჭერა იგივეა, რაც ბარათზე.
+          ⚠️ მონიშვნის რეჟიმში ცარიელი დღეებიც ჩანს — რამდენიმე დღეზე ერთად დამატება სწორედ მათი მონიშვნაა ---------- */}
       <ul className="space-y-2 sm:hidden" data-testid="duty-agenda">
         {days
-          .filter((day) => byDay.has(day))
-          .map((day) => (
-            <li key={day}>
-              <button
-                data-kind="calendar"
-                type="button"
-                aria-pressed={selecting ? selected.has(day) : undefined}
-                onClick={() => (selecting ? press(day, false) : onOpenDay(day))}
-                className={cn(
-                  'flex w-full cursor-pointer items-start gap-3 rounded-md border bg-background p-2 text-left',
-                  selecting && selected.has(day) ? cn(MARKED, 'bg-[var(--mod-fill)]') : 'border-border',
-                )}
-                data-testid="duty-agenda-day"
-              >
-                <span className="w-10 shrink-0 text-center">
-                  <span className={cn('block text-lg font-semibold leading-none tabular-nums', day === today && 'text-[var(--mod)]')}>
-                    {parseDay(day).getDate()}
-                  </span>
-                  <span className="block text-[11px] uppercase text-muted-foreground">{names[weekdayIndex(day)]}</span>
-                </span>
-                <span className="min-w-0 flex-1 space-y-1">
-                  {(byDay.get(day) ?? []).map((shift) => (
-                    <span key={shift.id} className="block">
-                      {block(shift, true, false)}
+          .filter((day) => selecting || byDay.has(day))
+          .map((day) => {
+            const items = byDay.get(day) ?? []
+
+            return (
+              <li key={day}>
+                <button
+                  data-kind="calendar"
+                  type="button"
+                  aria-pressed={selecting ? selected.has(day) : undefined}
+                  onClick={() => (selecting ? press(day, false) : onOpenDay(day))}
+                  className={cn(
+                    'flex w-full cursor-pointer gap-3 rounded-md border bg-background p-2 text-left',
+                    items.length ? 'items-start' : 'items-center',
+                    selecting && selected.has(day) ? cn(MARKED, 'bg-[var(--mod-fill)]') : 'border-border',
+                  )}
+                  data-testid="duty-agenda-day"
+                >
+                  <span className="w-10 shrink-0 text-center">
+                    <span className={cn('block text-lg font-semibold leading-none tabular-nums', day === today && 'text-[var(--mod)]')}>
+                      {parseDay(day).getDate()}
                     </span>
-                  ))}
-                </span>
-              </button>
-            </li>
-          ))}
-        {!shifts.length && (
+                    <span className="block text-[11px] uppercase text-muted-foreground">{names[weekdayIndex(day)]}</span>
+                  </span>
+                  {items.length ? (
+                    <span className="min-w-0 flex-1 space-y-1">
+                      {items.map((shift) => (
+                        <span key={shift.id} className="block">
+                          {block(shift, true, false)}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="min-w-0 flex-1 text-sm text-muted-foreground">{t('duty.day.free')}</span>
+                  )}
+                </button>
+              </li>
+            )
+          })}
+        {!shifts.length && !selecting && (
           <li>
             <EmptyState size="compact" title={t('duty.calendar.emptyPeriod')} />
           </li>

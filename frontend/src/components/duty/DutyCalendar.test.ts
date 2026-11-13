@@ -170,6 +170,22 @@ describe('DutyCalendar', () => {
     expect(agenda[0].textContent).toContain('09:00 → 21:00')
   })
 
+  it('lists every day on the phone while selecting, so empty days can be picked too', async () => {
+    await render({ selecting: true, shifts: [shift(1, '2026-10-02')] })
+
+    const agenda = [...container!.querySelectorAll<HTMLButtonElement>('[data-testid="duty-agenda-day"]')]
+    expect(agenda).toHaveLength(31)
+    expect(agenda[1].textContent).toContain('კლინიკა')
+    expect(agenda[2].textContent).toContain(i18n.t('duty.day.free'))
+
+    // დაჭერა ნიშნავს და ხსნის — ცარიელ დღესაც
+    await act(async () => agenda[2].click())
+    expect(selected()).toBe('2026-10-03')
+    expect(agenda[2].getAttribute('aria-pressed')).toBe('true')
+    await act(async () => agenda[2].click())
+    expect(selected()).toBe('')
+  })
+
   it('marks today and the first day of a month', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 9, 14, 12))
