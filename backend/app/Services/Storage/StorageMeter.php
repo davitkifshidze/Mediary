@@ -30,7 +30,9 @@ use App\Support\CustomFields;
 use App\Support\CustomModules;
 use App\Support\CustomModuleTrash;
 use App\Support\GalleryParent;
+use App\Support\LockBook;
 use App\Support\NotificationType;
+use App\Support\RecordLocks;
 use App\Support\StorageFolder;
 use App\Support\TrashDomain;
 use App\Support\UploadLimits;
@@ -39,6 +41,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -980,7 +983,8 @@ class StorageMeter
      */
     public function archiveOwnFiles(User $user, array $paths): ?string
     {
-        $known = $this->files($user)->keyBy('path');
+        // ⚠️ ლოკის მიღმა ფაილი ცხადად გადმოცემული გზითაც არ გადის — სია მას არ აჩვენებს, ZIP-იც არ ჩადებს
+        $known = $this->files($user)->reject($this->lockedAway($user))->keyBy('path');
 
         $picked = [];
         foreach (array_unique($paths) as $path) {
@@ -1041,13 +1045,19 @@ class StorageMeter
      * აჩვენებს (`library()`). ანგარიშის წაშლა კი (`$permanent`) ყველაფერს
      * შლის — ურნაში მყოფსაც.
      *
+     * ⚠️ **ლოკის მიღმა ფაილიც არ იშლება** (`lockedAway()`): სია მას არ აჩვენებს
+     * და ჩაკეტილი ალბომის ფოტო პაროლის გარეშე ურნაში ვერ გადავა. ანგარიშის
+     * წაშლა ლოკს არ ეკითხება.
+     *
      * @return Collection<int, array<string, mixed>>
      */
     private function pickable(User $user, bool $permanent): Collection
     {
         $files = $this->files($user);
 
-        return $permanent ? $files : $this->markTrash($user, $files)->whereNull('trash')->values();
+        return $permanent
+            ? $files
+            : $this->markTrash($user, $files)->whereNull('trash')->reject($this->lockedAway($user))->values();
     }
 
     /**
@@ -1580,14 +1590,10 @@ class StorageMeter
      */
     public function library(User $user): array
     {
-        /* **ჩაკეტილი (ამ სესიაში დაუხსნელი) ადამიანის/ალბომის ფაილი
-           ბიბლიოთეკაში არ ჩანს** — არც სიაში, არც „ყველას ჩამოტვირთვაში"
-           (`pickPaths()`); გალერეის ჩაკეტილი ალბომის ტყუპი. ⚠️ `files()` თვითონ
-           სრული რჩება: კვოტის გადათვლა მასზე დგას, დამალული ფაილი კი ადგილს იკავებს. */
-        $hidden = $this->hiddenPersonalMedia($user);
-
-        $marked = $this->markTrash($user, $this->files($user))
-            ->reject(fn (array $f) => $f['owner_type'] === 'personal_media' && isset($hidden[(int) $f['owner_id']]));
+        /* **ლოკის მიღმა დარჩენილი ფაილი ბიბლიოთეკაში არ ჩანს** — არც სიაში,
+           არც „ყველას ჩამოტვირთვაში" (`pickPaths()`). ⚠️ `files()` თვითონ სრული
+           რჩება: კვოტის გადათვლა მასზე დგას, დამალული ფაილი კი ადგილს იკავებს. */
+        $marked = $this->markTrash($user, $this->files($user))->reject($this->lockedAway($user));
         $inTrash = $marked->whereNotNull('trash');
 
         return [
@@ -1603,25 +1609,59 @@ class StorageMeter
     }
 
     /**
-     * დამალული ადამიანის/ალბომის ფოტოები — `id => true` (`personal_lock`-ის
-     * პასუხი: ყველა მინუს ხილული; ურნის/მშობლის scope-ები აქ არ მონაწილეობს).
+     * **ფაილი ლოკის მიღმაა?** — `files()`-ის რიგის ფილტრი ბიბლიოთეკისთვის
+     * (სია, ZIP, წაშლა).
      *
-     * @return array<int, true>
+     * ლოკის მიღმაა: ჩაკეტილი გალერეის ალბომის ფოტო, ჩაკეტილი ადამიანის ან
+     * პირადი ალბომის ფოტო/ვიდეო და ჩაკეტილი ფილმის, სერიალის, ანიმეს და
+     * მსახიობის ყველა ფაილი (პოსტერი, გალერეის ფოტო, ველის ფაილი). ტიპების სია
+     * `LockBook::TYPES`-ია — ახალი ჩაკეტვადი მოდელი აქ თავისით მოხვდება.
+     *
+     * ⚠️ **მფლობელისთვის — სესიის ხედი** (ამ სესიაში გახსნილი ჩანს), **სხვისთვის
+     * (ადმინის გვერდი) — ყველა ჩაკეტილი**: პაროლი მფლობელისაა და ადმინის სესია
+     * მას ვერ „გახსნის". ⚠️ id-ები აქ ერთხელ იკრიბება და რიგები PHP-ში იფილტრება
+     * — `files()` კვოტის გამო ყველა scope-ს ხსნის და მოთხოვნაში ლოკი აღარ მონაწილეობს.
+     *
+     * @return \Closure(array<string, mixed>): bool
      */
-    private function hiddenPersonalMedia(User $user): array
+    private function lockedAway(User $user): \Closure
     {
-        $all = PersonalMedia::withoutGlobalScopes()->where('user_id', $user->id)->pluck('id')->map(fn ($id) => (int) $id);
+        $owner = (int) $user->getKey();
+        $own = (int) Auth::id() === $owner;
+        $hidden = [];
 
-        if ($all->isEmpty()) {
-            return [];
+        foreach (array_keys(LockBook::TYPES) as $type) {
+            $locked = RecordLocks::lockedIdsFor($type, $owner);
+            $hidden[$type] = array_fill_keys($own ? array_diff($locked, RecordLocks::unlockedIds($type)) : $locked, true);
         }
 
-        $visible = PersonalMedia::withoutGlobalScopes(['owner', 'trash', 'personal_parent'])
-            ->where('user_id', $user->id)
+        $albums = array_keys($hidden['gallery_album']);
+        $photos = $albums === [] ? [] : GalleryImage::withoutGlobalScopes()
+            ->where('user_id', $owner)
+            ->whereIn('album_id', $albums)
             ->pluck('id')
-            ->map(fn ($id) => (int) $id);
+            ->flip()
+            ->all();
 
-        return array_fill_keys($all->diff($visible)->values()->all(), true);
+        $people = array_keys($hidden['personal']);
+        $personalAlbums = array_keys($hidden['personal_album']);
+        $media = $people === [] && $personalAlbums === [] ? [] : PersonalMedia::withoutGlobalScopes()
+            ->where('user_id', $owner)
+            ->where(fn ($w) => $w->whereIn('person_id', $people)->orWhereIn('album_id', $personalAlbums))
+            ->pluck('id')
+            ->flip()
+            ->all();
+
+        return function (array $file) use ($hidden, $photos, $media): bool {
+            $type = (string) $file['owner_type'];
+            $id = (int) ($file['owner_id'] ?? 0);
+            $parent = $file['_parent'] ?? null;
+
+            return ($type === 'gallery_image' && isset($photos[$id]))
+                || ($type === 'personal_media' && isset($media[$id]))
+                || isset($hidden[$type][$id])
+                || ($parent !== null && isset($hidden[(string) $parent[0]][(int) $parent[1]]));
+        };
     }
 
     /**

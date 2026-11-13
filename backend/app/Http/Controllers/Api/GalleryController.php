@@ -25,6 +25,7 @@ use App\Support\Like;
 use App\Support\LockedPhotos;
 use App\Support\MediaDomain;
 use App\Support\MissingCredential;
+use App\Support\RecordLocks;
 use App\Support\RecordTitle;
 use App\Support\SafeMime;
 use App\Support\StorageFolder;
@@ -757,8 +758,19 @@ class GalleryController extends Controller
 
         abort_if(! $changes, 422, 'nothing_to_move');
 
-        $ids = array_map('intval', $data['ids']);
-        $moved = GalleryImage::whereIn('id', $ids)->update($changes);
+        /* ⚠️ **ჯერ ის ფოტოები, რომლებსაც ეს მოთხოვნა მართლა ხედავს** — და რიგიც,
+           ფაილიც მხოლოდ მათზე იცვლება. ქვემოთ ფაილები `album_lock`-ის გარეშე
+           იკითხება (იხ. კომენტარი), ე.ი. მოთხოვნის `ids`-ით წაკითხვა დაუხსნელი
+           ალბომის ფოტოს ფაილსაც გადაიტანდა: `album_id: null`-ზე ის დაცული
+           დისკიდან საჯაროზე გამოვიდოდა, რიგი კი ჩაკეტილ ალბომში დარჩებოდა.
+           დამალული ჩანაწერის ფოტოც აქ არ მონაწილეობს. */
+        $ids = RecordLocks::excludeMorph(
+            GalleryImage::whereIn('id', array_map('intval', $data['ids'])),
+            'gallery_images.imageable_type',
+            'gallery_images.imageable_id',
+        )->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        $moved = $ids === [] ? 0 : GalleryImage::whereIn('id', $ids)->update($changes);
 
         /* ⚠️ ალბომის ღერძს რომ შეეხო, ფაილებიც უნდა გაჰყვეს.
            ⚠️ `withoutGlobalScope('album_lock')` — ახლახან ჩაკეტილ ალბომში
