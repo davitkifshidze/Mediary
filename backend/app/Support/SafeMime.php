@@ -77,6 +77,26 @@ final class SafeMime
     }
 
     /**
+     * სახელი `Content-Disposition`-ისთვის: `/` და `\` ტირედ იქცევა.
+     *
+     * ⚠️ Symfony ამ ორ ნიშანზე გამონაკლისს ისვრის („The filename and the fallback cannot
+     * contain…") — ე.ი. ფოტო, რომლის თავდაპირველი სახელი გვერდის სათაურიდან მოდის და
+     * დახრილ ხაზს შეიცავს („AC/DC — live.jpg"), 500-ით ბრუნდებოდა და ბადეში გატეხილ
+     * სურათად ჩანდა. სახელი მხოლოდ შენახვისას ჩანს; ფაილის გზას ის არ ეხება.
+     */
+    private static function filename(?string $name): ?string
+    {
+        if ($name === null) {
+            return null;
+        }
+
+        $clean = trim(str_replace(['/', '\\'], '-', $name));
+
+        // მხოლოდ დახრილი ხაზებისგან შემდგარი სახელი ცარიელია — ფაილის საკუთარი სახელი გამოიყენება
+        return trim($clean, '- ') === '' ? null : $clean;
+    }
+
+    /**
      * **ერთადერთი გზა ატვირთული ფაილის გასაცემად.** `$name` — ჩამოტვირთვის
      * სახელი (კლიენტის; ⚠️ Symfony მას `Content-Disposition`-ში ესქეიპავს).
      */
@@ -87,7 +107,7 @@ final class SafeMime
 
         return $disk->response(
             $path,
-            $name,
+            self::filename($name),
             [
                 'Content-Type' => $inline ? $mime : self::DOWNLOAD,
                 'X-Content-Type-Options' => 'nosniff',
@@ -109,7 +129,7 @@ final class SafeMime
 
         return $disk->response(
             $path,
-            $name,
+            self::filename($name),
             [
                 'Content-Type' => self::isInline($mime) ? $mime : self::DOWNLOAD,
                 'X-Content-Type-Options' => 'nosniff',
@@ -131,7 +151,7 @@ final class SafeMime
     {
         $mime = self::detect($disk, $path);
         $inline = self::isInline($mime);
-        $filename = $name ?: basename($path);
+        $filename = self::filename($name) ?? basename($path);
 
         $response = new BinaryFileResponse($disk->path($path), 200, [
             'Content-Type' => $inline ? $mime : self::DOWNLOAD,
