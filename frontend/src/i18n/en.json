@@ -5304,7 +5304,6 @@
       "workplaces": "Workplaces",
       "workplacesHint": "None selected — all.",
       "pickRange": "Pick a range.",
-      "result": "{{count}} shifts · {{hours}} h · {{pay}}",
       "whatIf": "If I take on more…",
       "more": "How many",
       "noRate": "This workplace has no rate for this type — add one in “Settings”.",

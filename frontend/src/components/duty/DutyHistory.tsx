@@ -172,7 +172,6 @@ export function DutyHistory({
             shifts={query.items}
             settings={settings}
             onEdit={onEdit}
-            months
             dimmed={dimmed}
             emptyTitle={filtered ? t('duty.history.noMatch') : undefined}
           />

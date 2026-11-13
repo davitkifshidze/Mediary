@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis, type TooltipContentProps, type TooltipValueType } from 'recharts'
-import { Loader2 } from 'lucide-react'
+import { CalendarDays, Clock, Loader2, Wallet } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import {
   DUTY_KEY,
   fetchDutyPeriods,
@@ -14,6 +15,7 @@ import {
   type DutyWorkplace,
 } from '@/api/duty'
 import { formatHours, formatMoney, parseDay, typeName, workplaceColor } from '@/lib/duty'
+import { DutySection, DutyStatCard, WorkplaceDot } from '@/components/duty/DutyBits'
 import { BAR_RADIUS_Y, CHART_GRID, CHART_TICK, ChartFrame, ChartTip } from '@/components/ui/chart'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -24,7 +26,8 @@ import { EmptyState } from '@/components/ui/empty-state'
    თითო სამსახურზე**, ტიპების მიხედვით დაშლა, წინა პერიოდთან შედარება და გრაფიკი
    პერიოდებით, სამსახურების ფერებით.
 
-   ⚠️ **ფორმები ამოცანით** (dataviz): სამი სათაური რიცხვია (ტაილები, გრაფიკი არა);
+   ⚠️ **ფორმები ამოცანით** (dataviz): სამი სათაური რიცხვია (კალენდრის იგივე
+   შემაჯამებელი ბარათები, ქვეშ — წინა პერიოდთან შედარება; გრაფიკი არა);
    სამსახურები — ცხრილი წილის თხელი ზოლით (ცხრილი ერთდროულად გრაფიკის „ცხრილის
    ხედიცაა“); დროში ცვლილება — დაწყობილი სვეტები, **ერთი ღერძით** (თანხა ·
    საათები · რაოდენობა — ფილტრით ზემოთ და არა ორი ღერძით). ფერი სამსახურისაა
@@ -115,24 +118,27 @@ export function DutyTotals({
     return t(diff > 0 ? 'duty.totals.more' : 'duty.totals.less', { value: text })
   }
 
-  const tiles: { key: Metric; label: string }[] = [
-    { key: 'shifts', label: t('duty.totals.shifts') },
-    { key: 'hours', label: t('duty.totals.hours') },
-    { key: 'pay', label: t('duty.totals.pay') },
+  const tiles: { key: Metric; label: string; icon: LucideIcon }[] = [
+    { key: 'shifts', label: t('duty.totals.shifts'), icon: CalendarDays },
+    { key: 'hours', label: t('duty.totals.hours'), icon: Clock },
+    { key: 'pay', label: t('duty.totals.pay'), icon: Wallet },
   ]
 
   const maxPay = Math.max(1, ...summary.workplaces.map((w) => value(w, metric)))
 
   return (
-    <div className="space-y-5" data-testid="duty-totals">
+    <div className="space-y-4" data-testid="duty-totals">
       {/* ---------- სათაური რიცხვები ---------- */}
       <div className="grid gap-3 sm:grid-cols-3">
         {tiles.map((tile) => (
-          <div key={tile.key} className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs text-muted-foreground">{tile.label}</p>
-            <p className="mt-1 font-display text-2xl font-semibold tabular-nums">{show(value(summary.totals, tile.key), tile.key)}</p>
-            {delta(tile.key) && <p className="mt-1 text-xs text-muted-foreground">{delta(tile.key)}</p>}
-          </div>
+          <DutyStatCard
+            key={tile.key}
+            icon={tile.icon}
+            label={tile.label}
+            value={show(value(summary.totals, tile.key), tile.key)}
+            note={delta(tile.key) ?? undefined}
+            data-testid={`duty-totals-${tile.key}`}
+          />
         ))}
       </div>
 
@@ -155,9 +161,9 @@ export function DutyTotals({
       )}
 
       {/* ---------- სამსახურებით ---------- */}
-      <section className="rounded-xl border border-border bg-card p-5">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-display text-base font-semibold">{t('duty.totals.byWorkplace')}</h3>
+      <DutySection
+        title={t('duty.totals.byWorkplace')}
+        aside={
           <CutTabs
             layout="inline"
             options={[
@@ -168,8 +174,8 @@ export function DutyTotals({
             value={metric}
             onChange={(key) => setMetric(key as Metric)}
           />
-        </div>
-
+        }
+      >
         {summary.workplaces.length ? (
           <ul className="space-y-3" data-testid="duty-totals-workplaces">
             {summary.workplaces.map((row) => {
@@ -178,7 +184,7 @@ export function DutyTotals({
               return (
                 <li key={String(row.workplace_id)}>
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: workplaceColor(w) }} aria-hidden />
+                    <WorkplaceDot workplace={w} />
                     <span className="min-w-0 flex-1 truncate font-medium">{w?.name ?? t('duty.noWorkplace')}</span>
                     <span className="text-muted-foreground tabular-nums">
                       {[`${row.shifts} × `, t('duty.hoursValue', { hours: formatHours(row.hours) })].join('')}
@@ -198,12 +204,11 @@ export function DutyTotals({
         ) : (
           <EmptyState size="line" title={t('duty.empty')} />
         )}
-      </section>
+      </DutySection>
 
       {/* ---------- ტიპებით ---------- */}
       {summary.types.length > 0 && (
-        <section className="rounded-xl border border-border bg-card p-5">
-          <h3 className="mb-3 font-display text-base font-semibold">{t('duty.totals.byType')}</h3>
+        <DutySection title={t('duty.totals.byType')}>
           <table className="w-full text-sm">
             <tbody className="divide-y divide-border">
               {summary.types.map((row) => {
@@ -220,26 +225,26 @@ export function DutyTotals({
               })}
             </tbody>
           </table>
-        </section>
+        </DutySection>
       )}
 
       {/* ---------- პერიოდებით ---------- */}
       {chart.rows.length > 1 && (
-        <section className="rounded-xl border border-border bg-card p-5">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-display text-base font-semibold">{t('duty.totals.byPeriod', { metric: tiles.find((x) => x.key === metric)?.label })}</h3>
-            {chart.series.length > 1 && (
+        <DutySection
+          title={t('duty.totals.byPeriod', { metric: tiles.find((x) => x.key === metric)?.label })}
+          aside={
+            chart.series.length > 1 && (
               <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {chart.series.map((w) => (
                   <li key={w.id} className="flex items-center gap-1.5">
-                    <span className="size-2.5 rounded-[2px]" style={{ background: workplaceColor(w) }} aria-hidden />
+                    <WorkplaceDot workplace={w} className="size-2.5" />
                     {w.name}
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
-
+            )
+          }
+        >
           <ChartFrame height={240}>
             <BarChart data={chart.rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid vertical={false} stroke={CHART_GRID} />
@@ -279,7 +284,7 @@ export function DutyTotals({
               ))}
             </BarChart>
           </ChartFrame>
-        </section>
+        </DutySection>
       )}
     </div>
   )

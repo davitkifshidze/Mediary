@@ -333,6 +333,10 @@ describe('DutyPage', () => {
     expect(container!.querySelector('[data-testid="duty-stats"]')).toBeNull()
     const totals = container!.querySelector('[data-testid="duty-totals"]')!
     expect(totals.textContent).toContain(i18n.t('duty.totals.more', { value: '1' }))
+    // სათაური რიცხვები — იგივე ბარათები, ქვეშ წინა პერიოდთან შედარება
+    const pay = container!.querySelector('[data-testid="duty-totals-pay"]')!
+    expect(pay.textContent).toContain('220 ₾')
+    expect(pay.textContent).toContain(i18n.t('duty.totals.more', { value: '220 ₾' }))
     expect(container!.querySelector('[data-testid="duty-totals-workplaces"]')!.textContent).toContain('კლინიკა')
   })
 
@@ -451,6 +455,10 @@ describe('DutyPage', () => {
     expect(periods[0].textContent).toContain('520')
     expect(container!.querySelectorAll('[data-testid="duty-income-workplace"]')).toHaveLength(2)
     expect(container!.querySelector('[data-testid="duty-income-total"]')!.textContent).toContain('740')
+    // ყველა პერიოდის ჯამი ზემოთ ბარათებადაც: 3 მორიგეობა · 72 სთ · 740 ₾
+    const stats = container!.querySelector('[data-testid="duty-income-stats"]')!
+    expect(stats.textContent).toContain(i18n.t('duty.hoursValue', { hours: '72' }))
+    expect(stats.textContent).toContain('740 ₾')
   })
 
   it('asks the server for the period and income of one workplace when it is filtered', async () => {
@@ -479,11 +487,35 @@ describe('DutyPage', () => {
     expect(container!.querySelector('[data-testid="duty-period-label"]')).toBeNull()
     expect(container!.querySelector<HTMLElement>('[data-testid="duty-list"] [data-status="cancelled"]')!.className).toContain('line-through')
 
+    // სტრიქონი კალენდრის იგივე ბლოკია: სამსახურის ფერი (პალიტრის ფერი თემის ცვლადია; გაუქმებულზე წითელი),
+    // თავში რიცხვი და კვირის დღე
+    const rows = [...container!.querySelectorAll<HTMLElement>('[data-testid="duty-row"]')]
+    expect(rows.map((row) => row.style.getPropertyValue('--wp'))).toEqual(['var(--duty-1)', 'var(--destructive)'])
+    expect(rows[0].textContent).toContain(`2${new Intl.DateTimeFormat(i18n.language, { weekday: 'short' }).format(new Date(2026, 9, 2, 12))}`)
+    expect(rows[1].textContent).toContain(i18n.t('duty.status.cancelled'))
+
     // რედაქტირება — `h-9`
     const edit = [...container!.querySelectorAll<HTMLButtonElement>('[data-testid="duty-row"] button')].find(
       (b) => b.textContent?.trim() === i18n.t('actions.edit'),
     )!
     expect(edit.className).toContain('h-9')
+  })
+
+  it('sums a range in the calculator and prices more shifts from the workplace rate', async () => {
+    defaults()
+    await render('/duty?view=calculator')
+
+    // საწყისი შუალედი — გვერდის პერიოდი; არცერთი სამსახური არჩეული — ყველა
+    expect(mocks.fetchDutySummary).toHaveBeenCalledWith({ from: '2026-10-01', to: '2026-10-31', workplaceIds: [] })
+    const total = container!.querySelector('[data-testid="duty-calc-total"]')!
+    expect(total.textContent).toContain(i18n.t('duty.hoursValue', { hours: '24' }))
+    expect(total.textContent).toContain('220 ₾')
+    expect(container!.querySelector('[data-testid="duty-calc-workplaces"]')!.textContent).toContain('კლინიკა')
+
+    // „კიდევ ერთი“: კლინიკა × 24 სთ = 220 → შუალედის ჯამი 440
+    expect(container!.querySelector('[data-testid="duty-calc-whatif"]')!.textContent).toBe(
+      i18n.t('duty.calc.whatIfResult', { hours: '24', add: '220 ₾', total: '440 ₾' }),
+    )
   })
 
   it('fades a light workplace and remembers it on the module', async () => {

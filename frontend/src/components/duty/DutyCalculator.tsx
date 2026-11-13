@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Download, Loader2 } from 'lucide-react'
+import { CalendarDays, Clock, Download, Loader2, Wallet } from 'lucide-react'
 import { DUTY_KEY, fetchDutySummary, type DutyRange, type DutySettingsData, type DutyShiftType, type DutyWorkplace } from '@/api/duty'
 import { downloadExport } from '@/api/export'
 import { errorMessage } from '@/lib/errors'
-import { dutyPay, formatHours, formatMoney, typeName, workplaceColor } from '@/lib/duty'
+import { dutyPay, formatHours, formatMoney, typeName } from '@/lib/duty'
+import { DutySection, DutyStatCard, WorkplaceDot } from '@/components/duty/DutyBits'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { DateRangePicker, type DateRangeValue } from '@/components/ui/date-picker'
@@ -16,7 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 /* ============================================================
    **კალკულატორი** — ნებისმიერი შუალედი და სამსახური(ები) →
-   რამდენი მორიგეობა, საათი და თანხა, ჯამურად და სამსახურებით.
+   რამდენი მორიგეობა, საათი და თანხა (იგივე შემაჯამებელი ბარათები, რაც
+   კალენდარზეა), ჯამურად და სამსახურებით.
 
    ⚠️ **„რომ ვიმორიგეო კიდევ N“** სიმულაციაა: ბაზას არ ეხება — არჩეული სამსახურის
    ტარიფით ითვლის (`dutyPay()`, სერვერის წესის ასლი) და ახალ ჯამს აჩვენებს.
@@ -69,8 +71,8 @@ export function DutyCalculator({
   const addHours = type ? type.hours * extra : 0
 
   return (
-    <div className="space-y-5" data-testid="duty-calculator">
-      <section className="rounded-xl border border-border bg-card p-5">
+    <div className="space-y-4" data-testid="duty-calculator">
+      <section className="rounded-lg border border-border bg-card p-4">
         <div className="grid gap-4 md:grid-cols-[minmax(0,18rem)_1fr]">
           <FormField label={t('duty.calc.range')} htmlFor="duty-calc-range">
             <DateRangePicker id="duty-calc-range" value={range} onChange={setRange} />
@@ -82,7 +84,7 @@ export function DutyCalculator({
                   key={w.id}
                   active={chosen.includes(w.id)}
                   onClick={() => toggle(w.id)}
-                  icon={<span className="size-2.5 rounded-sm" style={{ background: workplaceColor(w) }} />}
+                  icon={<WorkplaceDot workplace={w} className="size-2.5" />}
                 >
                   {w.name}
                 </Chip>
@@ -98,28 +100,32 @@ export function DutyCalculator({
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="mt-5 space-y-3">
-            <p className="text-lg" data-testid="duty-calc-total">
-              {t('duty.calc.result', {
-                count: summary.totals.shifts,
-                hours: formatHours(summary.totals.hours),
-                pay: formatMoney(summary.totals.pay, currency, lang),
-              })}
-            </p>
-            {summary.totals.unpaid > 0 && <p className="text-xs text-muted-foreground">{t('duty.totals.unpaid', { count: summary.totals.unpaid })}</p>}
-            {summary.totals.cancelled > 0 && (
-              <p className="text-xs text-muted-foreground">{t('duty.totals.cancelled', { count: summary.totals.cancelled })}</p>
-            )}
+          <div className="mt-4 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-3" data-testid="duty-calc-total">
+              <DutyStatCard
+                icon={CalendarDays}
+                label={t('duty.totals.shifts')}
+                value={summary.totals.shifts}
+                note={summary.totals.cancelled > 0 ? t('duty.totals.cancelled', { count: summary.totals.cancelled }) : undefined}
+              />
+              <DutyStatCard icon={Clock} label={t('duty.totals.hours')} value={t('duty.hoursValue', { hours: formatHours(summary.totals.hours) })} />
+              <DutyStatCard
+                icon={Wallet}
+                label={t('duty.totals.pay')}
+                value={formatMoney(summary.totals.pay, currency, lang)}
+                note={summary.totals.unpaid > 0 ? t('duty.totals.unpaid', { count: summary.totals.unpaid }) : undefined}
+              />
+            </div>
             {/* სად რამდენი — ერთ სამსახურზეც (რომელი სამსახური ჩანს) */}
             {summary.workplaces.length > 0 && (
-              <ul className="space-y-1 text-sm" data-testid="duty-calc-workplaces">
+              <ul className="space-y-1.5 text-sm" data-testid="duty-calc-workplaces">
                 {summary.workplaces.map((row) => {
                   const w = workplaces.find((x) => x.id === row.workplace_id) ?? null
 
                   return (
                     <li key={String(row.workplace_id)} className="flex items-center gap-2">
-                      <span className="size-2.5 rounded-[2px]" style={{ background: workplaceColor(w) }} aria-hidden />
-                      <span className="flex-1">{w?.name ?? t('duty.noWorkplace')}</span>
+                      <WorkplaceDot workplace={w} />
+                      <span className="min-w-0 flex-1 truncate font-medium">{w?.name ?? t('duty.noWorkplace')}</span>
                       <span className="tabular-nums text-muted-foreground">
                         {row.shifts} · {t('duty.hoursValue', { hours: formatHours(row.hours) })}
                       </span>
@@ -134,8 +140,7 @@ export function DutyCalculator({
       </section>
 
       {/* ---------- სიმულაცია ---------- */}
-      <section className="rounded-xl border border-border bg-card p-5">
-        <h3 className="mb-3 font-display text-base font-semibold">{t('duty.calc.whatIf')}</h3>
+      <DutySection title={t('duty.calc.whatIf')}>
         <div className="flex flex-wrap items-end gap-3">
           <FormField label={t('duty.calc.more')} htmlFor="duty-calc-more">
             <NumberPick id="duty-calc-more" value={extra} onChange={setExtra} options={[1, 2, 3, 4, 5, 8, 10]} min={1} max={60} />
@@ -170,7 +175,7 @@ export function DutyCalculator({
           </FormField>
         </div>
 
-        <p className="mt-4 text-sm" data-testid="duty-calc-whatif">
+        <p className="mt-4 rounded-md bg-[var(--mod-soft)] p-3 text-sm" data-testid="duty-calc-whatif">
           {addPay == null
             ? t('duty.calc.noRate')
             : t('duty.calc.whatIfResult', {
@@ -179,7 +184,7 @@ export function DutyCalculator({
                 total: formatMoney((summary?.totals.pay ?? 0) + addPay, currency, lang),
               })}
         </p>
-      </section>
+      </DutySection>
 
       <div className="flex justify-end">
         <Button variant="outline" onClick={() => exportCsv.mutate()} disabled={exportCsv.isPending}>

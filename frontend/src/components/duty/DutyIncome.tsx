@@ -1,9 +1,10 @@
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Download, Loader2 } from 'lucide-react'
+import { CalendarDays, Clock, Download, Loader2, Wallet } from 'lucide-react'
 import { DUTY_KEY, fetchDutyPeriods, type DutySettingsData, type DutyTotals as Totals, type DutyWorkplace } from '@/api/duty'
-import { formatHours, formatMoney, periodLabel, workplaceColor } from '@/lib/duty'
+import { formatHours, formatMoney, periodLabel } from '@/lib/duty'
+import { DutySection, DutyStatCard, WorkplaceDot } from '@/components/duty/DutyBits'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -11,8 +12,9 @@ import { EmptyState } from '@/components/ui/empty-state'
    **შემოსავალი — პერიოდი × სამსახური** (`?view=income`).
 
    „რომელი სამსახურიდან ამ თვეში რამდენი შემომივიდა, რამდენი საათი
-   ვიმორიგევე": ბოლო 12 პერიოდი, უახლესი ზემოთ — მორიგეობები · საათები ·
-   თანხა (+ გაუქმებული და უთანხო), ბოლოს ჯამი; CSV იგივე ცხრილია.
+   ვიმორიგევე": ზემოთ სამი შემაჯამებელი ბარათი (ყველა პერიოდის ჯამი), ქვემოთ
+   ბოლო 12 პერიოდი, უახლესი ზემოთ — მორიგეობები · საათები · თანხა
+   (+ გაუქმებული და უთანხო), ბოლოს ჯამი; CSV იგივე ცხრილია.
 
    ⚠️ **პერიოდი სამსახურისაა**: გაფილტრულ სამსახურზე (`?w`) — მისი
    პერიოდები („5-დან 4-მდე"), „ყველაზე" — კალენდარული თვეები და თითო
@@ -106,67 +108,79 @@ export function DutyIncome({
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card" data-testid="duty-income">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-4">
-        <h3 className="font-display text-base font-semibold">
-          {t(workplaceFilter == null ? 'duty.income.titleAll' : 'duty.income.titleOne', {
-            name: workplaceOf(workplaceFilter)?.name ?? '',
-            count: COUNT,
-          })}
-        </h3>
-        <Button variant="outline" size="sm" onClick={exportCsv}>
-          <Download className="size-4" />
-          {t('duty.income.csv')}
-        </Button>
+    <div className="space-y-4" data-testid="duty-income">
+      <div className="grid gap-3 sm:grid-cols-3" data-testid="duty-income-stats">
+        <DutyStatCard icon={CalendarDays} label={t('duty.totals.shifts')} value={total.shifts} />
+        <DutyStatCard icon={Clock} label={t('duty.totals.hours')} value={t('duty.hoursValue', { hours: formatHours(total.hours) })} />
+        <DutyStatCard
+          icon={Wallet}
+          label={t('duty.totals.pay')}
+          value={formatMoney(total.pay, currency, lang)}
+          note={total.unpaid > 0 ? t('duty.totals.unpaid', { count: total.unpaid }) : undefined}
+        />
       </div>
 
-      <div className="fb-scroll overflow-x-auto">
-        <table className="w-full min-w-[36rem] text-sm">
-          <thead>
-            <tr className="border-b border-border text-xs text-muted-foreground">
-              <th className="px-3 py-2 text-left font-medium">{t('duty.income.period')}</th>
-              <th className="px-3 py-2 text-right font-medium">{t('duty.totals.shifts')}</th>
-              <th className="px-3 py-2 text-right font-medium">{t('duty.totals.hours')}</th>
-              <th className="px-3 py-2 text-right font-medium">{t('duty.totals.pay')}</th>
-              <th className="px-3 py-2 text-right font-medium">{t('duty.status.cancelled')}</th>
-              <th className="px-3 py-2 text-right font-medium">{t('duty.income.unpaid')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {periods.map((p) => (
-              <Fragment key={p.from}>
-                <tr className="border-b border-border" data-testid="duty-income-period">
-                  <td className="px-3 py-2 font-medium">{periodLabel(p.from, p.to, lang)}</td>
-                  {cells(p.totals)}
-                </tr>
-                {/* „ყველაზე" — თითო სამსახური პერიოდის ქვეშ */}
-                {workplaceFilter == null &&
-                  p.workplaces.length > 1 &&
-                  p.workplaces.map((row) => {
-                    const w = workplaceOf(row.workplace_id)
-                    return (
-                      <tr key={String(row.workplace_id)} className="border-b border-border text-muted-foreground" data-testid="duty-income-workplace">
-                        <td className="py-1.5 pl-7 pr-3">
-                          <span className="inline-flex items-center gap-2">
-                            <span className="size-2.5 rounded-sm" style={{ background: workplaceColor(w) }} />
-                            {w?.name ?? t('duty.noWorkplace')}
-                          </span>
-                        </td>
-                        {cells(row)}
-                      </tr>
-                    )
-                  })}
-              </Fragment>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="bg-muted/50 font-semibold" data-testid="duty-income-total">
-              <td className="px-3 py-2">{t('duty.income.total', { count: periods.length })}</td>
-              {cells(total)}
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </section>
+      <DutySection
+        flush
+        title={t(workplaceFilter == null ? 'duty.income.titleAll' : 'duty.income.titleOne', {
+          name: workplaceOf(workplaceFilter)?.name ?? '',
+          count: COUNT,
+        })}
+        aside={
+          <Button variant="outline" size="sm" onClick={exportCsv}>
+            <Download className="size-4" />
+            {t('duty.income.csv')}
+          </Button>
+        }
+      >
+        <div className="fb-scroll overflow-x-auto">
+          <table className="w-full min-w-[36rem] text-sm">
+            <thead>
+              <tr className="border-b border-border text-xs text-muted-foreground">
+                <th className="px-3 py-2 text-left font-medium">{t('duty.income.period')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('duty.totals.shifts')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('duty.totals.hours')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('duty.totals.pay')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('duty.status.cancelled')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('duty.income.unpaid')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {periods.map((p) => (
+                <Fragment key={p.from}>
+                  <tr className="border-b border-border" data-testid="duty-income-period">
+                    <td className="px-3 py-2 font-medium">{periodLabel(p.from, p.to, lang)}</td>
+                    {cells(p.totals)}
+                  </tr>
+                  {/* „ყველაზე" — თითო სამსახური პერიოდის ქვეშ */}
+                  {workplaceFilter == null &&
+                    p.workplaces.length > 1 &&
+                    p.workplaces.map((row) => {
+                      const w = workplaceOf(row.workplace_id)
+                      return (
+                        <tr key={String(row.workplace_id)} className="border-b border-border text-muted-foreground" data-testid="duty-income-workplace">
+                          <td className="py-1.5 pl-7 pr-3">
+                            <span className="inline-flex items-center gap-2">
+                              <WorkplaceDot workplace={w} className="size-2.5" />
+                              {w?.name ?? t('duty.noWorkplace')}
+                            </span>
+                          </td>
+                          {cells(row)}
+                        </tr>
+                      )
+                    })}
+                </Fragment>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-muted/50 font-semibold" data-testid="duty-income-total">
+                <td className="px-3 py-2">{t('duty.income.total', { count: periods.length })}</td>
+                {cells(total)}
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </DutySection>
+    </div>
   )
 }

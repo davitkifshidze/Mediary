@@ -56,7 +56,7 @@ export function DutyStatCard({
       <span className="min-w-0 flex-1">
         <span className="block truncate text-xs text-muted-foreground">{label}</span>
         <span className="block truncate text-xl font-semibold leading-tight tabular-nums first-letter:uppercase">{value}</span>
-        {note && <span className="block truncate text-xs text-muted-foreground">{note}</span>}
+        {note && <span className="block text-xs text-muted-foreground">{note}</span>}
       </span>
     </>
   )
@@ -70,6 +70,32 @@ export function DutyStatCard({
     <div className={box} data-testid={testId}>
       {body}
     </div>
+  )
+}
+
+/** **სექციის ბარათი** — სათაური, მის გასწვრივ (სურვილით) გადამრთველი ან ღილაკი, ქვემოთ შიგთავსი */
+export function DutySection({
+  title,
+  aside,
+  children,
+  flush,
+  'data-testid': testId,
+}: {
+  title: ReactNode
+  aside?: ReactNode
+  children: ReactNode
+  /** შიგთავსი ბარათის კიდემდე მიდის (ცხრილი) — პადინგი მხოლოდ სათაურს აქვს */
+  flush?: boolean
+  'data-testid'?: string
+}) {
+  return (
+    <section className={cn('rounded-lg border border-border bg-card', !flush && 'p-4')} data-testid={testId}>
+      <div className={cn('flex flex-wrap items-center justify-between gap-2', flush ? 'border-b border-border p-4' : 'mb-3')}>
+        <h3 className="font-display text-base font-semibold">{title}</h3>
+        {aside}
+      </div>
+      {children}
+    </section>
   )
 }
 
