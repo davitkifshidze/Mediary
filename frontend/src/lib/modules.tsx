@@ -37,7 +37,7 @@ interface ModulesApi {
 }
 
 /** არა-მედია მოდულები, რომლებსაც საკუთარი გვერდი აქვთ (`App.tsx`-ის რეესტრი) */
-export const PAGE_MODULE_KEYS = ['video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'place', 'personal', 'duty', 'gallery'] as const
+export const PAGE_MODULE_KEYS = ['video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'place', 'personal', 'gallery'] as const
 
 const ModulesContext = React.createContext<ModulesApi>({
   all: [],
@@ -125,16 +125,6 @@ export const MODULE_ACCENT_FALLBACK = {
   '--mod-soft': 'color-mix(in oklab, var(--gold) 16%, transparent)',
   '--mod-fill': 'color-mix(in oklab, var(--gold) 28%, transparent)',
 } as React.CSSProperties
-
-/**
- * ერთი მოდულის აქცენტი გასაღებით — გვერდისა და მისი ფანჯრებისთვის.
- * ⚠️ ფანჯარა `body`-ში იხატება (portal) და გვერდის `style`-ს ვერ იმემკვიდრებს —
- * ვისაც იქ `--mod` სჭირდება, იმავე ჰუკს თვითონ იძახებს.
- */
-export function useModuleAccent(key: string): React.CSSProperties {
-  const { all } = useModules()
-  return modAccent(all.find((m) => m.key === key)?.color) ?? MODULE_ACCENT_FALLBACK
-}
 
 /** მოდულის სახელი მიმდინარე ენაზე */
 export function moduleName(m: ModuleInfo, lang: string): string {

@@ -42,7 +42,7 @@ const CLASSIFIER_PARAM: Record<string, string> = {
 /** კურსსა და ადგილს სტატუსი ფილტრის პანელშია (`?status=`), სხვებს — საიდბარის სექცია (`?view=`) */
 const STATUS_PARAM: Record<string, string> = { course: 'status', place: 'status' }
 
-/** რომელ მოდულს აქვს სია, რომელიც ჭრილს იღებს (გალერეას და მორიგეობას — არა) */
+/** რომელ მოდულს აქვს სია, რომელიც ჭრილს იღებს (გალერეას — არა) */
 function listed(module: string): boolean {
   return module in CLASSIFIER_PARAM || /^c\d+-/.test(module)
 }
@@ -73,10 +73,9 @@ export function ratingLink(module: string, route: string, score: number): string
   return link(route, { my_rating_min: (score - 0.5).toFixed(1), my_rating_max: (score + 0.4).toFixed(1) })
 }
 
-/** თვე: მედია — ნახვები, სხვა — დასრულება; მორიგეობა — იმ თვის კალენდარი */
+/** თვე: მედია — ნახვები, სხვა — დასრულება */
 export function monthLink(module: string, route: string, year: number, month: number): string | null {
   const ym = `${year}-${String(month).padStart(2, '0')}`
-  if (module === 'duty') return link(route, { date: `${ym}-01` })
   if (!listed(module)) return null
   return link(route, { [MEDIA.includes(module) ? 'watched' : 'done']: ym })
 }

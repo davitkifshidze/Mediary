@@ -1356,9 +1356,6 @@
     "profile_own": "This is your own profile — its records are already in your library",
     "profile_record_not_found": "This record is no longer on the profile",
     "profile_status_hidden": "This profile doesn’t show statuses — add the record with your default status",
-    "duty_hours_required": "Enter the hours — a shift without a type needs them.",
-    "duty_range_too_long": "The range can’t be longer than 3 years.",
-    "nothing_to_change": "Nothing to change — pick a workplace or a type.",
     "locked_album_password_required": "To lock a photo, the “Locked photos” album has to be created first — with a password.",
     "youtube_unavailable": "YouTube is not answering — try again later.",
     "places_unavailable": "The place source is not answering right now. You can fill the place in by hand.",
@@ -1555,16 +1552,6 @@
         "name": "Name",
         "birthday": "Birthday",
         "note": "Note"
-      },
-      "duty": {
-        "date": "Date",
-        "workplace": "Workplace",
-        "type": "Type",
-        "hours": "Hours",
-        "start_time": "Start time",
-        "pay": "Pay",
-        "note": "Note",
-        "status": "Status"
       }
     },
     "desc": {
@@ -1688,8 +1675,7 @@
       "continue": "Continue",
       "recent": "Recently added",
       "soon": "Soon",
-      "reminders": "Reminders",
-      "duty": "Duty this week"
+      "reminders": "Reminders"
     }
   },
   "purge": {
@@ -1739,8 +1725,7 @@
       "anime": "Anime",
       "course": "Courses",
       "place": "Places",
-      "personal": "Personal gallery (people)",
-      "duty": "Duty shifts"
+      "personal": "Personal gallery (people)"
     },
     "targetHint": {
       "movie": "The film along with its genres, cast links and gallery.",
@@ -1757,8 +1742,7 @@
       "course": "The course together with its certificate and attached files.",
       "place": "The place together with its photos and files.",
       "custom": "A personal module of this account — its records, with their files and notes, go to the owner's trash; the statuses and the classifier stay.",
-      "personal": "A person together with their photos, videos and albums; photos without a person and “outside” albums stay.",
-      "duty": "Duty shifts; workplaces, shift types and rates stay."
+      "personal": "A person together with their photos, videos and albums; photos without a person and “outside” albums stay."
     },
     "itemsTitle": "What is in the queue",
     "itemsKept": "{{kept}} of {{total}} kept",
@@ -3235,11 +3219,6 @@
       "custom_record_file": "Custom module file",
       "custom_record_note": "Custom module note",
       "share_link": "Share link",
-      "duty": "Duty shift",
-      "duty_workplace": "Duty workplace",
-      "duty_type": "Duty shift type",
-      "duty_rate": "Duty rate",
-      "duty_pattern": "Duty rhythm",
       "goal": "Goal",
       "audit_rule": "Log rule"
     },
@@ -4229,10 +4208,7 @@
       "custom_module": "Modules",
       "personal_media": "Personal gallery photos and videos",
       "personal_album": "Personal gallery albums",
-      "duty_workplace": "Duty workplaces",
-      "duty_type": "Duty shift types",
-      "cast_member": "Hand-made actors",
-      "duty_pattern": "Duty rhythms"
+      "cast_member": "Hand-made actors"
     },
     "when": {
       "media_watch": "Watched: {{date}}",
@@ -5160,231 +5136,6 @@
     },
     "insideTitle": "On a record's own page",
     "insideHint": "Clicking a card opens the record's page — with its description and genres. Here you choose whether the gallery, cast and trailer appear there. A locked photo or a locked actor never travels."
-  },
-  "duty": {
-    "title": "Duty shifts",
-    "hint": "Shifts by workplace: tap an empty day in the calendar to add one, a day with shifts opens beside the calendar — edit it there; “Select” adds many days at once. Pay fills in from the workplace rates, totals follow your own period (“Settings”).",
-    "count": "{{count}} shifts",
-    "hoursValue": "{{hours}} h",
-    "noWorkplace": "No workplace",
-    "allWorkplaces": "All workplaces",
-    "empty": "No shifts in this period.",
-    "emptyHint": "Add one with the button or by tapping a day in the calendar.",
-    "view": {
-      "calendar": "Calendar",
-      "list": "List",
-      "totals": "Totals",
-      "calculator": "Calculator",
-      "income": "Income"
-    },
-    "period": {
-      "previous": "Previous",
-      "next": "Next",
-      "today": "Current period",
-      "totals": "{{count}} shifts · {{hours}} h · {{pay}}"
-    },
-    "select": {
-      "start": "Select",
-      "stop": "Done selecting",
-      "hint": "Select days — tap, drag, or Shift for a range.",
-      "count": "{{days}} days selected · {{shifts}} shifts",
-      "add": "Add",
-      "change": "Change",
-      "clear": "Clear"
-    },
-    "shift": {
-      "add": "Add shift",
-      "edit": "Edit shift",
-      "created": "Shift added",
-      "saved": "Shift saved",
-      "trashed": "Shift moved to the trash",
-      "custom": "Other",
-      "payHint": "Filled in from the workplace rate ({{hours}} h) — you can change it.",
-      "noRate": "This workplace has no rate for this type — enter the pay by hand or add a rate in “Settings”.",
-      "deleteTitle": "Delete shift",
-      "moveDay": "Move to another day",
-      "moved": "Shift moved: {{date}}",
-      "newDay": "New day"
-    },
-    "batch": {
-      "title": "Shifts on the selected days ({{count}})",
-      "hint": "The workplace and type above apply to every day; below, change a single day’s type, hours or pay. Everything is saved together.",
-      "defaultType": "Default type",
-      "inherit": "Default",
-      "save": "Save ({{count}})",
-      "done": "Added {{count}} shifts"
-    },
-    "bulk": {
-      "title": "Selected shifts ({{count}})",
-      "hint": "Changing the workplace or type recalculates the pay with the new rate; the type sets the hours too. Deleting moves them to the trash.",
-      "keep": "Keep",
-      "apply": "Change",
-      "delete": "Delete ({{count}})",
-      "changed": "Changed {{count}} shifts",
-      "trashed": "Moved {{count}} shifts to the trash"
-    },
-    "workplace": {
-      "title": "Workplaces",
-      "listHint": "Drag to reorder — the same order shows in the calendar filter and the add form.",
-      "add": "Add workplace",
-      "edit": "Edit workplace",
-      "created": "Workplace added",
-      "saved": "Workplace saved",
-      "hint": "Pay is either per shift (a rate per type, e.g. 24 h = 250) or per hour (hours × rate). The default type and start fill in on the shift form. Changes apply to new shifts only.",
-      "name": "Name",
-      "short": "Letter",
-      "shortHint": "On the calendar chip — “A · 24”",
-      "color": "Colour",
-      "rates": "Rates by type ({{currency}})",
-      "ratesHint": "Empty — no rate for this type; on an “other” hours shift the pay is entered by hand.",
-      "hourly": "Hourly rate ({{currency}})",
-      "hourlyHint": "Every shift — hours × rate (e.g. 4 h × 15).",
-      "active": "Active — shown in the add form",
-      "inactive": "Inactive",
-      "perHour": "{{pay}} / h",
-      "shifts": "{{count}} shifts",
-      "deleteTitle": "Delete workplace",
-      "inUse": "“{{name}}” has {{count}} shifts. What should happen to them?",
-      "leaveEmpty": "Keep them without a workplace",
-      "payMode": "Pay",
-      "payModeHint": "Per shift — a fixed amount per type (e.g. 24 h = 250); per hour — hours × hourly rate. One rules out the other: saving clears the other one.",
-      "perShift": "Per shift",
-      "perHourMode": "Per hour",
-      "defaultType": "Default type",
-      "defaultStart": "Start time",
-      "defaultsHint": "Picking this workplace fills the type and start on the shift form (e.g. 24 h · 09:00); empty — changes nothing.",
-      "noDefault": "None",
-      "noRate": "No rate — pay isn’t counted",
-      "noRateBanner": "“{{names}}” — no rate, pay isn’t counted. Add one in “Settings”: per shift (a rate per type) or per hour (an hourly rate).",
-      "periodDay": "Pay period — first day",
-      "periodHint": "5 → from the 5th to the 4th of next month; 1 — the calendar month; at most 28. With shifts recorded, a new day applies from the next period — past periods stay as they were.",
-      "periodPending": "Scheduled: from day {{day}}, starting {{date}} — the current period keeps its bounds.",
-      "periodScheduled": "The new period (from day {{day}}) starts on {{date}} — past periods stay as they were.",
-      "periodLine": "period from day {{day}}"
-    },
-    "settings": {
-      "open": "Settings",
-      "title": "Duty settings",
-      "saved": "Settings saved",
-      "currency": "Currency",
-      "defaultWorkplace": "Default workplace",
-      "defaultType": "Default type",
-      "firstInList": "First in the list",
-      "types": "Manage types",
-      "remind": "Reminder the day before",
-      "remindHint": "At this time a browser notification reminds you of tomorrow’s shifts (permission — in “Credentials”). Empty — off.",
-      "remindTelegram": "Also via Telegram",
-      "remindTelegramHint": "The bot and chat live in “Credentials” — the same as note reminders. The browser works while the app is open, Telegram — even when it is closed."
-    },
-    "types": {
-      "title": "Duty shift types",
-      "add": "Add type",
-      "edit": "Edit type",
-      "saved": "Type saved",
-      "hint": "The hours go onto new shifts; existing shifts keep their own hours."
-    },
-    "totals": {
-      "shifts": "Shifts",
-      "hours": "Hours",
-      "pay": "Pay",
-      "same": "Same as the previous period",
-      "more": "{{value}} more than the previous period",
-      "less": "{{value}} less than the previous period",
-      "unpaid": "{{count}} shifts have no pay",
-      "unpaidHint": "They had no rate — they are left out of the total. Enter the pay on the shift or add a rate to the workplace.",
-      "byWorkplace": "By workplace",
-      "byType": "By type",
-      "byPeriod": "{{metric}} by period",
-      "cancelled": "{{count}} cancelled",
-      "cancelledHint": "A cancelled shift counts in neither the number, the hours nor the pay."
-    },
-    "calc": {
-      "range": "Range",
-      "workplaces": "Workplaces",
-      "workplacesHint": "None selected — all.",
-      "pickRange": "Pick a range.",
-      "whatIf": "If I take on more…",
-      "more": "How many",
-      "noRate": "This workplace has no rate for this type — add one in “Settings”.",
-      "whatIfResult": "+{{hours}} h and +{{add}} — the range total becomes {{total}}.",
-      "export": "Download CSV (all shifts)"
-    },
-    "reminder": {
-      "title": "You have a shift tomorrow"
-    },
-    "status": {
-      "scheduled": "Scheduled",
-      "cancelled": "Cancelled",
-      "partial": "Partial",
-      "cancel": "Cancel shift",
-      "uncancel": "Restore shift",
-      "cancelledDone": "Shift cancelled — pay 0",
-      "restored": "Shift restored",
-      "cancelledHint": "A cancelled day stays, in red: pay is 0 and it counts nowhere — not in totals, the counter or reminders.",
-      "partialHint": "Enter the hours worked and the pay — empty pay is 0, nothing is filled from the rate."
-    },
-    "pattern": {
-      "title": "Rhythm",
-      "titleFor": "Rhythm — {{name}}",
-      "hint": "Write down once how often you are on duty (e.g. every 4 days), and “Continue the rhythm” in the period bar adds real shifts. A day that already has a shift at this workplace is skipped — your swaps, additions and cancellations are kept.",
-      "interval": "Every how many days",
-      "anchor": "First day",
-      "active": "Active — “Continue” uses it",
-      "preview": "Next shifts",
-      "summary": "every {{count}} days",
-      "saved": "Rhythm saved",
-      "removed": "Rhythm moved to the trash — its shifts stay",
-      "continue": "Continue the rhythm",
-      "continued": "Added from the rhythm: {{created}} · skipped: {{skipped}}",
-      "fromSelection": "Rhythm from selection",
-      "uneven": "The selected shifts are not evenly spaced — no rhythm could be made.",
-      "needTwo": "Select at least two shifts of one workplace for a rhythm.",
-      "fromPattern": "From the rhythm"
-    },
-    "dim": {
-      "label": "Emphasis",
-      "hint": "A dark workplace stands out, a light one shows faded in the calendar and the list. It is not a filter: the shifts stay and still count.",
-      "dark": "dark",
-      "light": "light"
-    },
-    "history": {
-      "search": "Search notes",
-      "sort": {
-        "date_desc": "Newest first",
-        "date_asc": "Oldest first"
-      },
-      "noMatch": "No shifts match these filters",
-      "onlyFavorite": "Favourites only",
-      "range": "Date (from — to)"
-    },
-    "income": {
-      "titleAll": "Income — last {{count}} months, all workplaces",
-      "titleOne": "{{name}} — last {{count}} periods",
-      "csv": "CSV",
-      "period": "Period",
-      "unpaid": "No pay",
-      "total": "Total — {{count}} periods",
-      "empty": "No shifts in these periods",
-      "emptyHint": "Income is counted from shifts — add one or continue a rhythm."
-    },
-    "calendar": {
-      "emptyPeriod": "No shifts in this period yet."
-    },
-    "side": {
-      "byWorkplace": "Workplaces"
-    },
-    "summary": {
-      "shifts": "Shifts",
-      "hours": "Hours",
-      "pay": "Pay",
-      "unpriced": "{{count}} without pay",
-      "next": "Next shift",
-      "today": "On duty today"
-    },
-    "day": {
-      "today": "Today",
-      "free": "Day off"
-    }
   },
   "actors": {
     "title": "Actors",

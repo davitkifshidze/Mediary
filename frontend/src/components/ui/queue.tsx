@@ -339,7 +339,6 @@ const IMPORT_LIST_KEYS: Record<string, string[]> = {
   bookmark: ['bookmarks'],
   course: ['courses'],
   place: ['places'],
-  duty: ['duty'],
 }
 
 function importListKeys(module: string): string[] {

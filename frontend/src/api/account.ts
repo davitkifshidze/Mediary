@@ -676,8 +676,6 @@ export const CUSTOM_FIELD_MODULES = [
   'place',
   // ადამიანი პირად გალერეაში
   'personal',
-  // მორიგეობა
-  'duty',
 ] as const
 
 /** აქვს თუ არა მოდულს დამატებითი ველები — საბაზისო სიიდან ან პირადი მოდულის ფორმით */
@@ -1136,8 +1134,6 @@ export const PURGE_TARGETS = [
   'place',
   // პირადი გალერეა (ჩანაწერი ადამიანია; ფოტოები მასთან ერთად მიდის)
   'personal',
-  // მორიგეობა
-  'duty',
   'gallery',
 ] as const
 export type PurgeTarget = (typeof PURGE_TARGETS)[number]
@@ -1185,8 +1181,6 @@ export const PURGE_TARGET_MODES = {
   place: ['ids', 'type', 'tag', 'status', 'all'],
   // სტატუსი, ტეგი და კლასიფიკატორი არ აქვს
   personal: ['ids', 'all'],
-  // სტატუსი და ტეგი არ აქვს; ტიპით/სამსახურით ჭრა მის გვერდზეა
-  duty: ['ids', 'all'],
   gallery: ['ids', 'genre', 'status', 'all'],
 } as const satisfies Record<PurgeTarget, readonly PurgeMode[]>
 

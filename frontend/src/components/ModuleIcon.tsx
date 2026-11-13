@@ -180,7 +180,6 @@ const GROUPS = [
   },
   {
     key: 'life',
-    // მორიგეობა: მოდული (`CalendarClock`) და ტიპები (დღე · საღამო · ღამე)
     icons: { Utensils, Coffee, ShoppingCart, Briefcase, Dumbbell, Wrench, Lightbulb, Wallet, Calendar, CalendarClock, Sun, Sunset, Moon, Bell, MessageSquare, Settings, Shield },
   },
   {

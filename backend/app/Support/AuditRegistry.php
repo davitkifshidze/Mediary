@@ -36,11 +36,6 @@ use App\Models\CustomRecord;
 use App\Models\CustomRecordFile;
 use App\Models\CustomRecordNote;
 use App\Models\DatabaseBackup;
-use App\Models\DutyPattern;
-use App\Models\DutyRate;
-use App\Models\DutyShift;
-use App\Models\DutyShiftType;
-use App\Models\DutyWorkplace;
 use App\Models\EpisodeWatch;
 use App\Models\FranchisePart;
 use App\Models\FranchiseReminder;
@@ -198,12 +193,6 @@ class AuditRegistry
         Person::class => 'personal',
         PersonalAlbum::class => 'personal',
         PersonalMedia::class => 'personal',
-        // მორიგეობა: ჩანაწერი, სამსახური, ტიპი და ტარიფი (თანხის ცვლილება ჟურნალში უნდა ჩანდეს)
-        DutyShift::class => 'duty',
-        DutyWorkplace::class => 'duty',
-        DutyShiftType::class => 'duty',
-        DutyRate::class => 'duty',
-        DutyPattern::class => 'duty',
 
         /* ---- ინტერფეისიდან შექმნილი მოდულები.
            ⚠️ **მოდული რიგშია** (`module` — პირადი მოდულის გასაღები), ე.ი. აქ
@@ -426,7 +415,7 @@ class AuditRegistry
      */
     public static function labelFor(Model $model): ?string
     {
-        // სათაურის სვეტის გარეშე მოდელი თვითონ ამბობს თავის სახელს (მორიგეობა)
+        // სათაურის სვეტის გარეშე მოდელი თვითონ ამბობს თავის სახელს (აუდიტის წესი)
         if (method_exists($model, 'auditLabel')) {
             return self::text($model->auditLabel());
         }

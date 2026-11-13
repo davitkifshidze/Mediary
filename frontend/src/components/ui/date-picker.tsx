@@ -337,7 +337,7 @@ export function DatePicker({
   id?: string
   value: string | null
   onChange: (value: string | null) => void
-  /** დროის ველიც გამოჩნდეს (შეხსენება, მორიგეობა) */
+  /** დროის ველიც გამოჩნდეს (შეხსენება) */
   withTime?: boolean
   /** დღის არჩევისას ცარიელი დროის ნაცვლად — მაგ. ფანჯრის ბოლო `23:59`; ნაგულისხმევად ახლა */
   defaultTime?: string

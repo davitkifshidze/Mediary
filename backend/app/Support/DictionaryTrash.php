@@ -7,7 +7,6 @@ use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\Course;
 use App\Models\CustomRecord;
-use App\Models\DutyShift;
 use App\Models\NoteEntry;
 use App\Models\Place;
 use App\Models\Status;
@@ -57,9 +56,6 @@ final class DictionaryTrash
         'place_category' => ['records' => Place::class, 'column' => 'category_id'],
         // პირადი მოდულის კლასიფიკატორი (ერთი სვეტი, ბუკმარკის ფორმა)
         'custom_category' => ['records' => CustomRecord::class, 'column' => 'category_id'],
-        // მორიგეობის სამსახური და ტიპი (`duty_shifts.workplace_id`/`type_id`)
-        'duty_workplace' => ['records' => DutyShift::class, 'column' => 'workplace_id'],
-        'duty_type' => ['records' => DutyShift::class, 'column' => 'type_id'],
     ];
 
     public static function has(string $kind): bool

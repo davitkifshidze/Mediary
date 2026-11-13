@@ -349,13 +349,13 @@ class AuditRulesTest extends TestCase
     public function test_a_deleted_module_takes_its_rules_with_it(): void
     {
         AuditRules::apply([
-            ['kind' => 'click', 'module' => 'duty', 'state' => 'off'],
+            ['kind' => 'click', 'module' => 'personal', 'state' => 'off'],
             ['kind' => 'click', 'module' => 'movie', 'state' => 'off'],
         ]);
 
-        Module::where('key', 'duty')->firstOrFail()->delete();
+        Module::where('key', 'personal')->firstOrFail()->delete();
 
         $this->assertSame(['movie'], AuditRule::pluck('module')->all());
-        $this->assertTrue(AuditRules::decide('click', 'duty'));
+        $this->assertTrue(AuditRules::decide('click', 'personal'));
     }
 }

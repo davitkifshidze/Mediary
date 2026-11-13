@@ -9,7 +9,6 @@ use App\Models\Bookmark;
 use App\Models\CastMember;
 use App\Models\Course;
 use App\Models\CustomRecord;
-use App\Models\DutyShift;
 use App\Models\Game;
 use App\Models\Genre;
 use App\Models\Movie;
@@ -100,8 +99,6 @@ class LibraryStats
         /* პირადი გალერეა ფოტოებსა და ვიდეოებს ითვლის (და არა ადამიანებს);
            თვეების ჭრილი „როდის გადავიღე"-ა (`taken_at`). */
         'personal' => ['model' => PersonalMedia::class, 'year' => null, 'done_at' => 'taken_at', 'genres' => null, 'rating' => null],
-        // მორიგეობის დღე „შესრულების“ თარიღია (თვეების მრუდი); გაუქმებული არ ითვლება
-        'duty' => ['model' => DutyShift::class, 'year' => null, 'done_at' => 'date', 'genres' => null, 'rating' => null, 'except' => ['status' => 'cancelled']],
     ];
 
     /** რამდენი ჟანრი/კატეგორია ჩანს ჭრილში — დანარჩენი „სხვა"-ში იყრება */
@@ -170,12 +167,6 @@ class LibraryStats
         return fn () => ModuleList::narrow($model::withoutGlobalScope('owner'))
             ->where('user_id', $user->getKey())
             ->when(! empty($map['custom']), fn ($q) => $q->where('module', $module))
-            // ჩანაწერი, რომელიც არ ითვლება (გაუქმებული მორიგეობა)
-            ->when(! empty($map['except']), function ($q) use ($map) {
-                foreach ($map['except'] as $column => $value) {
-                    $q->where($column, '!=', $value);
-                }
-            })
             // სტატისტიკა ჩაკეტილის გარეშე, სესიის მიუხედავად
             ->when(RecordLocks::hides($model), fn ($q) => $q->withoutLocked());
     }

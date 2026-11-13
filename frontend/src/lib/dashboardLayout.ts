@@ -14,7 +14,7 @@
    ახალი ბლოკები. ბლოკი, რომელსაც საჩვენებელი არაფერი აქვს, თვითონ იმალება.
    ============================================================ */
 
-const DASHBOARD_BLOCKS = ['goals', 'continue', 'recent', 'soon', 'reminders', 'duty'] as const
+const DASHBOARD_BLOCKS = ['goals', 'continue', 'recent', 'soon', 'reminders'] as const
 
 export type DashboardBlock = (typeof DASHBOARD_BLOCKS)[number]
 

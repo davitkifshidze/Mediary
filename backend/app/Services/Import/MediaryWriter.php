@@ -397,10 +397,6 @@ class MediaryWriter
                 ? CustomCategory::makeKey($userId, $module, $label)
                 : $class::makeKey($userId, $label);
         }
-        // მორიგეობის ტიპს საათები სჭირდება (`NOT NULL`) — ცვლის საათები
-        if (isset($columns['hours'])) {
-            $fill['hours'] = is_numeric($record['hours'] ?? null) ? (float) $record['hours'] : 0;
-        }
         if (isset($columns['is_active'])) {
             $fill['is_active'] = true;
         }

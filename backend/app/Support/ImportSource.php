@@ -85,8 +85,6 @@ final class ImportSource
         'bookmark' => ['ids' => ['url'], 'title' => ['title'], 'with' => [], 'required' => ['url']],
         'course' => ['ids' => ['url'], 'title' => ['title'], 'with' => [], 'required' => []],
         'place' => ['ids' => ['osm_id'], 'title' => ['name'], 'with' => ['address'], 'required' => []],
-        // მორიგეობა — დღე + დაწყება + სამსახური (სათაური არ აქვს)
-        'duty' => ['ids' => [], 'title' => ['date'], 'with' => ['start_time', 'workplace_name'], 'required' => ['date']],
     ];
 
     /** პირადი მოდულის ჩანაწერი (`custom_records`) — ბმული, სხვაგვარად სათაური */

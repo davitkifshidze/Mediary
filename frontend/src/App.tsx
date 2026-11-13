@@ -14,7 +14,6 @@ import { PlayerProvider } from '@/lib/player'
 import { RecordShareProvider } from '@/components/share/RecordShare'
 import { ModulesProvider, useModules } from '@/lib/modules'
 import { useNoteReminderWatcher } from '@/lib/noteReminders'
-import { useDutyReminderWatcher } from '@/lib/dutyReminders'
 import { MEDIA, type MediaType } from '@/lib/media'
 
 /* ============================================================
@@ -85,7 +84,6 @@ const CoursesPage = lazy(() => import('@/pages/CoursesPage').then((m) => ({ defa
 const PlacesPage = lazy(() => import('@/pages/PlacesPage').then((m) => ({ default: m.PlacesPage })))
 // პირადი გალერეა: ჭრილები, ადამიანის და ალბომის გვერდი
 const PersonalPage = lazy(() => import('@/pages/PersonalPage').then((m) => ({ default: m.PersonalPage })))
-const DutyPage = lazy(() => import('@/pages/DutyPage').then((m) => ({ default: m.DutyPage })))
 const PersonalPersonPage = lazy(() =>
   import('@/pages/PersonalPersonPage').then((m) => ({ default: m.PersonalPersonPage })),
 )
@@ -177,8 +175,6 @@ const MODULE_PAGES: Record<string, React.ReactNode> = {
   place: <PlacesPage />,
   // პირადი გალერეა; ფესვი „ადამიანებია", დანარჩენი ჭრილები ქვემოთ
   personal: <PersonalPage cut="media" />,
-  // მორიგეობა (კალენდარი · სია · ჯამები · კალკულატორი — `?view=`)
-  duty: <DutyPage />,
   // გალერეა ცალკე მოდულია, ფოტოები კი ფილმებსა/სერიალებს ჰკიდია
   gallery: <GalleryPage />,
 }
@@ -222,8 +218,6 @@ function AppShell() {
   // შეხსენებების მოსმენა აპლიკაციის დონეზეა, რომ ნებისმიერ გვერდზე
   // მუშაობდეს და არა მხოლოდ `/notes`-ზე. მოდულის გარეშე polling არ ირთვება.
   useNoteReminderWatcher(has('note'))
-  // მორიგეობის შეხსენება წინა დღეს (იგივე ბრაუზერის არხი)
-  useDutyReminderWatcher(has('duty'))
 
   // „რომელ სექციაში შევიდა". აპლიკაციის დონეზეა, რომ ყველა
   // მარშრუტი დაიფაროს და არა მხოლოდ ის, ვინც გამოძახებას დაიმახსოვრებს.

@@ -41,7 +41,7 @@ const mocks = vi.hoisted(() => ({
     mediaModules: [],
     pageModules: [],
     customModules: [],
-    // მორიგეობა და ჩანაწერები გამორთულია — მათი ბლოკები სიაში საერთოდ არ უნდა იყოს
+    // ჩანაწერები გამორთულია — მისი ბლოკი სიაში საერთოდ არ უნდა იყოს
     has: (key: string) => ['movie', 'book'].includes(key),
     loading: false,
   },
@@ -164,7 +164,7 @@ describe('dashboardLayout', () => {
   it('keeps the saved order and choices, drops what is gone and appends what is new at the end', () => {
     const saved = [
       { id: 'module:book', on: true, width: 'half' },
-      { id: 'duty', on: true, width: 'full' }, // მორიგეობის მოდული გამოირთო
+      { id: 'reminders', on: true, width: 'full' }, // ჩანაწერების მოდული გამოირთო
       { id: 'goals', on: false, width: 'third' },
       { id: 'module:game', on: true, width: 'third' }, // მოდული გამოირთო
       { id: 'goals', on: true, width: 'full' }, // გამეორება
@@ -190,7 +190,7 @@ describe('DashboardPage', () => {
   it('draws the default layout and gives every block its own request', async () => {
     await mount()
 
-    // მორიგეობისა და შეხსენებების ბლოკები არ არსებობს — მათი მოდული ჩართული არ არის
+    // შეხსენებების ბლოკი არ არსებობს — ჩანაწერების მოდული ჩართული არ არის
     expect(shown()).toEqual(['goals', 'module:movie', 'module:book', 'continue', 'recent', 'soon'])
     expect(document.querySelectorAll('[data-testid="module-card"]')).toHaveLength(2)
     expect(document.querySelector('[data-item="module:movie"]')?.getAttribute('data-width')).toBe('third')

@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -31,18 +31,11 @@ export function pageContainer(width: PageWidth = 'wide', className?: string) {
 export function PageContainer({
   width = 'wide',
   className,
-  style,
   children,
 }: {
   width?: PageWidth
   className?: string
-  /** გვერდის საკუთარი CSS-ცვლადები — მაგ. მოდულის აქცენტი (`modAccent()`) */
-  style?: CSSProperties
   children: ReactNode
 }) {
-  return (
-    <main className={pageContainer(width, cn('py-6 sm:py-8', className))} style={style}>
-      {children}
-    </main>
-  )
+  return <main className={pageContainer(width, cn('py-6 sm:py-8', className))}>{children}</main>
 }

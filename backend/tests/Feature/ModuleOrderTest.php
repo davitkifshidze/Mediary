@@ -36,8 +36,6 @@ class ModuleOrderTest extends TestCase
         'game', 'gallery', 'note', 'bookmark', 'course', 'place',
         // პირადი გალერეა (`sort_order` 45)
         'personal',
-        // მორიგეობა (`sort_order` 46)
-        'duty',
     ];
 
     protected function setUp(): void

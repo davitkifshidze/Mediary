@@ -8,7 +8,6 @@ use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
-use App\Models\DutyShiftType;
 use App\Models\Game;
 use App\Models\Module;
 use App\Models\Movie;
@@ -749,7 +748,6 @@ class RegistryConsistencyTest extends TestCase
         'course_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         'place_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         'personal_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
-        'duty_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         // ყველა პირადი მოდულის ველების საერთო ცხრილი; იგივე წესი
         'custom_record_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
 
@@ -859,8 +857,6 @@ class RegistryConsistencyTest extends TestCase
             'bookmark' => ['title' => 'bm', 'url' => 'https://example.com/b', 'domain' => 'example.com'],
             'course' => ['title' => 'c'],
             'place' => ['name' => 'p'],
-            // მორიგეობას თარიღი და საათები სჭირდება
-            'duty' => ['date' => '2026-10-01', 'hours' => 12],
         ];
 
         foreach (ExportDomain::keys() as $module) {
@@ -1269,7 +1265,7 @@ class RegistryConsistencyTest extends TestCase
 
         /* ლექსიკონების საწყისი ნაკრებები — ჟანრებს ხატულა არ აქვთ, ამიტომ
            `array_column` მათზე უბრალოდ ცარიელს აბრუნებს */
-        foreach ([VideoType::class, NoteCategory::class, BookmarkCategory::class, DutyShiftType::class] as $model) {
+        foreach ([VideoType::class, NoteCategory::class, BookmarkCategory::class] as $model) {
             $used = array_merge($used, array_column($model::DEFAULTS, 'icon'));
         }
 

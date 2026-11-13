@@ -2,13 +2,12 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, BellRing, CalendarClock, CalendarDays, History, PlayCircle, type LucideIcon } from 'lucide-react'
+import { ArrowRight, BellRing, CalendarClock, History, PlayCircle, type LucideIcon } from 'lucide-react'
 import { fetchContinuing, fetchRecent, type FeedCard } from '@/api/dashboard'
-import { fetchDutyShifts } from '@/api/duty'
 import { fetchAllNoteReminders } from '@/api/notes'
 import { fetchSoon, type SoonItem } from '@/api/soon'
 import { storageUrl } from '@/lib/api'
-import { todayLocal, useDateFormat } from '@/lib/dates'
+import { useDateFormat } from '@/lib/dates'
 import { MODULE_ACCENT_FALLBACK, modAccent, moduleName, useModules } from '@/lib/modules'
 import { recordOpenPath } from '@/lib/recordLinks'
 import { useContentLang } from '@/lib/settings'
@@ -17,7 +16,7 @@ import { buttonVariants } from '@/components/ui/button'
 
 /* ============================================================
    **მთავარი გვერდის არჩევითი ბლოკები** — „ვაგრძელებ", „ბოლოს დამატებული", „მალე",
-   „შეხსენებები", „მორიგეობა ამ კვირაში".
+   „შეხსენებები".
 
    ⚠️ **თითო ბლოკი თავის მოთხოვნას აკეთებს** და მხოლოდ მაშინ, როცა გვერდზეა
    (გამორთული ბლოკი საერთოდ არ მონტირდება): მთავარი გვერდის ჯამი ოთხ query-ზეა
@@ -193,56 +192,6 @@ export function RemindersBlock() {
               <span className="min-w-0 flex-1 truncate font-medium">{reminder.note?.title ?? `#${reminder.note_entry_id}`}</span>
               <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{dateTime(reminder.next_at!)}</span>
             </Link>
-          </li>
-        ))}
-      </ul>
-    </Block>
-  )
-}
-
-/* ---------- „მორიგეობა ამ კვირაში" ---------- */
-
-/** მიმდინარე კვირის ორშაბათი და კვირა (`Y-m-d`), ბრაუზერის ადგილობრივი დღით */
-export function weekRange(today: string = todayLocal()): { from: string; to: string } {
-  const [y, m, d] = today.split('-').map(Number)
-  const day = new Date(y, m - 1, d)
-  const offset = (day.getDay() + 6) % 7
-  const iso = (shift: number) => {
-    const at = new Date(y, m - 1, d - offset + shift)
-    return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`
-  }
-
-  return { from: iso(0), to: iso(6) }
-}
-
-export function DutyWeekBlock() {
-  const { t, i18n } = useTranslation()
-  const { date } = useDateFormat()
-  const range = weekRange()
-  const { data } = useQuery({ queryKey: ['dashboard', 'duty', range.from], queryFn: () => fetchDutyShifts(range) })
-
-  // გაუქმებული მორიგეობა არსად ითვლება
-  const shifts = (data?.items ?? []).filter((shift) => shift.status !== 'cancelled').sort((a, b) => a.date.localeCompare(b.date))
-
-  if (!shifts.length) return null
-
-  return (
-    <Block icon={CalendarDays} title={t('dashboard.blocks.duty')} to="/duty" more={t('dashboard.all')} testId="block-duty">
-      <ul className="space-y-1.5">
-        {shifts.map((shift) => (
-          <li key={shift.id} className="flex items-center gap-3 rounded-md border border-border bg-background px-2.5 py-2 text-sm" data-testid="duty-row">
-            <span className="shrink-0 font-medium tabular-nums">{date(shift.date)}</span>
-            <span className="min-w-0 flex-1 truncate text-muted-foreground">
-              {[shift.type ? (i18n.language === 'ka' ? shift.type.name_ka : shift.type.name_en) : null, shift.workplace?.short || shift.workplace?.name]
-                .filter(Boolean)
-                .join(' · ')}
-            </span>
-            {shift.start_time && (
-              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                {shift.start_time}
-                {shift.end_time ? `–${shift.end_time}` : ''}
-              </span>
-            )}
           </li>
         ))}
       </ul>

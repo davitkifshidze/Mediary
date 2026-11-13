@@ -16,7 +16,6 @@ use App\Models\CourseFile;
 use App\Models\CustomRecord;
 use App\Models\CustomRecordFile;
 use App\Models\CustomRecordNote;
-use App\Models\DutyShift;
 use App\Models\GalleryImage;
 use App\Models\Game;
 use App\Models\GameFile;
@@ -74,7 +73,7 @@ use Illuminate\Support\Facades\Log;
  */
 class PurgeService
 {
-    public const TARGETS = ['movie', 'series', 'anime', 'video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'place', 'personal', 'duty', 'gallery'];
+    public const TARGETS = ['movie', 'series', 'anime', 'video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'place', 'personal', 'gallery'];
 
     public const MODES = ['all', 'ids', 'genre', 'status', 'type', 'tag', 'course'];
 
@@ -130,8 +129,6 @@ class PurgeService
         /* ჩანაწერი ადამიანია: სტატუსი, ტეგი და კლასიფიკატორი არ აქვს.
            ⚠️ მისი ფოტოები და ალბომები მასთან ერთად მიდის (ნაწილებია). */
         'personal' => ['ids', 'all'],
-        // მორიგეობას სტატუსი და ტეგი არ აქვს; ტიპით/სამსახურით ჭრა მის გვერდზეა (მონიშვნა → წაშლა)
-        'duty' => ['ids', 'all'],
         'gallery' => ['ids', 'genre', 'status', 'all'],
     ];
 
@@ -870,7 +867,6 @@ class PurgeService
             'course' => Course::class,
             'place' => Place::class,
             'personal' => Person::class,
-            'duty' => DutyShift::class,
             default => Movie::class,
         };
 
@@ -923,7 +919,6 @@ class PurgeService
             'course' => 'course',
             'place' => 'place',
             'personal' => 'personal',
-            'duty' => 'duty',
             default => 'movie',
         };
     }

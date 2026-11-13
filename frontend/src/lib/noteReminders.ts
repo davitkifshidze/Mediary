@@ -52,9 +52,8 @@ async function registration(): Promise<ServiceWorkerRegistration | null> {
 
 /**
  * service worker-ით, თუ არის; თორემ პირდაპირ გვერდიდან (desktop-ზე ისიც მუშაობს).
- * ⚠️ მორიგეობის შეხსენებაც ამ გზით მიდის (`lib/dutyReminders.ts`).
  */
-export async function showBrowserNotification(title: string, options: NotificationOptions) {
+async function showBrowserNotification(title: string, options: NotificationOptions) {
   const reg = await registration()
 
   if (reg?.showNotification) {

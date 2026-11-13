@@ -213,11 +213,6 @@ export const CODES = [
   'screenshot_album_mismatch',
   'screenshot_album_has_no_person',
   'screenshot_not_public',
-  /* მორიგეობა: ქასთომ (უტიპო) მორიგეობას საათები სჭირდება; შუალედი
-     (კალკულატორი) 3 წელზე გრძელი ვერ იქნება; მასობრივ შეცვლას რაიმე უნდა შეეცვალა. */
-  'duty_hours_required',
-  'duty_range_too_long',
-  'nothing_to_change',
   'cannot_move_into_itself',
   // ალბომის წაშლა „სხვა ალბომში გადატანით" — მიზანი არ არის არჩეული
   'move_target_required',

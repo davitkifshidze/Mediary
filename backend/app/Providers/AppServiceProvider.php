@@ -9,10 +9,6 @@ use App\Models\Bookmark;
 use App\Models\CastMember;
 use App\Models\Course;
 use App\Models\CustomRecord;
-use App\Models\DutyPattern;
-use App\Models\DutyShift;
-use App\Models\DutyShiftType;
-use App\Models\DutyWorkplace;
 use App\Models\GalleryAlbum;
 use App\Models\Game;
 use App\Models\Movie;
@@ -86,11 +82,6 @@ class AppServiceProvider extends ServiceProvider
             'personal' => Person::class,
             'personal_album' => PersonalAlbum::class,
             'personal_media' => PersonalMedia::class,
-            // მორიგეობა: ჩანაწერი მორიგეობაა, სამსახური და ტიპი — კლასიფიკატორები
-            'duty' => DutyShift::class,
-            'duty_workplace' => DutyWorkplace::class,
-            'duty_type' => DutyShiftType::class,
-            'duty_pattern' => DutyPattern::class,
             /* გალერეის ალბომის პაროლი `record_locks`-შია (`lockable_type`);
                ⚠️ აუდიტი მას ისედაც `gallery_album`-ად წერდა — ალიასი იგივე სიტყვაა. */
             'gallery_album' => GalleryAlbum::class,

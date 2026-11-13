@@ -34,11 +34,10 @@ final class Openable
     /**
      * **ჩანაწერიანი მოდული გახსნის ჩაწერის გარეშე**.
      *
-     * ⚠️ პირადი გალერეა და მორიგეობა ფანჯრის „გახსნას" არ იცნობს (ფოტო/დღე
-     * ბადეში იხსნება) — `TYPES` კი `TrashDomain::MODELS`-ს იმეორებს და მათ
-     * თავისით შემოიყვანდა.
+     * ⚠️ პირადი გალერეა ფანჯრის „გახსნას" არ იცნობს (ფოტო ბადეში იხსნება) —
+     * `TYPES` კი `TrashDomain::MODELS`-ს იმეორებს და მას თავისით შემოიყვანდა.
      */
-    public const NOT_OPENED = ['personal', 'duty'];
+    public const NOT_OPENED = ['personal'];
 
     /** @return array<string, class-string<Model>> */
     public static function types(): array

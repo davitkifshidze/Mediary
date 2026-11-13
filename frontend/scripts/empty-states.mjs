@@ -34,10 +34,6 @@ const EMPTY_KEY = /^(empty|nothing|no[A-Z])|Empty$/
 const LABELS = new Set([
   // მნიშვნელობის წარწერა — „X-ის გარეშე", „ცარიელია", აღწერის შემცვლელი ტექსტი
   'detail.noDescription',
-  'duty.noWorkplace',
-  'duty.workplace.noRate',
-  'duty.shift.noRate',
-  'duty.calc.noRate',
   'share.noExpiry',
   'share.page.noExpiry',
   'storage.noLimit',
@@ -56,8 +52,6 @@ const LABELS = new Set([
   'goals.barEmpty',
   'notes.remindersEmpty',
   // არჩევანის პუნქტი ან ველის მინიშნება
-  'duty.workplace.noDefault',
-  'duty.workplace.leaveEmpty',
   'personal.move.noPerson',
   'personal.move.noAlbum',
   'videos.noCourse',
@@ -86,7 +80,6 @@ const LABELS = new Set([
   'videos.local.noFfmpeg',
   'playback.noEmbed',
   'places.route.noHome',
-  'duty.workplace.noRateBanner',
   'share.noSections',
   'share.page.noModule',
   'share.page.noCreateRight',

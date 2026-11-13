@@ -119,11 +119,6 @@ final class MediaryIdentity
                     if (! isset($columns[$column])) {
                         // ფილმი/სერიალი/ანიმე — სათაური თარგმანებშია (`<domain>_translations.title`)
                         $w->orWhereHas('translations', fn (Builder $t) => $t->whereIn('title', $titles));
-                    } elseif ($columns[$column]['type'] === 'date') {
-                        // მორიგეობის დღე — სვეტი `Y-m-d`-ია, ფაილში კი `Y-m-d H:i:s`
-                        foreach ($titles as $title) {
-                            $w->orWhereDate($column, substr($title, 0, 10));
-                        }
                     } else {
                         $w->orWhereIn($column, $titles);
                     }
@@ -141,7 +136,7 @@ final class MediaryIdentity
     }
 
     /**
-     * ჩანაწერის მნიშვნელობები იდენტობის სვეტებზე (აქსესორებიც — `title_ka`, `workplace_name`).
+     * ჩანაწერის მნიშვნელობები იდენტობის სვეტებზე (აქსესორებიც — `title_ka`).
      *
      * @return array<string, mixed>
      */
@@ -158,7 +153,7 @@ final class MediaryIdentity
     }
 
     /**
-     * ეკრანისთვის: რიგის სათაური (პირველი არაცარიელი), მორიგეობაზე — დღე და სამსახური.
+     * ეკრანისთვის: რიგის სათაური (პირველი არაცარიელი).
      *
      * @param  array<string, mixed>  $values
      */
@@ -170,11 +165,7 @@ final class MediaryIdentity
             $value = $values[$column] ?? null;
 
             if (is_scalar($value) && trim((string) $value) !== '') {
-                $label = trim((string) $value);
-
-                return $module === 'duty'
-                    ? trim(substr($label, 0, 10).' '.(is_scalar($values['workplace_name'] ?? null) ? $values['workplace_name'] : ''))
-                    : mb_substr($label, 0, 300);
+                return mb_substr(trim((string) $value), 0, 300);
             }
         }
 

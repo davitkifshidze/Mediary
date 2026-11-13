@@ -179,8 +179,6 @@ final class StorageFolder
         'account', 'movies', 'series', 'anime', 'videos', 'songs', 'books', 'boardgames', 'games', 'notes', 'bookmarks', 'courses', 'places', 'gallery', 'chat', 'cast', 'backups',
         // პირადი გალერეა (პრივატული ფესვი)
         'personal',
-        // მორიგეობის დამატებითი ველების ფაილები (პრივატული)
-        'duty',
         // ყველა პირადი მოდული ერთ ფესვში, `custom/{key}/…`
         CustomModules::ROOT,
     ];
@@ -197,7 +195,7 @@ final class StorageFolder
      * სურათებია და საჯარო პროფილზეც ჩანს. პრივატულია ის, რაც
      * user-ის **პირადი დოკუმენტია** — `notes/`.
      */
-    public const PRIVATE_ROOTS = ['notes', 'chat', 'backups', 'personal', 'duty'];
+    public const PRIVATE_ROOTS = ['notes', 'chat', 'backups', 'personal'];
 
     /**
      * **პრივატული ქვესაქაღალდე საჯარო ფესვში.**
@@ -248,8 +246,6 @@ final class StorageFolder
         'places' => 'place',
         // ფესვი და მოდული ერთი სიტყვაა (მოდულის ლიმიტი და კვოტის ჯამი ერთს ითვლის)
         'personal' => 'personal',
-        // მორიგეობის ველის ფაილი (ტაბელის სკანი) მისი მოდულის ლიმიტშია
-        'duty' => 'duty',
         'gallery' => 'gallery',
         'account' => 'account',
         'chat' => 'chat',

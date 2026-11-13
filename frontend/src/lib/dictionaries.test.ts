@@ -12,7 +12,6 @@ import noteForm from '@/components/NoteForm.tsx?raw'
 import bookForm from '@/components/BookForm.tsx?raw'
 import boardGameForm from '@/components/BoardGameForm.tsx?raw'
 import gameForm from '@/components/GameForm.tsx?raw'
-import dutyShift from '@/components/duty/DutyShiftDialog.tsx?raw'
 import personalUpload from '@/components/personal/PersonalUploadDialog.tsx?raw'
 import personalMove from '@/components/personal/PersonalMoveDialog.tsx?raw'
 import albumPicker from '@/components/gallery/AlbumPicker.tsx?raw'
@@ -125,7 +124,6 @@ describe('the forms use the shared add', () => {
     ['game', gameForm, ["useInlineAdd(useDictionaryAdd('game-genres')", '<AddChip onClick={genreAdd.open}']],
     ['book', bookForm, ["useDictionaryAdd('book-genres')", 'dialog={addGenre}']],
     ['board game', boardGameForm, ["useDictionaryAdd('board-game-genres')", 'dialog={addGenre}']],
-    ['duty shift', dutyShift, ["useInlineAdd(useDictionaryAdd('duty-types')", '<DutyWorkplaceDialog', '<AddChip onClick={workplaceAdd.open}', '<AddChip onClick={typeAdd.open}']],
     ['personal upload', personalUpload, ['dialog={addPerson}', 'dialog={addAlbum(']],
     ['personal move', personalMove, ['dialog={addPerson}', 'dialog={addAlbum(']],
     ['gallery album picker', albumPicker, ["<AddChip", "label={t('gallery.albumNew')}"]],

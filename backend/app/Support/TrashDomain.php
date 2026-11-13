@@ -22,10 +22,6 @@ use App\Models\CustomRecord;
 use App\Models\CustomRecordFile;
 use App\Models\CustomRecordNote;
 use App\Models\DatabaseBackup;
-use App\Models\DutyPattern;
-use App\Models\DutyShift;
-use App\Models\DutyShiftType;
-use App\Models\DutyWorkplace;
 use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
@@ -104,8 +100,6 @@ final class TrashDomain
         'place' => Place::class,
         // პირადი გალერეის ჩანაწერი ადამიანია (ალბომი და ფოტო — მისი ნაწილები)
         'personal' => Person::class,
-        // მორიგეობის ჩანაწერი
-        'duty' => DutyShift::class,
     ];
 
     /**
@@ -167,12 +161,6 @@ final class TrashDomain
         'bookmark_category' => ['model' => BookmarkCategory::class, 'module' => 'bookmark', 'parent' => null, 'size' => false],
         'course_category' => ['model' => CourseCategory::class, 'module' => 'course', 'parent' => null, 'size' => false],
         'place_category' => ['model' => PlaceCategory::class, 'module' => 'place', 'parent' => null, 'size' => false],
-        /* მორიგეობის სამსახური და ტიპი: კლასიფიკატორის წესით (`DictionaryTrash`),
-           აღდგენა გადატანილი მორიგეობების დაბრუნებას გთავაზობს */
-        'duty_workplace' => ['model' => DutyWorkplace::class, 'module' => 'duty', 'parent' => null, 'size' => false],
-        'duty_type' => ['model' => DutyShiftType::class, 'module' => 'duty', 'parent' => null, 'size' => false],
-        // რიტმი ურნაში — მისი მორიგეობები რჩება (`pattern_id`-ით), აღდგენა მას უბრუნებს გაგრძელებას
-        'duty_pattern' => ['model' => DutyPattern::class, 'module' => 'duty', 'parent' => null, 'size' => false],
         /* პირადი მოდულის კლასიფიკატორი; მოდული რიგშია (`module`),
            ერთი სახე ყველა პირად მოდულზე (სტატუსის იგივე ფორმა). */
         'custom_category' => ['model' => CustomCategory::class, 'module' => null, 'module_column' => 'module', 'parent' => null, 'size' => false],

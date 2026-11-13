@@ -6,7 +6,6 @@ import {
   ArrowRight,
   BellRing,
   CalendarClock,
-  CalendarDays,
   History,
   PlayCircle,
   Puzzle,
@@ -51,13 +50,12 @@ const ContinueBlock = lazy(() => import('@/components/dashboard/DashboardBlocks'
 const RecentBlock = lazy(() => import('@/components/dashboard/DashboardBlocks').then((m) => ({ default: m.RecentBlock })))
 const SoonBlock = lazy(() => import('@/components/dashboard/DashboardBlocks').then((m) => ({ default: m.SoonBlock })))
 const RemindersBlock = lazy(() => import('@/components/dashboard/DashboardBlocks').then((m) => ({ default: m.RemindersBlock })))
-const DutyWeekBlock = lazy(() => import('@/components/dashboard/DashboardBlocks').then((m) => ({ default: m.DutyWeekBlock })))
 
 /* ============================================================
    დეშბორდი — მთავარი გვერდი: მისალმება და **მორგებადი** ერთეულები.
 
-   ერთეული ან ბლოკია (მიზნები, „ვაგრძელებ", „ბოლოს დამატებული", „მალე", „შეხსენებები",
-   „მორიგეობა ამ კვირაში"), ან ერთი მოდულის ბარათი. „მორგება" რედაქტირების რეჟიმს ხსნის:
+   ერთეული ან ბლოკია (მიზნები, „ვაგრძელებ", „ბოლოს დამატებული", „მალე", „შეხსენებები"),
+   ან ერთი მოდულის ბარათი. „მორგება" რედაქტირების რეჟიმს ხსნის:
    ჩართვა / გამორთვა, რიგი გადათრევით და სიგანე (მთელი · ნახევარი · მესამედი). ეს
    თავისუფალი ბადე არ არის — ბადე ყოველთვის მოწესრიგებულია.
 
@@ -75,7 +73,6 @@ const BLOCK_ICON: Record<DashboardBlock, LucideIcon> = {
   recent: History,
   soon: CalendarClock,
   reminders: BellRing,
-  duty: CalendarDays,
 }
 
 /**
@@ -136,8 +133,6 @@ function BlockView({ block }: { block: DashboardBlock }) {
       return <SoonBlock />
     case 'reminders':
       return <RemindersBlock />
-    case 'duty':
-      return <DutyWeekBlock />
   }
 }
 
@@ -157,14 +152,13 @@ export function DashboardPage() {
   })
 
   /* ბლოკი მხოლოდ მაშინ არსებობს, როცა მისი მოდული ჩართულია: „მალე" — მედიაზე,
-     „შეხსენებები" — ჩანაწერებზე, „მორიგეობა" — მორიგეობაზე. */
+     „შეხსენებები" — ჩანაწერებზე. */
   const blocks: DashboardBlock[] = [
     'goals',
     'continue',
     'recent',
     ...(['movie', 'series', 'anime'].some((key) => has(key)) ? (['soon'] as const) : []),
     ...(has('note') ? (['reminders'] as const) : []),
-    ...(has('duty') ? (['duty'] as const) : []),
   ]
   const moduleKeys = cards.map((card) => card.key)
   const layout = normalizeLayout(settings.dashboard, moduleKeys, blocks)

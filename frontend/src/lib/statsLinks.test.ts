@@ -11,8 +11,7 @@ import i18n from '@/i18n'
 
    მოწმდება: თითო მოდულის პარამეტრი (მედიის ჟანრი slug-ით, ვიდეოს ტიპი,
    კურსის სტატუსი `status`-ით, პირადი მოდულის კატეგორია), „სხვა" ბმული
-   არაა, თვე — მედიაზე ნახვა, სხვაზე დასრულება, მორიგეობაზე კალენდარი,
-   გალერეაზე — არაფერი; ქულის კალათა (6.5…7.4); ჩიპი სიაზე და მისი მოხსნა.
+   არაა, თვე — მედიაზე ნახვა, სხვაზე დასრულება, გალერეაზე — არაფერი; ქულის კალათა (6.5…7.4); ჩიპი სიაზე და მისი მოხსნა.
    ============================================================ */
 
 const status = (key: string | null) => ({ key, name_ka: null, name_en: null, role: null, color: null, count: 1 })
@@ -39,10 +38,9 @@ describe('stats links', () => {
     expect(statusLink('movie', '/movies', status(null))).toBeNull()
   })
 
-  it('a month is the watch log on media, the finish date elsewhere, the calendar on duty', () => {
+  it('a month is the watch log on media and the finish date elsewhere', () => {
     expect(monthLink('movie', '/movies', 2026, 3)).toBe('/movies?watched=2026-03')
     expect(monthLink('book', '/books', 2026, 3)).toBe('/books?done=2026-03')
-    expect(monthLink('duty', '/duty', 2026, 11)).toBe('/duty?date=2026-11-01')
     expect(monthLink('personal', '/personal', 2026, 3)).toBeNull()
   })
 

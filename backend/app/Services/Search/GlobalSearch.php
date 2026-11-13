@@ -9,7 +9,6 @@ use App\Models\Bookmark;
 use App\Models\CastMember;
 use App\Models\Course;
 use App\Models\CustomRecord;
-use App\Models\DutyShift;
 use App\Models\GalleryVideo;
 use App\Models\Game;
 use App\Models\Movie;
@@ -406,15 +405,6 @@ class GlobalSearch
                 'title_rank' => ['columns' => ['caption']],
                 'columns' => ['title' => ['caption'], 'file' => ['original_name']],
                 'scope' => fn (Builder $q) => $q->where('is_screenshot', true),
-            ],
-
-            /* მორიგეობა: შენიშვნა და დამატებითი ველები („შემცვლელი“);
-               სათაური თარიღი · სამსახური · საათებია (`DutyShift::$title`). */
-            'duty' => [
-                'module' => 'duty',
-                'model' => DutyShift::class,
-                'custom' => 'duty',
-                'columns' => ['note' => ['note']],
             ],
 
             'cast' => [
@@ -870,8 +860,6 @@ class GlobalSearch
             'gallery' => $record->channel,
             // ფოტო/ვიდეოს გადაღების თარიღი
             'personal_media', 'personal_screenshot' => $record->taken_at?->toDateString(),
-            // მორიგეობის სამსახური
-            'duty' => $record->workplace?->name,
             default => null,
         };
 
