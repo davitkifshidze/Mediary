@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Services\Audit\AuditLogger;
+use App\Services\Sync\SyncFacts;
 use App\Services\Sync\SyncHistory;
 use App\Services\Tmdb\TmdbClient;
 use App\Services\Translation\ItemTranslator;
@@ -117,6 +118,9 @@ class TranslationController extends Controller
             return response()->json(['message' => 'not_found'], 404);
         }
 
+        // ისტორიისთვის: ჩანაწერი თარგმნამდე — რა ტექსტი ჩაიწერა, სხვაობიდან მოდის
+        $facts = SyncFacts::watch($item, SyncHistory::KIND_TRANSLATE, $history->tracks($request));
+
         $result = $translator->translate($item, $sources, $review);
 
         if (! $result['ok']) {
@@ -144,7 +148,9 @@ class TranslationController extends Controller
         $title = $item->title_ka ?: ($item->title_en ?: '#'.$item->id);
 
         // რიგის გაშვება (`run`) სინქრონიზაციის ისტორიაში იწერება — რომელი ველი ითარგმნა
-        $history->fromRequest($request, SyncHistory::KIND_TRANSLATE, $type, $id, $title, SyncHistory::outcome($result));
+        // ველი → წყარო: ისტორია ამბობს, რით ითარგმნა
+        [$outcome, $details] = $facts->settle(SyncHistory::outcome($result), $result['providers'] ?? []);
+        $history->fromRequest($request, SyncHistory::KIND_TRANSLATE, $type, $id, $title, $outcome, $details);
 
         return response()->json([
             'ok' => $result['ok'],

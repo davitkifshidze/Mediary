@@ -15,6 +15,7 @@ use App\Services\Credentials\CredentialStore;
 use App\Services\Episodes\EpisodeSync;
 use App\Services\Gallery\GalleryFetcher;
 use App\Services\Sync\ItemSyncer;
+use App\Services\Sync\SyncFacts;
 use App\Services\Sync\SyncHistory;
 use App\Services\Translation\ItemTranslator;
 use App\Support\MediaDomain;
@@ -91,6 +92,13 @@ class RunBatchItem implements ShouldQueue
      * @var array{0: string, 1: list<string>, 2: ?string}
      */
     private array $outcome = [SyncHistory::UPDATED, [], null];
+
+    /**
+     * რა რით შეიცვალა — ისტორიისთვის (`SyncFacts::changes()`).
+     *
+     * @var list<array<string, mixed>>
+     */
+    private array $details = [];
 
     public function __construct(
         public readonly int $userId,
@@ -228,7 +236,14 @@ class RunBatchItem implements ShouldQueue
             $result,
             $changes,
             $reason,
+            $this->details,
         );
+    }
+
+    /** ერთეული ისტორიაში იწერება? — მხოლოდ პარტიის შიგნით და სინქრონიზაციის სახეობაზე (`remember()`) */
+    private function tracked(): bool
+    {
+        return $this->batch() !== null && in_array($this->kind, SyncHistory::KINDS, true);
     }
 
     /**
@@ -305,6 +320,9 @@ class RunBatchItem implements ShouldQueue
         // შეიძლება წაიშალოს, სიაში კი „რა იყო ეს" უნდა დარჩეს
         $item?->update(['title' => $this->titleOf($record)]);
 
+        // ისტორიისთვის: ჩანაწერი გაშვებამდე — „რა რით შეიცვალა" სხვაობიდან მოდის
+        $facts = SyncFacts::watch($record, $this->kind, $this->tracked());
+
         $result = match ($this->kind) {
             'sync' => $syncer->sync($record, [
                 'fields' => $this->options['fields'] ?? [],
@@ -334,9 +352,11 @@ class RunBatchItem implements ShouldQueue
            („ვერაფერი შეივსო", `no_tmdb_id`), თორემ ის „განახლებულად" ჩაითვლებოდა. */
         if (is_array($result)) {
             // ისტორიისთვის: სეზონებს თავისი პასუხის ფორმა აქვს, დანარჩენს — საერთო
-            $this->outcome = $this->kind === self::KIND_EPISODES
-                ? SyncHistory::episodesOutcome($result)
-                : SyncHistory::outcome($result);
+            // ⚠️ ისტორიის შედეგს ნამდვილი ცვლილება აზუსტებს; თარგმანზე ველი → წყარო (`providers`) — რით ითარგმნა
+            [$this->outcome, $this->details] = $facts->settle(
+                $this->kind === self::KIND_EPISODES ? SyncHistory::episodesOutcome($result) : SyncHistory::outcome($result),
+                is_array($result['providers'] ?? null) ? $result['providers'] : [],
+            );
 
             if (($result['ok'] ?? true) === false) {
                 throw new RuntimeException((string) ($result['error'] ?? 'failed'));
@@ -391,13 +411,15 @@ class RunBatchItem implements ShouldQueue
             return false;
         }
 
+        $facts = SyncFacts::watch($member, $this->kind, $this->tracked());
+
         $result = app(AuditLogger::class)->suppress(fn () => $enricher->run(
             $member,
             $this->options['fields'] ?? CastEnricher::FIELDS,
             (bool) ($this->options['overwrite_photo'] ?? false),
         ));
 
-        $this->outcome = SyncHistory::castOutcome($result, $enricher);
+        [$this->outcome, $this->details] = $facts->settle(SyncHistory::castOutcome($result, $enricher));
 
         if ($result === CastEnricher::FAILED) {
             throw new RuntimeException($enricher->lastError() ?? 'tmdb_unavailable');

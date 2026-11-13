@@ -5670,7 +5670,7 @@
     "title": "Sync results",
     "open": "View results",
     "allRuns": "All runs",
-    "hint": "The history of every run: when, what kind, on which modules and with what outcome. Inside a run you see each item — what came back, why, and what changed (a list of fields; the actual values are on the record's page). “Don't run again” switches on the same toggle as “Don't update” on the record's page. History is kept for 90 days; locked records are not shown here.",
+    "hint": "The history of every run: when, what kind, which modules and with what result. Inside a run you see each item — what came back, why, and what changed to what: an item unfolds to show the old and the new value of every field (older runs list only the field names). “Don't run again” switches on the same toggle as “Don't update” on the record's page. History is kept for 90 days; locked records are not shown here.",
     "none": "Nothing has been run yet",
     "noneHint": "When you run data, seasons, cast or translation, the outcome shows up here.",
     "noItems": "This run has no such item",
@@ -5707,6 +5707,31 @@
       "tmdb_empty": "TMDB has no data on this person",
       "sync_paused": "sync is paused on this record",
       "record_not_found": "the record was deleted before the run"
+    },
+    "detail": {
+      "show": "What changed",
+      "showAll": "Unfold all",
+      "hideAll": "Fold all",
+      "new": "New",
+      "became": "became",
+      "emptied": "cleared",
+      "added": "added",
+      "removed": "removed",
+      "fileNew": "A new file was downloaded",
+      "fileReplaced": "The file was replaced with a new one",
+      "more": "More",
+      "less": "Less"
+    },
+    "field": {
+      "name_ka": "Georgian name",
+      "birthday": "Date of birth",
+      "deathday": "Date of death",
+      "place_of_birth": "Place of birth",
+      "known_for": "Known for",
+      "biography": "Biography",
+      "homepage": "Official site",
+      "profile_links": "Social links",
+      "photo": "Profile photo"
     }
   },
   "locks": {

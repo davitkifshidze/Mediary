@@ -8,8 +8,10 @@ use App\Models\CastMemberSyncPref;
 use App\Models\SyncRun;
 use App\Models\SyncRunItem;
 use App\Services\Cast\CastPool;
+use App\Services\Sync\SyncFacts;
 use App\Services\Sync\SyncHistory;
 use App\Support\MediaDomain;
+use App\Support\RecordLocks;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -85,6 +87,8 @@ class SyncRunController extends Controller
             ->paginate((int) ($data['per_page'] ?? self::PER_PAGE));
 
         $state = $this->recordState($request, $items->getCollection());
+        // ჩაკეტილი მსახიობი ფილმის „მსახიობები: დაემატა …"-შიც არ ჩანს
+        $hiddenActors = RecordLocks::hiddenIds((new CastMember)->getMorphClass());
 
         return response()->json([
             'data' => $items->getCollection()->map(fn (SyncRunItem $item) => [
@@ -95,6 +99,8 @@ class SyncRunController extends Controller
                 'result' => $item->result,
                 'reason' => $item->reason,
                 'changes' => $item->changes ?? [],
+                // რა რით შეიცვალა: ძველი → ახალი, სიაზე — რა დაემატა და რა მოაკლდა
+                'details' => SyncFacts::readable($item->details ?? [], $hiddenActors),
                 // ჩანაწერი ისევ არსებობს (ბმული) და მასზე „აღარ განაახლო" ახლა ჩართულია თუ არა
                 'exists' => isset($state[$item->type][(int) $item->record_id]),
                 'paused' => (bool) ($state[$item->type][(int) $item->record_id] ?? false),

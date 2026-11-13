@@ -9,6 +9,7 @@ use App\Models\CastMemberSyncPref;
 use App\Services\Audit\AuditLogger;
 use App\Services\Cast\CastEnricher;
 use App\Services\Cast\CastPool;
+use App\Services\Sync\SyncFacts;
 use App\Services\Sync\SyncHistory;
 use App\Support\AppTime;
 use App\Support\CredentialProviders;
@@ -178,6 +179,9 @@ class CastSyncController extends Controller
             return MissingCredential::response(CredentialProviders::TMDB);
         }
 
+        // ისტორიისთვის: მსახიობი გაშვებამდე — „რა რით შეიცვალა" სხვაობიდან მოდის
+        $facts = SyncFacts::watch($castMember, SyncHistory::KIND_CAST, $history->tracks($request));
+
         $result = $audit->suppress(fn () => $enricher->run(
             $castMember,
             $data['fields'] ?? CastEnricher::FIELDS,
@@ -187,14 +191,8 @@ class CastSyncController extends Controller
         $title = $castMember->refresh()->name_ka ?: $castMember->name;
 
         // რიგის გაშვება (`run`) ისტორიაში იწერება — მსახიობის ერთეული `actor`-ია
-        $history->fromRequest(
-            $request,
-            SyncHistory::KIND_CAST,
-            SyncHistory::ACTOR,
-            (int) $castMember->getKey(),
-            $title,
-            SyncHistory::castOutcome($result, $enricher),
-        );
+        [$outcome, $details] = $facts->settle(SyncHistory::castOutcome($result, $enricher));
+        $history->fromRequest($request, SyncHistory::KIND_CAST, SyncHistory::ACTOR, (int) $castMember->getKey(), $title, $outcome, $details);
 
         return response()->json([
             'ok' => $result !== CastEnricher::FAILED,

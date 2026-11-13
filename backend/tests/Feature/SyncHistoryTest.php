@@ -9,10 +9,13 @@ use App\Models\Module;
 use App\Models\Movie;
 use App\Models\RecordLock;
 use App\Models\Role;
+use App\Models\Series;
 use App\Models\SyncRun;
 use App\Models\SyncRunItem;
+use App\Models\TvEpisode;
 use App\Models\User;
 use App\Services\Cast\CastEnricher;
+use App\Services\Sync\SyncFacts;
 use App\Services\Sync\SyncHistory;
 use App\Services\Translation\ItemTranslator;
 use App\Support\BackgroundProcess;
@@ -37,6 +40,13 @@ use Tests\TestCase;
  * მონიშნულებზე და ყველა ჩავარდნილზე ჩანაწერის გადამრთველს წერს და ბრუნდება;
  * ისტორია მხოლოდ მფლობელისაა, ჩაკეტილი ჩანაწერის ერთეული არსად ჩანს; 90 დღეზე
  * ძველი გაშვება იშლება.
+ *
+ * ⚠️ **„რა რით შეიცვალა"** (`details`): ყოველ შეცვლილ ველზე ძველი და ახალი
+ * მნიშვნელობა — ცარიელიდან შევსებულზე ძველი `null`-ია, გადაწერილზე ორივე; ჟანრებზე —
+ * რა დაემატა და რა მოაკლდა; თარგმანზე — რომელმა წყარომ შეავსო; სეზონებსა და სერიებზე —
+ * რამდენი იყო ჩამოტვირთული და რამდენი გახდა. ორივე გზაზე (რიგი, ფონური პარტია);
+ * უცვლელსა და ჩავარდნილს მნიშვნელობები არ აქვს, ჩაკეტილი ჩანაწერის მნიშვნელობა
+ * პასუხში არ გამოდის.
  */
 class SyncHistoryTest extends TestCase
 {
@@ -48,6 +58,9 @@ class SyncHistoryTest extends TestCase
 
     /** @var array<int, array{0: array<string, mixed>, 1: int}> TMDB-ის id → [პასუხი, სტატუსი] */
     private array $tmdb = [];
+
+    /** @var list<array<string, mixed>> TMDB-ის მსახიობების პასუხი — ყველა ფილმზე ერთი */
+    private array $credits = [];
 
     protected function setUp(): void
     {
@@ -73,7 +86,7 @@ class SyncHistoryTest extends TestCase
 
         // ⚠️ ერთი stub ცვლადი პასუხით — `Http::fake()` stub-ებს ამატებს და არა ცვლის
         Http::fake([
-            'api.themoviedb.org/3/movie/*/credits*' => fn () => Http::response(['cast' => []]),
+            'api.themoviedb.org/3/movie/*/credits*' => fn () => Http::response(['cast' => $this->credits]),
             'api.themoviedb.org/3/movie/*/videos*' => fn () => Http::response(['results' => []]),
             'api.themoviedb.org/3/movie/*' => function ($request) {
                 preg_match('#/movie/(\d+)#', $request->url(), $m);
@@ -168,6 +181,18 @@ class SyncHistoryTest extends TestCase
         $this->assertTrue($items[$updated->id]['exists']);
         $this->assertFalse($items[$updated->id]['paused']);
 
+        // „რა რით": ცარიელი ჩანაწერი შეივსო — ძველი მნიშვნელობა არ არსებობს, ახალი ისაა, რაც ახლა წერია
+        $this->assertEqualsCanonicalizing([
+            ['field' => 'title_en', 'from' => null, 'to' => 'The Matrix'],
+            ['field' => 'year', 'from' => null, 'to' => '1999'],
+            ['field' => 'rating', 'from' => null, 'to' => '8.7'],
+            ['field' => 'release', 'from' => null, 'to' => '1999-03-31'],
+        ], $items[$updated->id]['details']);
+        // უცვლელს, ცარიელსა და ჩავარდნილს მნიშვნელობები არ აქვს
+        foreach ([$unchanged, $empty, $failed] as $other) {
+            $this->assertSame([], $items[$other->id]['details']);
+        }
+
         $this->assertSame(['unchanged', [], null], [$items[$unchanged->id]['result'], $items[$unchanged->id]['changes'], $items[$unchanged->id]['reason']]);
         // ცარიელი პასუხი გამოტოვებაა მიზეზით — ჩანაწერი დამუშავებულად არ ითვლება
         $this->assertSame(['skipped', SyncOutcome::EMPTY], [$items[$empty->id]['result'], $items[$empty->id]['reason']]);
@@ -211,6 +236,13 @@ class SyncHistoryTest extends TestCase
 
         $items = $this->items($id);
         $this->assertEqualsCanonicalizing(['title_en', 'year', 'release'], $items[$good->id]['changes']);
+        // ფონური პარტია იმავე „რა რით"-ს წერს, რასაც რიგი
+        $this->assertEqualsCanonicalizing([
+            ['field' => 'title_en', 'from' => null, 'to' => 'The Matrix'],
+            ['field' => 'year', 'from' => null, 'to' => '1999'],
+            ['field' => 'release', 'from' => null, 'to' => '1999-03-31'],
+        ], $items[$good->id]['details']);
+        $this->assertSame([], $items[$bad->id]['details']);
         $this->assertSame(['skipped', 'record_not_found', false], [$items[$goneId]['result'], $items[$goneId]['reason'], $items[$goneId]['exists']]);
         $this->assertSame('failed', $items[$bad->id]['result']);
 
@@ -226,15 +258,30 @@ class SyncHistoryTest extends TestCase
         $movie = $this->movie(603);
         $actor = CastMember::create(['tmdb_person_id' => 6384, 'name' => 'Keanu Reeves']);
 
+        $movie->setTranslation('en', ['title' => 'The Matrix', 'description' => 'A hacker learns the truth.']);
+
+        // თარჯიმანი და მსახიობის წყარო ყალბია, მაგრამ ჩანაწერს მართლა ცვლის — ისტორია ცვლილებას ბაზიდან კითხულობს
         $this->mock(ItemTranslator::class, function ($mock) {
-            $mock->shouldReceive('translate')->andReturn([
-                'ok' => true, 'skipped' => false, 'changed' => ['title_ka', 'description_ka'],
-                'providers' => ['title_ka' => 'gemini'], 'error' => null, 'result' => SyncOutcome::UPDATED,
-            ]);
+            $mock->shouldReceive('translate')->andReturnUsing(function (Movie $item) {
+                $item->setTranslation('ka', ['title' => 'მატრიცა', 'description' => 'ჰაკერი სიმართლეს იგებს.']);
+
+                return [
+                    'ok' => true, 'skipped' => false, 'changed' => ['title_ka', 'description_ka'],
+                    'providers' => ['title_ka' => 'tmdb', 'description_ka' => 'gemini'], 'error' => null, 'result' => SyncOutcome::UPDATED,
+                ];
+            });
         });
         $this->mock(CastEnricher::class, function ($mock) {
             $mock->shouldReceive('configured')->andReturn(true);
-            $mock->shouldReceive('run')->andReturn(CastEnricher::UPDATED, CastEnricher::EMPTY);
+            $mock->shouldReceive('run')->andReturnUsing(function (CastMember $member) {
+                if ($member->tmdb_person_id !== 6384) {
+                    return CastEnricher::EMPTY;
+                }
+
+                $member->forceFill(['birthday' => '1964-09-02', 'place_of_birth' => 'Beirut', 'photo_path' => 'cast/keanu.jpg'])->save();
+
+                return CastEnricher::UPDATED;
+            });
             $mock->shouldReceive('lastChanged')->andReturn(['details', 'photo']);
             $mock->shouldReceive('lastError')->andReturn(null);
         });
@@ -249,12 +296,101 @@ class SyncHistoryTest extends TestCase
 
         $this->getJson("/api/sync/runs/{$translate}")->assertJsonPath('data.kind', 'translate')->assertJsonPath('data.types', ['movie']);
         $this->assertSame(['title_ka', 'description_ka'], $this->items($translate)[$movie->id]['changes']);
+        // რა ტექსტი ჩაიწერა და რომელმა წყარომ შეავსო
+        $this->assertEqualsCanonicalizing([
+            ['field' => 'title_ka', 'from' => null, 'to' => 'მატრიცა', 'by' => 'tmdb'],
+            ['field' => 'description_ka', 'from' => null, 'to' => 'ჰაკერი სიმართლეს იგებს.', 'by' => 'gemini'],
+        ], $this->items($translate)[$movie->id]['details']);
+        // ქართული ტექსტი ბაზაში ასოებად წერია და არა `\u10d8`-ებად
+        $this->assertStringContainsString('მატრიცა', (string) DB::table('sync_run_items')->where('record_id', $movie->id)->value('details'));
 
         $this->getJson("/api/sync/runs/{$cast}")->assertJsonPath('data.kind', 'cast')->assertJsonPath('data.types', ['actor'])
             ->assertJsonPath('data.counts.updated', 1)->assertJsonPath('data.counts.skipped', 1);
         $items = $this->items($cast);
         $this->assertSame(['actor', ['details', 'photo']], [$items["actor:{$actor->id}"]['type'], $items["actor:{$actor->id}"]['changes']]);
         $this->assertSame(CastEnricher::EMPTY, $items["actor:{$other->id}"]['reason']);
+        // მსახიობზე — სვეტები; ფოტოზე მხოლოდ ფაქტი, ფაილის მისამართი არ იწერება
+        $this->assertEqualsCanonicalizing([
+            ['field' => 'birthday', 'from' => null, 'to' => '1964-09-02'],
+            ['field' => 'place_of_birth', 'from' => null, 'to' => 'Beirut'],
+            ['field' => 'photo', 'file' => true, 'replaced' => false],
+        ], $items["actor:{$actor->id}"]['details']);
+        $this->assertStringNotContainsString('keanu.jpg', (string) DB::table('sync_run_items')->where('type', 'actor')->where('record_id', $actor->id)->value('details'));
+        $this->assertSame([], $items["actor:{$other->id}"]['details']);
+    }
+
+    public function test_an_overwriting_run_keeps_the_old_value_next_to_the_new_one(): void
+    {
+        $this->actingAs($this->alice);
+        $movie = $this->movie(603);
+        $overwrite = fn (string $run) => $this->postJson("/api/media/sync/movie/{$movie->id}", [
+            'fields' => ['title', 'year', 'genres'], 'overwrite' => true, 'run' => $run, 'run_total' => 1,
+        ])->assertOk();
+
+        $this->tmdb[603][0]['genres'] = [['id' => 28, 'name' => 'Action'], ['id' => 878, 'name' => 'Science Fiction']];
+        $overwrite($first = (string) Str::uuid());
+
+        // წყარომ სათაური შეცვალა და ერთი ჟანრი სხვით ჩაანაცვლა
+        $this->tmdb[603][0]['title'] = 'The Matrix Remastered';
+        $this->tmdb[603][0]['genres'] = [['id' => 28, 'name' => 'Action'], ['id' => 53, 'name' => 'Thriller']];
+        $overwrite($second = (string) Str::uuid());
+
+        $before = collect($this->items($first)[$movie->id]['details'])->keyBy('field');
+        $this->assertEqualsCanonicalizing(['Action', 'Science Fiction'], $before['genres']['added']);
+        // ბაზაში ელემენტი id-თან ერთად წერია — წაკითხვისას ჩაკეტილი ამით იფილტრება
+        $this->assertArrayHasKey('id', collect(SyncRunItem::where('record_id', $movie->id)->first()->details)->firstWhere('field', 'genres')['added'][0]);
+        $this->assertSame([], $before['genres']['removed']);
+
+        $after = collect($this->items($second)[$movie->id]['details'])->keyBy('field');
+        $this->assertSame(['field' => 'title_en', 'from' => 'The Matrix', 'to' => 'The Matrix Remastered'], $after['title_en']);
+        $this->assertSame(['field' => 'genres', 'added' => ['Thriller'], 'removed' => ['Science Fiction']], $after['genres']);
+        // რაც არ შეცვლილა (წელი), მნიშვნელობებში არ ჩანს
+        $this->assertSame(['title_en', 'genres'], $after->keys()->all());
+
+        // იგივე მონაცემის ხელახლა გადაწერა: მწერალი ველებს ისევ „შეცვლილად" აბრუნებს, ისტორიაში კი ერთეული უცვლელია
+        $third = (string) Str::uuid();
+        $this->assertNotEmpty($overwrite($third)->json('changed'));
+        $same = $this->items($third)[$movie->id];
+        $this->assertSame(['unchanged', [], []], [$same['result'], $same['changes'], $same['details']]);
+        $this->getJson("/api/sync/runs/{$third}")->assertJsonPath('data.counts.unchanged', 1)->assertJsonPath('data.counts.updated', 0);
+    }
+
+    public function test_facts_count_downloaded_episodes_and_cut_long_text(): void
+    {
+        $this->actingAs($this->alice);
+        $series = Series::create(['user_id' => $this->alice->id, 'tmdb_id' => 1399])->refresh();
+        TvEpisode::create(['tmdb_series_id' => 1399, 'season_number' => 1, 'episode_number' => 1]);
+
+        $facts = SyncFacts::watch($series, SyncHistory::KIND_EPISODES);
+        TvEpisode::create(['tmdb_series_id' => 1399, 'season_number' => 1, 'episode_number' => 2]);
+        TvEpisode::create(['tmdb_series_id' => 1399, 'season_number' => 2, 'episode_number' => 1]);
+        // სხვა სერიალის ეპიზოდი ამ რიცხვში არ ითვლება
+        TvEpisode::create(['tmdb_series_id' => 1400, 'season_number' => 1, 'episode_number' => 1]);
+
+        $this->assertSame([
+            ['field' => 'seasons', 'from' => '1', 'to' => '2'],
+            ['field' => 'episodes', 'from' => '1', 'to' => '3'],
+        ], $facts->changes());
+
+        // ახალი სერია არ ჩამოსულა — „განახლდა" ისტორიაში „უცვლელი" ხდება; ჩამოსულზე რიცხვიანი კოდები რჩება
+        $totals = [SyncHistory::UPDATED, ['seasons:2', 'episodes:3'], null];
+        $this->assertSame([[SyncHistory::UNCHANGED, [], null], []], SyncFacts::watch($series, SyncHistory::KIND_EPISODES)->settle($totals));
+        $this->assertSame($totals, $facts->settle($totals)[0]);
+        // ფაილის კოდსა და ფაქტის გარეშე კოდს მწერლის სიტყვა წყვეტს
+        $kept = [SyncHistory::UPDATED, ['poster', 'photos'], null];
+        $this->assertSame([$kept, []], SyncFacts::watch($this->movie(604), SyncHistory::KIND_SYNC)->settle($kept));
+
+        // ისტორიაში არჩაწერილ გაშვებაზე ჩანაწერი საერთოდ არ იკითხება
+        $this->assertSame([], SyncFacts::watch($series, SyncHistory::KIND_EPISODES, false)->changes());
+
+        // გრძელი აღწერა იჭრება — სრული ტექსტი ჩანაწერის გვერდზეა
+        $movie = $this->movie(603);
+        $long = SyncFacts::watch($movie, SyncHistory::KIND_SYNC);
+        $movie->setTranslation('en', ['description' => str_repeat('ა', SyncFacts::TEXT_MAX + 500)]);
+        $cut = $long->changes()[0];
+        $this->assertSame('description_en', $cut['field']);
+        $this->assertSame(SyncFacts::TEXT_MAX + 1, mb_strlen($cut['to']));
+        $this->assertStringEndsWith('…', $cut['to']);
     }
 
     public function test_items_can_be_paused_and_resumed_from_a_run(): void
@@ -322,6 +458,8 @@ class SyncHistoryTest extends TestCase
 
         $this->assertSame([$open->id], array_keys($this->items($run)));
         $this->assertSame([], $this->items($run, '?q=reloaded'));
+        // ჩაკეტილის არც სათაური გამოდის, არც ჩაწერილი მნიშვნელობა
+        $this->assertStringNotContainsString('Reloaded', (string) $this->getJson("/api/sync/runs/{$run}/items")->getContent());
         $this->getJson("/api/sync/runs/{$run}")->assertJsonPath('data.done', 1)->assertJsonPath('data.types', ['movie']);
         $hidden = SyncRunItem::where('record_id', $secret->id)->value('id');
         $this->postJson("/api/sync/runs/{$run}/pause", ['paused' => true, 'items' => [$hidden]])->assertJsonPath('changed', 0);
@@ -338,6 +476,38 @@ class SyncHistoryTest extends TestCase
         $this->step($mine, $run, 1);
         $this->assertSame(2, SyncRun::withoutGlobalScope('owner')->where('key', $run)->count());
         $this->assertSame([$mine->id], array_keys($this->items($run)));
+    }
+
+    public function test_an_actor_locked_after_the_run_leaves_the_cast_changes_of_a_record(): void
+    {
+        $this->actingAs($this->alice);
+        $movie = $this->movie(603);
+        $run = (string) Str::uuid();
+        $this->credits = [
+            ['id' => 6384, 'name' => 'Keanu Reeves', 'character' => 'Neo'],
+            ['id' => 2975, 'name' => 'Laurence Fishburne', 'character' => 'Morpheus'],
+        ];
+
+        $this->postJson("/api/media/sync/movie/{$movie->id}", ['fields' => ['cast'], 'run' => $run, 'run_total' => 1])->assertOk();
+
+        $cast = fn () => collect($this->items($run)[$movie->id]['details'])->firstWhere('field', 'cast');
+        $this->assertSame(['field' => 'cast', 'added' => ['Keanu Reeves', 'Laurence Fishburne'], 'removed' => []], $cast());
+
+        $lock = fn (int $tmdbId) => RecordLock::create([
+            'user_id' => $this->alice->id,
+            'lockable_type' => (new CastMember)->getMorphClass(),
+            'lockable_id' => CastMember::where('tmdb_person_id', $tmdbId)->value('id'),
+            'password_hash' => Hash::make('secret1'),
+        ]);
+
+        // ფილმის ერთეული რჩება, მაგრამ ჩაკეტილი მსახიობის სახელი მის ცვლილებებში აღარ ჩანს
+        $lock(6384);
+        $this->assertSame(['field' => 'cast', 'added' => ['Laurence Fishburne'], 'removed' => []], $cast());
+        $this->assertStringNotContainsString('Keanu', (string) $this->getJson("/api/sync/runs/{$run}/items")->getContent());
+
+        // ორივე რომ ჩაიკეტოს, „მსახიობები" ცვლილებებიდან მთლიანად ქრება
+        $lock(2975);
+        $this->assertNull($cast());
     }
 
     public function test_runs_older_than_ninety_days_are_pruned_with_their_items(): void

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\Sync\ItemSyncer;
+use App\Services\Sync\SyncFacts;
 use App\Services\Sync\SyncHistory;
 use App\Support\CredentialProviders;
 use App\Support\MediaDomain;
@@ -146,6 +147,9 @@ class MediaSyncController extends Controller
             return response()->json(['message' => 'not_found'], 404);
         }
 
+        // ისტორიისთვის: ჩანაწერი გაშვებამდე — „რა რით შეიცვალა" სხვაობიდან მოდის
+        $facts = SyncFacts::watch($item, SyncHistory::KIND_SYNC, $history->tracks($request));
+
         $result = $syncer->sync($item, [
             'fields' => $data['fields'] ?? [],
             'media' => $request->boolean('media'),
@@ -160,7 +164,8 @@ class MediaSyncController extends Controller
         $title = $item->title_ka ?: ($item->title_en ?: '#'.$item->id);
 
         // რიგის გაშვება (`run`) ისტორიაში იწერება; ერთეულოვანი ღილაკი გასაღებს არ აგზავნის
-        $history->fromRequest($request, SyncHistory::KIND_SYNC, $type, $id, $title, SyncHistory::outcome($result));
+        [$outcome, $details] = $facts->settle(SyncHistory::outcome($result));
+        $history->fromRequest($request, SyncHistory::KIND_SYNC, $type, $id, $title, $outcome, $details);
 
         return response()->json([
             'ok' => $result['ok'],

@@ -21,8 +21,9 @@ use Throwable;
  *
  * ⚠️ **ისტორია ვერასდროს ტეხს სინქრონიზაციას** (`AuditLogger`-ის წესი): ჩაწერა
  * try/catch-შია და ჩავარდნა მხოლოდ `report()`-ით ფიქსირდება.
- * ⚠️ **იწერება ველების სია და არა მნიშვნელობები**: „შეიცვალა: პოსტერი, აღწერა"
- * პასუხობს კითხვას „რა განახლდა"; კონკრეტული მნიშვნელობა ჩანაწერის გვერდზეა.
+ * ⚠️ **იწერება ველების სიაც და მათი მნიშვნელობებიც**: `changes` — რა შეიცვალა
+ * („პოსტერი, აღწერა"), `details` — რა რით (`SyncFacts`: ძველი → ახალი, სიაზე რა
+ * დაემატა და რა მოაკლდა, ფაილზე მხოლოდ ფაქტი). ორივე მხოლოდ „განახლდა" შედეგზე.
  * ⚠️ ჟურნალში (`audit_logs`) აქედან არაფერი იწერება — ეს მანქანის ჟურნალია.
  */
 class SyncHistory
@@ -62,6 +63,7 @@ class SyncHistory
      * ერთეულის შედეგის ჩაწერა.
      *
      * @param  list<string>  $changes  შეცვლილი ველების გასაღებები (`poster`, `description_ka`, `seasons:8`…)
+     * @param  list<array<string, mixed>>  $details  რა რით შეიცვალა (`SyncFacts::changes()`)
      */
     public function record(
         int $userId,
@@ -75,6 +77,7 @@ class SyncHistory
         string $result,
         array $changes = [],
         ?string $reason = null,
+        array $details = [],
     ): void {
         if (! in_array($kind, self::KINDS, true) || ! in_array($result, self::RESULTS, true) || ! Str::isUuid($key)) {
             return;
@@ -100,6 +103,7 @@ class SyncHistory
                     'result' => $result,
                     'reason' => $reason === null || $reason === '' ? null : mb_substr($reason, 0, 500),
                     'changes' => $result === self::UPDATED && $changes !== [] ? array_values(array_unique($changes)) : null,
+                    'details' => $result === self::UPDATED && $details !== [] ? array_values($details) : null,
                 ],
             );
 
@@ -116,13 +120,14 @@ class SyncHistory
      * არ იწერება.
      *
      * @param  array{0: string, 1: list<string>, 2: ?string}  $outcome  `outcome()` / `castOutcome()`
+     * @param  list<array<string, mixed>>  $details  რა რით შეიცვალა (`SyncFacts::changes()`)
      */
-    public function fromRequest(Request $request, string $kind, string $type, int $recordId, ?string $title, array $outcome): void
+    public function fromRequest(Request $request, string $kind, string $type, int $recordId, ?string $title, array $outcome, array $details = []): void
     {
         $key = $request->input('run');
         $user = $request->user();
 
-        if (! is_string($key) || ! $user) {
+        if (! $this->tracks($request)) {
             return;
         }
 
@@ -140,7 +145,17 @@ class SyncHistory
             $result,
             $changes,
             $reason,
+            $details,
         );
+    }
+
+    /**
+     * ეს მოთხოვნა ისტორიაში იწერება? — რიგის ერთეულს გასაღები (`run`) მოაქვს, ერთეულოვან
+     * ღილაკს არა. ⚠️ `SyncFacts::watch()` ამით იგებს, წაიკითხოს თუ არა ჩანაწერი გაშვებამდე.
+     */
+    public function tracks(Request $request): bool
+    {
+        return is_string($request->input('run')) && $request->user() !== null;
     }
 
     /**

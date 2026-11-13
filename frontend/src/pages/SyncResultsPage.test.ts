@@ -16,6 +16,12 @@ import i18n from '@/i18n'
    ჩანაწერზე ბმულია, წაშლილზე — არა; ჩიპი შედეგით ფილტრავს, ძებნა სათაურით;
    „აღარ გაეშვას" მონიშნულ ერთეულებს ან ყველა ჩავარდნილს აგზავნის და მერე სიას
    თავიდან კითხულობს; გასაღების ფორმა UUID-ია.
+
+   ⚠️ **„რა რით შეიცვალა"**: ერთეული, რომელსაც მნიშვნელობები აქვს, იშლება — ყოველ
+   ველზე „იყო → გახდა", ცარიელიდან შევსებულზე „ახალი" ნიშანი ძველის გარეშე,
+   ჟანრებზე რა დაემატა და რა მოაკლდა, პოსტერზე მხოლოდ ფაქტი, თარგმანზე წყარო; გრძელი
+   ტექსტი იკეცება და „მეტით" იშლება. მნიშვნელობების გარეშე ერთეულს (ძველი გაშვება)
+   გასაშლელი ღილაკი არ აქვს.
    ============================================================ */
 
 const run = (extra: Partial<SyncRun> = {}): SyncRun => ({
@@ -39,13 +45,25 @@ const item = (id: number, extra: Partial<SyncRunItem> = {}): SyncRunItem => ({
   result: 'updated',
   reason: null,
   changes: [],
+  details: [],
   exists: true,
   paused: false,
   ...extra,
 })
 
+const LONG = 'გრძელი აღწერა. '.repeat(40)
+
 const ITEMS = [
-  item(1, { changes: ['poster', 'description_ka'] }),
+  item(1, {
+    changes: ['poster', 'description_ka'],
+    details: [
+      { field: 'title_en', from: 'The Matrix', to: 'The Matrix Remastered' },
+      { field: 'description_ka', from: null, to: LONG, by: 'gemini' },
+      { field: 'genres', added: ['Thriller'], removed: ['Science Fiction'] },
+      { field: 'poster', file: true, replaced: true },
+      { field: 'birthday', from: null, to: '1964-09-02' },
+    ],
+  }),
   item(2, { result: 'unchanged' }),
   item(3, { result: 'skipped', reason: 'empty' }),
   item(4, { result: 'failed', reason: 'TMDB said 401', exists: false, paused: true }),
@@ -187,6 +205,57 @@ describe('SyncResultsPage: one run', () => {
     expect(rows[3].textContent).toContain(i18n.t('syncResults.gone'))
     expect(rows[3].querySelector('[data-testid="sync-run-item-paused"]')).not.toBeNull()
     expect(rows[0].querySelector('[data-testid="sync-run-item-paused"]')).toBeNull()
+  })
+
+  it('unfolds an item into what changed to what', async () => {
+    await open()
+
+    const rows = all<HTMLElement>('[data-testid="sync-run-item"]')
+    const toggle = rows[0].querySelector<HTMLButtonElement>('[data-testid="sync-run-item-toggle"]')!
+    // რამდენი ველი შეიცვალა — ღილაკზე; მნიშვნელობების გარეშე ერთეულს ღილაკი არ აქვს
+    expect(toggle.querySelector('[data-testid="count-badge"]')!.textContent).toBe('5')
+    expect(rows[1].querySelector('[data-testid="sync-run-item-toggle"]')).toBeNull()
+    expect(rows[0].querySelector('[data-testid="sync-run-item-details"]'), 'თავიდან აკეცილია').toBeNull()
+
+    await click(toggle)
+    const detail = (field: string) => rows[0].querySelector<HTMLElement>(`[data-testid="sync-run-detail"][data-field="${field}"]`)!
+    expect(all('[data-testid="sync-run-detail"]')).toHaveLength(5)
+
+    // გადაწერილი ველი: ძველი და ახალი ერთად
+    expect(detail('title_en').textContent).toContain(i18n.t('sync.changed.title_en'))
+    expect(detail('title_en').textContent).toContain('The Matrix')
+    expect(detail('title_en').textContent).toContain('The Matrix Remastered')
+    expect(detail('title_en').querySelector('[data-testid="detail-new"]')).toBeNull()
+
+    // ცარიელიდან შევსებული: „ახალი" ნიშანი, წყარო და გრძელი ტექსტი „მეტით"
+    const description = detail('description_ka')
+    expect(description.querySelector('[data-testid="detail-new"]')!.textContent).toContain(i18n.t('syncResults.detail.new'))
+    expect(description.textContent).toContain(i18n.t('translate.source.gemini'))
+    const text = description.querySelector('.line-clamp-3')
+    expect(text, 'გრძელი ტექსტი იკეცება').not.toBeNull()
+    await click(description.querySelector('[data-testid="detail-more"]'))
+    expect(description.querySelector('.line-clamp-3')).toBeNull()
+    expect(description.querySelector('[data-testid="detail-more"]')!.textContent).toContain(i18n.t('syncResults.detail.less'))
+
+    // სია: რა დაემატა და რა მოაკლდა
+    expect(detail('genres').querySelector('[data-testid="detail-added"]')!.textContent).toContain('Thriller')
+    expect(detail('genres').querySelector('[data-testid="detail-removed"]')!.textContent).toContain('Science Fiction')
+    // ფაილი: მხოლოდ ფაქტი
+    expect(detail('poster').textContent).toContain(i18n.t('syncResults.detail.fileReplaced'))
+    // მსახიობის სვეტს თავისი წარწერა აქვს
+    expect(detail('birthday').textContent).toContain(i18n.t('syncResults.field.birthday'))
+
+    await click(toggle)
+    expect(rows[0].querySelector('[data-testid="sync-run-item-details"]')).toBeNull()
+
+    // „ყველას გაშლა" ამ გვერდის ყველა გასაშლელს ხსნის და მერე კეცავს
+    const everything = document.querySelector<HTMLButtonElement>('[data-testid="details-all"]')!
+    expect(everything.textContent).toContain(i18n.t('syncResults.detail.showAll'))
+    await click(everything)
+    expect(all('[data-testid="sync-run-item-details"]')).toHaveLength(1)
+    expect(everything.textContent).toContain(i18n.t('syncResults.detail.hideAll'))
+    await click(everything)
+    expect(all('[data-testid="sync-run-item-details"]')).toHaveLength(0)
   })
 
   it('filters by result and searches by title', async () => {
