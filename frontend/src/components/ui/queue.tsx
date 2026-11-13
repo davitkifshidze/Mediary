@@ -44,6 +44,7 @@ import type { SyncOutcome } from '@/api/types'
 import type { MediaType } from '@/lib/media'
 import { isMediaKey } from '@/lib/modules'
 import { shareMeta } from '@/lib/shareLinks'
+import { useAuth } from '@/lib/auth'
 import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
@@ -357,6 +358,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient()
   const { t } = useTranslation()
   const { settings } = useSettings()
+  const { user } = useAuth()
   const runningRef = React.useRef(false)
   const abortRef = React.useRef<AbortController | null>(null)
   /* რიგის ახლანდელი შიგთავსი updater-ის გარეთ: გაშვების გეგმა (რა ჩადგება მართლა რიგში)
@@ -1069,6 +1071,27 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     it.itemId != null &&
     (it.kind === 'sync' || it.kind === 'translate' || it.kind === 'cast' || (it.kind === 'gallery' && !it.galleryActor))
   const [handingOff, setHandingOff] = React.useState(false)
+
+  /* ⚠️ **რიგი ანგარიშისაა.** პროვაიდერი როუტერის ზემოთ დგას, ე.ი. გასვლას, 401-სა
+     და შემდეგ შესვლას გადაურჩებოდა: წინა ანგარიშის ჩანაწერების სათაურები `/login`-ზეც
+     ჩანდა, „გაიმეორე" კი მათ ახალ ანგარიშში ქმნიდა. მომხმარებლის შეცვლაზე (გასვლაც
+     და სესიის გაწყვეტაც — `null`) მიმდინარე მოთხოვნა წყდება, რიგი, სერვერული
+     პარტიის id და პანელი კი სუფთავდება. */
+  const accountId = user?.id ?? null
+  const accountRef = React.useRef(accountId)
+
+  React.useEffect(() => {
+    if (accountRef.current === accountId) return
+    accountRef.current = accountId
+
+    abortRef.current?.abort()
+    setItems([])
+    setExpanded(false)
+    setBatchId(null)
+    setServerItems([])
+    setServerBusy(false)
+    setHandingOff(false)
+  }, [accountId])
 
   /**
    * ურნაში მყოფის აღდგენა რიგის მწკრივიდან. ⚠️ ურნის სახეობა

@@ -20,7 +20,7 @@ import {
 } from '@/api/actors'
 import { resyncActor } from '@/api/media'
 import { relockRecord } from '@/api/locks'
-import { actorLockBase, lockMenuActions } from '@/lib/locks'
+import { actorLockBase, forgetLockedContent, lockMenuActions } from '@/lib/locks'
 import { RecordLockDialog } from '@/components/locks/RecordLock'
 import { actorName } from '@/lib/actors'
 import { actorViewOf, type ActorView } from '@/lib/actorViews'
@@ -233,7 +233,8 @@ export function ActorsPage() {
   const relock = useMutation({
     mutationFn: (actor: ActorCard) => relockRecord(actorLockBase(actor.id)),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [ACTORS_KEY] })
+      // დახურული მსახიობი ყველა ქეშირებული პასუხიდან ქრება — არა მხოლოდ ამ სიიდან
+      forgetLockedContent(qc)
       toast({ title: t('lock.relocked'), variant: 'success' })
     },
     onError: fail,

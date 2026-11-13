@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { KeyRound, Lock, LockOpen, ShieldAlert, X } from 'lucide-react'
 import { isHidden, putRecordLock, relockRecord, unlockRecord, type RecordLockState } from '@/api/locks'
 import { albumPasswordProblem } from '@/lib/albumPassword'
+import { forgetLockedContent } from '@/lib/locks'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage, isApiCode } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
@@ -274,12 +275,15 @@ export function LockBadge({ hidden }: { hidden: boolean }) {
 export function RecordLockActions({ base, record, onChanged, hint, size }: LockTarget & { hint: string; size?: 'sm' }) {
   const { t } = useTranslation()
   const { toast } = useToast()
+  const qc = useQueryClient()
   const [managing, setManaging] = useState(false)
 
   const relock = useMutation({
     mutationFn: () => relockRecord(base),
     onSuccess: () => {
       onChanged()
+      // გვერდის გარეთაც: გალერეა, ძებნა და მთავარი ამ ჩანაწერის ქეშირებულ პასუხს აღარ ინახავს
+      forgetLockedContent(qc)
       toast({ title: t('lock.relocked'), variant: 'success' })
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),

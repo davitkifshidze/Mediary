@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/record-menu'
 import { mediaApi } from '@/api/media'
 import { relockRecord } from '@/api/locks'
-import { lockMenuActions, mediaLockBase } from '@/lib/locks'
+import { forgetLockedContent, lockMenuActions, mediaLockBase } from '@/lib/locks'
 import { plainText } from '@/lib/richText'
 import { errorMessage } from '@/lib/errors'
 import { RecordLockDialog } from '@/components/locks/RecordLock'
@@ -80,7 +80,8 @@ function useMovieRecord(movie: MovieListItem, type: MediaType) {
   const relockMut = useMutation({
     mutationFn: () => relockRecord(mediaLockBase(type, movie.id)),
     onSuccess: () => {
-      inval()
+      // დახურული ჩანაწერი ყველა ქეშირებული პასუხიდან ქრება — არა მხოლოდ ამ სიიდან
+      forgetLockedContent(qc)
       toast({ title: t('lock.relocked'), variant: 'success' })
     },
   })

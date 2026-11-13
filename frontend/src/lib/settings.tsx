@@ -164,6 +164,15 @@ function merge(partial?: Partial<Settings> | null): Settings {
   return { ...DEFAULT_SETTINGS, ...(partial ?? {}) }
 }
 
+/**
+ * ვისია ლოკალური ქეში — ანგარიშის id, ან `guest`.
+ *
+ * ⚠️ ქეში ბრაუზერისაა და არა ანგარიშის: მის გარეშე ანგარიშს, რომელსაც სერვერზე
+ * პარამეტრები ჯერ არ აქვს, იმავე ბრაუზერში წინა ანგარიშის პარამეტრები და მთავარი
+ * გვერდის განლაგება ეტვირთებოდა — და მის სახელზე ინახებოდა.
+ */
+const OWNER_KEY = 'mediary.settings.owner'
+
 function loadLocal(): Settings | null {
   try {
     const raw = safeGet(KEY)
@@ -173,9 +182,15 @@ function loadLocal(): Settings | null {
   }
 }
 
-function saveLocal(settings: Settings) {
+/** ქეში მხოლოდ მაშინ, როცა ის სწორედ ამ ანგარიშისაა */
+function loadLocalFor(userId: number): Settings | null {
+  return safeGet(OWNER_KEY) === String(userId) ? loadLocal() : null
+}
+
+function saveLocal(settings: Settings, userId: number | null) {
   // private mode / სავსე quota — პარამეტრები სესიაში მაინც მუშაობს (`lib/storage.ts`)
   safeSet(KEY, JSON.stringify(settings))
+  safeSet(OWNER_KEY, userId === null ? 'guest' : String(userId))
 }
 
 interface SettingsApi {
@@ -268,16 +283,22 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const fromServer = merge(user.settings)
       setSettings(fromServer)
       setPersisted(fromServer)
-      saveLocal(fromServer)
+      saveLocal(fromServer, user.id)
       return
     }
 
-    // backend-ზე ჯერ არაფერია: ძველი localStorage-ის მნიშვნელობები ერთხელ აიტვირთოს.
-    // ეს მიგრაციაა და არა user-ის ცვლილება, ამიტომ შენახვის ღილაკს არ ელოდება.
-    const local = loadLocal() ?? DEFAULT_SETTINGS
-    setSettings(local)
-    setPersisted(local)
-    void saveSettings(local).catch(() => {})
+    /* backend-ზე ჯერ არაფერია. ⚠️ ლოკალური ქეში მხოლოდ მაშინ იტვირთება, როცა
+       **ამ ანგარიშისაა** (`loadLocalFor()`): სხვა ანგარიშის (ან სტუმრის) ქეში
+       ახალ ანგარიშს არ გადაეცემა და მის სახელზე არ ინახება — ის ნაგულისხმევს
+       იღებს. საკუთარი ქეშის ატვირთვა მიგრაციაა და არა user-ის ცვლილება, ამიტომ
+       შენახვის ღილაკს არ ელოდება. */
+    const local = loadLocalFor(user.id)
+    const next = local ?? DEFAULT_SETTINGS
+    setSettings(next)
+    setPersisted(next)
+    saveLocal(next, user.id)
+
+    if (local) void saveSettings(local).catch(() => {})
   }, [user])
 
   const set = React.useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
@@ -289,7 +310,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const save = React.useCallback((): Promise<boolean> => {
     if (!user) {
-      saveLocal(settings)
+      saveLocal(settings, null)
       setPersisted(settings)
       setSavedAt(Date.now())
       return Promise.resolve(true)
@@ -297,7 +318,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSaving(true)
     return saveSettings(settings)
       .then(() => {
-        saveLocal(settings)
+        saveLocal(settings, user.id)
         setPersisted(settings)
         setSavedAt(Date.now())
         return true

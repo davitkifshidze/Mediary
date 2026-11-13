@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Lock, LockOpen, X } from 'lucide-react'
 import { fetchLocks, relockAll, removeLocks, type LockRow } from '@/api/lockBook'
+import { forgetLockedContent } from '@/lib/locks'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { MEDIA } from '@/lib/media'
@@ -72,8 +73,8 @@ export function LocksPage() {
     mutationFn: relockAll,
     onSuccess: () => {
       toast({ title: t('locks.relocked'), variant: 'success' })
-      // დახურული ჩანაწერი ყველა სიიდან ქრება — ყველაფერი თავიდან იკითხება
-      void qc.invalidateQueries()
+      // დახურული ჩანაწერი ყველა სიიდან ქრება — ეკრანზე თავიდან იკითხება, ეკრანს მიღმა ქეში იშლება
+      forgetLockedContent(qc)
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })

@@ -69,11 +69,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const user = data ?? null
 
-  // სესიის გაუქმებაზე (401 ნებისმიერი endpoint-იდან) მთელი ქეში იწმინდება
+  /* სესიის გაუქმებაზე (401 ნებისმიერი endpoint-იდან) მთელი ქეში იწმინდება.
+
+     ⚠️ **მხოლოდ მაშინ, როცა ვიღაც მართლა შესული იყო.** სტუმრისთვის 401
+     ჩვეულებრივი პასუხია — `/auth/me` მას ყოველ გახსნაზე აბრუნებს — და წასაშლელი
+     პირადი ქეშიც არ არსებობს. `removeQueries` კი მიმდინარე მოთხოვნასაც უხმოდ
+     წყვეტს: გაზიარების ბმულის ან საჯარო პროფილის გვერდი, რომლის მოთხოვნაც
+     `/auth/me`-ს პარალელურად მიდიოდა, ჩატვირთვაზე რჩებოდა შემდეგ რენდერამდე. */
   React.useEffect(() => {
     const onUnauth = () => {
+      const signedIn = qc.getQueryData(['me']) != null
+
       qc.setQueryData(['me'], null)
-      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' })
+
+      if (signedIn) qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' })
     }
     window.addEventListener(UNAUTHENTICATED_EVENT, onUnauth)
     return () => window.removeEventListener(UNAUTHENTICATED_EVENT, onUnauth)

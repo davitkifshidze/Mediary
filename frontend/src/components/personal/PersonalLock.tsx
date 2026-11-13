@@ -5,6 +5,7 @@ import { KeyRound, Lock } from 'lucide-react'
 import { relockRecord } from '@/api/locks'
 import { isHidden, type Person, type PersonalAlbum, type PersonalLockKind } from '@/api/personal'
 import { errorMessage } from '@/lib/errors'
+import { forgetLockedContent } from '@/lib/locks'
 import { invalidatePersonal } from '@/lib/personal'
 import { useToast } from '@/components/ui/feedback'
 import type { MenuAction } from '@/components/ui/record-menu'
@@ -78,7 +79,8 @@ export function usePersonalLockMenu(kind: PersonalLockKind) {
   const relock = useMutation({
     mutationFn: (record: Person | PersonalAlbum) => relockRecord(base(kind, record.id)),
     onSuccess: () => {
-      invalidatePersonal(qc)
+      // დახურული ადამიანი ან ალბომი ყველა ქეშირებული პასუხიდან ქრება (საცავის სიაც, ძებნაც)
+      forgetLockedContent(qc)
       toast({ title: t('lock.relocked'), variant: 'success' })
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
