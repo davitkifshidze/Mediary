@@ -26,7 +26,7 @@
 | §5 | ვიდეოს ტიპის ან სტატუსის წაშლა და მასობრივი ცვლილება კურსის გაკვეთილებსაც ეხება | ⚡ | M | ✅ |
 | §6 | პაროლის შეცვლა SPA-დან 500-ს აბრუნებს | ⚡ | S | ✅ |
 | | **გარემო** | | | |
-| §7 | დამოკიდებულებების განახლება | 🛠 | S–M | ⬜ |
+| §7 | დამოკიდებულებების განახლება | 🛠 | S–M | ✅ |
 | §8 | Scheduler, ასლები და ლოგი | 🛠 | M | ⬜ |
 | | **უსაფრთხოება — საშუალო** | | | |
 | §9 | საერთო ლექსიკონები და უფლების გარეშე მარშრუტები | 🔒 | M | ⬜ |
@@ -179,12 +179,14 @@ avif, pdf, gif).
 `symfony/http-kernel`, `symfony/mime`, `league/commonmark`, `league/flysystem`. `npm audit --omit=dev` — 4 მაღალი: `follow-redirects`
 (`axios`-ის ქვეპაკეტი), `source-map-js`, `vite` 8.2. CI-ის ორივე audit-ნაბიჯი (`ci.yml`) ამის გამო ჩავარდება.
 
-- [ ] **7.1** `composer update` არსებული შეზღუდვების ფარგლებში (`laravel/framework` 13.42.0) → `composer audit --no-dev` სუფთაა.
-- [ ] **7.2** `npm audit fix`, `vite` 8.3.x, `axios` 1.21.x → `npm audit --omit=dev --audit-level=high` სუფთაა. მაჟორული ვერსიები
+- [x] **7.1** `composer update` არსებული შეზღუდვების ფარგლებში (`laravel/framework` 13.42.0) → `composer audit --no-dev` სუფთაა.
+- [x] **7.2** `npm audit fix`, `vite` 8.3.x, `axios` 1.21.x → `npm audit --omit=dev --audit-level=high` სუფთაა. მაჟორული ვერსიები
   (i18next 27, marked 18, TypeScript 7, jsdom 31, react-i18next 18) ამ სექციაში არ იცვლება.
-- [ ] **7.3** ორივე ტესტ-სუიტა, `npm run build`, `npm run lint`, `pint --test`.
+- [x] **7.3** ორივე ტესტ-სუიტა, `npm run build`, `npm run lint`, `pint --test`.
 
-**სტატუსი:** ⬜
+**შედეგი.** `composer update` არსებული შეზღუდვების ფარგლებში: `laravel/framework` 13.25.0 → 13.42.0, `sanctum` 4.4.0, `phpunit` 12.5.44, `pint` 1.32.3 და სხვა — `composer audit --no-dev` სუფთაა. `npm audit fix` + მინიმალური ვერსიების აწევა `package.json`-ში: `vite` ^8.3.8, `axios` ^1.21.1 (`follow-redirects` 1.16.3, `source-map-js` 1.2.2) — `npm audit --omit=dev` 0 მოწყვლადობას აჩვენებს; მაჟორული ვერსია არ შეცვლილა. შემოწმება განახლებულ პაკეტებზე: ბექენდი 2136 ტესტი (2135 გაიარა, 1 განზრახ გამოტოვებული), SPA 199 ფაილი / 1241 ტესტი, `npm run build`, `npm run lint`, `pint --test` — ყველა მწვანე.
+
+**სტატუსი:** ✅
 
 ## §8. Scheduler, ასლები და ლოგი 🛠
 
