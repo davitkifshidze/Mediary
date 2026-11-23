@@ -7,6 +7,7 @@ use App\Models\Module;
 use App\Models\Movie;
 use App\Models\Status;
 use App\Models\User;
+use App\Services\Stats\LibraryStats;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -165,6 +166,75 @@ class WatchLogTest extends TestCase
 
         $summary = $this->actingAs($this->me)->getJson('/api/stats/summary')->assertOk()->json();
         $this->assertSame(2, $summary['totals']['done_year'], 'დეშბორდი გვერდს აცდა');
+
+        Carbon::setTestNow();
+    }
+
+    /**
+     * ⚠️ **„ნანახიდან" უკან დაბრუნება ამ მონიშვნის ნახვას ურნაში აგზავნის** — ადრე
+     * რიგი რჩებოდა და სტატისტიკაში ითვლებოდა, ხელახლა მონიშვნა კი მეორეს ამატებდა.
+     * სხვა თარიღის (ძველი) ნახვა რჩება.
+     */
+    public function test_leaving_watched_bins_only_the_watch_this_marking_wrote(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-01 12:00:00', 'UTC'));
+        $movie = $this->movie();
+        $this->actingAs($this->me)->postJson("/api/media/watches/movie/{$movie->id}")->assertCreated();
+
+        Carbon::setTestNow(Carbon::parse('2026-03-04 12:00:00', 'UTC'));
+        $this->actingAs($this->me)->patchJson("/api/movies/{$movie->id}/status", ['status' => 'watched'])->assertOk();
+        $this->assertSame(2, MediaWatch::withoutGlobalScope('owner')->count());
+
+        $this->actingAs($this->me)->patchJson("/api/movies/{$movie->id}/status", ['status' => 'to_watch'])->assertOk();
+
+        $live = MediaWatch::withoutGlobalScope('owner')->get();
+        $this->assertCount(1, $live, 'შეცდომით მონიშნული ნახვა ჟურნალში დარჩა');
+        $this->assertSame('2026-02-01', $live[0]->watched_at->toDateString(), 'ძველი ნახვა დაიკარგა');
+        $this->assertSame(1, MediaWatch::withoutGlobalScopes()->whereNotNull('trashed_at')->count());
+        $this->assertNull($movie->refresh()->watched_at, 'ჩანაწერმა „არ მინახავს" სტატუსზე ძველი თარიღი დაიბრუნა');
+
+        $months = collect($this->actingAs($this->me)->getJson('/api/stats?year=2026')->assertOk()->json('data'))->firstWhere('key', 'movie')['months'];
+        $this->assertSame(0, $months[2]['count']);
+
+        // ხელახლა მონიშვნა — ერთი ახალი რიგი და არა ორი
+        $this->actingAs($this->me)->patchJson("/api/movies/{$movie->id}/status", ['status' => 'watched'])->assertOk();
+        $this->assertSame(2, MediaWatch::withoutGlobalScope('owner')->count());
+
+        Carbon::setTestNow();
+    }
+
+    /**
+     * ⚠️ **სამივე მთვლელი ერთ განსაზღვრებაზე**: ურნაში მყოფი ჩანაწერის ნახვა
+     * არც წლის ხაზში ითვლება, არც თვეში, არც მიზანში; სვეტის რიცხვი და მისგან
+     * გახსნილი სია ემთხვევა.
+     */
+    public function test_a_binned_record_leaves_every_watch_counter(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-04 12:00:00', 'UTC'));
+        $kept = $this->movie();
+        $binned = $this->movie();
+
+        foreach ([$kept, $binned] as $movie) {
+            $this->actingAs($this->me)->patchJson("/api/movies/{$movie->id}/status", ['status' => 'watched'])->assertOk();
+        }
+
+        $counts = function (): array {
+            $tab = collect($this->actingAs($this->me)->getJson('/api/stats?year=2026')->assertOk()->json('data'))->firstWhere('key', 'movie');
+            $list = $this->actingAs($this->me)->getJson('/api/movies?watched=2026-03')->assertOk()->json('meta.total');
+
+            return [
+                'month' => $tab['months'][2]['count'],
+                'year' => $tab['this_year'],
+                'goal' => app(LibraryStats::class)->doneBetween($this->me, 'movie', '2026-01-01', '2026-12-31'),
+                'list' => $list,
+            ];
+        };
+
+        $this->assertSame(['month' => 2, 'year' => 2, 'goal' => 2, 'list' => 2], $counts());
+
+        $binned->moveToTrash();
+
+        $this->assertSame(['month' => 1, 'year' => 1, 'goal' => 1, 'list' => 1], $counts());
 
         Carbon::setTestNow();
     }

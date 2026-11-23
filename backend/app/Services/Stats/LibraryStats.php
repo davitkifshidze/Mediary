@@ -27,6 +27,7 @@ use App\Support\SqlDate;
 use App\Support\StatusDomain;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -198,7 +199,7 @@ class LibraryStats
             /* მედია-დომენები თვეებს **ნახვების ჟურნალიდან** კითხულობენ,
                ე.ი. ხელახლა ნახვასაც ითვლიან; დანარჩენი — `done_at` სვეტიდან. */
             'months' => isset($map['watch_log'])
-                ? $this->byWatchLog($user, $map['watch_log'], $year)
+                ? $this->byWatchLog($user, $map['watch_log'], $base, $year)
                 : ($map['done_at'] ? $this->byMonth($base, $map['done_at'], $year) : []),
             'has_months' => $map['done_at'] !== null,
             /* „ვინ არის ჩემი ყველაზე ხშირი მსახიობი" თითო მედია-ჩანართში
@@ -261,11 +262,8 @@ class LibraryStats
     private function doneIn(User $user, array $map, callable $base, int $year): ?int
     {
         if (isset($map['watch_log'])) {
-            return DB::table('media_watches')
-                ->where('user_id', $user->getKey())
-                ->where('watchable_type', $map['watch_log'])
-                ->whereNull('trashed_at')
-                ->whereYear('watched_at', $year)
+            return self::watchRows($user, $map['watch_log'], $base())
+                ->whereYear('media_watches.watched_at', $year)
                 ->count();
         }
 
@@ -385,7 +383,7 @@ class LibraryStats
                კითხვაზე (`/stats` და დეშბორდი) ორ განსხვავებულ რიცხვს
                აჩვენებდა — და განსხვავებას ვერავინ ახსნიდა. */
             $rows = isset($map['watch_log'])
-                ? collect($this->byWatchLog($user, $map['watch_log'], $year))
+                ? collect($this->byWatchLog($user, $map['watch_log'], $base, $year))
                     ->map(fn (array $row) => (object) ['bucket' => $row['month'], 'total' => $row['count']])
                 : $this->monthRows($base, $map['done_at'], $year);
 
@@ -540,13 +538,10 @@ class LibraryStats
         $until = $to.' 23:59:59';
 
         if (isset($map['watch_log'])) {
-            return RecordLocks::excludeMorph(DB::table('media_watches'), 'media_watches.watchable_type', 'media_watches.watchable_id', session: false)
-                ->where('user_id', $user->getKey())
-                ->where('watchable_type', $map['watch_log'])
-                ->whereNull('trashed_at')
-                ->where('watched_at', '>=', $from)
-                ->where('watched_at', '<=', $until)
-                ->when($classifier, fn ($q) => $q->whereIn('watchable_id', $records->toBase()->select($table.'.id')))
+            // კლასიფიკატორი უკვე `$records`-შია — ორივე მიზანი ერთსა და იმავე სიმრავლეს ითვლის
+            return self::watchRows($user, $map['watch_log'], $records)
+                ->where('media_watches.watched_at', '>=', $from)
+                ->where('media_watches.watched_at', '<=', $until)
                 ->count();
         }
 
@@ -881,23 +876,42 @@ class LibraryStats
      * `Auth::id()` ცარიელია; ცხადი `user_id` იგივე წესია, რასაც მთელი
      * ეს კლასი მიჰყვება.
      */
-    private function byWatchLog(User $user, string $alias, ?int $year): array
+    private function byWatchLog(User $user, string $alias, callable $base, ?int $year): array
     {
         $year ??= (int) now()->format('Y');
-        $expr = SqlDate::month('watched_at');
+        $expr = SqlDate::month('media_watches.watched_at');
 
-        $counts = RecordLocks::excludeMorph(DB::table('media_watches'), 'media_watches.watchable_type', 'media_watches.watchable_id', session: false)
-            ->where('user_id', $user->getKey())
-            ->where('watchable_type', $alias)
-            // ⚠️ ურნაში მყოფი ნახვა აღარ ითვლება (ნედლ ცხრილს scope არ აქვს)
-            ->whereNull('trashed_at')
-            ->whereYear('watched_at', $year)
+        $counts = self::watchRows($user, $alias, $base())
+            ->whereYear('media_watches.watched_at', $year)
             ->groupByRaw($expr)
             ->selectRaw($expr.' as bucket, count(*) as total')
             ->get()
             ->mapWithKeys(fn ($row) => [(int) $row->bucket => (int) $row->total]);
 
         return $this->months($counts);
+    }
+
+    /**
+     * **ითვლება ნახვა — სამივე მთვლელის ერთი განსაზღვრება** (`doneIn()`, თვეების
+     * ჭრილი, `doneBetween()`): ჩემი, ურნაში არ არის და მისი ჩანაწერი სტატისტიკის
+     * სიმრავლეშია (`base()` — ურნაში მყოფი და ჩაკეტილი ჩანაწერის გარეშე, კლასიფიკატორით
+     * თუ მიზანს აქვს).
+     *
+     * ⚠️ ადრე სამი მთვლელი სამ წესს მიჰყვებოდა: წლის ხაზი ურნაში მყოფი და ჩაკეტილი
+     * ჩანაწერის ნახვასაც ითვლიდა (`trash:prune`-მდე), თვეები და მიზანი ჩაკეტილს
+     * აკლებდა, ურნაში მყოფ ჩანაწერს — არა.
+     *
+     * @param  Builder  $records  ჩანაწერების query (`base()` ან მისი დავიწროებული ასლი)
+     */
+    private static function watchRows(User $user, string $alias, Builder $records): QueryBuilder
+    {
+        $table = $records->getModel()->getTable();
+
+        return DB::table('media_watches')
+            ->where('media_watches.user_id', $user->getKey())
+            ->where('media_watches.watchable_type', $alias)
+            ->whereNull('media_watches.trashed_at')
+            ->whereIn('media_watches.watchable_id', $records->toBase()->select($table.'.id'));
     }
 
     /**

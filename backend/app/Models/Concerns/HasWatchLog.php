@@ -47,6 +47,23 @@ trait HasWatchLog
         });
 
         static::saved(function ($record) {
+            /* ⚠️ **„ნანახიდან" უკან დაბრუნება იმ ნახვას ურნაში აგზავნის, რომელიც ამ
+               მონიშვნამ დაწერა** (იმავე მომენტის რიგი). `applyStatus()` მხოლოდ
+               `watched_at`-ს წმენდდა, რიგი კი რჩებოდა: შეცდომით მონიშნული ნახვა
+               სტატისტიკასა და მიზანში ისევ ითვლებოდა, ხელახლა მონიშვნა კი მეორე
+               რიგს ამატებდა. სხვა თარიღის ნახვები რჩება — ხელახლა ნახვის ისტორია
+               არ იკარგება; შეცდომა ურნიდან აღდგება. იგივე გზაა „ნანახი" სტატუსის
+               წაშლა „გადატანით" (`DictionaryRecords::move()` — `save()`). */
+            if ($record->wasChanged('watched_at') && ! $record->watched_at) {
+                $previous = $record->getRawOriginal('watched_at');
+
+                if ($previous) {
+                    $record->watches()->where('watched_at', $previous)->get()->each->moveToTrash();
+                }
+
+                return;
+            }
+
             if (! $record->watched_at || ! ($record->wasChanged('watched_at') || $record->wasRecentlyCreated)) {
                 return;
             }
@@ -55,6 +72,16 @@ trait HasWatchLog
                 ['user_id' => $record->user_id, 'watched_at' => $record->watched_at],
             );
         });
+    }
+
+    /** სტატუსი აქვს და ის „დასრულებული" არ არის (სტატუსის გარეშე ჩანაწერი — არა) */
+    private function statusLeftDone(): bool
+    {
+        if (! $this->status_id) {
+            return false;
+        }
+
+        return $this->status()->value('role') !== 'done';
     }
 
     public function watches(): MorphMany
@@ -95,7 +122,10 @@ trait HasWatchLog
      */
     public function syncWatchedAt(): void
     {
-        $latest = $this->watches()->max('watched_at');
+        /* ⚠️ **თარიღი მხოლოდ „დასრულებულ" სტატუსზე** — `applyStatus()`-ის წესი.
+           ნახვის ურნაში გადატანა/აღდგენა „არ მინახავს" ჩანაწერს ძველ თარიღს
+           აღარ უბრუნებს. */
+        $latest = $this->statusLeftDone() ? null : $this->watches()->max('watched_at');
 
         if ((string) $this->watched_at?->toDateTimeString() === (string) $latest) {
             return;
