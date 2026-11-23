@@ -11,6 +11,7 @@ use App\Models\NoteEntry;
 use App\Models\Place;
 use App\Models\Status;
 use App\Models\Video;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -71,7 +72,7 @@ final class DictionaryTrash
      * @param  list<int>  $lessonIds  კურსის ვიდეოები, რომლებიც თავის სამიზნეზე გადავიდა
      * @param  int|null  $lessonsTo  სად წავიდნენ ისინი
      */
-    public static function trash(Model $row, string $kind, array $ids = [], ?int $to = null, array $lessonIds = [], ?int $lessonsTo = null): void
+    public static function trash(Model $row, string $kind, array $ids = [], ?int $to = null, array $lessonIds = [], ?int $lessonsTo = null, array $dates = []): void
     {
         $map = self::MAP[$kind];
 
@@ -82,6 +83,11 @@ final class DictionaryTrash
 
         if ($lessonIds) {
             $meta['lessons'] = ['ids' => array_values(array_map('intval', $lessonIds)), 'to' => $lessonsTo];
+        }
+
+        // „დასრულებული" სტატუსის ჩანაწერების დასრულების თარიღები (id → თარიღი)
+        if ($ids && $dates) {
+            $meta['dates'] = $dates;
         }
 
         $row->trash_meta = $meta ?: null;
@@ -102,6 +108,57 @@ final class DictionaryTrash
         }
 
         $row->moveToTrash();
+    }
+
+    /**
+     * **დასრულების თარიღები** (id → სვეტის ნედლი მნიშვნელობა) — „დასრულებული"
+     * სტატუსის წაშლამდე. გადატანა სვეტს წმენდს, აღდგენამ კი ზუსტად ის უნდა
+     * დააბრუნოს: `applyStatus()` ცარიელ სვეტს `now()`-ით ავსებდა და ყველა
+     * ჩანაწერს დღევანდელი თარიღი ეწერებოდა (სტატისტიკა, მიზანი, ახალი ნახვები).
+     *
+     * @return array<string, string>
+     */
+    public static function doneDates(Builder $records): array
+    {
+        $column = $records->getModel()->doneColumn();
+
+        if (! $column) {
+            return [];
+        }
+
+        return $records->toBase()
+            ->whereNotNull($column)
+            ->pluck($column, 'id')
+            ->mapWithKeys(fn ($date, $id) => [(string) $id => (string) $date])
+            ->all();
+    }
+
+    /**
+     * ჩანაწერი აღდგენილ სტატუსზე — **დამახსოვრებული** დასრულების თარიღით.
+     *
+     * ⚠️ თარიღის გარეშე (ჩანაწერს ის არ ჰქონდა) სვეტი ცარიელი რჩება და არა `now()`.
+     * ⚠️ მედიაზე ნახვის რიგი, რომელიც წაშლისას ურნაში წავიდა (`HasWatchLog`),
+     * იმავე თარიღით ბრუნდება — `saved` კაკვი მას პოულობს და ახალს არ წერს.
+     */
+    private static function restoreStatus(Model $record, Status $status, ?string $date): void
+    {
+        $record->applyStatus($status);
+        $column = $record->doneColumn();
+
+        if (! $column || $status->role !== 'done') {
+            return;
+        }
+
+        if ($date && method_exists($record, 'watches')) {
+            $record->watches()->withoutGlobalScopes(['owner', 'trash'])
+                ->where('user_id', $record->user_id)
+                ->whereNotNull('trashed_at')
+                ->where('watched_at', $date)
+                ->get()
+                ->each->restoreFromTrash();
+        }
+
+        $record->{$column} = $date;
     }
 
     /** რამდენ ჩანაწერს დააბრუნებს აღდგენა — სიისთვის */
@@ -157,8 +214,10 @@ final class DictionaryTrash
                     ->whereIn('id', $groupIds)
                     ->when($groupTo, fn ($q) => $q->where($column, $groupTo), fn ($q) => $q->whereNull($column));
 
+                $dates = (array) ($row->trash_meta['dates'] ?? []);
+
                 $moved += isset($map['status'])
-                    ? DictionaryRecords::move($records, fn ($record) => $record->applyStatus($row))
+                    ? DictionaryRecords::move($records, fn ($record) => self::restoreStatus($record, $row, $dates[(string) $record->getKey()] ?? null))
                     : DictionaryRecords::move($records, fn ($record) => $record->{$column} = $row->getKey());
             }
         }

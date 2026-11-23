@@ -159,6 +159,7 @@ class StatusController extends Controller
         $records = ModuleList::narrow(clone $owned);
         // ვინ გადავა, **გადატანამდე**: აღდგენა მათ დაბრუნებას შემოგთავაზებს
         $ids = [];
+        $dates = [];
         $targetId = null;
         $lessonsTo = DictionaryRecords::lessonTarget($data);
 
@@ -173,6 +174,8 @@ class StatusController extends Controller
         } else {
             $deleted = 0;
             $ids = (clone $records)->pluck('id')->all();
+            // ⚠️ „დასრულებულის" თარიღები გადატანამდე — გადატანა მათ წმენდს, აღდგენა კი სწორედ მათ აბრუნებს
+            $dates = $status->role === 'done' ? DictionaryTrash::doneDates(clone $records) : [];
 
             /* ⚠️ **`applyStatus()` და არა `update(['status_id' => …])`**:
                `watched_at`-ს მხოლოდ ის წერს, ე.ი. `done`
@@ -194,7 +197,7 @@ class StatusController extends Controller
 
         $wasDefault = $status->is_default;
         // ⚠️ ურნა — `DictionaryTrash` ნაგულისხმევის ნიშანსაც ხსნის
-        DictionaryTrash::trash($status, 'status', $ids, $targetId, $lessonIds, $lessonsTo);
+        DictionaryTrash::trash($status, 'status', $ids, $targetId, $lessonIds, $lessonsTo, $dates);
 
         // ნაგულისხმევი წაიშალა → პირველივე დარჩენილი იკავებს მის ადგილს,
         // თორემ ახალი ჩანაწერი ჩუმად სტატუსის გარეშე დარჩებოდა

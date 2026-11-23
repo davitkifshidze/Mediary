@@ -239,6 +239,44 @@ class WatchLogTest extends TestCase
         Carbon::setTestNow();
     }
 
+    /**
+     * ⚠️ **„ნანახი" სტატუსის წაშლა–აღდგენა თარიღებს ინარჩუნებს.** გადატანა
+     * დასრულების სვეტს წმენდს; აღდგენა `applyStatus()`-ით მას `now()`-ით ავსებდა —
+     * ყველა ფილმს დღევანდელი თარიღი ეწერებოდა და ახალი ნახვის რიგიც ჩნდებოდა.
+     */
+    public function test_restoring_a_deleted_watched_status_brings_back_the_old_dates(): void
+    {
+        $watched = Status::withoutGlobalScope('owner')->where('user_id', $this->me->id)->where('module', 'movie')->where('role', 'done')->firstOrFail();
+        $todo = Status::withoutGlobalScope('owner')->where('user_id', $this->me->id)->where('module', 'movie')->where('role', 'todo')->firstOrFail();
+
+        $old = [];
+        foreach (['2024-02-03 20:00:00', '2025-07-15 21:30:00'] as $i => $date) {
+            Carbon::setTestNow(Carbon::parse($date));
+            $movie = $this->movie();
+            $this->actingAs($this->me)->patchJson("/api/movies/{$movie->id}/status", ['status' => $watched->key])->assertOk();
+            $old[$movie->id] = $movie->refresh()->watched_at->toDateTimeString();
+        }
+        Carbon::setTestNow(Carbon::parse('2026-11-23 10:00:00'));
+
+        $this->actingAs($this->me)->deleteJson("/api/statuses/movie/{$watched->id}", ['move_to' => $todo->id])->assertOk();
+        $this->assertSame(0, MediaWatch::withoutGlobalScope('owner')->count(), 'გადატანამ ნახვები ჟურნალში დატოვა');
+
+        $this->actingAs($this->me)->postJson("/api/trash/status/{$watched->id}/restore", ['records' => true])
+            ->assertOk()->assertJsonPath('records', 2);
+
+        foreach ($old as $id => $date) {
+            $movie = Movie::findOrFail($id);
+            $this->assertSame($watched->id, (int) $movie->status_id);
+            $this->assertSame($date, $movie->watched_at->toDateTimeString(), 'აღდგენამ დასრულების თარიღი შეცვალა');
+        }
+
+        // ახალი რიგი არ დაწერილა — ურნიდან იგივე ორი დაბრუნდა
+        $this->assertSame(2, MediaWatch::withoutGlobalScopes()->count());
+        $this->assertEqualsCanonicalizing(array_values($old), MediaWatch::withoutGlobalScope('owner')->get()->map(fn ($w) => $w->watched_at->toDateTimeString())->all());
+
+        Carbon::setTestNow();
+    }
+
     /** მომავალი თარიღი 422-ია — ჟურნალი წარსულის ჩანაწერია */
     public function test_a_future_watch_is_rejected(): void
     {

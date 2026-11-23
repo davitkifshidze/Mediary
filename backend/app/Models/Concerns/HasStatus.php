@@ -90,6 +90,12 @@ trait HasStatus
         return 'watched_at';
     }
 
+    /** „როდის დავასრულე" სვეტი გარედან — სტატუსის წაშლა–აღდგენა მას იმახსოვრებს (`DictionaryTrash`) */
+    public function doneColumn(): ?string
+    {
+        return $this->statusDoneColumn();
+    }
+
     /**
      * სტატუსის მინიჭება **გასაღებით** — ერთადერთი გზა, რომლითაც კონტროლერი
      * `status_id`-ს ცვლის (`watched_at`-იც აქვე მოწესრიგდება).
