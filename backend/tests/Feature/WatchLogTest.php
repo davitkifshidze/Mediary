@@ -179,10 +179,11 @@ class WatchLogTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-02-01 12:00:00', 'UTC'));
         $movie = $this->movie();
-        $this->actingAs($this->me)->postJson("/api/media/watches/movie/{$movie->id}")->assertCreated();
-
-        Carbon::setTestNow(Carbon::parse('2026-03-04 12:00:00', 'UTC'));
         $this->actingAs($this->me)->patchJson("/api/movies/{$movie->id}/status", ['status' => 'watched'])->assertOk();
+
+        // მარტში „კიდევ ვნახე" — ბოლო ნახვა; შეცდომით მონიშნული სწორედ ის არის
+        Carbon::setTestNow(Carbon::parse('2026-03-04 12:00:00', 'UTC'));
+        $this->actingAs($this->me)->postJson("/api/media/watches/movie/{$movie->id}")->assertCreated();
         $this->assertSame(2, MediaWatch::withoutGlobalScope('owner')->count());
 
         $this->actingAs($this->me)->patchJson("/api/movies/{$movie->id}/status", ['status' => 'to_watch'])->assertOk();

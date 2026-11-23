@@ -59,6 +59,11 @@ trait HasWatchLog
 
                 if ($previous) {
                     $record->watches()->where('watched_at', $previous)->get()->each->moveToTrash();
+
+                    /* ურნაში გადატანა „ბოლო ნახვას" დარჩენილ რიგზე გადაითვლის
+                       (`syncWatchedAt()`), ჩანაწერი კი „არ მინახავს" სტატუსზეა —
+                       თარიღი ცარიელი რჩება, როგორც `applyStatus()`-მა დატოვა. */
+                    $record->newQueryWithoutScopes()->whereKey($record->getKey())->update(['watched_at' => null]);
                 }
 
                 return;
@@ -72,16 +77,6 @@ trait HasWatchLog
                 ['user_id' => $record->user_id, 'watched_at' => $record->watched_at],
             );
         });
-    }
-
-    /** სტატუსი აქვს და ის „დასრულებული" არ არის (სტატუსის გარეშე ჩანაწერი — არა) */
-    private function statusLeftDone(): bool
-    {
-        if (! $this->status_id) {
-            return false;
-        }
-
-        return $this->status()->value('role') !== 'done';
     }
 
     public function watches(): MorphMany
@@ -122,10 +117,7 @@ trait HasWatchLog
      */
     public function syncWatchedAt(): void
     {
-        /* ⚠️ **თარიღი მხოლოდ „დასრულებულ" სტატუსზე** — `applyStatus()`-ის წესი.
-           ნახვის ურნაში გადატანა/აღდგენა „არ მინახავს" ჩანაწერს ძველ თარიღს
-           აღარ უბრუნებს. */
-        $latest = $this->statusLeftDone() ? null : $this->watches()->max('watched_at');
+        $latest = $this->watches()->max('watched_at');
 
         if ((string) $this->watched_at?->toDateTimeString() === (string) $latest) {
             return;
