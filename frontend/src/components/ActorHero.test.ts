@@ -155,7 +155,7 @@ describe('ActorHero: Georgian text', () => {
 
   it('marks machine-written Georgian text and lifts the mark by confirming or correcting', async () => {
     mocks.settleActorGeorgian.mockResolvedValue(undefined)
-    const box = await mount(actor({ name_ka: 'ლიამ ნისონი', name_ka_unverified: true, biography: BIO_EN, biography_ka: BIO_KA, biography_ka_unverified: true }))
+    const box = await mount(actor({ name_ka: 'ლიამ ნისონი', name_ka_unverified: true, biography: BIO_EN, biography_ka: BIO_KA, biography_ka_unverified: true, georgian_editable: true }))
 
     const name = box.querySelector<HTMLElement>('[data-testid="georgian-check-name"]')!
     const bio = box.querySelector<HTMLElement>('[data-testid="georgian-check-biography"]')!
@@ -179,6 +179,14 @@ describe('ActorHero: Georgian text', () => {
     await act(async () => box.querySelector<HTMLButtonElement>('[data-testid="georgian-save-name"]')!.click())
     await flush()
     expect(mocks.settleActorGeorgian).toHaveBeenLastCalledWith(7, 'name', 'ლაიამ ნისონი')
+  })
+
+  it('shows the mark without buttons to an account that cannot settle a shared actor', async () => {
+    const box = await mount(actor({ name_ka: 'ლიამ ნისონი', name_ka_unverified: true, georgian_editable: false }))
+
+    expect(box.querySelector('[data-testid="georgian-check-name"]')).not.toBeNull()
+    expect(box.querySelector('[data-testid="georgian-confirm-name"]')).toBeNull()
+    expect(box.querySelector('[data-testid="georgian-fix-name"]')).toBeNull()
   })
 
   it('shows no mark on confirmed or official text', async () => {

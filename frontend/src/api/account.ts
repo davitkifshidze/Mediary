@@ -367,7 +367,7 @@ export async function setCustomModuleActive(id: number, isActive: boolean): Prom
 export interface ApprovalRequestItem {
   id: number
   /** `upload_limit` — ფორმატი ან ზომა (`payload.granted_scope` დამტკიცებისას) */
-  type: 'module_access' | 'genre_delete' | 'storage_increase' | 'upload_limit'
+  type: 'module_access' | 'genre_delete' | 'genre_rename' | 'storage_increase' | 'upload_limit'
   status: 'pending' | 'approved' | 'rejected'
   message: string | null
   payload: Record<string, unknown> | null

@@ -76,25 +76,73 @@ class GenreController extends Controller
         return (new GenreResource($genre->loadCount(['movies', 'series', 'animes'])))->response()->setStatusCode(201);
     }
 
-    /** რედაქტირება — მხოლოდ სახელები (slug უცვლელი რჩება TMDB-სინქრონის სტაბილურობისთვის) */
+    /**
+     * რედაქტირება — მხოლოდ სახელები (slug უცვლელი რჩება TMDB-სინქრონის სტაბილურობისთვის).
+     *
+     * ⚠️ **ჟანრი გლობალურია — გადარქმევა წაშლის წესს მიჰყვება.** `super_admin`
+     * ცვლის მაშინვე; სხვისი თხოვნა ადმინთან მიდის (202 + მოთხოვნა). უამისოდ
+     * ნებისმიერი ანგარიში ყველას ფილმებზე ჟანრის სახელს ცვლიდა. შექმნა ღია
+     * რჩება — ახალი ჟანრი არავის ჩანაწერს არ ცვლის.
+     */
     public function update(Request $request, Genre $genre)
     {
         $data = $this->validateNames($request);
 
-        if (array_key_exists('name_en', $data) && $data['name_en'] !== null) {
-            $genre->setTranslation('en', $data['name_en']);
-        }
-        if (array_key_exists('name_ka', $data)) {
-            // ცარიელი → ka თარგმანის წაშლა
-            if ($data['name_ka']) {
-                $genre->setTranslation('ka', $data['name_ka']);
-            } else {
-                $genre->translations()->where('locale', 'ka')->delete();
-                $genre->load('translations');
-            }
+        if (! $request->user()->isSuperAdmin()) {
+            return $this->requestRename($request, $genre, $data);
         }
 
+        $genre->rename($data);
+
         return new GenreResource($genre->loadCount(['movies', 'series', 'animes']));
+    }
+
+    /**
+     * user-ის გადარქმევის თხოვნა → ApprovalRequest (pending).
+     *
+     * ⚠️ უცვლელი სახელები მოთხოვნას არ ქმნის — ფანჯარა „შენახვას" სახელის
+     * შეუცვლელადაც აგზავნის (სხვა ჩანართიდან), და ადმინის რიგს ცარიელი
+     * თხოვნებით ავსებდა. ⚠️ იმავე ჟანრზე ჩემი მომლოდინე თხოვნა ახლდება და არ
+     * მრავლდება.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function requestRename(Request $request, Genre $genre, array $data)
+    {
+        $names = [
+            'name_en' => array_key_exists('name_en', $data) && $data['name_en'] !== null ? $data['name_en'] : $genre->name_en,
+            'name_ka' => array_key_exists('name_ka', $data) ? ($data['name_ka'] ?: null) : $genre->name_ka,
+        ];
+
+        if ($names['name_en'] === $genre->name_en && $names['name_ka'] === $genre->name_ka) {
+            return new GenreResource($genre->loadCount(['movies', 'series', 'animes']));
+        }
+
+        $payload = $names + ['old_name_en' => $genre->name_en, 'old_name_ka' => $genre->name_ka];
+
+        $req = ApprovalRequest::where('user_id', $request->user()->id)
+            ->where('type', ApprovalRequest::TYPE_GENRE_RENAME)
+            ->where('genre_id', $genre->id)
+            ->pending()
+            ->first();
+
+        if ($req) {
+            $req->forceFill(['payload' => $payload, 'message' => $request->input('message')])->save();
+        } else {
+            $req = ApprovalRequest::create([
+                'user_id' => $request->user()->id,
+                'type' => ApprovalRequest::TYPE_GENRE_RENAME,
+                'genre_id' => $genre->id,
+                'message' => $request->input('message'),
+                'status' => 'pending',
+                'payload' => $payload,
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'approval_required',
+            'request' => new ApprovalRequestResource($req->load(['genre'])),
+        ], 202);
     }
 
     /**

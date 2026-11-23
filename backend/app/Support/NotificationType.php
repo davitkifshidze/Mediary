@@ -97,7 +97,7 @@ final class NotificationType
             return match ($data['request_type'] ?? null) {
                 ApprovalRequest::TYPE_UPLOAD => '/settings',
                 ApprovalRequest::TYPE_STORAGE => '/profile',
-                ApprovalRequest::TYPE_GENRE_DELETE => '/genres',
+                ApprovalRequest::TYPE_GENRE_DELETE, ApprovalRequest::TYPE_GENRE_RENAME => '/genres',
                 default => '/modules',
             };
         }

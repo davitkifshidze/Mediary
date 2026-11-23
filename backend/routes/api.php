@@ -1487,7 +1487,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // ჟანრი გლობალურია: user-ის წაშლა ადმინთან მიდის (202), super_admin — მაშინვე
     Route::delete('/genres/{genre}', [GenreController::class, 'destroy']);
     Route::get('/genres/{genre}/items', [GenreItemController::class, 'index']);
-    Route::post('/genres/{genre}/items', [GenreItemController::class, 'update']);
+    /* ⚠️ მარშრუტი მოდულის ჯგუფის გარეთაა, მაგრამ **ჩემი ჩანაწერების ჟანრებს ცვლის**:
+       დომენი ტანის `type`-შია (`@type`), მოქმედება კი ცხადად `update` — POST-ს
+       შუამავალი `create`-ად წაიკითხავდა. უამისოდ მხოლოდ ნახვის უფლების მქონე
+       როლი თავის ფილმებს ჟანრს უცვლიდა. */
+    Route::post('/genres/{genre}/items', [GenreItemController::class, 'update'])
+        ->middleware(['module:@type', 'permission:@type,update']);
 
     /* მსახიობის ძებნა (ლექსიკონი + TMDB).
        ⚠️ **აუცილებლივ `/cast/{castMember}`-ზე ზემოთ**, თორემ „search"

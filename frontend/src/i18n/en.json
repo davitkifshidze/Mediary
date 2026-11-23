@@ -241,6 +241,7 @@
       "module_access": "Module access",
       "storage_increase": "Quota increase",
       "genre_delete": "Genre deletion",
+      "genre_rename": "Genre rename",
       "upload_limit": "Upload limit"
     },
     "col": {
@@ -294,6 +295,7 @@
     "notePlaceholder": "Note (optional)",
     "wantsModule": "Requests the “{{name}}” module",
     "wantsGenreDelete": "Requests deletion of genre “{{name}}”",
+    "wantsGenreRename": "Requests renaming genre “{{name}}” to “{{to}}”",
     "genreDeleteWarning": "Genres are global: this affects {{movies}} movies, {{series}} series and {{animes}} anime across all users.",
     "active": "Active",
     "disabled": "Disabled",
@@ -632,6 +634,7 @@
         "biography": "Translation to verify"
       },
       "hint": "The Georgian text was written by a machine. If it is right, confirm it; if not, correct it. An actor is a shared record: what you confirm is visible to every account.",
+      "hintAdminOnly": "A machine wrote this Georgian text and nobody has confirmed it yet. Actors are shared, so only an admin confirms or corrects it.",
       "confirm": "It's right",
       "fix": "Correct",
       "settled": "The Georgian text is confirmed",
@@ -942,6 +945,8 @@
     "actNeedSelection": "tick some records first",
     "saveNamesHint": "Saves the names. Record changes are applied immediately in their own tabs.",
     "deleteRequested": "Sent to the admin",
+    "renameRequested": "Rename sent to the admin",
+    "renameRequestedHint": "Genres are global, so a new name needs admin approval. The old name stays until then.",
     "deleteRequestedHint": "Genres are global, so deletion needs admin approval.",
     "deleteTitle": "Delete genre",
     "deleteSimple": "Delete the genre “{{name}}”?",
@@ -1276,6 +1281,8 @@
     "system_role": "A system role can't be deleted.",
     "role_in_use": "Users still have this role — move them to another role first.",
     "already_reviewed": "This request has already been reviewed.",
+    "own_request": "You can't approve your own request — another admin reviews it.",
+    "cast_text_admin_only": "Actors are shared — only an admin confirms their Georgian text.",
     "unknown_type": "Unknown request type.",
     "module_missing": "The requested module no longer exists.",
     "user_missing": "The user who made this request no longer exists.",

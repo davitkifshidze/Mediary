@@ -19,6 +19,13 @@ class ApprovalRequest extends Model
 
     public const TYPE_GENRE_DELETE = 'genre_delete';
 
+    /**
+     * გლობალური ჟანრის გადარქმევა: `payload` = `name_en`/`name_ka` (ახალი) და
+     * `old_name_en`/`old_name_ka` (მოთხოვნის მომენტის). წაშლის წესია — ჟანრი
+     * ყველა ანგარიშისთვის ერთია, ე.ი. მის სახელს ერთი ანგარიში ვერ ცვლის.
+     */
+    public const TYPE_GENRE_RENAME = 'genre_rename';
+
     /** `payload.requested_bytes` = **სასურველი სრული ლიმიტი** და არა მატება */
     public const TYPE_STORAGE = 'storage_increase';
 

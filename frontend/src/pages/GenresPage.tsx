@@ -203,11 +203,16 @@ function GenreFormDialog({
       }
       return created
     },
-    onSuccess: () => {
-      ;['genres', 'genre-items', 'genre-attach-pool', 'movie', 'series', 'anime'].forEach((k) =>
+    onSuccess: (res) => {
+      ;['genres', 'genre-items', 'genre-attach-pool', 'movie', 'series', 'anime', 'my-requests'].forEach((k) =>
         qc.invalidateQueries({ queryKey: [k] }),
       )
-      toast({ title: t('genres.saved'), variant: 'success' })
+      // ჟანრი გლობალურია — არაადმინის გადარქმევა ადმინთან მიდის, როგორც წაშლა
+      toast(
+        res && 'approvalRequired' in res && res.approvalRequired
+          ? { title: t('genres.renameRequested'), description: t('genres.renameRequestedHint'), variant: 'info' }
+          : { title: t('genres.saved'), variant: 'success' },
+      )
       onClose()
     },
     onError: (e: { response?: { data?: { errors?: Record<string, string[]> } } }) => {

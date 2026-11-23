@@ -106,16 +106,21 @@ function GeorgianCheck({ actor, field, text }: { actor: Actor; field: 'name' | '
       <Badge size="row" className="bg-[color-mix(in_oklab,var(--icon-warn)_14%,transparent)]">
         <Sparkles className="size-3.5" />
         {t(`actor.georgian.unverified.${field}`)}
-        <InfoHint info={t('actor.georgian.hint')} />
+        <InfoHint info={t(actor.georgian_editable ? 'actor.georgian.hint' : 'actor.georgian.hintAdminOnly')} />
       </Badge>
-      <Button size="sm" variant="outline" disabled={settle.isPending} onClick={() => settle.mutate(undefined)} data-testid={`georgian-confirm-${field}`}>
-        {settle.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-        {t('actor.georgian.confirm')}
-      </Button>
-      <Button size="sm" variant="edit" disabled={settle.isPending} onClick={() => setDraft(text)} data-testid={`georgian-fix-${field}`}>
-        <SquarePen className="size-4" />
-        {t('actor.georgian.fix')}
-      </Button>
+      {/* ⚠️ მსახიობი საერთოა: დადასტურება და გასწორება მხოლოდ `super_admin`-ს (ან ხელით შექმნილის შემქმნელს) */}
+      {actor.georgian_editable && (
+        <>
+          <Button size="sm" variant="outline" disabled={settle.isPending} onClick={() => settle.mutate(undefined)} data-testid={`georgian-confirm-${field}`}>
+            {settle.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+            {t('actor.georgian.confirm')}
+          </Button>
+          <Button size="sm" variant="edit" disabled={settle.isPending} onClick={() => setDraft(text)} data-testid={`georgian-fix-${field}`}>
+            <SquarePen className="size-4" />
+            {t('actor.georgian.fix')}
+          </Button>
+        </>
+      )}
     </span>
   )
 }

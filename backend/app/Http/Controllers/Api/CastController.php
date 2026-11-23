@@ -377,10 +377,25 @@ class CastController extends Controller
             /* საძიებო ტეგები **ჩემია და არა გლობალური**: `cast_members`
                საერთო ლექსიკონია, ტეგები კი `cast_member_tags`-შია, user-ზე. */
             'tags' => CastMemberTag::forActor((int) auth()->id(), $member->id),
+            // გადასამოწმებელი ქართული ტექსტის დადასტურება შემიძლია? — გვერდი ღილაკებს ამით ხატავს
+            'georgian_editable' => $this->maySettleGeorgian($member),
             /* ჩემი ნიშნები: რჩეული და გახსნების მთვლელი (`ActorMark`). ⚠️ რიცხვი მხოლოდ
                აქ გამოდის — სიის ბარათზე ის არ იწერება. */
             ...$this->marks($member),
         ];
+    }
+
+    /** `super_admin`, ან ხელით შექმნილი მსახიობის შემქმნელი — იხ. `georgian()` */
+    private function maySettleGeorgian(CastMember $member): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->isSuperAdmin()
+            || ($member->tmdb_person_id === null && (int) $member->created_by === (int) $user->getKey());
     }
 
     /** @return array{favorite: bool, opens: int} */
@@ -400,11 +415,15 @@ class CastController extends Controller
      *
      * ⚠️ **მხოლოდ გადასამოწმებელ ტექსტზე**: TMDB-ის სახელი და უკვე დადასტურებული ტექსტი
      * ერთი ანგარიშის ხელით არ იცვლება — მსახიობი საერთო ჩანაწერია (`update()`-ის წესი).
-     * ⚠️ „ვის შეუძლია" ჩართული მედია-მოდული წყვეტს, როგორც მსახიობების სინქრონიზაციაზე.
+     * ⚠️ **ვის შეუძლია: `super_admin`-ს, ან ხელით შექმნილის შემქმნელს.** მსახიობი
+     * საერთო ჩანაწერია: ნებისმიერი ანგარიში, რომელიც გადასამოწმებელ სახელს ან
+     * ბიოგრაფიას თავისი ტექსტით ცვლიდა, მას **ყველასთვის** „დადასტურებულად" ტოვებდა.
+     * ხელით შექმნილი მსახიობი კი მხოლოდ შემქმნელისაა — ის თავის ტექსტს თვითონ წყვეტს.
      */
     public function georgian(Request $request, CastMember $castMember): JsonResponse
     {
         abort_unless(CastPool::typesFor($request->user()) !== [], 403, 'module_disabled');
+        abort_unless($this->maySettleGeorgian($castMember), 403, 'cast_text_admin_only');
 
         $field = $request->validate(['field' => ['required', Rule::in(CastTranslator::FIELDS)]])['field'];
         $data = $request->validate([

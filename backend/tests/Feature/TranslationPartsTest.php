@@ -294,6 +294,10 @@ class TranslationPartsTest extends TestCase
         $this->getJson("/api/cast/{$named->id}")->assertJsonPath('actor.biography_ka', 'ჩემი ტექსტი.')->assertJsonPath('actor.biography_ka_unverified', false);
 
         // --- ნიშანი იხსნება დადასტურებით ან ხელით გასწორებით; სუფთა ტექსტი ხელით არ იცვლება ---
+        // ⚠️ საერთო მსახიობის ტექსტს მხოლოდ `super_admin` ადასტურებს (`SharedDictionaryAccessTest`)
+        $this->patchJson("/api/cast/{$onTmdb->id}/georgian", ['field' => 'biography'])->assertStatus(403);
+        $this->alice->assignRole('super_admin')->save();
+        $this->actingAs($this->alice->refresh());
         $this->patchJson("/api/cast/{$onTmdb->id}/georgian", ['field' => 'biography'])->assertOk()
             ->assertJsonPath('actor.biography_ka', 'დაიბადა ბეირუთში.')->assertJsonPath('actor.biography_ka_unverified', false);
         $this->patchJson("/api/cast/{$machine->id}/georgian", ['field' => 'name', 'text' => ' კერი-ენ მოსსი '])->assertOk()

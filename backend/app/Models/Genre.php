@@ -65,4 +65,29 @@ class Genre extends Model
         $this->translations()->updateOrCreate(['locale' => $locale], ['name' => $name]);
         $this->load('translations');
     }
+
+    /**
+     * **გადარქმევა** — ერთი ადგილი პირდაპირი ცვლილებისა და დამტკიცებული
+     * მოთხოვნისთვის (`GenreController::update()`, `AdminRequestController`).
+     *
+     * `name_en` — მხოლოდ არაცარიელი იწერება (ინგლისური სახელი ყოველთვის არსებობს);
+     * `name_ka` — გასაღები რომ მოვიდა და ცარიელია, ქართული თარგმანი იშლება.
+     *
+     * @param  array<string, mixed>  $names
+     */
+    public function rename(array $names): void
+    {
+        if (array_key_exists('name_en', $names) && $names['name_en'] !== null && $names['name_en'] !== '') {
+            $this->setTranslation('en', (string) $names['name_en']);
+        }
+
+        if (array_key_exists('name_ka', $names)) {
+            if ($names['name_ka']) {
+                $this->setTranslation('ka', (string) $names['name_ka']);
+            } else {
+                $this->translations()->where('locale', 'ka')->delete();
+                $this->load('translations');
+            }
+        }
+    }
 }

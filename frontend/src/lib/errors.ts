@@ -186,6 +186,8 @@ export const CODES = [
   'system_role',
   'role_in_use',
   'already_reviewed',
+  'own_request',
+  'cast_text_admin_only',
   'unknown_type',
   'module_missing',
   'user_missing',

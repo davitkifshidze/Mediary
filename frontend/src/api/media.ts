@@ -288,9 +288,13 @@ export async function createGenre(payload: GenrePayload): Promise<Genre> {
   return data.data
 }
 
-export async function updateGenre(id: number, payload: GenrePayload): Promise<Genre> {
-  const { data } = await api.patch(`/genres/${id}`, payload)
-  return data.data
+/**
+ * გადარქმევა. ჟანრი **გლობალურია**: `super_admin`-ზე სახელი მაშინვე იცვლება,
+ * სხვისი თხოვნა კი ადმინთან მიდის (202) — წაშლის წესი (`deleteGenre`).
+ */
+export async function updateGenre(id: number, payload: GenrePayload): Promise<{ approvalRequired: boolean }> {
+  const res = await api.patch(`/genres/${id}`, payload)
+  return { approvalRequired: res.status === 202 }
 }
 
 /* ---------- ჟანრზე მიბმული ჩანაწერები ---------- */
@@ -612,6 +616,8 @@ export interface Actor {
   /** ქართული სახელი / ბიოგრაფია მანქანამ დაწერა და ჯერ არავის დაუდასტურებია */
   name_ka_unverified?: boolean
   biography_ka_unverified?: boolean
+  /** გადასამოწმებელი ტექსტის დადასტურება შემიძლია — `super_admin` ან ხელით შექმნილის შემქმნელი */
+  georgian_editable?: boolean
   known_for?: string | null
   popularity?: number | null
   /** ჩემი რჩეული და რამდენჯერ გავხსენი (`ActorMark`) — რიცხვი მხოლოდ გვერდის `i`-ში ჩანს */

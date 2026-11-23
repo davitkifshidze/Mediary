@@ -63,11 +63,21 @@ class AdminRequestController extends Controller
             return response()->json(['message' => 'already_reviewed'], 422);
         }
 
+        /* ⚠️ **საკუთარ მოთხოვნას ვერავინ ამტკიცებს** — `super_admin`-ის გარდა.
+           განხილვის უფლება როლიდანაც მოდის (`admin:requests`), ე.ი. ასეთი როლის
+           მქონე თავის ლიმიტს, მოდულს ან ჟანრის წაშლას თვითონ დაამტკიცებდა —
+           მოთხოვნას მეორე ადამიანი სწორედ ამისთვის ათვალიერებს. უარყოფა ღიაა:
+           საკუთარი თხოვნის უკან წაღება არაფერს აფართოებს. */
+        if ((int) $approvalRequest->user_id === (int) $request->user()->getKey() && ! $request->user()->isSuperAdmin()) {
+            return response()->json(['message' => 'own_request'], 403);
+        }
+
         $note = $request->input('review_note');
 
         $result = match ($approvalRequest->type) {
             ApprovalRequest::TYPE_MODULE => $this->approveModule($approvalRequest),
             ApprovalRequest::TYPE_GENRE_DELETE => $this->approveGenreDelete($approvalRequest, $remover),
+            ApprovalRequest::TYPE_GENRE_RENAME => $this->approveGenreRename($approvalRequest),
             ApprovalRequest::TYPE_STORAGE => $this->approveStorage($approvalRequest, $request),
             ApprovalRequest::TYPE_UPLOAD => $this->approveUpload($approvalRequest, $request),
             default => ['ok' => false, 'reason' => 'unknown_type'],
@@ -239,6 +249,24 @@ class AdminRequestController extends Controller
         }
 
         $req->payload = [...$payload, 'granted_scope' => $scope];
+
+        return ['ok' => true];
+    }
+
+    /** გადარქმევა — იგივე `Genre::rename()`, რასაც `super_admin` პირდაპირ იძახებს */
+    private function approveGenreRename(ApprovalRequest $req): array
+    {
+        if (! $req->genre) {
+            // ჟანრი ამასობაში წაიშალა — გადასარქმევი აღარაფერია
+            return ['ok' => false, 'reason' => 'not_found', 'status' => 404];
+        }
+
+        $payload = $req->payload ?? [];
+
+        $req->genre->rename([
+            'name_en' => $payload['name_en'] ?? null,
+            ...(array_key_exists('name_ka', $payload) ? ['name_ka' => $payload['name_ka']] : []),
+        ]);
 
         return ['ok' => true];
     }

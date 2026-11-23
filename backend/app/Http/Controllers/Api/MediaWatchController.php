@@ -73,6 +73,22 @@ class MediaWatchController extends Controller
         // აქ იაფია და კონტროლერს თვითმყოფადს ტოვებს
         abort_unless((int) $mediaWatch->user_id === (int) $request->user()->getKey(), 404);
 
+        /* ⚠️ **მოდული და `update` უფლება ნახვის ჩანაწერის ტიპიდან.** მარშრუტს
+           `{type}` არ აქვს, ე.ი. `module:`/`permission:` შუამავალი მასზე ვერ დგას —
+           ნახვის წაშლა კი ისეთივე ცვლილებაა, როგორიც მისი დამატება (`store()` —
+           `permission:@type,update`): მხოლოდ ნახვის უფლების მქონე როლი ჟურნალს
+           ვერ ასუფთავებს. */
+        $type = (string) $mediaWatch->watchable_type;
+        $user = $request->user();
+
+        if (! MediaDomain::has($type) || ! $user->hasModule($type)) {
+            return response()->json(['message' => 'module_not_enabled', 'module' => $type], 403);
+        }
+
+        if (! $user->hasPermission($type, 'update')) {
+            return response()->json(['message' => 'forbidden_permission', 'permission' => "{$type}.update"], 403);
+        }
+
         /* ⚠️ ურნა — „ბოლო ნახვას" `MediaWatch::afterTrashChange()`
            თვითონ გადაითვლის: ურნაში მყოფი ჟურნალში აღარ ითვლება. */
         $mediaWatch->moveToTrash();

@@ -104,6 +104,13 @@ export function requestLabel(
   }
 
   const name = (lang === 'ka' ? r.genre?.name_ka : r.genre?.name_en) ?? '—'
+
+  if (r.type === 'genre_rename') {
+    // ახალი სახელი მოთხოვნის `payload`-შია; ქართული შეიძლება ცარიელი იყოს — მაშინ ინგლისური
+    const wanted = (lang === 'ka' ? r.payload?.name_ka : null) || r.payload?.name_en
+    return t('admin.wantsGenreRename', { name, to: String(wanted ?? '—') })
+  }
+
   return t('admin.wantsGenreDelete', { name })
 }
 

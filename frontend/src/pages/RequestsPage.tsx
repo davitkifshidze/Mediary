@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Boxes, Check, HardDrive, HardDriveUpload, Tags, X, Eye } from 'lucide-react'
+import { Boxes, Check, HardDrive, HardDriveUpload, Tags, TextCursorInput, X, Eye } from 'lucide-react'
 import {
   approveRequest,
   cancelRequest,
@@ -72,6 +72,7 @@ const TYPE_ICON = {
   module_access: Boxes,
   storage_increase: HardDrive,
   genre_delete: Tags,
+  genre_rename: TextCursorInput,
   // ატვირთვის ლიმიტი (ფორმატი ან ზომა)
   upload_limit: HardDriveUpload,
 } as const
