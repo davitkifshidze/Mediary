@@ -118,6 +118,10 @@ function roleOf(el: Element): NonNullable<AuditEvent['role']> {
  * ⚠️ **ველის მნიშვნელობა არასოდეს**: იკითხება მხოლოდ წარწერა (`aria-label` →
  * `title` → ტექსტი), `input`/`textarea` სიაში საერთოდ არ არის. სერვერი წარწერას
  * 120 სიმბოლოზე ჭრის და ტოკენის მსგავს სტრიქონს ფარავს.
+ *
+ * ⚠️ **შიგთავსიანი ელემენტი (`data-audit-content`) ტექსტს არ აგზავნის** — მხოლოდ
+ * `aria-label`/`title`-ს. ჩატის სიის რიგის ტექსტი ბოლო წერილია, ძებნის და პინის
+ * რიგისა — თვითონ წერილი: ჟურნალში ის მესამე პირის ნათქვამი იქნებოდა.
  */
 function clickEvent(target: EventTarget | null, path: string): AuditEvent | null {
   if (!(target instanceof Element)) return null
@@ -125,7 +129,8 @@ function clickEvent(target: EventTarget | null, path: string): AuditEvent | null
   const el = target.closest(CLICKABLE)
   if (!el) return null
 
-  const label = (el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent || '')
+  const text = el.closest('[data-audit-content]') ? '' : el.textContent
+  const label = (el.getAttribute('aria-label') || el.getAttribute('title') || text || '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 120)

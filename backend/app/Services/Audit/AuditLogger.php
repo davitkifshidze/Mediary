@@ -89,7 +89,8 @@ class AuditLogger
                 'action' => $action,
                 'method' => $request?->method(),
                 // „რითი" — რომელი გზით მოხდა ცვლილება
-                'route' => $request ? mb_substr($request->path(), 0, 400) : null,
+                // ⚠️ API-ის გზაც ტოკენის გარეშე: `api/shares/{token}/…`, `api/public/shares/{token}/…`
+                'route' => $request ? self::maskPath($request->path()) : null,
                 'ip' => $request?->ip(),
                 'user_agent' => mb_substr((string) $request?->userAgent(), 0, 400) ?: null,
                 ...$attributes,
@@ -308,17 +309,22 @@ class AuditLogger
     }
 
     /**
-     * SPA-ს მისამართი ლოგისთვის — **გაზიარების ტოკენის გარეშე**.
+     * მისამართი ლოგისთვის — **გაზიარებისა და პაროლის აღდგენის ტოკენის გარეშე**.
      *
-     * ⚠️ `/share/{token}` გზაში ტოკენი ღიად დგას, ბაზაში კი ის მხოლოდ ჰეშად
-     * ინახება: ლოგში ჩაწერილი გზა მას ადმინს ღიად გადასცემდა.
+     * ⚠️ ტოკენი გზაში ღიად დგას, ბაზაში კი ის მხოლოდ ჰეშად ინახება: ლოგში
+     * ჩაწერილი გზა მას `admin_access:audit`-ის მქონეს და ყველა ასლს ღიად
+     * გადასცემდა. ოთხი ფორმა: SPA-ს `share/{token}` და `reset/{token}`, API-ის
+     * `api/shares/{token}`, `api/public/shares/{token}` და `api/auth/reset/{token}`.
      */
     public static function maskPath(string $path): string
     {
         $path = mb_substr(ltrim($path, '/'), 0, 400);
 
-        return (string) preg_replace('#^share/[^/]+#', 'share/•••', $path);
+        return (string) preg_replace(self::TOKEN_PATH, '$1•••', $path);
     }
+
+    /** ტოკენიანი გზის თავი — `maskPath()` და ძველი რიგების მიგრაცია ერთს კითხულობს */
+    public const TOKEN_PATH = '#^((?:api/(?:public/)?shares|share|api/auth/reset|reset)/)[^/]+#';
 
     /**
      * დაჭერის წარწერა — **ტოკენის მსგავსი სტრიქონის გარეშე**: გაზიარების ბმული

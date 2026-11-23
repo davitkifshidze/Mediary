@@ -157,6 +157,9 @@ function ConversationRow({ conversation: c, active }: { conversation: ChatConver
     <li>
       <Link
         to={`/chat/${c.id}`}
+        // რიგის ტექსტი ბოლო წერილია — ჟურნალში მხოლოდ სახელი მიდის
+        aria-label={name}
+        data-audit-content
         className={cn(
           'flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors',
           active ? 'border-primary bg-secondary/50' : 'border-border bg-card hover:bg-secondary/40',
@@ -574,7 +577,9 @@ function Thread({ id }: { id: number }) {
             {/* წაშლა ორივე მხარეს შეუძლია; **სკოუპს დიალოგი ეკითხება** */}
             {m.mine && <MessageTools message={m} onDelete={() => setRemoving(m)} onPin={pin.mutate} onReact={react.mutate} />}
             <div className="max-w-[75%]">
+              {/* ბუშტში დაჭერის ჟურნალი წერილის ტექსტს (ბმული, ფაილის სახელი) არ იღებს */}
               <div
+                data-audit-content
                 className={cn(
                   'space-y-1.5 whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm',
                   m.mine
@@ -840,6 +845,7 @@ function SearchPanel({
             <li key={hit.id}>
               <button
                 data-kind="row"
+                data-audit-content
                 type="button"
                 onClick={() => onJump(hit.id)}
                 className="w-full cursor-pointer rounded-md border border-border px-3 py-2 text-left text-sm transition-colors hover:border-primary/40"
@@ -895,6 +901,7 @@ function PinsPanel({
           <div key={m.id} className="flex items-start gap-2 rounded-md border border-border px-3 py-2">
             <button
               data-kind="row"
+              data-audit-content
               type="button"
               onClick={() => onJump(m.id)}
               className="min-w-0 flex-1 cursor-pointer text-left text-sm transition-colors hover:text-primary"

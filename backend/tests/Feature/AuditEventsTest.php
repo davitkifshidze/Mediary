@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Models\AuditLog;
 use App\Models\Module;
 use App\Models\User;
+use App\Services\Audit\AuditLogger;
 use App\Support\AppSettings;
 use App\Support\AuditRules;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 /**
@@ -95,6 +97,45 @@ class AuditEventsTest extends TestCase
         $this->assertSame('share/•••/movies', $row->route);
         $this->assertStringNotContainsString('hunter2', json_encode($row->getAttributes()));
         $this->assertStringNotContainsString('abcDEF123secret', json_encode($row->getAttributes()));
+    }
+
+    public function test_the_api_forms_of_a_token_path_are_masked_before_writing(): void
+    {
+        $cases = [
+            'api/shares/abcDEF123secret/item' => 'api/shares/•••/item',
+            'api/public/shares/abcDEF123secret/movie/5' => 'api/public/shares/•••/movie/5',
+            '/api/auth/reset/abcDEF123secret' => 'api/auth/reset/•••',
+            'reset/abcDEF123secret' => 'reset/•••',
+            'share/•••/movies' => 'share/•••/movies',
+            // ჩვეულებრივი გზა უცვლელია — `share-links` ტოკენი არ არის
+            'api/share-links/records' => 'api/share-links/records',
+        ];
+
+        foreach ($cases as $path => $masked) {
+            $this->assertSame($masked, AuditLogger::maskPath($path), $path);
+        }
+
+        // ცოცხალი ჩაწერა: `log()` მოთხოვნის გზას იმავე ნიღბით წერს
+        $this->app->instance('request', Request::create('/api/public/shares/abcDEF123secret/movie/5', 'GET'));
+        $row = app(AuditLogger::class)->log(AuditLog::ACTION_OPEN, ['module' => 'movie']);
+
+        $this->assertNotNull($row);
+        $this->assertSame('api/public/shares/•••/movie/5', $row->route);
+    }
+
+    public function test_the_migration_masks_tokens_in_rows_already_written(): void
+    {
+        $id = AuditLog::query()->insertGetId([
+            'action' => AuditLog::ACTION_OPEN, 'route' => 'api/shares/abcDEF123secret/plan', 'created_at' => now(),
+        ]);
+        $plain = AuditLog::query()->insertGetId([
+            'action' => AuditLog::ACTION_OPEN, 'route' => 'api/movies/5', 'created_at' => now(),
+        ]);
+
+        (require database_path('migrations/2026_11_23_000001_mask_tokens_in_audit_routes.php'))->up();
+
+        $this->assertSame('api/shares/•••/plan', AuditLog::query()->whereKey($id)->value('route'));
+        $this->assertSame('api/movies/5', AuditLog::query()->whereKey($plain)->value('route'));
     }
 
     public function test_a_disabled_kind_is_dropped_on_the_server_too(): void

@@ -73,6 +73,15 @@ function Events({ lib }: { lib: typeof import('@/lib/audit') }) {
   ])
 }
 
+/** ჩატის სიის მსგავსი რიგები: ტექსტი წერილია, სახელი — `aria-label` */
+function ContentRows({ lib }: { lib: typeof import('@/lib/audit') }) {
+  lib.useAuditEvents()
+  return h('ul', null, [
+    h('li', { key: 'n' }, h('a', { href: '/chat/1', 'aria-label': 'ნინო', 'data-audit-content': '', 'data-testid': 'named', onClick: (e: Event) => e.preventDefault() }, 'პაროლი არის 1234')),
+    h('li', { key: 'b', 'data-audit-content': '' }, h('button', { type: 'button', 'data-testid': 'bare' }, 'საიდუმლო წერილი')),
+  ])
+}
+
 describe('useAuditEvents', () => {
   it('sends nothing when clicks are off', async () => {
     const el = await mount((lib) => h(Events, { lib }))
@@ -104,6 +113,21 @@ describe('useAuditEvents', () => {
       { action: 'click', path: '/books', label: 'გახსნები', role: 'tab' },
     ])
     expect(JSON.stringify(batch)).not.toContain('hunter2')
+  })
+
+  it('sends no text of a content row — only its aria-label', async () => {
+    mocks.kinds = ['click']
+    const box = await mount((lib) => h(ContentRows, { lib }))
+
+    act(() => (box.querySelector('[data-testid="named"]') as HTMLElement).click())
+    act(() => (box.querySelector('[data-testid="bare"]') as HTMLElement).click())
+    act(() => vi.advanceTimersByTime(5000))
+
+    const [batch] = mocks.sendAuditEvents.mock.calls[0]
+    expect(batch).toEqual([
+      { action: 'click', path: '/books', label: 'ნინო', role: 'link' },
+      { action: 'click', path: '/books', label: null, role: 'button' },
+    ])
   })
 
   it('flushes on pagehide with keepalive', async () => {
