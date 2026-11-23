@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowDown,
   ArrowLeft,
@@ -231,7 +231,11 @@ function Thread({ id }: { id: number }) {
     queryKey: ['chat', id],
     queryFn: () => fetchThread(id),
     refetchInterval: THREAD_POLL_MS,
-    placeholderData: keepPreviousData,
+    /* ⚠️ წინა პასუხი მხოლოდ **იმავე საუბრისა** რჩება ეკრანზე. `keepPreviousData`
+       გასაღების შეცვლაზეც მოქმედებს: სხვა საუბარზე გადასვლისას, სანამ ახალი
+       ჩაიტვირთებოდა, წინა საუბრის წერილები ახალი თანამოსაუბრის სახელის ქვეშ ჩანდა —
+       და პასუხიც იქ იწერებოდა. */
+    placeholderData: (previous, query) => (query?.queryKey[1] === id ? previous : undefined),
     retry: false,
   })
 
@@ -332,9 +336,21 @@ function Thread({ id }: { id: number }) {
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
+  /* ⚠️ **ჩატვირთული ძველები და ნახტომის ხედი ლოკალური მდგომარეობაა** — `['chat', id]`-ის
+     განახლება მათ არ ეხება. რეაქცია, დაპინვა და ფაილის წაშლა იქ ეკრანზე არ ჩანდა, და
+     „არ იმუშავა"-ს მეორე დაჭერა რეაქციას ხსნიდა. მუტაცია განახლებულ წერილს აბრუნებს —
+     ის ორივე სიაში თავის ადგილას ჯდება. */
+  const patchLoaded = (updated: ChatMessage) => {
+    const swap = (list: ChatMessage[]) => list.map((m) => (m.id === updated.id ? updated : m))
+
+    setOlder(swap)
+    setJump((j) => (j ? { ...j, items: swap(j.items) } : j))
+  }
+
   const removeFile = useMutation({
     mutationFn: (messageId: number) => deleteAttachment(messageId),
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      patchLoaded(updated)
       qc.invalidateQueries({ queryKey: ['chat', id] })
       refresh()
       toast({ title: t('chat.fileDeleted'), variant: 'success' })
@@ -372,7 +388,10 @@ function Thread({ id }: { id: number }) {
   const react = useMutation({
     mutationFn: ({ messageId, emoji }: { messageId: number; emoji: string | null }) =>
       reactToMessage(messageId, emoji),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['chat', id] }),
+    onSuccess: (updated) => {
+      patchLoaded(updated)
+      qc.invalidateQueries({ queryKey: ['chat', id] })
+    },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
@@ -380,7 +399,8 @@ function Thread({ id }: { id: number }) {
   const pin = useMutation({
     mutationFn: ({ messageId, pinned }: { messageId: number; pinned: boolean }) =>
       pinMessage(messageId, pinned),
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      patchLoaded(updated)
       qc.invalidateQueries({ queryKey: ['chat', id] })
       qc.invalidateQueries({ queryKey: ['chat-pins', id] })
     },
@@ -686,7 +706,8 @@ function Thread({ id }: { id: number }) {
                   // Enter აგზავნის, Shift+Enter ახალ ხაზს იძლევა
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
-                    if (body.trim() || file) send.mutate()
+                    // ⚠️ გაგზავნის დროს Enter არაფერს აკეთებს — ნელ პასუხზე იგივე ტექსტი ან ფაილი ორჯერ მიდიოდა
+                    if ((body.trim() || file) && !send.isPending) send.mutate()
                   }
                 }}
                 className="max-h-32 min-h-[2.5rem] resize-none"

@@ -328,9 +328,8 @@ class ChatController extends Controller
     public function pin(Request $request, Message $message)
     {
         $me = $request->user();
-        $conversation = $message->conversation;
-
-        abort_unless($conversation && $conversation->has($me->id), 404);
+        $this->readable($message, $me);
+        $this->notBlocked($message->conversation, $me);
 
         $data = $request->validate(['pinned' => ['required', 'boolean']]);
 
@@ -348,9 +347,8 @@ class ChatController extends Controller
     public function react(Request $request, Message $message)
     {
         $me = $request->user();
-        $conversation = $message->conversation;
-
-        abort_unless($conversation && $conversation->has($me->id), 404);
+        $this->readable($message, $me);
+        $this->notBlocked($message->conversation, $me);
 
         $data = $request->validate(['emoji' => ['nullable', 'string', 'max:32']]);
 
@@ -392,6 +390,8 @@ class ChatController extends Controller
     {
         $me = $request->user();
         abort_unless($conversation->has($me->id), 404);
+        // თემა ორივესთვის იცვლება — დაბლოკილ წყვილში ის მეორე მხარეზე ზემოქმედებაა
+        $this->notBlocked($conversation, $me);
 
         $data = $request->validate([
             'theme' => ['nullable', Rule::in(Conversation::THEMES)],
@@ -549,7 +549,7 @@ class ChatController extends Controller
     public function saveRecord(Request $request, Message $message)
     {
         $me = $request->user();
-        abort_unless($message->conversation?->has($me->id), 404);
+        $this->readable($message, $me);
 
         $shared = $message->record;
         abort_unless(is_array($shared) && SharedRecord::shareable((string) ($shared['domain'] ?? '')), 404);
@@ -591,9 +591,7 @@ class ChatController extends Controller
      */
     public function file(Request $request, Message $message)
     {
-        $conversation = $message->conversation;
-
-        abort_unless($conversation && $conversation->has($request->user()->id), 404);
+        $this->readable($message, $request->user());
         abort_unless($message->attachment_path, 404);
 
         $disk = Storage::disk(StorageFolder::diskFor((string) $message->attachment_path));
@@ -777,5 +775,37 @@ class ChatController extends Controller
         }
 
         return $out;
+    }
+
+    /**
+     * **წერილი, რომელსაც მე ვხედავ** — მონაწილეობა + `Message::scopeVisibleTo()`.
+     *
+     * ⚠️ „ორივესთვის წაშლა" მხოლოდ `removed_at`-ს წერს და რიგი რჩება: სია, ძებნა
+     * და პინები მას ფილტრავს, მაგრამ რეაქცია, პინი, „დაამატე ჩემთანაც" და ფაილი
+     * მხოლოდ მონაწილეობას ამოწმებდა და წაშლილ წერილს ან ფაილს სრულად აბრუნებდა.
+     * ჩემთვის დამალულიც იგივეა — 404, როგორც სხვისი.
+     */
+    private function readable(Message $message, User $me): void
+    {
+        $conversation = $message->conversation;
+
+        abort_unless($conversation && $conversation->has($me->id), 404);
+        abort_unless(
+            Message::whereKey($message->getKey())->visibleTo((int) $me->id)->exists(),
+            404,
+        );
+    }
+
+    /**
+     * ⚠️ **დაბლოკილ წყვილში საუბარი იყინება** — გაგზავნის გარდა (`guard()`)
+     * რეაქცია, პინი და თემაც მეორე მხარეს ეხება, ე.ი. იგივე 403 `chat_blocked`.
+     */
+    private function notBlocked(Conversation $conversation, User $me): void
+    {
+        $other = $conversation->otherThan($me->id);
+
+        if ($other && $this->chat->blockedBetween($me, $other)) {
+            abort(response()->json(['message' => 'chat_blocked'], 403));
+        }
     }
 }

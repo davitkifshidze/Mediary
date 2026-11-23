@@ -4,6 +4,7 @@ namespace App\Services\Chat;
 
 use App\Models\Message;
 use App\Models\User;
+use App\Services\Modules\FieldSettings;
 use App\Services\Profile\PublicProfileService;
 use App\Support\MediaDomain;
 use App\Support\MediaDuplicate;
@@ -34,7 +35,10 @@ use Illuminate\Database\UniqueConstraintViolationException;
  */
 class SharedRecord
 {
-    public function __construct(private readonly PublicProfileService $public) {}
+    public function __construct(
+        private readonly PublicProfileService $public,
+        private readonly FieldSettings $fields,
+    ) {}
 
     /** გაზიარებადი დომენები — გლობალური იდენტობის მქონენი */
     public static function domains(): array
@@ -96,6 +100,13 @@ class SharedRecord
 
         $record = $this->visibleRecord($domain, (int) $shared['id'], (int) $owner, $viewerId);
 
+        /* ⚠️ **მფლობელის მიერ საჯარო ბარათზე დამალული ველები** აქაც იჭრება —
+           საჯარო პროფილის იგივე წესი (`FieldSettings::hiddenOnPublic()`). ავტორი
+           საკუთარ ბარათს სრულად ხედავს. */
+        $hidden = $record && (int) $owner !== $viewerId
+            ? $this->fields->hiddenOnPublic(User::findOrFail($owner), PublicDomain::recordModule($domain, $record))
+            : [];
+
         return [
             'domain' => $domain,
             'title' => (string) ($shared['title'] ?? ''),
@@ -103,7 +114,7 @@ class SharedRecord
             /* ⚠️ `card` **null-ია ორ სხვადასხვა შემთხვევაში** და ეს
                განზრახია: ჩანაწერი პირადია, ან უკვე აღარ არსებობს. ორივეზე
                ინტერფეისს ერთი და იგივე აქვს სათქმელი — „მხოლოდ სათაური". */
-            'card' => $record ? PublicDomain::card($domain, $record) : null,
+            'card' => $record ? PublicDomain::card($domain, $record, $hidden) : null,
         ];
     }
 
@@ -173,9 +184,18 @@ class SharedRecord
             return $model::withoutGlobalScope('owner')->where('user_id', $ownerId)->find($id);
         }
 
-        $owner = User::find($ownerId);
+        /* ⚠️ **სამივე ფენა: პროფილი → მოდული → ჩანაწერი.** `query()` მხოლოდ
+           ჩანაწერის ფენას (და საკეტს) ამოწმებს; პროფილისა და მოდულის ფენა
+           `resolve()`-სა და `domains()`-შია, როგორც საჯარო პროფილის გვერდზე.
+           უამისოდ ბარათი ჩანდა დახურულ პროფილზეც (ადმინთან მიწერა საჯაროობას
+           არ ითხოვს) და დამალულ მოდულშიც. */
+        $owner = $this->public->resolve((string) User::whereKey($ownerId)->value('username'));
 
-        return $owner ? $this->public->query($owner, $domain)->find($id) : null;
+        if (! $owner || ! in_array($domain, $this->public->domains($owner), true)) {
+            return null;
+        }
+
+        return $this->public->query($owner, $domain)->find($id);
     }
 
     /**
