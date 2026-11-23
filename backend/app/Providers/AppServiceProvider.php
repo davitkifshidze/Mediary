@@ -154,11 +154,32 @@ class AppServiceProvider extends ServiceProvider
          * მარტო IP-ზე NAT-ის უკან მჯდომ ოფისს ერთი ადამიანი დაბლოკავდა,
          * მარტო login-ზე კი ერთი პაროლის ათას ანგარიშზე მორგება
          * (credential stuffing) ჭერს საერთოდ ვერ შეხვდებოდა.
+         *
+         * ⚠️ **მეორე გასაღები იმ ველიდან, რომელსაც მარშრუტი მართლა იღებს**
+         * (`loginIdentity()`). ადრე ყველგან `login` ველი იკითხებოდა: რეგისტრაცია,
+         * პაროლის აღდგენა და 2FA-ს დადასტურება მას არ აგზავნის, ე.ი. ყველა კლიენტი
+         * ერთ ცარიელ კალათს (`login-id:`) იზიარებდა და ერთი ანონიმი ყველას
+         * უბლოკავდა რეგისტრაციასა და აღდგენას. ვინაობის გარეშე მხოლოდ IP რჩება.
          */
-        RateLimiter::for('login', fn (Request $r) => [
-            Limit::perMinute(5)->by('login-ip:'.$r->ip()),
-            Limit::perMinute(5)->by('login-id:'.mb_strtolower((string) $r->input('login', ''))),
-        ]);
+        RateLimiter::for('login', function (Request $r) {
+            $limits = [Limit::perMinute(5)->by('login-ip:'.$r->ip())];
+            $identity = self::loginIdentity($r);
+
+            if ($identity !== null) {
+                $limits[] = Limit::perMinute(5)->by('login-id:'.$identity);
+            }
+
+            return $limits;
+        });
+
+        /*
+         * **ანგარიშის პაროლის შემოწმება შესულ სესიაში — 10 წუთში.** პაროლის
+         * შეცვლა და 2FA-ს ჩართვა, გამორთვა და აღდგენის კოდები მიმდინარე პაროლს
+         * ამოწმებს: გახსნილ ტაბთან მისულს გლობალური 600 წუთში პაროლის
+         * მორგებას აძლევდა. `/locks/remove`-ის იგივე ჭერი, ანგარიშზე.
+         */
+        RateLimiter::for('account-password', fn (Request $r) => Limit::perMinute(10)
+            ->by('pwd:'.($r->user()?->getAuthIdentifier() ?? $r->ip())));
 
         /*
          * **გლობალური ჭერი — 600 მოთხოვნა წუთში ანგარიშზე.**
@@ -264,5 +285,30 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)
                 ->by('record-unlock:'.($r->user()?->getAuthIdentifier() ?? $r->ip()).":{$type}:{$id}");
         });
+    }
+
+    /**
+     * `throttle:login`-ის მეორე გასაღები — ვინ ცდილობს, იმ ველიდან, რომელსაც
+     * მარშრუტი იღებს: შესვლა — `login`; რეგისტრაცია — `username`/`email`;
+     * აღდგენა — ტოკენი (ჰეშად); 2FA-ს დადასტურება — შესული ანგარიში.
+     * `null` = ვინაობა არ არის, მხოლოდ IP-ის ჭერი მოქმედებს.
+     */
+    private static function loginIdentity(Request $r): ?string
+    {
+        if ($r->user()) {
+            return 'u:'.$r->user()->getAuthIdentifier();
+        }
+
+        foreach (['login', 'username', 'email'] as $field) {
+            $value = mb_strtolower(trim((string) $r->input($field, '')));
+
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        $token = $r->route('token');
+
+        return is_string($token) && $token !== '' ? 'reset:'.hash('sha256', $token) : null;
     }
 }

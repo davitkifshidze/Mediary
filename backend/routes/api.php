@@ -273,7 +273,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::match(['put', 'patch'], '/auth/profile', [AuthController::class, 'updateProfile']);
-    Route::patch('/auth/password', [AuthController::class, 'updatePassword']);
+    // ⚠️ მიმდინარე პაროლს ამოწმებს — საკუთარი ჭერი (`account-password`), როგორც 2FA-ს სამ კარს
+    Route::patch('/auth/password', [AuthController::class, 'updatePassword'])->middleware('throttle:account-password');
     Route::put('/auth/settings', [AuthController::class, 'updateSettings']);
 
     /* არჩევითი TOTP. ⚠️ **ოთხივე ანგარიშის პაროლს ითხოვს**
@@ -282,10 +283,10 @@ Route::middleware('auth:sanctum')->group(function () {
        ის ხვრელია, რომლის დახურვასაც ეს მექანიზმი ცდილობს.
        ⚠️ `throttle:login` **`confirm`-ზეც** დგას: ეს ერთადერთი ადგილია,
        სადაც ექვსნიშნა კოდი მოწმდება შესვლის გარეთ. */
-    Route::post('/auth/2fa', [TwoFactorController::class, 'store']);
+    Route::post('/auth/2fa', [TwoFactorController::class, 'store'])->middleware('throttle:account-password');
     Route::post('/auth/2fa/confirm', [TwoFactorController::class, 'confirm'])->middleware('throttle:login');
-    Route::post('/auth/2fa/recovery-codes', [TwoFactorController::class, 'recoveryCodes']);
-    Route::delete('/auth/2fa', [TwoFactorController::class, 'destroy']);
+    Route::post('/auth/2fa/recovery-codes', [TwoFactorController::class, 'recoveryCodes'])->middleware('throttle:account-password');
+    Route::delete('/auth/2fa', [TwoFactorController::class, 'destroy'])->middleware('throttle:account-password');
 
     /* ---------- შეტყობინებები ----------
        ⚠️ **მოდულის ჯგუფის გარეთ**: შეტყობინება ანგარიშის ფაქტია და არა

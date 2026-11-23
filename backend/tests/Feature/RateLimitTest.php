@@ -129,6 +129,54 @@ class RateLimitTest extends TestCase
     }
 
     /**
+     * ⚠️ **ცარიელი `login` საერთო კალათს აღარ ქმნის.** რეგისტრაცია და პაროლის
+     * აღდგენა `login` ველს არ აგზავნის — ადრე ყველა კლიენტი ერთ `login-id:`
+     * კალათს იზიარებდა და ერთი ანონიმი ყველას უბლოკავდა.
+     */
+    public function test_one_client_does_not_block_registration_and_reset_for_everyone(): void
+    {
+        $register = fn (string $name, string $ip) => $this->withServerVariables(['REMOTE_ADDR' => $ip])
+            ->postJson('/api/auth/register', [
+                'name' => $name, 'username' => $name, 'email' => "{$name}@example.com",
+                'password' => 'password123', 'password_confirmation' => 'password123',
+            ]);
+
+        // პირველი კლიენტი თავის ჭერს ხარჯავს — უცნობ აღდგენის ბმულებზეც
+        for ($i = 0; $i < 5; $i++) {
+            $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])->getJson("/api/auth/reset/bogus{$i}");
+        }
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])->getJson('/api/auth/reset/bogus9')->assertStatus(429);
+
+        // მეორე კლიენტი — სხვა IP — ჩვეულებრივ რეგისტრირდება და აღდგენას ხსნის
+        $register('stranger', '10.0.0.2')->assertCreated();
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.3'])->getJson('/api/auth/reset/another')->assertStatus(410);
+    }
+
+    /**
+     * ⚠️ **ანგარიშის პაროლის შემოწმებას საკუთარი ჭერი აქვს** — გახსნილ ტაბთან
+     * მისულს გლობალური 600 წუთში პაროლის მორგებას აძლევდა.
+     */
+    public function test_account_password_checks_have_their_own_limit(): void
+    {
+        $alice = $this->makeUser('alice');
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->actingAs($alice)->patchJson('/api/auth/password', [
+                'current_password' => "wrong{$i}", 'password' => 'newpassword1', 'password_confirmation' => 'newpassword1',
+            ])->assertStatus(422);
+        }
+
+        $this->actingAs($alice)->patchJson('/api/auth/password', [
+            'current_password' => 'password', 'password' => 'newpassword1', 'password_confirmation' => 'newpassword1',
+        ])->assertStatus(429);
+
+        // ერთი კალათია ოთხივე კარზე
+        $this->actingAs($alice)->deleteJson('/api/auth/2fa', ['password' => 'password'])->assertStatus(429);
+        $this->actingAs($alice)->postJson('/api/auth/2fa', ['password' => 'password'])->assertStatus(429);
+        $this->actingAs($alice)->postJson('/api/auth/2fa/recovery-codes', ['password' => 'password'])->assertStatus(429);
+    }
+
+    /**
      * ⚠️ **ჩვეულებრივი მუშაობა ჭერს არ ხვდება.** SPA-ს რიგი
      * (`ui/queue.tsx`) ჩანაწერებს 200 ms-იანი პაუზით აგზავნის, ე.ი.
      * ნორმალური სინქრონი წუთში ~300 მოთხოვნაა. გლობალური ჭერი სწორედ
