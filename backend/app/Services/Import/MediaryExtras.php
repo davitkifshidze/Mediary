@@ -179,7 +179,7 @@ class MediaryExtras
                 $attrs['module'] = $module;
             }
 
-            $relation->make()->forceFill($attrs)->save();
+            $relation->make()->forceFill(MediarySchema::videoLink($attrs, $columns))->save();
         }
     }
 
@@ -258,9 +258,14 @@ class MediaryExtras
 
     /**
      * მსახიობები — `cast_members` საერთო ცხრილია: TMDB-ის მსახიობი TMDB-ის id-ით
-     * იძებნება (და ახალი, თუ ჯერ არ არის, იმავე id-ით იქმნება — `/sync` შეავსებს),
-     * ხელით შექმნილი კი — ჩემს ხელით შექმნილებში სახელით (ის მხოლოდ
-     * შემქმნელს ეკუთვნის).
+     * იძებნება, ხელით შექმნილი კი — ჩემს ხელით შექმნილებში სახელით (ის მხოლოდ
+     * შემქმნელს ეკუთვნის და ფაილიდან იქმნება).
+     *
+     * ⚠️ **ფაილი საერთო მსახიობს ვერ ქმნის და ვერ ცვლის — მხოლოდ არსებულს
+     * უკავშირდება.** ხელით აწყობილი ფაილი ადრე TMDB-ის id-ით ყველასთვის ხილულ
+     * მსახიობს ქმნიდა ყალბი სახელით და ფოტოთი და არსებულის ცარიელ ქართულ
+     * ბიოგრაფიას ავსებდა. ბაზაში ჯერ არარსებული TMDB-ის მსახიობი გამოიტოვება —
+     * ფილმის `/sync` მას TMDB-დან მოიტანს.
      */
     private function cast(User $user, Model $model, array $items, MediaryFiles $files): void
     {
@@ -278,13 +283,15 @@ class MediaryExtras
                 ? CastMember::withoutGlobalScopes()->where('tmdb_person_id', $tmdb)->whereNull('trashed_at')->first()
                 : CastMember::withoutGlobalScopes()->whereNull('tmdb_person_id')->whereNull('trashed_at')->where('created_by', $user->getKey())->where('name', $name)->first();
 
-            if (! $member) {
-                $member = $this->newMember($user, $item, $name, $tmdb, $files);
+            if (! $member && $tmdb !== null) {
+                continue;
             }
 
-            // ქართული ბიოგრაფია: მსახიობი საერთო ჩანაწერია — იწერება მხოლოდ მაშინ, როცა ჯერ არ აქვს
+            $member ??= $this->newMember($user, $item, $name, $files);
+
+            // ქართული ბიოგრაფია — მხოლოდ ჩემს ხელით შექმნილ მსახიობზე, და მხოლოდ თუ ჯერ არ აქვს
             $biography = is_string($item['biography_ka'] ?? null) ? mb_substr(trim($item['biography_ka']), 0, 10000) : '';
-            if ($biography !== '' && ! $member->biography_ka) {
+            if ($biography !== '' && $member->tmdb_person_id === null && ! $member->biography_ka) {
                 $member->setGeorgian(
                     'biography',
                     $biography,
@@ -307,26 +314,21 @@ class MediaryExtras
         }
     }
 
-    private function newMember(User $user, array $item, string $name, ?int $tmdb, MediaryFiles $files): CastMember
+    /** ჩემი ხელით შექმნილი მსახიობი — ფოტო ჩემი ატვირთვაა (კვოტაში) */
+    private function newMember(User $user, array $item, string $name, MediaryFiles $files): CastMember
     {
         $photo = $item['photo_path'] ?? null;
-        $path = null;
-
-        if ($files->available() && is_string($photo)) {
-            // TMDB-ის პორტრეტი საერთოა (`cast/photos`); ატვირთული — მხოლოდ ჩემი ხელით შექმნილისთვის (კვოტაში)
-            $path = str_starts_with($photo, StorageFolder::CAST_PHOTOS.'/')
-                ? $files->shared($photo, StorageFolder::CAST_PHOTOS)
-                : ($tmdb === null ? ($files->store($user, $photo, StorageFolder::CAST_UPLOADS, 'primary')['path'] ?? null) : null);
-        }
+        $path = $files->available() && is_string($photo)
+            ? ($files->store($user, $photo, StorageFolder::CAST_UPLOADS, 'primary')['path'] ?? null)
+            : null;
 
         $member = new CastMember;
         $member->forceFill([
-            'tmdb_person_id' => $tmdb,
+            'tmdb_person_id' => null,
             'name' => $name,
             'imdb_id' => is_string($item['imdb_id'] ?? null) ? mb_substr($item['imdb_id'], 0, 20) : null,
             'photo_path' => $path,
-            // ხელით შექმნილი მხოლოდ შემქმნელისაა; TMDB-ის მსახიობი — საერთო
-            'created_by' => $tmdb === null ? $user->getKey() : null,
+            'created_by' => $user->getKey(),
         ])->save();
 
         foreach (['ka', 'en'] as $locale) {
@@ -338,7 +340,14 @@ class MediaryExtras
         return $member;
     }
 
-    /** ნანახი ეპიზოდები — `tv_episodes` საერთოა: სეზონით და ნომრით, საჭიროებისას იქმნება */
+    /**
+     * ნანახი ეპიზოდები — `tv_episodes` საერთოა: სეზონით და ნომრით.
+     *
+     * ⚠️ **ეპიზოდის სახელი, თარიღი და ხანგრძლივობა ფაილიდან არ იკითხება** — ისინი
+     * ყველასთვის ჩანს და მხოლოდ TMDB-დან იწერება. არარსებული ეპიზოდი იდენტობით
+     * იქმნება (სერიალი · სეზონი · ნომერი), რომ ნახვა არ დაიკარგოს; დანარჩენს
+     * სერიალის `/sync` ავსებს.
+     */
     private function episodes(User $user, Model $model, array $items): void
     {
         $tmdb = (int) $model->getAttribute('tmdb_id');
@@ -354,11 +363,6 @@ class MediaryExtras
 
             $episode = TvEpisode::firstOrCreate(
                 ['tmdb_series_id' => $tmdb, 'season_number' => (int) $item['season'], 'episode_number' => (int) $item['episode']],
-                [
-                    'name' => is_string($item['name'] ?? null) ? mb_substr($item['name'], 0, 255) : null,
-                    'air_date' => MediarySchema::moment($item['air_date'] ?? null, 'Y-m-d'),
-                    'runtime' => is_numeric($item['runtime'] ?? null) ? (int) $item['runtime'] : null,
-                ],
             );
 
             EpisodeWatch::withoutGlobalScopes()->firstOrCreate(

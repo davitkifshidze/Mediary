@@ -46,8 +46,8 @@ class MediaryPackage
 
     public const ROOT = 'imports';
 
-    /** მოდულის JSON-ის ჭერი გაშლილ ზომაზე (ZIP-ში) */
-    private const MAX_JSON_BYTES = 268435456;
+    /** მოდულის JSON-ის ჭერი გაშლილ ზომაზე (ZIP-ში) — 64 MB: მთელი იმპორტი მეხსიერებაში იკითხება */
+    private const MAX_JSON_BYTES = 67108864;
 
     /** CSV-ის ველები, რომლებიც `RecordExporter::flat()`-მა ` | `-ით შეკრა */
     private const LIST_FIELDS = ['genres', 'tags', 'platforms', 'modes', 'mechanics'];

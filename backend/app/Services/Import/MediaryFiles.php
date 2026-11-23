@@ -7,7 +7,6 @@ use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Symfony\Component\Mime\MimeTypes;
 use ZipArchive;
 
@@ -66,7 +65,22 @@ class MediaryFiles
      */
     public function store(User $user, mixed $path, string $folder, string $kind): ?array
     {
-        $temp = $this->extract($path);
+        /* ⚠️ **ზომა და კვოტა გაშლამდე** — ZIP-ის სათაურით. ადრე ფაილი 4 GB-მდე
+           დროებით საქაღალდეში იშლებოდა და მხოლოდ მერე ირკვეოდა, რომ სახეობის
+           ლიმიტს ან კვოტას აჭარბებს. სახეობაზე დიდი ფაილი გამოიტოვება; კვოტის
+           გადაჭარბება `guard()`-ის 413-ია — ჩანაწერი მთლიანად რჩება გარეთ, როგორც
+           შენახვისას. ⚠️ ტიპს **შიგთავსი** წყვეტს (`allowed()`), სახელი კი არა —
+           ამიტომ ის გაშლის შემდეგ, უკვე შეზღუდულ ზომაზე მოწმდება. */
+        $max = (int) UploadLimits::effective($kind, $user)['max_kb'] * 1024;
+        $size = $this->size($path);
+
+        if ($size === null || $size > $max) {
+            return null;
+        }
+
+        $this->meter->guard($user, $size, $folder);
+
+        $temp = $this->extract($path, $max);
 
         if ($temp === null) {
             return null;
@@ -89,7 +103,13 @@ class MediaryFiles
     }
 
     /**
-     * ZIP-ის ფაილი → **საერთო** ფაილი (TMDB-ის პოსტერი, მსახიობის ფოტო) — კვოტის გარეშე.
+     * ZIP-ის ფაილი → **უკვე არსებული საერთო** ფაილი (TMDB-ის პოსტერი) — კვოტის გარეშე.
+     *
+     * ⚠️ **საერთო საქაღალდეში ფაილი ფაილიდან აღარ იწერება.** ადრე „საერთო"
+     * პოსტერი კვოტისა და ზომის ჭერის გარეშე იწერებოდა — ხელით აწყობილი ფაილი
+     * დისკს უსასრულოდ ავსებდა. ახლა მხოლოდ იდენტური ფაილი (იგივე გზა, იგივე
+     * შიგთავსი) ერთვება; სხვა შემთხვევაში `null` — გამომძახებელი მას ჩემს
+     * ატვირთვად ინახავს (`store()`: ლიმიტი და კვოტა).
      */
     public function shared(mixed $path, string $folder): ?string
     {
@@ -98,46 +118,36 @@ class MediaryFiles
             return null;
         }
 
-        $temp = $this->extract($path);
+        $disk = Storage::disk(StorageFolder::diskFor($folder));
+        $max = (int) UploadLimits::KINDS['primary']['max_kb'] * 1024;
+        $size = $this->size($path);
+
+        if ($size === null || $size > $max || ! $disk->exists($path) || $disk->size($path) !== $size) {
+            return null;
+        }
+
+        $temp = $this->extract($path, $max);
         if ($temp === null) {
             return null;
         }
 
         try {
-            $mime = (string) (new \finfo(FILEINFO_MIME_TYPE))->file($temp);
-            if (! in_array($mime, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true)) {
-                return null;
-            }
-
-            $disk = Storage::disk(StorageFolder::diskFor($folder));
-            $target = $path;
-
-            if ($disk->exists($path)) {
-                // ⚠️ იგივე ფაილი უკვე დევს (ჩვეულებრივ — იგივე TMDB-ის პოსტერი): ხელახლა არ იწერება
-                if (hash_file('sha1', $temp) === sha1((string) $disk->get($path))) {
-                    return $path;
-                }
-
-                $info = pathinfo($path);
-                $target = $info['dirname'].'/'.$info['filename'].'-'.Str::lower(Str::random(6)).'.'.$info['extension'];
-            }
-
-            $stream = fopen($temp, 'rb');
-
-            try {
-                $disk->writeStream($target, $stream);
-            } finally {
-                if (is_resource($stream)) {
-                    fclose($stream);
-                }
-            }
-
-            $this->written[] = $target;
-
-            return $target;
+            return hash_file('sha1', $temp) === sha1((string) $disk->get($path)) ? $path : null;
         } finally {
             @unlink($temp);
         }
+    }
+
+    /** ZIP-ის სათაურის ზომა (`files/<გზა>`), გაშლის გარეშე; `null` — ფაილი არ არის */
+    private function size(mixed $path): ?int
+    {
+        if ($this->zip === null || ! is_string($path) || $path === '' || str_contains($path, '..') || str_contains($path, '\\')) {
+            return null;
+        }
+
+        $stat = $this->zip->statName('files/'.ltrim($path, '/'));
+
+        return $stat === false ? null : (int) $stat['size'];
     }
 
     /** ჩავარდნილი ჩანაწერის ფაილები — მხოლოდ დისკიდან (მრიცხველი ტრანზაქციამ დააბრუნა) */
@@ -198,7 +208,7 @@ class MediaryFiles
      * ⚠️ **ზომა ორჯერ მოწმდება**: ZIP-ის სათაური ტყუილი შეიძლება იყოს, ამიტომ
      * კოპირება ნათქვამ ზომაზე ერთი ბაიტით მეტზე ჩერდება და ზედმეტი უარყოფილია.
      */
-    private function extract(mixed $path): ?string
+    private function extract(mixed $path, int $maxBytes): ?string
     {
         if ($this->zip === null || ! is_string($path) || $path === '' || str_contains($path, '..') || str_contains($path, '\\')) {
             return null;
@@ -207,7 +217,7 @@ class MediaryFiles
         $name = 'files/'.ltrim($path, '/');
         $stat = $this->zip->statName($name);
 
-        if ($stat === false || (int) $stat['size'] > UploadLimits::CEILING_KB * 1024) {
+        if ($stat === false || (int) $stat['size'] > min($maxBytes, UploadLimits::CEILING_KB * 1024)) {
             return null;
         }
 

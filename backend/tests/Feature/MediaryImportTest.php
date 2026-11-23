@@ -10,7 +10,9 @@ use App\Models\BookNote;
 use App\Models\CastMember;
 use App\Models\Course;
 use App\Models\CourseCategory;
+use App\Models\EpisodeWatch;
 use App\Models\GalleryImage;
+use App\Models\GalleryVideo;
 use App\Models\Genre;
 use App\Models\Module;
 use App\Models\Movie;
@@ -19,10 +21,12 @@ use App\Models\NoteEntry;
 use App\Models\Place;
 use App\Models\Series;
 use App\Models\Status;
+use App\Models\TvEpisode;
 use App\Models\User;
 use App\Models\Video;
 use App\Services\Modules\CustomFieldService;
 use App\Services\Storage\StorageMeter;
+use App\Support\UploadLimits;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -527,6 +531,131 @@ class MediaryImportTest extends TestCase
         $this->assertSame([null, null, null], [$orphan->origin_type, $orphan->origin_id, $orphan->course_id]);
         $this->assertTrue($other->listed);
         $this->assertNull($other->origin_type);
+    }
+
+    /* ---------- ხელით აწყობილი ფაილი: საერთო ლექსიკონები, ფაილები, ბმულები ---------- */
+
+    /**
+     * ⚠️ **ფაილი საერთო მსახიობსა და ეპიზოდს ვერ ქმნის და ვერ ცვლის.** ადრე TMDB-ის
+     * id-ით ყველასთვის ხილული მსახიობი იქმნებოდა ყალბი სახელით, არსებულს ცარიელი
+     * ქართული ბიოგრაფია ევსებოდა, ეპიზოდს კი ფაილის სახელი ეწერებოდა.
+     */
+    public function test_a_crafted_file_only_links_shared_actors_and_episodes(): void
+    {
+        $this->aliceMovie();
+        $decoded = json_decode($this->actingAs($this->alice)->get('/api/export/movie?format=json')->streamedContent(), true);
+        $decoded['records'][0]['cast'] = [
+            ['name' => 'Fake Star', 'tmdb_person_id' => 999999, 'name_ka' => 'ყალბი', 'character' => 'X'],
+            ['name' => 'Keanu Reeves', 'tmdb_person_id' => 6384, 'biography_ka' => 'ყალბი ბიოგრაფია', 'character' => 'Neo'],
+        ];
+
+        $plan = $this->plan($this->bob, (string) json_encode($decoded));
+        $copy = Movie::withoutGlobalScopes()->findOrFail($this->item($this->bob, $plan, 'movie', 0)['id']);
+
+        $this->assertNull(CastMember::withoutGlobalScopes()->where('tmdb_person_id', 999999)->first(), 'ფაილმა საერთო მსახიობი შექმნა');
+        $this->assertNull(CastMember::where('tmdb_person_id', 6384)->firstOrFail()->biography_ka, 'ფაილმა საერთო ბიოგრაფია შეავსო');
+        $this->assertSame(['Keanu Reeves'], $copy->cast->pluck('name')->all());
+
+        // ეპიზოდი: ნახვა რჩება, სახელი და თარიღი ფაილიდან არ მოდის
+        $series = Series::create(['user_id' => $this->alice->id, 'tmdb_id' => 1399]);
+        $series->setTranslation('en', ['title' => 'Thrones']);
+        $json = json_decode($this->actingAs($this->alice)->get('/api/export/series?format=json')->streamedContent(), true);
+        $json['records'][0]['episode_watches'] = [
+            ['season' => 1, 'episode' => 1, 'name' => 'Forged title', 'air_date' => '1999-01-01', 'watched_at' => '2026-01-01 10:00:00'],
+        ];
+
+        $plan = $this->plan($this->bob, (string) json_encode($json), 'mediary-series-2026-10-05.json');
+        $this->assertTrue($this->item($this->bob, $plan, 'series', 0)['ok']);
+
+        $episode = TvEpisode::where('tmdb_series_id', 1399)->sole();
+        $this->assertNull($episode->name);
+        $this->assertNull($episode->air_date);
+        $this->assertSame(1, EpisodeWatch::withoutGlobalScopes()->where('user_id', $this->bob->id)->where('tv_episode_id', $episode->id)->count());
+    }
+
+    /**
+     * ⚠️ **„საერთო" პოსტერი მხოლოდ იდენტურ არსებულ ფაილს უერთდება**; სხვა
+     * შემთხვევაში ის ჩემი ატვირთვაა — ზომის ლიმიტით და კვოტაში. ადრე ის კვოტისა
+     * და ჭერის გარეშე საერთო საქაღალდეში იწერებოდა.
+     */
+    public function test_a_shared_poster_that_is_not_already_here_counts_against_my_quota(): void
+    {
+        $movie = $this->aliceMovie(withFiles: true);
+        Storage::disk('public')->put('movies/posters/tmdb-603.png', base64_decode(self::PNG));
+        $movie->forceFill(['poster_path' => 'movies/posters/tmdb-603.png', 'poster_source' => 'tmdb'])->saveQuietly();
+
+        $res = $this->actingAs($this->alice)->post('/api/export/archive', ['files' => true])->assertOk();
+        $zipPath = $res->baseResponse->getFile()->getPathname();
+        $zip = (string) file_get_contents($zipPath);
+        @unlink($zipPath);
+
+        // იგივე ფაილი უკვე დევს — ერთდება, კვოტა არ იხარჯება
+        $plan = $this->plan($this->bob, $zip, 'mediary-all.zip');
+        $same = Movie::withoutGlobalScopes()->findOrFail($this->item($this->bob, $plan, 'movie', 0)['id']);
+        $this->assertSame(['movies/posters/tmdb-603.png', 'tmdb'], [$same->poster_path, $same->poster_source]);
+
+        // ფაილი აქ არ არის (სხვა მანქანა) — ჩემი ატვირთვაა და კვოტაში ითვლება
+        $same->forceDelete();
+        Storage::disk('public')->delete('movies/posters/tmdb-603.png');
+        $used = (int) $this->bob->fresh()->storage_used_bytes;
+
+        $plan = $this->plan($this->bob, $zip, 'mediary-all.zip');
+        $copy = Movie::withoutGlobalScopes()->findOrFail($this->item($this->bob, $plan, 'movie', 0)['id']);
+
+        $this->assertSame('upload', $copy->poster_source);
+        $this->assertNotSame('movies/posters/tmdb-603.png', $copy->poster_path);
+        $this->assertFalse(Storage::disk('public')->exists('movies/posters/tmdb-603.png'), 'საერთო საქაღალდეში ფაილი ჩაიწერა');
+        $this->assertGreaterThan($used, (int) $this->bob->fresh()->storage_used_bytes);
+    }
+
+    /** ⚠️ სახეობის ლიმიტზე დიდი ფაილი გაშლამდე გამოიტოვება — ჩანაწერი შემოდის ფაილის გარეშე */
+    public function test_a_file_above_its_kind_limit_is_not_unpacked(): void
+    {
+        $this->aliceMovie(withFiles: true);
+        $res = $this->actingAs($this->alice)->post('/api/export/archive', ['files' => true])->assertOk();
+        $original = $res->baseResponse->getFile()->getPathname();
+
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($original) === true);
+        $entries = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entries[(string) $zip->getNameIndex($i)] = (string) $zip->getFromIndex($i);
+        }
+        $zip->close();
+        @unlink($original);
+
+        // პოსტერი — სახეობის (`primary`) ლიმიტზე ერთი ბაიტით დიდი
+        $entries['files/movies/posters/alice-upload.png'] = base64_decode(self::PNG).str_repeat("\0", UploadLimits::KINDS['primary']['max_kb'] * 1024);
+        $big = $this->zipWith($entries);
+
+        $plan = $this->plan($this->bob, (string) file_get_contents($big), 'mediary-all.zip');
+        @unlink($big);
+
+        $copy = Movie::withoutGlobalScopes()->findOrFail($this->item($this->bob, $plan, 'movie', 0)['id']);
+        $this->assertNull($copy->poster_path);
+    }
+
+    /**
+     * ⚠️ **`embed_url`/`platform` ბმულიდან გამოითვლება**, ბმული კი მხოლოდ `http(s)`-ია —
+     * ფაილიდან ჩაწერილი `embed_url` თვითნებურ iframe-ს ჩასვამდა.
+     */
+    public function test_embed_fields_come_from_the_url_and_links_are_http_only(): void
+    {
+        $this->aliceMovie();
+        $decoded = json_decode($this->actingAs($this->alice)->get('/api/export/movie?format=json')->streamedContent(), true);
+        $decoded['records'][0]['gallery'] = [
+            ['type' => 'video', 'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'title' => 'Trailer', 'platform' => 'evil', 'embed_url' => 'https://evil.example/frame'],
+            ['type' => 'video', 'url' => 'javascript:alert(1)', 'title' => 'Bad', 'embed_url' => 'https://evil.example/frame2'],
+        ];
+
+        $plan = $this->plan($this->bob, (string) json_encode($decoded));
+        $copy = Movie::withoutGlobalScopes()->findOrFail($this->item($this->bob, $plan, 'movie', 0)['id']);
+
+        $videos = GalleryVideo::withoutGlobalScopes()->where('videoable_id', $copy->id)->orderBy('id')->get();
+        $this->assertSame('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ', $videos[0]->embed_url);
+        $this->assertSame('youtube', $videos[0]->platform);
+        $this->assertNotContains('https://evil.example/frame2', $videos->pluck('embed_url')->all());
+        $this->assertNotContains('javascript:alert(1)', $videos->pluck('url')->all());
     }
 
     private function makeUser(string $name, array $modules): User

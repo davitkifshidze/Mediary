@@ -107,7 +107,7 @@ class MediaryWriter
             }
         }
 
-        $model->forceFill($attrs);
+        $model->forceFill(MediarySchema::videoLink($attrs, $columns));
 
         $this->dictionaries($user, $module, $model, $record);
         $this->course($user, $module, $model, $record);
@@ -428,11 +428,12 @@ class MediaryWriter
         $folder = $this->photoFolder($module);
         $source = $sourceColumn ? ($record[$sourceColumn] ?? null) : null;
 
-        if ($sourceColumn && is_string($source) && $source !== '' && $source !== 'upload') {
-            if ($shared = $files->shared($path, $folder)) {
-                $model->setAttribute($column, $shared);
-                $model->setAttribute($sourceColumn, mb_substr($source, 0, 20));
-            }
+        /* საერთო ფაილი მხოლოდ მაშინ, როცა იდენტური უკვე დევს (`MediaryFiles::shared()`);
+           სხვა შემთხვევაში ფაილი ჩემი ატვირთვაა — ზომის ლიმიტით და კვოტაში. */
+        if ($sourceColumn && is_string($source) && $source !== '' && $source !== 'upload'
+            && ($shared = $files->shared($path, $folder))) {
+            $model->setAttribute($column, $shared);
+            $model->setAttribute($sourceColumn, mb_substr($source, 0, 20));
 
             return;
         }

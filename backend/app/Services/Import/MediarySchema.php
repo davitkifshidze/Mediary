@@ -3,6 +3,7 @@
 namespace App\Services\Import;
 
 use App\Support\AppTime;
+use App\Support\VideoUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
@@ -87,17 +88,54 @@ final class MediarySchema
     }
 
     /**
-     * **ბმული მხოლოდ `სქემა://…` ფორმით.**
+     * **ბმული მხოლოდ `http(s)://…` ფორმით.**
      *
      * ⚠️ ფორმა ბმულს `url` წესით ამოწმებს, იმპორტი კი აქამდე უბრალო ტექსტად წერდა: ხელით
      * აწყობილი ფაილის `-`-ით დაწყებული „ბმული" ვიდეოს ჩამოტვირთვისას yt-dlp-ს ოფციად
-     * გადაეცემოდა. ასეთი მნიშვნელობა `null`-ია (სვეტი ცარიელი რჩება).
+     * გადაეცემოდა, ნებისმიერი სქემა კი (`javascript:`, `file:`) ბმულად ჩაიწერებოდა.
+     * ასეთი მნიშვნელობა `null`-ია (სვეტი ცარიელი რჩება).
      */
     private static function link(mixed $value, ?int $length): ?string
     {
         $text = self::text($value, $length);
 
-        return $text !== null && preg_match('#^[a-z][a-z0-9+.\-]*://.+$#is', trim($text)) ? $text : null;
+        return $text !== null && preg_match('#^https?://[^\s]+$#i', trim($text)) ? $text : null;
+    }
+
+    /**
+     * **`embed_url`/`platform`/`external_id` ბმულიდან გამოითვლება და ფაილიდან არ
+     * იკითხება** — მოდელების `applyUrl()`-ის წესი (`VideoUrl::parse()`-ის allowlist).
+     * ფაილიდან ჩაწერილი `embed_url` თვითნებურ iframe-ს ჩასვამდა. მხოლოდ იმ ცხრილზე,
+     * რომელსაც `embed_url` სვეტი აქვს.
+     *
+     * @param  array<string, mixed>  $attrs
+     * @param  array<string, array{type: string, nullable: bool, length: int|null}>  $columns
+     * @return array<string, mixed>
+     */
+    public static function videoLink(array $attrs, array $columns): array
+    {
+        if (! isset($columns['embed_url'])) {
+            return $attrs;
+        }
+
+        $url = is_string($attrs['url'] ?? null) ? $attrs['url'] : null;
+        $parsed = $url !== null ? VideoUrl::parse($url) : [];
+
+        foreach (['embed_url', 'platform', 'external_id'] as $column) {
+            if (! isset($columns[$column])) {
+                continue;
+            }
+
+            $value = $parsed[$column] ?? null;
+
+            if ($value === null && ! $columns[$column]['nullable']) {
+                unset($attrs[$column]);
+            } else {
+                $attrs[$column] = $value;
+            }
+        }
+
+        return $attrs;
     }
 
     /** თარიღი/მომენტი აპლიკაციის ზონაში (ექსპორტი კედლის საათით წერს — `RecordExporter::normalize()`) */
