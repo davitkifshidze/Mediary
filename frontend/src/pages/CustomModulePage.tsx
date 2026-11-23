@@ -87,6 +87,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { StatusLabel } from '@/components/StatusBadge'
 import { DictionaryStatusMenu } from '@/components/StatusMenu'
+import { useBlobUrlCleanup } from '@/lib/objectUrl'
 
 /* ============================================================
    **ინტერფეისიდან შექმნილი მოდულის გვერდი.**
@@ -666,6 +667,7 @@ function CustomRecordForm({
   const [imageUrl, setImageUrl] = useState<string | null>(record?.image_url ?? null)
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(storageUrl(record?.photo_path ?? null))
+  useBlobUrlCleanup(photoPreview)
   const [removePhoto, setRemovePhoto] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [meta, setMeta] = useState<LinkMetadata | null>(null)

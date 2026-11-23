@@ -298,6 +298,7 @@ const TOAST_STYLES: Record<ToastVariant, { bar: string; icon: React.ReactNode }>
 }
 
 function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: number) => void }) {
+  const { t } = useTranslation()
   const { id, duration } = toast
 
   /* ⚠️ სამივე დამოკიდებულება **უცვლელია ამ ბარათის სიცოცხლეში**: `id` და
@@ -327,7 +328,7 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: num
         </div>
         <button
           onClick={() => onDismiss(id)}
-          aria-label="dismiss"
+          aria-label={t('a11y.dismiss')}
           className="-mr-1 -mt-1 grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground"
         >
           <X className="size-3.5" />

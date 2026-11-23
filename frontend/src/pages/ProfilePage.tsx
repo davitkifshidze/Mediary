@@ -21,6 +21,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { useToast } from '@/components/ui/feedback'
 import { InfoHint } from '@/components/ui/info-hint'
+import { useBlobUrlCleanup } from '@/lib/objectUrl'
 
 /** პროფილი: სახელი/გვარი/username/მეილი/ავატარი + პაროლის ცვლილება */
 export function ProfilePage() {
@@ -38,6 +39,7 @@ export function ProfilePage() {
   })
   const [avatar, setAvatar] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
+  useBlobUrlCleanup(preview)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
 

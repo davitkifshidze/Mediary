@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h, StrictMode, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { FeedbackProvider, useConfirm, useToast } from '@/components/ui/feedback'
-import '@/i18n'
+import i18n from '@/i18n'
 
 /* ============================================================
    რეგრესია: **toast-ის ტაიმერი მეზობლის გამო არ უნდა გადაიწიოს**.
@@ -103,7 +103,7 @@ describe('FeedbackProvider', () => {
     fire('პირველი')
     fire('მეორე')
 
-    const close = document.body.querySelectorAll<HTMLButtonElement>('button[aria-label="dismiss"]')
+    const close = document.body.querySelectorAll<HTMLButtonElement>(`button[aria-label="${i18n.t('a11y.dismiss')}"]`)
     expect(close.length).toBe(2)
 
     act(() => close[0].click())

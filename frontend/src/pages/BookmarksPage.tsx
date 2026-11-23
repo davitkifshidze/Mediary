@@ -102,6 +102,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 import { StatusLabel } from '@/components/StatusBadge'
 import { DictionaryStatusMenu } from '@/components/StatusMenu'
+import { useBlobUrlCleanup } from '@/lib/objectUrl'
 
 /* ============================================================
    ბუკმარკების მოდული (`bookmark`).
@@ -708,6 +709,7 @@ function BookmarkForm({
   const [faviconUrl, setFaviconUrl] = useState<string | null>(bookmark?.favicon_url ?? null)
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(storageUrl(bookmark?.image))
+  useBlobUrlCleanup(thumbPreview)
   const [removeThumb, setRemoveThumb] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const addCategory = useDictionaryAdd('bookmark-categories')

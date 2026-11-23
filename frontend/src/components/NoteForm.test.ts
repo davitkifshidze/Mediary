@@ -265,7 +265,7 @@ describe('NoteForm — look', () => {
     expect(mocks.privateUrl).toHaveBeenCalledWith('/notes/9/photo?v=aaaa0000')
     expect(document.querySelector('[data-testid="poster-preview"] img')?.getAttribute('src')).toBe('blob:saved')
 
-    await act(async () => document.querySelector<HTMLButtonElement>('[data-testid="poster-actions"] button[aria-label="remove"]')!.click())
+    await act(async () => document.querySelector<HTMLButtonElement>(`[data-testid="poster-actions"] button[aria-label="${i18n.t('a11y.remove')}"]`)!.click())
     expect(document.querySelector('[data-testid="poster-preview"]')).toBeNull()
     expect(document.querySelector('[data-testid="poster-dropzone"]')).not.toBeNull()
 

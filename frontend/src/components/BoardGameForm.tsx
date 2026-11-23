@@ -48,6 +48,7 @@ import { RatingSelect } from '@/components/ui/rating-select'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { LinkField } from '@/components/ui/link-field'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useBlobUrlCleanup } from '@/lib/objectUrl'
 
 /* ============================================================
    ბორდგეიმის ფორმა.
@@ -107,6 +108,7 @@ export function BoardGameForm({
   const [bggImageUrl, setBggImageUrl] = useState<string | null>(null)
   const [image, setImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(storageUrl(game?.image))
+  useBlobUrlCleanup(imagePreview)
   const [removeImage, setRemoveImage] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const addGenre = useDictionaryAdd('board-game-genres')

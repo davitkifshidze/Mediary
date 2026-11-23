@@ -5,7 +5,7 @@
 ბუკმარკი · გალერეა — **11 მოდული**, per-user ბიბლიოთეკებით, საჯარო პროფილებით და
 ჩატით. გარე წყაროები: TMDB, Open Library, RAWG/IGDB, BGG, Wikimedia, SerpApi/Serper, Gemini.
 
-- **backend/** — Laravel 13 JSON API (PHP 8.3, MySQL/MariaDB), 85 ცხრილი
+- **backend/** — Laravel 13 JSON API (PHP 8.3, MySQL/MariaDB), 125 ცხრილი
 - **frontend/** — React 19 + TypeScript SPA (Vite, Tailwind v4, shadcn/Radix UI, TanStack Query, react-i18next)
 
 > **სამუშაო დოკუმენტი [`CLAUDE.md`](CLAUDE.md)-ია** — არქიტექტურა, გადაწყვეტილებები და
@@ -123,7 +123,7 @@ php artisan media:redownload --missing
 
 ## ბაზა
 
-- ბაზა: `mediary` · მომხმარებელი `root` · პაროლი ცარიელი · `127.0.0.1:3306` (**85 ცხრილი**)
+- ბაზა: `mediary` · მომხმარებელი `root` · პაროლი ცარიელი · `127.0.0.1:3306` (**125 ცხრილი**)
 - ⚠️ **SQL dump-ი git-ში არასდროს ჩაიდება** — `.gitignore` ყველა `*.sql`/`*.sql.gz` ფაილს
   ბლოკავს. ბექაპი ორ გზით კეთდება, ორივე **ლოკალურია**:
   - აპიდან: **`/backups`** (super-admin) — ფაილი პირად დისკზე ინახება და ჩამოტვირთვადია;

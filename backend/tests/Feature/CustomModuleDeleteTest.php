@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AuditLog;
 use App\Models\CustomCategory;
 use App\Models\CustomRecord;
+use App\Models\Goal;
 use App\Models\Module;
 use App\Models\Status;
 use App\Models\TrashEntry;
@@ -324,8 +325,15 @@ class CustomModuleDeleteTest extends TestCase
         $this->assertGreaterThanOrEqual(4, count($paths));
         $moduleId = Module::where('key', $this->key)->value('id');
 
+        // მიზანი მოდულის გასაღებზეა — იმავე სახელით ახალ მოდულს არ უნდა დარჩეს
+        (new Goal)->forceFill([
+            'user_id' => $this->owner->id, 'module' => $this->key, 'period' => 'year',
+            'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31', 'target' => 5,
+        ])->save();
+
         $id = $this->deleteModule();
         $this->deleteJson("/api/trash/custom_module/{$id}")->assertNoContent();
+        $this->assertSame(0, Goal::withoutGlobalScopes()->where('module', $this->key)->count(), 'მიზნები მოდულს გადაურჩა');
 
         foreach ($paths as $path) {
             Storage::disk(StorageFolder::diskFor($path))->assertMissing($path);

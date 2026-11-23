@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\AuditLog;
 use App\Models\CustomRecord;
+use App\Models\Goal;
 use App\Models\Module;
 use App\Models\Status;
 use App\Models\TrashEntry;
@@ -146,6 +147,11 @@ final class CustomModuleTrash
 
         // სტატუსები (ურნაში მყოფიც) — ფაილი არ აქვთ, ჩანაწერები კი უკვე აღარ არის
         Status::withoutGlobalScopes()->where('module', $key)->delete();
+
+        /* ⚠️ **მიზნებიც** — მოდულის გასაღები სახელიდან დგება (`c{owner}-{slug}`), ე.ი.
+           იმავე სახელით შექმნილ ახალ მოდულს ძველი მიზნები ებმებოდა. მოდელით —
+           წაშლას აუდიტი წერს. */
+        Goal::withoutGlobalScopes()->where('module', $key)->get()->each->delete();
 
         /* ⚠️ მოდელით — `AuditObserver` წაშლას თვითონ წერს; FK-კასკადი
            `module_user`-სა და კლასიფიკატორს (`custom_categories`) წაიღებს. */

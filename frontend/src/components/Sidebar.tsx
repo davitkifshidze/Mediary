@@ -1069,7 +1069,7 @@ export function Sidebar({
                 </span>
               </DialogPrimitive.Title>
               <DialogPrimitive.Close
-                aria-label="close"
+                aria-label={t('actions.close')}
                 className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground"
               >
                 <X className="size-4" />

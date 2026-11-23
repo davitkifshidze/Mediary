@@ -190,7 +190,7 @@ export function UserPage() {
           <p className="mt-0.5 text-xs text-muted-foreground">
             {t('admin.registered')}: {fmt.date(user.created_at)} ·{' '}
             {t('admin.lastActivity')}:{' '}
-            {data.last_activity ? new Date(data.last_activity).toLocaleString() : t('admin.never')}
+            {data.last_activity ? fmt.dateTime(data.last_activity) : t('admin.never')}
           </p>
         </div>
       </div>

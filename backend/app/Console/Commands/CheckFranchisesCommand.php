@@ -63,40 +63,13 @@ class CheckFranchisesCommand extends Command
                     continue;
                 }
 
-                Auth::setUser($user);
-
-                $collections = Movie::query()
-                    ->whereNotNull('tmdb_collection_id')
-                    ->toBase()
-                    ->distinct()
-                    ->pluck('tmdb_collection_id');
-
-                if ($tmdb->configured()) {
-                    foreach ($collections as $collection) {
-                        // ცხრილი საერთოა — სხვა ანგარიშის მიერ ამავე გაშვებაში შემოწმებული აღარ იკითხება
-                        if (isset($seen[$collection])) {
-                            continue;
-                        }
-                        $seen[$collection] = true;
-
-                        try {
-                            $tracker->refresh((int) $collection, self::FRESH_MINUTES);
-                            $refreshed++;
-                        } catch (Throwable $e) {
-                            // ერთი ფრანჩაიზის ჩავარდნა დანარჩენს არ აჩერებს
-                            $failed++;
-                            $this->warn("ფრანჩაიზი #{$collection} — ".Redact::secrets($e->getMessage()));
-                        }
-
-                        if ($delay > 0) {
-                            usleep($delay * 1000);
-                        }
-                    }
-                } elseif ($collections->isNotEmpty()) {
-                    $this->warn("{$user->email} — TMDB-ის პირადი გასაღები არ აქვს; ფრანჩაიზები არ განახლდა.");
+                // ⚠️ ერთი ანგარიშის შეცდომა დანარჩენებს არ აჩერებს
+                try {
+                    $sent += $this->checkUser($user, $tracker, $tmdb, $delay, $seen, $refreshed, $failed);
+                } catch (Throwable $e) {
+                    report($e);
+                    $this->warn("{$user->email} — ".Redact::secrets($e->getMessage()));
                 }
-
-                $sent += $tracker->notifyMissing($user);
             }
         } finally {
             Auth::forgetUser();
@@ -106,5 +79,50 @@ class CheckFranchisesCommand extends Command
         $this->info("შემოწმდა: {$refreshed} · ჩავარდა: {$failed} · გაიგზავნა შეტყობინება: {$sent}");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * ერთი ანგარიშის ფრანჩაიზები: განახლება და „ნაწილი აკლია".
+     *
+     * @param  array<int, true>  $seen  ამ გაშვებაში უკვე განახლებული ფრანჩაიზები (ცხრილი საერთოა)
+     */
+    private function checkUser(User $user, FranchiseTracker $tracker, TmdbClient $tmdb, int $delay, array &$seen, int &$refreshed, int &$failed): int
+    {
+        Auth::setUser($user);
+        // წინა ანგარიშის გასაღები ამას არ ერგება
+        CredentialStore::forget();
+
+        $collections = Movie::query()
+            ->whereNotNull('tmdb_collection_id')
+            ->toBase()
+            ->distinct()
+            ->pluck('tmdb_collection_id');
+
+        if ($tmdb->configured()) {
+            foreach ($collections as $collection) {
+                // ცხრილი საერთოა — სხვა ანგარიშის მიერ ამავე გაშვებაში შემოწმებული აღარ იკითხება
+                if (isset($seen[$collection])) {
+                    continue;
+                }
+                $seen[$collection] = true;
+
+                try {
+                    $tracker->refresh((int) $collection, self::FRESH_MINUTES);
+                    $refreshed++;
+                } catch (Throwable $e) {
+                    // ერთი ფრანჩაიზის ჩავარდნა დანარჩენს არ აჩერებს
+                    $failed++;
+                    $this->warn("ფრანჩაიზი #{$collection} — ".Redact::secrets($e->getMessage()));
+                }
+
+                if ($delay > 0) {
+                    usleep($delay * 1000);
+                }
+            }
+        } elseif ($collections->isNotEmpty()) {
+            $this->warn("{$user->email} — TMDB-ის პირადი გასაღები არ აქვს; ფრანჩაიზები არ განახლდა.");
+        }
+
+        return $tracker->notifyMissing($user);
     }
 }

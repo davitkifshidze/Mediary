@@ -49,6 +49,11 @@ export function ImportPanel() {
   const [file, setFile] = useState<File | null>(null)
   const [plan, setPlan] = useState<ImportPlan | null>(null)
   const [busy, setBusy] = useState(false)
+  /* ⚠️ **ბოლო მოთხოვნა იგებს.** გეგმის აწყობა წამებია (ZIP): ფაილის შეცვლა ან
+     „წაშლა" მის დასრულებამდე ძველ პასუხს ახალ ფაილს აფარებდა. ყოველი აწყობა და
+     ფაილის შეცვლა რიცხვს ზრდის; პასუხი, რომლის რიცხვი აღარ ემთხვევა, იგდება
+     (და მისი დროებითი ფაილი სერვერზე იშლება). */
+  const attempt = useRef(0)
   /** CSV-ის ორაზროვნება — რომელ მოდულად შეიძლება წავიკითხო */
   const [ambiguous, setAmbiguous] = useState<string[] | null>(null)
   /** რომელი მოდული შემოვა (ნაგულისხმევად — ყველა, სადაც ახალია) */
@@ -77,21 +82,31 @@ export function ImportPanel() {
   }
 
   const pick = (chosen: File | null) => {
+    attempt.current++
+    setBusy(false)
     setFile(chosen)
     reset()
   }
 
   const build = async (module?: string) => {
     if (!file) return
+    const mine = ++attempt.current
     setBusy(true)
     try {
       const result = await planImport(file, module)
+      if (mine !== attempt.current) {
+        void discardImport(result.token).catch(() => undefined)
+        return
+      }
+      // ხელახლა წაკითხვა — წინა გეგმის დროებითი ფაილი სერვერზე აღარ რჩება
+      if (plan && plan.token !== result.token) void discardImport(plan.token).catch(() => undefined)
       setPlan(result)
       setAmbiguous(null)
       const ready = result.modules.filter((m) => m.reason === null && m.counts.new > 0)
       setIncluded(new Set(ready.map((m) => m.source)))
       setOpen(ready[0]?.source ?? result.modules[0]?.source ?? null)
     } catch (e) {
+      if (mine !== attempt.current) return
       if (isApiCode(e, 'import_module_ambiguous')) {
         setAmbiguous(modulesOf(e))
         setPlan(null)
@@ -99,7 +114,7 @@ export function ImportPanel() {
         toast({ title: errorMessage(e), variant: 'error' })
       }
     } finally {
-      setBusy(false)
+      if (mine === attempt.current) setBusy(false)
     }
   }
 
@@ -157,7 +172,8 @@ export function ImportPanel() {
             className="hidden"
             onChange={(e) => pick(e.target.files?.[0] ?? null)}
           />
-          <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+          {/* აწყობის დროს ფაილი არ იცვლება — პასუხი ამ ფაილს ეკუთვნის */}
+          <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
             <Upload className="size-4" />
             {t('import.choose')}
           </Button>

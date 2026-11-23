@@ -13,6 +13,7 @@ use App\Services\Chat\ChatService;
 use App\Services\Chat\SharedRecord;
 use App\Services\Profile\PublicProfileService;
 use App\Services\Storage\StorageMeter;
+use App\Support\AppTime;
 use App\Support\Like;
 use App\Support\PublicDomain;
 use App\Support\SafeMime;
@@ -374,7 +375,7 @@ class ChatController extends Controller
         ]);
 
         $data['muted']
-            ? $this->chat->mute($conversation, $me, isset($data['until']) ? Carbon::parse($data['until']) : null)
+            ? $this->chat->mute($conversation, $me, isset($data['until']) ? AppTime::at(Carbon::parse($data['until'])) : null)
             : $this->chat->unmute($conversation, $me);
 
         return response()->json(['muted' => $this->chat->isMuted($conversation, $me)]);

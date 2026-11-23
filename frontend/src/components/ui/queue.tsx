@@ -1469,7 +1469,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   setBatchId(null)
                   setServerItems([])
                 }}
-                aria-label="dismiss"
+                aria-label={t('a11y.dismiss')}
                 className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-foreground"
               >
                 <X className="size-3.5" />

@@ -49,6 +49,7 @@ import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 import { LinkField } from '@/components/ui/link-field'
 import { statusStyle } from '@/lib/statusColor'
 import { ModuleIcon } from '@/components/ModuleIcon'
+import { useBlobUrlCleanup } from '@/lib/objectUrl'
 
 /** ⚠️ ღილაკების რიგი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
 const FORM_ID = 'media-form'
@@ -95,6 +96,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
   const [form, setForm] = useState(EMPTY)
   const [poster, setPoster] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
+  useBlobUrlCleanup(preview)
   const [removePoster, setRemovePoster] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [lookupInput, setLookupInput] = useState('')

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import '@/i18n'
+import i18n from '@/i18n'
 import css from '@/index.css?raw'
 
 /* ============================================================
@@ -85,7 +85,7 @@ describe('PosterUploader', () => {
     const buttons = [...bar.querySelectorAll('button')].map((b) => b.textContent?.trim())
     expect(buttons).toEqual(['შეცვლა', 'წაშლა'])
 
-    act(() => (frame.querySelector('button[aria-label="remove"]') as HTMLButtonElement).click())
+    act(() => (frame.querySelector(`button[aria-label="${i18n.t('a11y.remove')}"]`) as HTMLButtonElement).click())
     expect(onClear).toHaveBeenCalledTimes(1)
   })
 

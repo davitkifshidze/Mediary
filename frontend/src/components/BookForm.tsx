@@ -45,6 +45,7 @@ import { TagSelect } from '@/components/TagSelect'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { LinkField } from '@/components/ui/link-field'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useBlobUrlCleanup } from '@/lib/objectUrl'
 
 /* ============================================================
    წიგნის ფორმა.
@@ -109,6 +110,7 @@ export function BookForm({
   const [coverId, setCoverId] = useState<number | null>(null)
   const [cover, setCover] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(storageUrl(book?.cover))
+  useBlobUrlCleanup(coverPreview)
   /* `source_url`-ის ფოტო ყდის **ცარიელ** ჩარჩოში ჯდება (URL-ით) და შენახვისას
      `cover_url`-ად მიდის. ატვირთული, Open Library-ის და უკვე შენახული ყდა უპირატესია (`coverPreview`). */
   const [linkCover, setLinkCover] = useState<string | null>(null)

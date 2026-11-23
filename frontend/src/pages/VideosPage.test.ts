@@ -271,7 +271,7 @@ describe('VideoForm link info', () => {
   it('a cleared frame sends no link photo', async () => {
     const sent = await pasteAndSave(async () => {
       // „წაშლა" ჩარჩოდან — ბმულის ფოტოც ქრება
-      const remove = document.querySelector<HTMLButtonElement>('[data-testid="poster-preview"] button[aria-label="remove"]')!
+      const remove = document.querySelector<HTMLButtonElement>(`[data-testid="poster-preview"] button[aria-label="${i18n.t('a11y.remove')}"]`)!
       await act(async () => remove.click())
       expect(frameImage()).toBeNull()
     })

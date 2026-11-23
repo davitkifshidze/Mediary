@@ -278,6 +278,22 @@ class WatchLogTest extends TestCase
         Carbon::setTestNow();
     }
 
+    /** ⚠️ კლიენტის ზონით მოსული მომენტი (`…Z`) აპის ზონაში იწერება და არ იწევს */
+    public function test_a_client_moment_is_stored_in_the_app_zone(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-10 12:00:00'));
+        $movie = $this->movie();
+
+        $this->actingAs($this->me)
+            ->postJson("/api/media/watches/movie/{$movie->id}", ['watched_at' => '2026-03-04T08:00:00Z'])
+            ->assertCreated();
+
+        // 08:00 UTC = 12:00 თბილისში
+        $this->assertSame('2026-03-04 12:00:00', $movie->refresh()->getRawOriginal('watched_at'));
+
+        Carbon::setTestNow();
+    }
+
     /** მომავალი თარიღი 422-ია — ჟურნალი წარსულის ჩანაწერია */
     public function test_a_future_watch_is_rejected(): void
     {

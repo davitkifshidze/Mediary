@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MediaWatch;
+use App\Support\AppTime;
 use App\Support\MediaDomain;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -52,7 +53,8 @@ class MediaWatchController extends Controller
         ]);
 
         $watch = $record->logWatch(
-            isset($data['watched_at']) ? Carbon::parse($data['watched_at']) : null,
+            // ⚠️ კლიენტის ზონა (`…Z`) აპის ზონაზე — თორემ ბაზაში კედლის საათი 4 საათით იწევს
+            isset($data['watched_at']) ? AppTime::at(Carbon::parse($data['watched_at'])) : null,
             $data['note'] ?? null,
         );
 

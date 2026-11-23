@@ -70,7 +70,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
       <div className="flex shrink-0 items-center gap-3 px-4 lg:w-60">
         <button
           onClick={onMenu}
-          aria-label="menu"
+          aria-label={t('a11y.menu')}
           className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-foreground lg:hidden"
         >
           <Menu className="size-5" />

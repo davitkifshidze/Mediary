@@ -44,6 +44,7 @@ import { useRecordExtras } from '@/lib/customFieldDraft'
 import { usePendingUploads } from '@/lib/pendingUploads'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/components/ui/feedback'
+import { useBlobUrlCleanup } from '@/lib/objectUrl'
 
 /* ============================================================
    **კურსის ფორმა** — დამატება და რედაქტირება.
@@ -94,6 +95,7 @@ export function CourseForm({
   const [preview, setPreview] = useState<string | null>(
     course?.image ? (storageUrl(course.image) ?? course.image) : null,
   )
+  useBlobUrlCleanup(preview)
   const [removeThumb, setRemoveThumb] = useState(false)
   /* ბმულიდან ნაპოვნი ფოტო **იგზავნება** (ადრე მხოლოდ ჩანდა და შენახვისას
      იკარგებოდა): `undefined` — არ შეგვხებია · `null` — მოხსნილია · სტრიქონი — ახალი */

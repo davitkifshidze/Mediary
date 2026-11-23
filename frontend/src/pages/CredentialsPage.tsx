@@ -132,6 +132,17 @@ const STATE_TONE: Record<CredentialState, string> = {
 const STAGGER_MS = 40
 const STAGGER_MAX_MS = 240
 
+/**
+ * შემოწმების შეცდომის ტექსტი. ⚠️ `http_<კოდი>` (`CredentialTester`) ცალკე გასაღები
+ * არ არის — ერთი ტექსტი სტატუსით, თორემ ეკრანზე შიშველი `http_500` ჩანდა.
+ */
+function credentialError(t: (key: string, options?: Record<string, unknown>) => string, code: string | null | undefined): string {
+  const http = /^http_(\d{3})$/.exec(code ?? '')
+  if (http) return t('credentials.error.http', { status: http[1] })
+
+  return t(`credentials.error.${code ?? 'unreachable'}`, { defaultValue: t('credentials.error.unreachable') })
+}
+
 function lookOf(provider: string) {
   return isCredentialProvider(provider) ? LOOK[provider] : FALLBACK_LOOK
 }
@@ -454,7 +465,7 @@ function CheckLine({ credential, state }: { credential: Credential; state: Crede
     return (
       <span className="inline-flex items-center gap-1.5 text-[11px] text-destructive">
         <TriangleAlert className="size-3.5" />
-        {t(`credentials.error.${credential.last_error}`, credential.last_error)}
+        {credentialError(t, credential.last_error)}
       </span>
     )
   }
@@ -538,7 +549,7 @@ function ProviderDialog({ credential, onClose }: { credential: Credential; onClo
     onSuccess: (res) => {
       toast({
         title: res.ok ? t('credentials.testOk') : t('credentials.testFailed'),
-        description: res.ok ? undefined : t(`credentials.error.${res.error ?? 'unreachable'}`, t('credentials.error.unreachable')),
+        description: res.ok ? undefined : credentialError(t, res.error),
         variant: res.ok ? 'success' : 'error',
       })
       onChanged()
@@ -691,7 +702,7 @@ function ProviderDialog({ credential, onClose }: { credential: Credential; onClo
           {credential.last_error && (
             <span className="inline-flex items-center gap-1 text-xs text-destructive">
               <TriangleAlert className="size-3.5" />
-              {t(`credentials.error.${credential.last_error}`, credential.last_error)}
+              {credentialError(t, credential.last_error)}
             </span>
           )}
         </div>

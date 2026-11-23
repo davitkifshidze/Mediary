@@ -89,6 +89,7 @@ import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/rec
 import { cn } from '@/lib/utils'
 import { RatingBadge } from '@/components/ui/star-rating'
 import { RecordActionBar } from '@/components/RecordActionBar'
+import { useBlobUrlCleanup } from '@/lib/objectUrl'
 
 /* ============================================================
    სიმღერების მოდული (`song`, 2026-09-03).
@@ -613,6 +614,7 @@ function SongForm({
   const [genreIds, setGenreIds] = useState<number[]>(song?.genre_ids ?? [])
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(storageUrl(song?.thumbnail))
+  useBlobUrlCleanup(thumbPreview)
   // ბმულის ფოტო პირდაპირ ჩარჩოშია და შენახვისას `thumbnail_url`-ად მიდის (ვიდეოს წესი)
   const [linkThumb, setLinkThumb] = useState<string | null>(null)
   const [removeThumb, setRemoveThumb] = useState(false)

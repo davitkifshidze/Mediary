@@ -562,7 +562,7 @@ export function FilterPanel({
           >
             <DialogPrimitive.Title className="sr-only">{t('filter.more')}</DialogPrimitive.Title>
             <DialogPrimitive.Close
-              aria-label="close"
+              aria-label={t('actions.close')}
               className="absolute right-3 top-3 grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground"
             >
               <X className="size-4" />

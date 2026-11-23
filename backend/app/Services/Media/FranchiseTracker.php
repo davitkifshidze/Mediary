@@ -193,6 +193,17 @@ class FranchiseTracker
         $sent = 0;
 
         foreach ($due as $collection => $parts) {
+            /* ⚠️ **ჯერ ნაწილი „ჩემი ხდება", მერე იგზავნება.** ორი ერთდროული გაშვება
+               (ღამის `franchises:check` და ფილმის დამატება) ერთსა და იმავე უთქმელ
+               ნაწილს ხედავდა: ორივე აგზავნიდა, მეორე კი `updateOrCreate`-ზე უნიკალურ
+               ინდექსს ეჯახებოდა. ახლა ნაწილს მხოლოდ ის აცხადებს, ვინც ატომურად
+               დაიჭირა (`claim()`). */
+            $parts = array_values(array_filter($parts, fn (FranchisePart $part) => $this->claim($user, (int) $collection, (int) $part->tmdb_id)));
+
+            if ($parts === []) {
+                continue;
+            }
+
             // „ფრანჩაიზების" გვერდი ამ ფრანჩაიზზე — იქიდან ემატება ნაკლული
             $path = $this->routeBase().'/franchises?open='.$collection;
 
@@ -223,16 +234,24 @@ class FranchiseTracker
                     $sent++;
                 }
             }
-
-            foreach ($parts as $part) {
-                FranchiseReminder::updateOrCreate(
-                    ['user_id' => $user->id, 'tmdb_collection_id' => $collection, 'tmdb_id' => $part->tmdb_id],
-                    ['notified_at' => now()],
-                );
-            }
         }
 
         return $sent;
+    }
+
+    /**
+     * **ნაწილის „დაჭერა"** — `notified_at` იწერება მხოლოდ მაშინ, თუ ჯერ ცარიელია;
+     * `true` — ამ გაშვებამ დაიჭირა და შეტყობინებაც მან უნდა გააგზავნოს.
+     * ⚠️ `insertOrIgnore` + პირობითი `update` — ორი გაშვებიდან ერთი იგებს.
+     */
+    private function claim(User $user, int $collection, int $tmdbId): bool
+    {
+        $key = ['user_id' => $user->id, 'tmdb_collection_id' => $collection, 'tmdb_id' => $tmdbId];
+
+        FranchiseReminder::query()->insertOrIgnore($key + ['created_at' => now(), 'updated_at' => now()]);
+
+        return FranchiseReminder::query()->where($key)->whereNull('notified_at')->whereNull('muted_at')
+            ->update(['notified_at' => now(), 'updated_at' => now()]) === 1;
     }
 
     /**

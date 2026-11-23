@@ -86,7 +86,7 @@ export function PosterUploader({
           data-testid="poster-preview"
         >
           <input {...getInputProps()} />
-          <PosterImage src={preview} alt="preview" className="size-full object-cover" />
+          <PosterImage src={preview} alt={t('a11y.preview')} className="size-full object-cover" />
 
           {isDragActive ? (
             // ჩაგდებისას მთელი ფოტო ამბობს, რა მოხდება — ღილაკები ამ დროს არ ჩანს
@@ -101,7 +101,7 @@ export function PosterUploader({
                   <ImageUp className="size-3.5 shrink-0" />
                   <span className="truncate">{t('form.photoChange')}</span>
                 </Button>
-                <Button type="button" variant="destructive" size="xs" onClick={onClear} aria-label="remove">
+                <Button type="button" variant="destructive" size="xs" onClick={onClear} aria-label={t('a11y.remove')}>
                   <Trash2 className="size-3.5 shrink-0" />
                   <span className="truncate">{t('actions.delete')}</span>
                 </Button>

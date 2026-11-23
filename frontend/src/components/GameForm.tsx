@@ -61,6 +61,7 @@ import { RatingSelect } from '@/components/ui/rating-select'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { LinkField } from '@/components/ui/link-field'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useBlobUrlCleanup } from '@/lib/objectUrl'
 
 /* ============================================================
    თამაშის ფორმა.
@@ -184,6 +185,7 @@ export function GameForm({
   const [rawgCoverUrl, setRawgCoverUrl] = useState<string | null>(null)
   const [cover, setCover] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(storageUrl(game?.cover))
+  useBlobUrlCleanup(coverPreview)
   const [removeCover, setRemoveCover] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   // ჟანრის „+" — შენახული ჟანრი მაშინვე მონიშნულია

@@ -104,6 +104,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Pagination } from '@/components/ui/pagination'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { enumStatusActions, favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
+import { useBlobUrlCleanup } from '@/lib/objectUrl'
 
 /* ============================================================
    ადგილების მოდული (`place`).
@@ -572,6 +573,7 @@ function PlaceForm({
   const [preview, setPreview] = useState<string | null>(
     place?.photo ? (storageUrl(place.photo) ?? place.photo) : null,
   )
+  useBlobUrlCleanup(preview)
   const [removePhoto, setRemovePhoto] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const qc = useQueryClient()

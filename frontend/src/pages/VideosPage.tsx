@@ -115,6 +115,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { favoriteAction, MENU_ICONS, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { formatBytes } from '@/lib/utils'
+import { useBlobUrlCleanup } from '@/lib/objectUrl'
 
 /* ============================================================
    ვიდეოების მოდული.
@@ -1051,6 +1052,7 @@ function VideoForm({
     : undefined
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(storageUrl(video?.thumbnail))
+  useBlobUrlCleanup(thumbPreview)
   /* ბმულიდან მოსული ფოტო **პირდაპირ ჩარჩოშია** (URL-ით); შენახვისას
      `thumbnail_url`-ად მიდის და სერვერი ზუსტად მას იწერს. ატვირთული და უკვე შენახული
      ფოტო უპირატესია (`thumbPreview`). */

@@ -3752,6 +3752,7 @@
       "blocked": "the source's protection blocked the request — the key was not checked",
       "rate_limited": "the source rate-limited us — try again later",
       "unreachable": "the source is not answering",
+      "http": "the source returned an error (HTTP {{status}}) — try again later",
       "not_configured": "no key has been entered yet",
       "unknown_provider": "unknown source"
     },
@@ -5632,5 +5633,12 @@
       "personal": "Person",
       "personal_album": "Album"
     }
+  },
+  "a11y": {
+    "menu": "Menu",
+    "theme": "Switch theme",
+    "dismiss": "Dismiss",
+    "preview": "Preview",
+    "remove": "Remove"
   }
 }
