@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Goal;
 use App\Services\Goals\GoalBook;
 use App\Services\Stats\LibraryStats;
+use App\Support\AppTime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -34,10 +35,20 @@ class GoalController extends Controller
         $user = $request->user();
         $modules = $this->book->modules($user);
 
+        /* ⚠️ **ჭრილი SQL-შია, დათვლამდე.** ადრე ყველა მიზანი (300-მდე) იტვირთებოდა,
+           თითოს პროგრესი ცალკე COUNT-ით ითვლებოდა და `scope` მხოლოდ ამის შემდეგ
+           იჭრებოდა — მთავარი გვერდის ბლოკი ისტორიის მიზნებსაც ითვლიდა. „გასული" =
+           დასრულების დღე დღევანდელზე ადრეა (`GoalBook::present()`-ის `past`). */
+        $scope = $data['scope'] ?? null;
+        $today = AppTime::now()->toDateString();
+
         $classifiers = [];
         $rows = Goal::query()
             ->whereIn('module', $modules)
-            ->orderBy('ends_on')
+            ->when($scope === 'active', fn ($q) => $q->where('ends_on', '>=', $today))
+            ->when($scope === 'history', fn ($q) => $q->where('ends_on', '<', $today))
+            // ისტორია — ახლიდან ძველისკენ
+            ->when($scope === 'history', fn ($q) => $q->orderByDesc('ends_on'), fn ($q) => $q->orderBy('ends_on'))
             ->orderBy('id')
             ->get()
             ->map(function (Goal $goal) use ($user, &$classifiers) {
@@ -45,13 +56,6 @@ class GoalController extends Controller
 
                 return $this->book->present($user, $goal, $classifiers[$goal->module] ?? []);
             });
-
-        $rows = match ($data['scope'] ?? null) {
-            'active' => $rows->where('past', false),
-            // ისტორია — ახლიდან ძველისკენ
-            'history' => $rows->where('past', true)->sortByDesc('ends_on'),
-            default => $rows,
-        };
 
         return response()->json(['data' => $rows->values()->all(), 'modules' => $modules]);
     }

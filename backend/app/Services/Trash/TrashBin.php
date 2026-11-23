@@ -223,7 +223,11 @@ final class TrashBin
         $rows = $this->rows($query, TrashDomain::category($kind), $page, $perPage);
         $parents = $this->parents($kind, $rows);
         $days = UserSettings::trashDays($user);
-        $recordSizes = $this->recordSizes($user);
+        /* ⚠️ ჩანაწერის მოცულობა მხოლოდ იმ სახეზე, რომელიც მას აჩვენებს (`item()`-ის
+           `size`) და მხოლოდ არაცარიელ გვერდზე — ანგარიშის მთელი ფაილური ინვენტარი
+           (`StorageMeter::files()`) ადრე ყოველ გვერდზე იკითხებოდა, სტატუსისა და
+           ნახვის გვერდზეც. */
+        $recordSizes = $rows->isNotEmpty() && $this->sizedByRecord($kind) ? $this->recordSizes($user) : [];
         $locked = array_flip(AlbumLock::hiddenIds());
 
         return [
@@ -1305,6 +1309,12 @@ final class TrashBin
      *
      * @return array<string, int>
      */
+    /** ამ სახის ელემენტს მოცულობა `recordSizes()`-იდან აქვს (`item()`-ის `size`) */
+    private function sizedByRecord(string $kind): bool
+    {
+        return TrashDomain::category($kind) === 'record' || in_array($kind, [CustomModuleTrash::KIND, CastMemberTrash::KIND], true);
+    }
+
     private function recordSizes(User $user): array
     {
         $sizes = [];

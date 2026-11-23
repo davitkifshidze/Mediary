@@ -1776,6 +1776,11 @@ class StorageMeter
             return;
         }
 
+        // ფაილი წაიშალა — მოდულის დახარჯულის მეხსიერება (`guardModule()`) თავიდან დაითვლება
+        if ($bytes < 0) {
+            request()->attributes->remove(self::MODULE_USED);
+        }
+
         // ქვემოთ 0-ზე არ ჩავარდეს (მრიცხველი unsigned-ია); `(int)` cast-ი
         // პარამეტრს უსაფრთხოს ხდის, ე.ი. raw გამოსახულებაც უსაფრთხოა
         $delta = (int) $bytes;
@@ -1921,6 +1926,9 @@ class StorageMeter
      * ⚠️ ლიმიტის შემცირება უკვე დახარჯულზე ქვემოთ **ფაილებს არ შლის** —
      * უბრალოდ ახალი ატვირთვა აღარ გაივლის.
      */
+    /** `guardModule()`-ის მოთხოვნის მეხსიერება: `user:module` → დახარჯული ბაიტი */
+    private const MODULE_USED = 'storage.module_used';
+
     public function guardModule(User $user, int $bytes, string $folder): void
     {
         $module = StorageFolder::moduleFor($folder);
@@ -1933,9 +1941,20 @@ class StorageMeter
             return;
         }
 
-        $used = $this->usedByModule($user, $module);
+        /* ⚠️ **მოდულის დახარჯული ერთხელ ითვლება მოთხოვნაზე** — პაკეტის (`files[]`,
+           იმპორტის ჩანაწერი) ყოველ ფაილზე `usedByModule()` ანგარიშის მთელ ინვენტარს
+           თავიდან კითხულობდა. მეხსიერებაში რიცხვი **გავლილი ბაიტებით იზრდება**,
+           ე.ი. მე-2…N-ე ფაილი ახალ ჯამზე მოწმდება (`usedByModule()`-ის გაფრთხილება);
+           წაშლა მას აგდებს (`addFor()`). გასაღები მოთხოვნაზეა — Laravel სერვისს
+           მოთხოვნებს შორის ინახავს. */
+        $memo = request()->attributes->get(self::MODULE_USED, []);
+        $key = $user->getKey().':'.$module;
+        $used = $memo[$key] ?? $this->usedByModule($user, $module);
 
         if ($used + $bytes <= $limit) {
+            $memo[$key] = $used + $bytes;
+            request()->attributes->set(self::MODULE_USED, $memo);
+
             return;
         }
 
