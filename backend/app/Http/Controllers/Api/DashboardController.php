@@ -179,7 +179,7 @@ class DashboardController extends Controller
         /* გალერეის ფოტო — იმავე განსაზღვრებით, რითაც გალერეის სათაური და ბადე
            (`GalleryImage::scopeListed()`): ბარათი და გალერეა ერთ რიცხვს ამბობს.
            ⚠️ მხოლოდ `not exists` / `not in` ქვე-პირობებია — ახალი query არ ემატება. */
-        if ($query->getModel() instanceof GalleryImage) {
+        if ($query->getModel() instanceof GalleryImage || $query->getModel() instanceof GalleryVideo) {
             return $query->listed();
         }
 

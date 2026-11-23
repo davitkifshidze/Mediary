@@ -363,6 +363,8 @@ class GlobalSearch
             'gallery' => [
                 'module' => 'gallery',
                 'model' => GalleryVideo::class,
+                // ურნაში მყოფი და დამალული ჩანაწერის ბმული ძებნაშიც არ ჩანს
+                'scope' => fn ($query) => $query->listed(),
                 'title_rank' => ['columns' => ['title']],
                 'columns' => ['title' => ['title'], 'channel' => ['channel'], 'url' => ['url']],
                 'image_url' => 'thumbnail_url',

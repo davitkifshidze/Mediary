@@ -110,6 +110,17 @@ class GalleryImage extends Model
         return GalleryParent::excludeTrashed($query);
     }
 
+    /**
+     * **ფოტოს ჩანაწერი ამ სესიაში დამალულია?** — id-ით და არა `imageable`-ით:
+     * დამალულ ჩანაწერს `record_lock` scope თვითონ მალავს, ე.ი. რელაცია `null`-ს
+     * დააბრუნებდა და შემოწმება ჩუმად გაივლიდა. ⚠️ `hiddenIds()` მემოიზებულია.
+     */
+    public function parentHidden(): bool
+    {
+        return $this->imageable_type !== null
+            && in_array((int) $this->imageable_id, RecordLocks::hiddenIds((string) $this->imageable_type), true);
+    }
+
     public function imageable(): MorphTo
     {
         return $this->morphTo();

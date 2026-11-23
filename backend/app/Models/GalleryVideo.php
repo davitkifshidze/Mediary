@@ -5,7 +5,10 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasTrash;
 use App\Support\CustomModules;
+use App\Support\GalleryParent;
+use App\Support\RecordLocks;
 use App\Support\VideoUrl;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
@@ -43,6 +46,22 @@ class GalleryVideo extends Model
     protected static function booted(): void
     {
         static::retrieved(fn (GalleryVideo $video) => CustomModules::registerMorph($video->videoable_type));
+    }
+
+    /**
+     * **„გალერეაში ჩანს"** — `GalleryImage::scopeListed()`-ის ტყუპი: ბმული ჩემია,
+     * ურნაში არ არის (არც თვითონ, არც მისი ჩანაწერი) და მისი ჩანაწერი დამალული
+     * არ არის. ალბომი ვიდეოს არ აქვს, ე.ი. ალბომის პირობა აქ არ არის.
+     *
+     * ⚠️ უამისოდ ვიდეოების სია, ჭრილები, სათაურის მთვლელი და ძებნა ურნაში მყოფი
+     * და დამალული ჩანაწერის ბმულებს აბრუნებდა — სათაურით, მისამართით და ესკიზით.
+     * ⚠️ მხოლოდ `not exists` / `not in` ქვე-პირობებია — ახალი query არ ემატება.
+     */
+    public function scopeListed(Builder $query): Builder
+    {
+        RecordLocks::excludeMorph($query, 'gallery_videos.videoable_type', 'gallery_videos.videoable_id');
+
+        return GalleryParent::excludeTrashed($query, 'gallery_videos.videoable_type', 'gallery_videos.videoable_id');
     }
 
     public function videoable(): MorphTo

@@ -64,7 +64,7 @@ class GalleryVideoController extends Controller
             'group' => ['nullable', 'in:record,module'],
         ]);
 
-        $query = GalleryVideo::query();
+        $query = GalleryVideo::query()->listed();
 
         match ($data['group'] ?? null) {
             'record' => $query->orderBy('videoable_type')->orderBy('videoable_id'),
@@ -152,7 +152,7 @@ class GalleryVideoController extends Controller
      */
     public function modules(): JsonResponse
     {
-        $rows = GalleryVideo::query()
+        $rows = GalleryVideo::query()->listed()
             ->selectRaw('videoable_type, count(*) as videos, count(distinct videoable_id) as records')
             ->groupBy('videoable_type')
             ->get();
@@ -162,7 +162,7 @@ class GalleryVideoController extends Controller
             'videos' => (int) $row->videos,
             'records' => (int) $row->records,
             // ⚠️ ესკიზი დაშორებული URL-ია (არაფერი იწერება) — ბოლო სამი ბმული
-            'thumbnails' => GalleryVideo::query()
+            'thumbnails' => GalleryVideo::query()->listed()
                 ->where('videoable_type', $row->videoable_type)
                 ->whereNotNull('thumbnail_url')
                 ->orderByDesc('id')
@@ -189,7 +189,7 @@ class GalleryVideoController extends Controller
 
         $type = $data['type'] === 'actor' ? GalleryParent::ACTOR : $data['type'];
 
-        $page = GalleryVideo::query()
+        $page = GalleryVideo::query()->listed()
             ->where('videoable_type', $type)
             ->selectRaw('videoable_id, count(*) as videos, max(id) as latest')
             ->groupBy('videoable_id')

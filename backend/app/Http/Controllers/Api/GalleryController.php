@@ -189,7 +189,7 @@ class GalleryController extends Controller
             'unattached' => (int) $unattached,
             'albums' => GalleryAlbum::query()->count(),
             'categories' => (object) $categories,
-            'videos' => GalleryVideo::query()->count(),
+            'videos' => GalleryVideo::query()->listed()->count(),
             // სხვა მოდულების ფოტოები — ცალკე ჭრილია, ე.ი. ცალკე მთვლელიც
             'module_groups' => count($this->moduleImages->groups($user, 1)),
             'domains' => MediaDomain::enabledFor($user),
@@ -1707,6 +1707,11 @@ class GalleryController extends Controller
 
     public function destroyImage(GalleryImage $galleryImage)
     {
+        /* ⚠️ **დამალული ჩანაწერის ფოტო ცვლილებას არ იღებს** — 423, როგორც თვითონ
+           ჩანაწერი (`EnsureRecordOwnership`). წაშლა მას ურნაში გადაიტანდა, ურნა კი
+           ჩანაწერის გახსნის გარეშე აჩვენებდა. */
+        abort_if($galleryImage->parentHidden(), 423, 'record_locked');
+
         /* თუ ეს ფოტო ჩანაწერის მთავარი სურათია, ბმული არ უნდა დაეკიდოს.
            ⚠️ სვეტი მშობლისაა (`poster_path`/`cover_path`/`thumbnail_path`) —
            ერთი ხელით ჩაწერილი სახელი სიმღერაზე/წიგნზე/თამაშზე ჩუმად

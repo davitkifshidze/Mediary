@@ -307,7 +307,8 @@ final class TrashBin
     {
         $category = TrashDomain::category($kind);
         $isLocked = match (true) {
-            $row instanceof GalleryImage => $row->album_id && isset($locked[(int) $row->album_id]),
+            // ჩაკეტილი ალბომის ან დამალული ჩანაწერის ფოტო — ესკიზის გარეშე
+            $row instanceof GalleryImage => ($row->album_id && isset($locked[(int) $row->album_id])) || $row->parentHidden(),
             // ჩაკეტილი ადამიანის/ალბომის ფოტო ურნაშიც ბოქლომიანია (ესკიზის გარეშე)
             $row instanceof PersonalMedia => self::personalHidden($row),
             // დამალული ფილმი/სერიალი/ანიმე ურნაშიც ბოქლომიანია
